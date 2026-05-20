@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "ts": "2026-05-18T00:00:00Z",
+  "session_id": "tapit-wallet-bootstrap-placeholder",
+  "who": { "actor": "frank", "feature_slug": "frank" },
+  "where": { "files": [], "screen_path": "/" },
+  "layer": "doctrine",
+  "action": "capture",
+  "summary": "🌱 tapit-wallet incubated by Frank — skeleton committed; awaiting first Carpenter session.",
+  "why": {
+    "text": "Frank's bootstrap-project run created the tapit-wallet repo and planted CLAUDE.md, DISCOVERY.md, FOREMAN_ORIENTATION.md, PLAN.md, the foreman-memory tree, the comms infrastructure, the five staged feature manifests (auth, wallet-core, app-connections, backup-recovery, wallet-bot), and the first job pack at appcommander/jobs/job-001.md. The chassis also supplied the tapit-attest library at the repo root. The first Carpenter session will replace this placeholder with its real session_ended 10D record.",
+    "linked_pixel_id": null,
+    "linked_mission_id": "TAPITWALLET-2026-05-18-BOOTSTRAP-001"
+  },
+  "outcome": {
+    "files_changed": [],
+    "tests_passing": null,
+    "build_green": null,
+    "notes": "Bootstrap placeholder. Real outcome lands when Carpenter runs job-001."
+  },
+  "confidence": 100,
+  "uncertainty": "None — this is a placeholder, not a real session record.",
+  "ripple": [],
+  "next": "First Carpenter session reads CLAUDE_START_HERE.md, follows the read-list, opens job-001.md, executes.",
+  "signals": ["pulse"]
+}
