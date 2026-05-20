@@ -1,0 +1,57 @@
+{
+  "v": 1,
+  "generated_at": "2026-05-04T00:00:00Z",
+  "generated_by": "carpenter",
+  "cards": [
+    {
+      "id": "welcome-orient",
+      "type": "review",
+      "title": "Read your project's CLAUDE.md",
+      "subtitle": "Your CLAUDE.md is the operating doctrine for this app. Carpenter sessions read it on every boot. Skim it once so you know what's in there.",
+      "context_seed": "Read CLAUDE.md and FOREMAN_ORIENTATION.md in this repo. Tell me in plain English what this project is, what's already scaffolded, and what the first job (job-001.md) wants me to do. No code changes — just orient us both.",
+      "suggested_mode": "opinion",
+      "estimated_minutes": 10,
+      "updated_at": "2026-05-04T00:00:00Z"
+    },
+    {
+      "id": "welcome-job-001",
+      "type": "continue",
+      "title": "Run the first job — job-001.md",
+      "subtitle": "Frank scaffolded a first job pack at appcommander/jobs/job-001.md. It's the smallest useful step for this app. Tap to dispatch and ship it.",
+      "context_seed": "Read appcommander/jobs/job-001.md and ship that job. Follow the acceptance criteria literally. Run all four gates (typecheck, lint, test, build) before pushing. Update comms records as you go. Write opinions before session_ended.",
+      "suggested_mode": "execute",
+      "estimated_minutes": 60,
+      "updated_at": "2026-05-04T00:00:00Z"
+    },
+    {
+      "id": "welcome-monetization",
+      "type": "decide",
+      "title": "Decide which features are paid candidates",
+      "subtitle": "Your manifests have a monetizable flag. Bake it in from day one — retrofitting is harder. Tap to walk through the feature list with me.",
+      "context_seed": "Walk through every feature manifest in this repo. For each, ask: would I ever charge for this? If yes, set monetizable: true and wrap entry points in src/shared/lib/featureFlag.ts (already scaffolded) with the flag defaulting to 'on'. Free for everyone now, flippable later. Don't change behavior; just wire the flag.",
+      "suggested_mode": "execute",
+      "estimated_minutes": 30,
+      "updated_at": "2026-05-04T00:00:00Z"
+    },
+    {
+      "id": "welcome-import",
+      "type": "idea",
+      "title": "Import a feature from AppCommander",
+      "subtitle": "AppCommander's parts bin has voice-output, comms protocol, foreman-memory, live-radar, and more. Tap an import in the cockpit to discuss fit and pull the IDEA in clean (no AppCommander code leaks).",
+      "context_seed": "I want to add a feature from AppCommander to this app. Help me pick the right one for what I'm building. Read the source feature's manifest, ask me targeted questions about how it should fit this app's style, and produce a brief I can dispatch. Remember: take the IDEA, never the bytes — re-implement clean using THIS repo's patterns.",
+      "suggested_mode": "opinion",
+      "estimated_minutes": 20,
+      "updated_at": "2026-05-04T00:00:00Z"
+    },
+    {
+      "id": "welcome-supabase",
+      "type": "fix",
+      "title": "Connect Supabase + Netlify",
+      "subtitle": "If your repo isn't yet wired to Supabase auth + Netlify hosting, get those connected. They're table stakes for the rest of the work.",
+      "context_seed": "Walk me through connecting this project to Supabase (auth, database, edge functions) and Netlify (hosting, deploy webhook). If env vars are missing, list them and I'll add them. If RLS isn't set up, write the migration. If Netlify branch deploys aren't enabled, tell me how to flip the toggle. Goal: a fresh repo that can deploy a hello-world page and authenticate a user.",
+      "suggested_mode": "execute",
+      "estimated_minutes": 45,
+      "updated_at": "2026-05-04T00:00:00Z"
+    }
+  ]
+}
