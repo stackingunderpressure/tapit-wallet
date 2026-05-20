@@ -1,0 +1,190 @@
+name: Dispatch Carpenter
+
+# Triggered by the dispatch-carpenter edge function via workflow_dispatch.
+# Spawns a Claude Code session on a `dispatch/<slug>` branch, runs the
+# operator's instruction, pushes commits to that branch, and exits.
+# The branch NEVER reaches main without explicit operator merge from the
+# cockpit. Branch isolation IS the kill switch.
+
+on:
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: 'Operator instruction — the chunk of work for Carpenter to perform'
+        required: true
+        type: string
+      branch:
+        description: 'Dispatch branch name (must start with dispatch/)'
+        required: true
+        type: string
+      dispatch_id:
+        description: 'dispatched_sessions row id for receipts cross-reference'
+        required: true
+        type: string
+      project_id:
+        description: 'Project id this dispatch belongs to'
+        required: true
+        type: string
+      mode:
+        description: 'execute (full Carpenter) | opinion (read-only second opinion)'
+        required: false
+        default: execute
+        type: choice
+        options:
+          - execute
+          - opinion
+
+# Hard timeout at the workflow level. Even if Claude Code ignores the
+# prompt instruction to finish in 30 min, the runner kills the job after
+# 35 to prevent runaway billing.
+jobs:
+  carpenter:
+    name: Run dispatched Carpenter
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+      actions: read
+    env:
+      # Plan-bucket auth via long-lived OAuth token from `claude setup-token`.
+      # Per Claude Code docs: if ANTHROPIC_API_KEY is also set in the env,
+      # the API key takes precedence — so we deliberately do NOT set it here.
+      # The repo secret CLAUDE_CODE_OAUTH_TOKEN is required; ANTHROPIC_API_KEY
+      # is no longer needed for dispatched sessions.
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      # Supabase access for Live Carp Chat — carp-say (carpenter writes
+      # messages back to the cockpit) and carp-poll-operator (workflow
+      # reads operator replies) both need service-role REST access.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      DISPATCH_BRANCH: ${{ inputs.branch }}
+      DISPATCH_ID: ${{ inputs.dispatch_id }}
+      DISPATCH_INSTRUCTION: ${{ inputs.instruction }}
+      DISPATCH_PROJECT_ID: ${{ inputs.project_id }}
+      DISPATCH_MODE: ${{ inputs.mode || 'execute' }}
+    steps:
+      - name: Verify branch prefix
+        run: |
+          set -euo pipefail
+          if [[ ! "$DISPATCH_BRANCH" =~ ^dispatch/ ]]; then
+            echo "::error::branch must start with dispatch/ (got: $DISPATCH_BRANCH)"
+            exit 1
+          fi
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name 'dispatched-carpenter'
+          git config user.email 'dispatched-carpenter@users.noreply.github.com'
+
+      - name: Create dispatch branch
+        run: |
+          set -euo pipefail
+          git checkout -b "$DISPATCH_BRANCH"
+          git push -u origin "$DISPATCH_BRANCH"
+          # SANDBOX-TRAP-FIX (PFOR-016): delete the local `main` ref so a
+          # dispatched Carpenter can NEVER accidentally `git checkout main`
+          # in this sandbox. The runner's local `main` is a snapshot; if
+          # it ever falls out of sync with the real origin/main (cache
+          # quirks, proxy issues, stale snapshots) and the Carpenter
+          # checks it out, they're working in a synthetic timeline whose
+          # merges with their dispatch branch get rejected as "unrelated
+          # histories." The dispatch branch itself is unaffected — only
+          # the local `main` pointer is removed. `origin/main` stays
+          # tracked normally; if a future step ever genuinely needs main,
+          # `git fetch origin main:main` re-creates it from real upstream.
+          git branch -D main 2>/dev/null || true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            echo "No package-lock.json — running npm install (first-dispatch scaffold scenario)"
+            npm install
+          else
+            echo "No package.json — skipping install. Dispatched Carpenter is expected to scaffold the project; install will run later in the session."
+          fi
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Live Carp Chat loop
+        run: |
+          set -euo pipefail
+          # carp-loop.sh handles iteration 0 (the original chunk) AND any
+          # follow-up iterations driven by operator replies arriving via
+          # the cockpit's compose bar. Helper scripts (carp-say, carp-poll-
+          # operator, carp-mark-consumed) are added to PATH so claude can
+          # call carp-say from within its session to surface progress.
+          chmod +x appcommander/scripts/*.sh
+          appcommander/scripts/carp-loop.sh
+
+      - name: Push final state
+        if: always()
+        run: |
+          set -euo pipefail
+          # Defensive — Claude Code SHOULD have pushed already, but if it
+          # exited with uncommitted work, capture it as a final commit so
+          # the operator at least sees the partial state.
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "🪵 Dispatched Carpenter — uncommitted work captured at exit" || true
+            git push origin "$DISPATCH_BRANCH" || true
+          fi
+
+      - name: Finalize dispatch (mark failed if workflow died)
+        # ACB-WORKFLOW-FINALIZE-001: closes the in_flight-forever loop.
+        # Without this step, when the workflow times out / errors before
+        # carp-loop reaches its natural end, the dispatched_sessions row
+        # sits at status=in_flight permanently — blocking the project's
+        # one-at-a-time lock and leaving the cockpit dishonest about what
+        # actually happened. With this step, any non-success workflow run
+        # patches the row to status='failed' + session_outcome='error' so
+        # the cockpit's bubble flips to a visibly-failed state and the
+        # next dispatch is unblocked.
+        #
+        # Idempotent via the status=eq.in_flight filter — if the operator
+        # already merged or discarded the row, this is a no-op. PATCH
+        # uses the service role key which can write any table; auth
+        # check is the row-id being a UUID we have.
+        #
+        # if: failure() || cancelled() — only fires on non-success runs.
+        # On success, carp-loop's session_ended already covered reporting
+        # and the row stays in_flight pending operator merge/discard
+        # decision, which is correct.
+        if: failure() || cancelled()
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::warning::SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing — cannot finalize $DISPATCH_ID; row will stay in_flight"
+            exit 0
+          fi
+          ENDED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          PAYLOAD=$(printf '{"status":"failed","session_outcome":"error","ended_at":"%s"}' "$ENDED_AT")
+          # PATCH the row — filter on status=eq.in_flight so this is a
+          # no-op if the operator already decided the dispatch's fate.
+          # Tolerate non-2xx (the workflow already failed; we don't want
+          # the finalize step to mask the original failure).
+          curl -fsS -o /tmp/finalize-resp.txt \
+            -X PATCH \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            "${SUPABASE_URL}/rest/v1/dispatched_sessions?id=eq.${DISPATCH_ID}&status=eq.in_flight" \
+            -d "$PAYLOAD" \
+            && echo "🪵 Finalized $DISPATCH_ID as failed (workflow non-success)" \
+            || echo "::warning::finalize PATCH returned non-2xx; check $SUPABASE_URL row $DISPATCH_ID manually"
