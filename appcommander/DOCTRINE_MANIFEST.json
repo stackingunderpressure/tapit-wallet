@@ -1,0 +1,57 @@
+{
+  "frank_version": "frank-v1.2",
+  "bundled_at": "2026-05-10",
+  "doctrine": [
+    {
+      "name": "THE_THESIS",
+      "bytes": 14731
+    },
+    {
+      "name": "MYCELIUM",
+      "bytes": 15745
+    },
+    {
+      "name": "HEARTH_SPEC",
+      "bytes": 13839
+    },
+    {
+      "name": "HEARTWOOD",
+      "bytes": 18972
+    },
+    {
+      "name": "SATOSHI",
+      "bytes": 17082
+    }
+  ],
+  "peer_memory_rule_ids": [
+    "PFOR-001",
+    "PFOR-002",
+    "PFOR-003",
+    "PFOR-004",
+    "PFOR-005",
+    "PFOR-006",
+    "PFOR-007",
+    "PFOR-008",
+    "PFOR-009",
+    "PFOR-010",
+    "PFOR-011",
+    "PFOR-012",
+    "PFOR-013",
+    "PFOR-014",
+    "PFOR-016",
+    "PFOR-017",
+    "PFOR-018",
+    "PFOR-019",
+    "PCAR-001",
+    "PCAR-002",
+    "PCAR-003",
+    "PCAR-004",
+    "PCAR-005",
+    "PCAR-006",
+    "PCAR-007",
+    "PCAR-008",
+    "PCAR-009",
+    "PCAR-010",
+    "PCAR-012"
+  ]
+}
