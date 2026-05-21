@@ -4,6 +4,7 @@ import { canonicalEnvelope } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { createCustodyHandoff } from './createCustodyHandoff.ts';
+import { canShare, shareText } from '../../shared/lib/share.ts';
 
 interface Props {
   /** Pre-filled from the entry the operator was viewing. */
@@ -72,6 +73,18 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
     await navigator.clipboard.writeText(canonicalEnvelope(step.signed));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function share() {
+    if (step.kind !== 'signed') return;
+    const outcome = await shareText({
+      title: 'Tapit Wallet — custody handoff',
+      text: canonicalEnvelope(step.signed),
+    });
+    if (outcome === 'copied') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   }
 
   return (
@@ -146,13 +159,24 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
               rows={8}
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex gap-2 flex-wrap">
+              {canShare() && (
+                <button
+                  type="button"
+                  onClick={share}
+                  className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
+                >
+                  Share handoff envelope
+                </button>
+              )}
               <button
                 type="button"
                 onClick={copy}
-                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
+                className={`${canShare() ? '' : 'flex-1'} rounded-md ${
+                  canShare() ? 'border border-ink/15' : 'bg-ink text-paper'
+                } px-4 py-2 text-sm font-medium`}
               >
-                {copied ? 'Copied' : 'Copy handoff envelope'}
+                {copied ? 'Copied' : 'Copy'}
               </button>
               <button
                 type="button"

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { disclosureProof } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
+import { canShare, shareText } from '../../shared/lib/share.ts';
 
 interface Props {
   attestation: Attestation;
@@ -53,6 +54,18 @@ export function ShareProofModal({ attestation, onClose }: Props) {
     await navigator.clipboard.writeText(step.json);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function share() {
+    if (step.kind !== 'generated') return;
+    const outcome = await shareText({
+      title: 'Tapit Wallet — disclosure proof',
+      text: step.json,
+    });
+    if (outcome === 'copied') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   }
 
   return (
@@ -132,13 +145,24 @@ export function ShareProofModal({ attestation, onClose }: Props) {
               rows={8}
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex gap-2 flex-wrap">
+              {canShare() && (
+                <button
+                  type="button"
+                  onClick={share}
+                  className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
+                >
+                  Share proof
+                </button>
+              )}
               <button
                 type="button"
                 onClick={copy}
-                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
+                className={`${canShare() ? '' : 'flex-1'} rounded-md ${
+                  canShare() ? 'border border-ink/15' : 'bg-ink text-paper'
+                } px-4 py-2 text-sm font-medium`}
               >
-                {copied ? 'Copied' : 'Copy proof'}
+                {copied ? 'Copied' : 'Copy'}
               </button>
               <button
                 type="button"
