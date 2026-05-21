@@ -167,7 +167,7 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
           disabled={busy}
           className="flex-1 rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
         >
-          {busy ? 'Signing & anchoring…' : 'Sign this entry'}
+          {busy ? 'Signing your entry…' : 'Sign this entry'}
         </button>
         <button
           type="button"

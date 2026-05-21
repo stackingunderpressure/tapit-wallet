@@ -97,14 +97,10 @@ export function JournalDetail() {
             ? '1 signer (you)'
             : `${entry.signatures.length} signers`}
         </div>
-        <div className="mt-1 text-xs">
+        <div className="mt-1 text-xs text-muted">
           {row?.state === 'confirmed' && row.anchor?.btcHeight
-            ? `Anchored at Bitcoin block ${row.anchor.btcHeight}`
-            : row?.state === 'pending'
-              ? 'Anchored — waiting on Bitcoin confirmation'
-              : row?.state === 'failed'
-                ? 'Anchor retrying'
-                : 'Anchor queued'}
+            ? `Time-verified · Bitcoin block ${row.anchor.btcHeight}`
+            : 'Time-verifying… (usually within an hour; can take days)'}
         </div>
       </article>
 

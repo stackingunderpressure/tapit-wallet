@@ -17,20 +17,27 @@ function readString(claim: FieldBranch, name: string): string | undefined {
   return typeof child.value === 'string' ? child.value : undefined;
 }
 
-function statusLabel(state: string | undefined, btcHeight?: number): string {
-  if (!state) return 'Anchor queued';
-  if (state === 'queued') return 'Anchor queued';
-  if (state === 'pending') return 'Anchored — waiting on Bitcoin confirmation';
-  if (state === 'failed') return 'Anchor retrying';
+// The entry is committed the moment it is signed. The verification
+// badge is async metadata that arrives later — sometimes within an
+// hour, sometimes after days of retry. UI never frames the entry as
+// "waiting" or "pending" or "failed" — only the verification badge
+// varies, and it never alarms.
+
+function verificationBadge(
+  state: string | undefined,
+  btcHeight?: number,
+): { text: string; tone: 'verified' | 'verifying' } {
   if (state === 'confirmed') {
-    return btcHeight ? `Confirmed at Bitcoin block ${btcHeight}` : 'Confirmed';
+    return {
+      text: btcHeight ? `Time-verified · block ${btcHeight}` : 'Time-verified',
+      tone: 'verified',
+    };
   }
-  return state;
+  return { text: 'Time-verifying…', tone: 'verifying' };
 }
 
-function toneFor(state: string | undefined): string {
-  if (state === 'confirmed') return 'bg-emerald-50 text-emerald-900 border-emerald-200';
-  if (state === 'failed') return 'bg-amber-50 text-amber-900 border-amber-200';
+function toneClass(tone: 'verified' | 'verifying'): string {
+  if (tone === 'verified') return 'bg-emerald-50 text-emerald-900 border-emerald-200';
   return 'bg-ink/5 text-muted border-ink/10';
 }
 
@@ -47,6 +54,8 @@ export function JournalCard({ attestation }: Props) {
   const category = readString(attestation.claim, 'category') ?? 'Diary';
   const writtenAt = readString(attestation.claim, 'written_at') ?? attestation.issuedAt;
   const hasPhoto = !!readString(attestation.claim, 'photo_sha256');
+
+  const badge = verificationBadge(row?.state, row?.anchor?.btcHeight);
 
   return (
     <Link
@@ -71,9 +80,9 @@ export function JournalCard({ attestation }: Props) {
           </span>
         )}
         <span
-          className={`text-xs rounded-full px-2 py-0.5 border ${toneFor(row?.state)}`}
+          className={`text-xs rounded-full px-2 py-0.5 border ${toneClass(badge.tone)}`}
         >
-          {statusLabel(row?.state, row?.anchor?.btcHeight)}
+          {badge.text}
         </span>
       </div>
     </Link>
