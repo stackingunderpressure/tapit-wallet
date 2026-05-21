@@ -10,6 +10,13 @@ export interface Prefs {
   cloudSync: boolean;
   /** ISO 8601 of the last successful remote save; null if never. */
   lastRemoteSync: string | null;
+  /**
+   * Milliseconds of inactivity before the wallet re-locks and the
+   * passphrase prompt comes back. 0 means never (only sign-out or
+   * a fresh browser session locks). Default 30 minutes per
+   * DESIGN.md §5. User-configurable from Settings.
+   */
+  idleTimeoutMs: number;
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -17,6 +24,7 @@ const KEY = (ownerId: string) => `prefs:${ownerId}`;
 const DEFAULT_PREFS: Prefs = {
   cloudSync: true,
   lastRemoteSync: null,
+  idleTimeoutMs: 30 * 60 * 1000,
 };
 
 export const prefsStore = {

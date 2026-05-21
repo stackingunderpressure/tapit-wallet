@@ -17,6 +17,7 @@ import {
   type WorkerHandle,
 } from '../anchoring/anchorWorker.ts';
 import type { StoredBlob } from '../storage/localStore.ts';
+import { useIdleLock } from './useIdleLock.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -46,6 +47,7 @@ export function WalletProvider({ children }: Props) {
   const [prefs, setPrefs] = useState<Prefs>({
     cloudSync: true,
     lastRemoteSync: null,
+    idleTimeoutMs: 30 * 60 * 1000,
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   // Passphrase lives in state because it's exposed via context anyway
@@ -226,6 +228,23 @@ export function WalletProvider({ children }: Props) {
   useEffect(() => {
     if (!session.session) setPassphrase(null);
   }, [session.session]);
+
+  // Idle-lock: when the operator has been inactive for prefs.idleTimeoutMs,
+  // transition back to the locked phase and clear the in-memory passphrase.
+  // The wallet's encrypted snapshot is reloaded so the unlock prompt has
+  // the latest blob to decrypt against. Only active when phase is
+  // unlocked or needs-identity AND timeout is non-zero.
+  const idleEligible =
+    (phase.kind === 'unlocked' || phase.kind === 'needs-identity') &&
+    !!ownerId &&
+    prefs.idleTimeoutMs > 0;
+  useIdleLock(idleEligible ? prefs.idleTimeoutMs : 0, async () => {
+    if (!ownerId) return;
+    const stored = await walletStore.load(ownerId);
+    setPassphrase(null);
+    setHoldings([]);
+    setPhase(stored ? { kind: 'locked', stored } : { kind: 'first-login' });
+  });
 
   const value = useMemo<WalletContextValue | null>(() => {
     if (phase.kind !== 'unlocked') return null;

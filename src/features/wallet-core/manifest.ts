@@ -19,6 +19,7 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/HomeScreen.tsx',
     'src/features/wallet-core/IdentityCard.tsx',
     'src/features/wallet-core/AttestationCard.tsx',
+    'src/features/wallet-core/useIdleLock.ts',
   ],
   depends_on: ['auth', 'storage'],
   pause_safe: false,
