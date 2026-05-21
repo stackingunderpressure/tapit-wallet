@@ -1,34 +1,39 @@
 {
   "v": 1,
-  "ts": "2026-05-21T07:05:00Z",
-  "session_id": "verify-pass-2026-05-21-1779346690",
-  "who": { "actor": "carpenter", "feature_slug": "wallet-core" },
+  "ts": "2026-05-21T07:50:00Z",
+  "session_id": "phase-2-6-cosigning-2026-05-21-1779349061",
+  "who": { "actor": "carpenter", "feature_slug": "cosigning" },
   "where": {
     "files": [
+      "src/features/cosigning/*",
       "src/features/journal/createJournalEntry.ts",
+      "src/features/journal/JournalComposer.tsx",
       "src/features/journal/JournalCard.tsx",
       "src/features/journal/JournalDetail.tsx",
-      "src/features/wallet-core/WalletProvider.tsx"
+      "src/features/journal/downloadEntry.ts",
+      "src/features/journal/manifest.ts",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/features-registry.ts"
     ],
-    "screen_path": "/"
+    "screen_path": "/, /entry/:digest"
   },
-  "layer": "service",
-  "action": "verify+fix",
-  "summary": "Don't-trust-verify pass per operator. Re-grounded in CLAUDE.md + CLAUDE_ROOT.md; re-ran all four root gates and tapit-attest tests fresh — all green honestly. Adversarial review of the Phase 2.5 surface surfaced two real correctness bugs and fixed both. First bug: createJournalEntry, JournalCard, JournalDetail all computed the entry's digest as sha256(JSON.stringify(att)) instead of tapit-attest's canonical envelopeId(att). This broke determinism across JS engines (JSON.stringify property order is implementation-defined for non-integer keys), broke OTS commit semantics (the proof should commit to the digest signatures bind to), and broke URL stability across added signatures (Phase 2.6 witness co-signing would have changed every existing entry's URL). Fix: import envelopeId from tapit-attest and use it in all three sites. Second bug: confirmed OTS anchors lived in the IDB queue but never got attached to the held attestation, so the encrypted wallet snapshot (which is what backup/restore uses) had no Bitcoin block heights. A user restoring from backup would lose every Time-verified · block N badge they had earned. Fix: WalletProvider subscribes to the anchor worker, on each confirmed state it finds the matching held attestation by envelopeId, calls wallet.hold() with the anchor attached (replaces by id since envelopeId is anchor-independent), and debounces a 2-second save so a flood of confirmations on app reopen produces one PBKDF2 cycle.",
+  "layer": "ui",
+  "action": "build",
+  "summary": "Three focused features shipped this session under the operator's 'continue on while I get the Netlify site ready ... don't trust verify execute like a professional' directive. Phase 2.6a — witness co-signing via manual envelope-JSON exchange: new cosigning feature folder with parseEnvelope (assertWellFormed-validated paste), mergeSignatures (envelopeId-match + dedupe + verifyEnvelope sanity), EnvelopePreview (plain-English render), and three modals (request / sign-as-witness / absorb). Phase 2.6b — custody handoff: createCustodyHandoff builds a meta-kind attestation with action='custody_handoff', signed by the current custodian; the witness flow handles the new custodian's signature; absorb merges. JournalDetail surfaces 'Hand off custody of {subject}' only when subject != wallet.identity. Phase 2.7 — generic attachments: renamed claim leaves photo_* → attachment_*, composer has two upload buttons (📷 Photo with capture=environment for the grandchild scenario, 📄 Document with broad MIME accept), Card/Detail/downloadEntry/EnvelopePreview all updated to handle image vs document rendering. Three commits landed (88a7c89, a036a27, 9e7ab4b) plus the prior verify-pass commits (528dc81, 78baa01, a33474e). Branch and main both at 9e7ab4b.",
   "why": {
-    "text": "Operator: 'Continue on reenter with the Claude MD look over your shoulder doublecheck everything. Don't worry don't trust verify and continue.' Read as: re-ground in doctrine, verify all prior session claims, fix what's broken, continue. Treated the session as a deliberate verification cycle rather than autonomous build time. The two bugs found are exactly the kind that a fresh code-reading pass surfaces and a fresh-eyes operator review would have caught — the digest hash mistake is the canonical 'I had a hash function lying around so I used it' anti-pattern when a library function existed that did it right.",
+    "text": "Operator directive 2026-05-21: 'continue with all of the logic in the features and double check our work each time stay grounded stay within the guard rails look over your shoulder verified don't trust and execute like a professional.' Treated as a sustained autonomous-work mandate with strict discipline. Library-seam audit before each commit (confirming envelopeId, canonicalEnvelope, signEnvelope/wallet.sign, verifyEnvelope, assertWellFormed, metaAttestation are all consumed not duplicated). Adversarial diff read before each commit (caught one mid-session bug — a non-existent useWalletIdentity reference — before push). Gates green before each push. Direct-to-main per CLAUDE.md doctrine. Three features chosen because they complete the v1 vertical slice the operator described in earlier messages: diary entries with witnesses (co-signing), grandchild thread custody handoff to parents (custody flow), photos AND documents both supported (generic attachments). The 'don't worry don't trust verify' framing carried into this session's rhythm: every commit verified its own diff before push, every change went through library-seam audit, every gate ran fresh.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-VERIFY-PASS-008"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-PHASE-2-6-AND-2-7-009"
   },
   "outcome": {
-    "files_changed": ["4 source files across 2 commits (528dc81 digest fix, 78baa01 attach-anchor fix)"],
-    "tests_passing": "root 16/16, tapit-attest 74/74 active, 4 skipped",
+    "files_changed": ["Three commits, 24 files total: cosigning feature (8 new files) + journal updates (5 files) + home/registry/manifest updates (3 files) + comms artifacts"],
+    "tests_passing": "root 16/16 across all three commits. tapit-attest 74/74 active, 4 skipped (corrupted fixture, unchanged).",
     "build_green": true,
-    "notes": "Branch and main both at 78baa01. WalletProvider grew from 3.54KB gz → 3.90KB gz to carry the attach-anchor effect; everything else unchanged in bundle size. Keys-never-leave audit re-confirmed: private signing key lives only inside the Wallet object in memory (not logged, not persisted unencrypted, not transmitted); passphrase lives in component state with the known DevTools-visibility caveat (idle-timeout TODO covers it); EncryptedBlob is what touches the network and IDB. File-size rule (400-line warn / 800-line error from CLAUDE_ROOT.md) satisfied — largest file is WalletProvider at 268 lines."
+    "notes": "Bundle posture: login surface unchanged at ~110KB gzipped (everything new is lazy-loaded post-auth). After three commits: HomeScreen chunk 4.62KB gz (was 1.39KB pre-Phase-2.5), JournalDetail 4.15KB gz (was 1.61KB pre-Phase-2.5 → carries 4 modals + attachment-rendering), WalletProvider 3.40KB gz, attest chunk 25.76KB gz (carries journal + meta builders). All within reasonable budgets. Library-seam audit ran clean on each commit. Mid-session bug (referenced a non-existent helper) caught by typecheck-driven diff review pre-push. Keys-never-leave audit: cosigning signing happens locally via wallet.sign (private key never leaves the Wallet object); only public envelopes cross the wire via copy-paste; the witness's key never leaves their device; the originator's wallet only receives a signature (no key)."
   },
-  "confidence": 92,
-  "uncertainty": "Browser verification still pending operator. The two fixes are TypeScript-and-test-correct but the live OTS round-trip against a real calendar and the live restore-with-anchors-preserved flow have not been walked. Both should be part of the browser-verify checklist.",
-  "ripple": ["wallet-core", "journal", "anchoring", "backup-recovery"],
-  "next": "Operator browser-verifies Phase 1 + 2 + 2.5 against real Supabase + real OpenTimestamps calendar. Specific to verify: (1) entry URL stays the same after Phase 2.6 witness co-signs an existing entry (envelopeId stability); (2) restoring a wallet from a fresh device shows the same Bitcoin block heights it had on the original device (anchor-attachment survives backup). If clean, Phase 2.6 (witness co-signing via in-person QR + custody-handoff meta-attestation flow) is the next session. Six follow-ups remain documented but unblocked: fetch timeout, multi-tab race, exponential backoff, HEIC/WebP re-encode, idle-timeout hook, bot scaffolding (still deliberately dormant).",
+  "confidence": 90,
+  "uncertainty": "Browser verification still pending operator (the in-progress Netlify+Supabase wire-up). End-to-end paste-from-clipboard-back-and-forth between two real devices, the meta-attestation custody chain rendering correctly under quorum-of-good verification, and the attachment download cycle with non-image MIME types are all browser-runtime-dependent and need real-device walking. None of the code paths are speculative — each is verified at gate level — but feature correctness requires the operator's hands.",
+  "ripple": ["wallet-core", "journal", "anchoring", "cosigning", "storage"],
+  "next": "Continuing under the operator's autonomous-work directive. Next planned cut: idle-timeout hook (DESIGN.md §5) — highest-priority security item from the verify pass because passphrase is now in WalletContext. After idle-timeout: anchor worker fetch timeout (AbortController), multi-tab worker coordination (BroadcastChannel), exponential backoff. Then back to feature work — Phase 3 (Nostr NIP-46 inter-app pathway) when the operator names it. Phase 5 (Mycelium + Shamir recovery) holds for MYCELIUM_NETWORK_SPEC.md to land first per existing doctrine.",
   "signals": ["pulse"]
 }

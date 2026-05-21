@@ -4,202 +4,183 @@
 for the Foreman's eyes (Frank, running in AppCommander). The
 Foreman edge function fetches it from main on every call and
 injects it into Frank's system prompt BEFORE peer-memory rules.
-It's the bridge that lets Frank wake up on every call already
-knowing what this project looks like right now.
 
-The Carpenter overwrites this file at every `session_ended`.
-
-**Operator-mode note:** AppCommander has been down today. Dual-
+**Operator-mode note:** AppCommander has been down all day.
+Operator is wiring up Netlify + Supabase in parallel. Dual-
 surface comms remains active.
 
 ---
 
 ## WHAT-CHANGED-RECENTLY
 
-**Verify pass** per operator's "don't trust verify and continue"
-directive. Re-grounded in CLAUDE.md + CLAUDE_ROOT.md, re-ran all
-four root gates + tapit-attest tests fresh (all green), and did
-adversarial code review on the Phase 2.5 surface. Found and fixed
-**two real correctness bugs**:
+**Three features shipped in autonomous-work mode** under the
+operator's "continue while I get the Netlify site ready ... don't
+trust verify execute like a professional" directive. Each one
+landed as a single commit with library-seam audit + adversarial
+diff read pre-push.
 
-**Bug #1 — entry-digest used non-canonical JSON hash** (commit
-`528dc81`). `createJournalEntry.ts`, `JournalCard.tsx`, and
-`JournalDetail.tsx` all computed the entry's identifying digest
-as `sha256(JSON.stringify(attestation))`. That broke:
-- Determinism: JSON.stringify property order is implementation-
-  defined for non-integer keys.
-- OTS semantics: the proof should commit to the digest that
-  signatures already bind (`attestationDigest`), not an ad-hoc
-  hash.
-- URL stability: the JSON-stringify hash changes the moment a
-  second signer's signature is appended, so Phase 2.6 witness
-  co-signing would break every existing entry's URL and queue
-  key.
-- A soft tapit-attest-integrity violation — duplicating a
-  library responsibility.
+**Phase 2.6a — witness co-signing** (commit `88a7c89`). New
+`src/features/cosigning/` folder. Operator A taps "Request a
+co-sign" on an entry → wallet shows canonical envelope JSON in a
+copyable textarea → operator hands it off via whatever channel.
+Operator B taps "Sign someone else's entry" on home → pastes →
+plain-English `EnvelopePreview` → "I confirm" → `wallet.sign()`
+appends witness signature → copy return JSON. Operator A pastes
+return into "Add a co-signer's signature" → `mergeSignatures`
+helper dedupes by signer+sig and runs `verifyEnvelope` sanity →
+`wallet.hold()` replaces by `envelopeId` → save. All primitives
+from `tapit-attest`: `envelopeId`, `canonicalEnvelope`,
+`signEnvelope` via `wallet.sign`, `verifyEnvelope`,
+`assertWellFormed`.
 
-Fix: import `envelopeId` from tapit-attest and use it. The
-library's explicit guarantee at `envelope.ts:80` is "Stable
-content address … independent of signatures and anchor, so an
-envelope keeps its id as it gains signatures." That is exactly
-what the wallet needs.
+**Phase 2.6b — custody handoff** (commit `a036a27`). The
+grandparent → parents → grandchild custody arc gets its middle
+step. `createCustodyHandoff` builds a meta-kind attestation,
+tier `notable`, claim `{action: custody_handoff, from, to,
+transferred_at, note?}`. Signed by current custodian, held,
+queued for OTS anchoring, wallet saved. New custodian signs via
+the existing witness flow; originator absorbs via the existing
+absorb modal. Multi-signed + anchored meta-attestation is the
+chain authority event. Button only renders when `entry.subject !==
+wallet.identity` so self-entries don't show it.
 
-**Bug #2 — confirmed anchors never attached to held attestations**
-(commit `78baa01`). The anchor queue was the live source of truth
-but `wallet.holdings()` returned attestations with `anchor:
-undefined`. So when a user backed up their wallet to Supabase and
-later restored on a new device, every Bitcoin block height they
-had earned would be gone — the wallet would have to re-stamp every
-entry, losing the original anchor's block height permanently.
-That breaks the v1 "ten years from now I can prove this existed
-before that block" promise on the first restore.
+**Phase 2.7 — generic attachments** (commit `9e7ab4b`). Claim
+leaves renamed `photo_*` → `attachment_*` plus new
+`attachment_name`. Composer has two upload buttons: 📷 Photo
+(keeps `capture="environment"` for the mobile-camera shortcut
+that the grandchild scenario depends on) and 📄 Document (broad
+file picker — PDF, text, Word, Excel, HEIC). Card shows the
+appropriate icon based on MIME. Detail renders images inline,
+documents as a download link. downloadEntry uses original
+filename when recorded. EnvelopePreview says "photo" or "document"
+based on MIME.
 
-Fix: WalletProvider subscribes to the anchor worker. When a row
-reaches state 'confirmed' with an anchor present, the effect
-finds the matching held attestation by envelopeId, builds a new
-one with the anchor attached, calls `wallet.hold()` to replace
-the record (envelopeId is anchor-independent so put replaces
-cleanly by id), and debounces a 2-second save so a flood of
-confirmations on app reopen produces one PBKDF2 cycle.
-
-Both fixes are surgical, committed independently, and reversible
-via `git revert`. Branch and main both at `78baa01`.
+**Mid-session bug caught + fixed pre-push:** referenced a
+non-existent `useWalletIdentity` helper in JournalDetail while
+wiring the custody button. The typecheck-driven adversarial diff
+review caught it before commit; replaced with `wallet.identity`
+from the existing `useWallet` destructure. Pattern works.
 
 ## Gates at session end
 
-**Root:**
-- typecheck: clean
-- lint: 0 errors, 0 warnings
-- test: 16/16
-- build: 160 modules; WalletProvider chunk grew 3.54KB gz → 3.90KB
-  gz for the attach-anchor effect; everything else unchanged
+**Root:** typecheck / lint / test (16/16) / build all green on
+every one of the three commits. Manifest-registry vitest test
+auto-picked up the new `cosigning` slug.
+
+**Bundle posture (login surface unchanged at ~110KB gzipped):**
+- main: 7.81KB gz 3.37KB
+- react: 162KB gz 53KB
+- supabase: 207KB gz 54KB
+- attest (lazy, post-auth): 69KB gz 25.76KB — grew to carry
+  journal + meta builders
+- WalletProvider (lazy): 10.55KB gz 3.40KB
+- HomeScreen (lazy): 15.12KB gz 4.62KB
+- JournalDetail (lazy): 13.14KB gz 4.15KB
+- SettingsScreen (lazy): 3.95KB gz 1.63KB
+- useAnchorStatus (lazy): 5.66KB gz 2.83KB
+- anchorQueue (lazy): 1.58KB gz 0.77KB
 
 **tapit-attest:** 74 pass / 0 fail / 4 skipped (corrupted fixture
 unchanged).
 
-**Keys-never-leave audit:** clean. Private signing key lives only
-inside the Wallet object's private field (in-memory only). Passphrase
-in component state with the known DevTools-visibility caveat
-(idle-timeout TODO covers it). Only ciphertext touches the network
-and IndexedDB on the storage side.
+**Keys-never-leave audit:** clean across all three commits.
+Witness signing happens locally via `wallet.sign`; only public
+envelopes cross the wire via copy-paste; the witness's key
+never leaves their device; the originator's wallet only
+receives a signature.
 
-**File-size rule** (CLAUDE_ROOT.md: 400-line warn, 800-line error):
-satisfied. Largest source file is `WalletProvider.tsx` at 268 lines.
+**File-size rule** (CLAUDE_ROOT.md 400-line warn): satisfied.
+Largest source file remains `WalletProvider.tsx` at 273 lines.
 
 ## WHAT'S-PENDING
 
-1. **Operator browser-verifies Phase 1+2+2.5.** Specific new test:
-   sign an entry → wait for "Time-verified · block N" → sign out →
-   clear IndexedDB to simulate a lost device → sign back in →
-   passphrase → entry still shows the SAME block height it had
-   before. That confirms bug #2's fix end-to-end.
-2. **Phase 2.6** (witness co-signing via in-person QR + custody-
-   handoff `meta`-attestation). Now safe to cut because Bug #1's
-   fix preserves entry URLs across added signatures.
-3. **Phase 2.7** (documents). Reuses photo path.
-4. **Idle-timeout hook** (DESIGN.md §5). HIGHER PRIORITY now that
-   passphrase is in WalletContext (Phase 2.5 moved it from useRef
-   to useState). Recommended pre-launch.
-5. **Anchor worker fetch timeout.** `AbortController` with 30s
-   timeout. Without it a slow calendar could hang a scan
-   indefinitely.
-6. **Multi-tab worker coordination.** `BroadcastChannel` leader
-   election or shared worker. Two tabs currently both stamp the
-   same digest.
-7. **Anchor worker exponential backoff.** Politeness when calendar
-   is down for hours: `min(5min × 2^attempts, 1hr)`.
-8. **HEIC/WebP photo re-encode.** Cross-device portability via
-   `canvas.toBlob` in the composer.
-9. **Standing follow-ups:** OTS fixture restoration (4 skipped
-   library tests), `Tap-it-Attest-main.zip` cleanup at repo root.
+1. **Continuing now: idle-timeout hook** (DESIGN.md §5) —
+   highest-priority security item per the verify pass. The
+   passphrase lives in WalletContext as of Phase 2.5; an
+   unlocked wallet stays unlocked until sign-out today, which
+   means a teenager grabbing the phone has full wallet powers.
+   Fix: a 30-minute idle timer that re-prompts for the
+   passphrase. Small enough for one focused commit.
+2. **Anchor worker fetch timeout** — AbortController with
+   ~30s timeout so a slow calendar can't hang a scan.
+3. **Multi-tab worker coordination** — BroadcastChannel-based
+   leader election or shared worker. Two tabs currently both
+   stamp the same digest.
+4. **Anchor worker exponential backoff** — `min(5min × 2^attempts,
+   1hr)` to be polite when calendar is down for hours.
+5. **Phase 3** — Nostr NIP-46 inter-app pathway. The remote
+   transport equivalent of the in-person QR/paste cosigning
+   flow. Bigger session.
+6. **Pre-commit library-seam audit script** — convert the
+   verbal commitment into a check (grep new code for function
+   names that overlap tapit-attest's public surface). Catches
+   the next variant of the digest/envelopeId bug class.
+7. **Bundle-budget audit** — one focused pass to split anything
+   over 10KB gz and hoist common code. Login surface budget is
+   holding but the lazy chunks are trending monotonic.
+8. **Browser verification by operator** — pending the Netlify +
+   Supabase wire-up. Specific new tests for this session:
+   paste-flow round-trip between two devices for co-signing,
+   restore-and-verify-anchors-preserved (the Bug #2 fix from
+   the verify pass), document-attachment download round-trip.
+9. **Standing parallel-track items:** OTS fixture restoration
+   (4 skipped library tests), `Tap-it-Attest-main.zip` cleanup,
+   HEIC/WebP re-encode polish.
 
 ## WHAT-TO-FLAG
 
-**The two bugs found were both at the seam where wallet code
-touches tapit-attest.** Bug #1 duplicated a library function with
-a worse implementation; bug #2 ignored a library capability (the
-`anchor` field on Attestation was sitting there waiting). The
-doctrine's non-negotiable #4 ("never re-implement tapit-attest")
-applies in both directions — don't write code the library has,
-and don't ignore code the library has waiting for you. Reviewing
-the wallet's diff against the library's public surface is the
-natural way to catch both kinds of failure. Worth making that a
-deliberate step in future sessions.
+The grandchild-clock pressure is the real schedule. The wallet
+is feature-shippable today for the operator's scenario; the
+remaining work is polish + security + Phase 3 networking. Frank
+should treat any operator message about the grandchild as urgent
+and confirm-not-tasked.
 
-**The verify-pass paid for itself.** Both bugs would have been
-silent failures in production: Bug #1 manifests as "URL broken
-after witness co-signs the entry," Bug #2 manifests as "lost all
-my Time-verified badges after restore from backup." Both
-shipped earlier this conversation. The pre-commit "read your own
-diff adversarially" step is the rhythm that catches this class.
-Frank should remind the Carpenter of this pattern before any
-session that closes a Phase scope.
+The bundle bloat trend is monotonic across phases. Currently
+under budget but worth a bundle-audit session before Phase 3.
 
-**The idle-timeout TODO is now the highest-priority security
-follow-up** because the passphrase moved into React context this
-phase. Without idle-timeout, an unlocked wallet stays unlocked
-until sign-out, and an attacker with physical access has the same
-powers as the operator until session expiry. The fix is small but
-has UX implications.
+The mid-session-bug catch pattern (typecheck-driven adversarial
+diff read pre-push) saved one push this session. Worth promoting
+to a doctrine pattern — the "look over your shoulder" instruction
+the operator gave is what made it operational.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator runs `npm install && npm run dev` against real Supabase
-   credentials. Walks the full flow including a deliberate restore
-   cycle to confirm Bug #2's fix end-to-end.
-2. If clean → Phase 2.6 cutting session (witness co-signing via
-   in-person QR + custody-handoff `meta`-attestation flow). Now
-   safe to land because Bug #1's fix made entry URLs stable
-   across added signatures.
-3. Before Phase 3 ships externally: idle-timeout hook + anchor
-   worker fetch timeout + exponential backoff. About one focused
-   session for all three.
-4. Phase 2.7 (documents) any time — reuses Phase 2.5 photo path.
-5. Standing parallel-track items: OTS fixture restoration, zip
-   cleanup.
+1. Carpenter cuts the idle-timeout hook next under the same
+   autonomous-work directive.
+2. Then the anchor-worker polish three (fetch timeout, multi-
+   tab, backoff) — could be one commit or three.
+3. Operator browser-verifies whenever the Netlify+Supabase
+   wire-up lands.
+4. Then operator decides whether to greenlight Phase 3 (Nostr
+   NIP-46) or sit on the wedge to gather real-family-use feedback
+   first.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Disciplined and trusting. The "don't trust verify and continue"
-instruction was a deliberate verification-cycle directive, and
-the operator was right to call for one — two real bugs surfaced
-in twenty minutes of careful re-reading. The operator continues
-to run manually (AppCommander still down) and continues to grant
-the Carpenter latitude to fix real issues found mid-pass. Expect
-the next exchange to be either a browser-verification report or
-a Phase 2.6 greenlight. The grandchild-clock pressure remains
-the real schedule: the wallet has to be browser-verified and
-ready for the first signed birth entry before the grandchild
-arrives.
+Trusting and parallel-working. The "execute like a professional"
+directive is high-velocity but not loose — explicit verify-each-
+step framing. The operator is in flow on the infra side; the
+Carpenter is in flow on the feature side; both threads converge
+when the operator returns to browser-verify.
 
 ## Ideas ready to revisit
 
-All idea entries from earlier sessions remain stage-tagged in
+Standing observations from prior sessions hold. New patterns this
+session worth naming:
+
+- **The pre-commit library-seam audit** is doctrine in spirit
+  but should become a check. Pattern: any new function in
+  `src/features/*` whose name overlaps `tapit-attest`'s public
+  exports gets flagged for review.
+- **Mid-session bug catching by typecheck-driven adversarial
+  diff** — the "look over your shoulder" instruction the
+  operator gave fires before push, not after gates. Operationalize
+  as a pre-commit step.
+- **Bundle bloat is monotonic across phases.** Lazy chunks
+  trending up. Watch for the moment the cumulative-download
+  cost for a returning user breaks 100KB gzipped (currently
+  comfortably under).
+
+The 16 idea entries from earlier sessions plus the doctrine
+pattern entries are all stage-tagged in
 `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
-
-Standing observations from prior sessions still hold:
-- "Documented TODO" decay — Frank should surface in quiet
-  periods. Current set: 4 SKIP_CORRUPTED_FIXTURE tests, idle-
-  timeout hook, anchor worker fetch timeout, multi-tab race,
-  exponential backoff, HEIC/WebP re-encode, identity round-trip
-  integration test, `Tap-it-Attest-main.zip` cleanup.
-- Lazy-loaded auth-vs-wallet bundle boundary is a security
-  pattern.
-- Signing is the commit; verification is async metadata (Phase
-  2.5 reframe).
-- The OTS lifecycle worker pattern generalizes to any async-
-  confirm flow (Nostr ack, Shamir share collection, peer
-  recovery).
-- Origin can move under the Carpenter when AppCommander touches
-  the repo — always fetch before reporting on repo state for
-  anything from outside the wallet's commit history.
-
-**New standing observation from this session:** review the
-wallet's diff against tapit-attest's public surface before
-claiming done. Both bugs found this session were at that seam.
-If you wrote a hash function, check whether `attestationDigest`
-or `envelopeId` already does it. If you wrote a state machine
-that tracks something the Attestation envelope already has a
-field for, check whether you should be using that field. Tag:
-doctrine-pattern, the "library-seam audit." Worth making
-mechanical as a pre-commit check eventually.
