@@ -61,7 +61,15 @@ export interface SignerResult {
 }
 
 export interface VerifyResult {
-  /** True only when there is at least one signature and all signatures verify. */
+  /**
+   * True when at least one signature on the envelope verifies.
+   * Quorum-of-good: a relayer can append a junk signature to a
+   * genuine envelope, and that must not invalidate the genuine
+   * attestation. Invalid signatures are reported in `errors` and
+   * marked on their `SignerResult`, but they do not poison the
+   * result. A signer with any valid signature is treated as valid
+   * even if a duplicate bad row for them is also present.
+   */
   valid: boolean;
   /** Hex of the digest every signature was checked against. */
   digest: string;
@@ -82,12 +90,15 @@ export function verifyEnvelope(a: Attestation): VerifyResult {
     signer: s.signer,
     valid: verifySignature(digestBytes, s.sig, s.signer),
   }));
+  const validSet = new Set(signers.filter((s) => s.valid).map((s) => s.signer));
   for (const s of signers) {
-    if (!s.valid) errors.push(`invalid signature from ${s.signer}`);
+    if (!s.valid && !validSet.has(s.signer)) {
+      errors.push(`invalid signature from ${s.signer}`);
+    }
   }
   if (a.signatures.length === 0) errors.push('attestation has no signatures');
   return {
-    valid: errors.length === 0,
+    valid: validSet.size > 0,
     digest: bytesToHex(digestBytes),
     signers,
     errors,

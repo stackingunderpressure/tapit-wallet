@@ -58,3 +58,36 @@ test('two distinct signers both verify', () => {
   assert.equal(signed.signatures.length, 2);
   assert.equal(verifyEnvelope(signed).valid, true);
 });
+
+test('a relayer-appended junk signature cannot poison a genuine envelope', () => {
+  const kp = generateKeypair();
+  const relayer = generateKeypair();
+  const signed = signEnvelope(draft(), kp.privateKey);
+  const poisoned = {
+    ...signed,
+    signatures: [
+      ...signed.signatures,
+      { signer: relayer.publicKey, sig: 'aa'.repeat(64) },
+    ],
+  };
+  const result = verifyEnvelope(poisoned);
+  assert.equal(result.valid, true);
+  assert.ok(result.signers.some((s) => s.signer === kp.publicKey && s.valid));
+  assert.ok(result.signers.some((s) => s.signer === relayer.publicKey && !s.valid));
+  assert.ok(result.errors.some((e) => e.includes(relayer.publicKey)));
+});
+
+test('a duplicate row for a valid signer is not counted as an error', () => {
+  const kp = generateKeypair();
+  const signed = signEnvelope(draft(), kp.privateKey);
+  const doubled = {
+    ...signed,
+    signatures: [
+      ...signed.signatures,
+      { signer: kp.publicKey, sig: 'aa'.repeat(64) },
+    ],
+  };
+  const result = verifyEnvelope(doubled);
+  assert.equal(result.valid, true);
+  assert.equal(result.errors.length, 0);
+});
