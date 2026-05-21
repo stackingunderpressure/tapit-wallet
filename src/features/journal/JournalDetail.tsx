@@ -7,6 +7,8 @@ import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { mediaStore } from '../storage/mediaStore.ts';
 import { downloadJournalEntry } from './downloadEntry.ts';
+import { CosignRequestModal } from '../cosigning/CosignRequestModal.tsx';
+import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 
 function readString(claim: FieldBranch, name: string): string | undefined {
   const child = claim.children.find((c) => c.name === name);
@@ -19,6 +21,7 @@ export function JournalDetail() {
   const { holdings, ownerId, passphrase } = useWallet();
   const worker = useAnchorWorker();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [modal, setModal] = useState<'request' | 'absorb' | null>(null);
 
   const entry = useMemo<Attestation | undefined>(() => {
     if (!digest) return undefined;
@@ -102,13 +105,39 @@ export function JournalDetail() {
         </div>
       </article>
 
-      <button
-        type="button"
-        onClick={() => downloadJournalEntry(ownerId, passphrase, entry)}
-        className="mt-4 w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
-      >
-        Save to my files
-      </button>
+      <div className="mt-4 space-y-2">
+        <button
+          type="button"
+          onClick={() => setModal('request')}
+          className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium"
+        >
+          Request a co-sign
+        </button>
+        <button
+          type="button"
+          onClick={() => setModal('absorb')}
+          className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
+        >
+          Add a co-signer's signature
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadJournalEntry(ownerId, passphrase, entry)}
+          className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
+        >
+          Save to my files
+        </button>
+      </div>
+
+      {modal === 'request' && (
+        <CosignRequestModal
+          attestation={entry}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === 'absorb' && (
+        <AbsorbCosignModal onClose={() => setModal(null)} />
+      )}
     </div>
   );
 }

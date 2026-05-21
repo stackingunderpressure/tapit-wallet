@@ -5,6 +5,7 @@ import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
 import { JournalComposer } from '../journal/JournalComposer.tsx';
 import { JournalTabs } from '../journal/JournalTabs.tsx';
+import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -28,6 +29,7 @@ function backupBanner(prefs: {
 export function HomeScreen() {
   const { wallet, holdings, identity, prefs } = useWallet();
   const [composerOpen, setComposerOpen] = useState(false);
+  const [witnessOpen, setWitnessOpen] = useState(false);
   const banner = backupBanner(prefs);
 
   const journalEntries = useMemo(
@@ -90,13 +92,26 @@ export function HomeScreen() {
           </div>
         </section>
       ) : (
-        <button
-          type="button"
-          onClick={() => setComposerOpen(true)}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-ink text-paper px-5 py-3 font-medium shadow-lg"
-        >
-          + New entry
-        </button>
+        <div className="fixed bottom-6 inset-x-0 flex items-center justify-center gap-3 px-5">
+          <button
+            type="button"
+            onClick={() => setWitnessOpen(true)}
+            className="rounded-full bg-white text-ink border border-ink/15 px-4 py-3 text-sm font-medium shadow"
+          >
+            Sign someone else's entry
+          </button>
+          <button
+            type="button"
+            onClick={() => setComposerOpen(true)}
+            className="rounded-full bg-ink text-paper px-5 py-3 font-medium shadow-lg"
+          >
+            + New entry
+          </button>
+        </div>
+      )}
+
+      {witnessOpen && (
+        <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />
       )}
     </div>
   );
