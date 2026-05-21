@@ -1,8 +1,9 @@
 # Tapit Wallet — build plan
 
-> Phased work order matching `DESIGN.md`'s six-phase architecture.
-> `DESIGN.md` is the authoritative spec; this file mirrors its
-> phasing in a tighter format and tracks status.
+> Phased work order. `DESIGN.md` is the authoritative spec; this
+> file mirrors its phasing in a tighter format and tracks status.
+> Refreshed 2026-05-21 to reflect Phase 2.5 / 2.6 / 2.7 / 3 / 4 +
+> the verify-pass fixes + security polish having shipped.
 
 ## What Tapit Wallet is (and is not)
 
@@ -26,12 +27,13 @@ person cannot use is a wallet that does not exist.
 
 v1 ships when a non-technical user can install the PWA, log in by
 email magic link, create an identity backed by a signed identity
-attestation, see what they hold, back it up (cloud + local +
-designated social recovery), selectively disclose a single field
-to a verifier without leaking the rest, approve a signing request
-from one other app, and (for parents) create custodial child
-keypairs that hand off cleanly. The Mycelium peer network (Layer
-3) and the wallet bot (Layer 4) are explicitly NOT in v1.
+attestation, write diary entries with text and photos/documents
+that get OpenTimestamps-anchored to Bitcoin, witness-co-sign other
+family members' entries via in-person paste-flow, hand off
+custody of a long-running subject thread, selectively disclose
+one field of an attestation without leaking the rest, and approve
+inter-app sign requests via deeplink. The Mycelium peer network
+(Layer 3) and the wallet bot (Layer 4) are explicitly NOT in v1.
 
 ## Layer 1 — already built
 
@@ -39,104 +41,153 @@ The `Wallet` core object — keypair, succession, attestation
 holder, sign-both-ways, encrypted backup, sync, peer recovery —
 lives in `tapit-attest`, consumed as a `file:` dependency. This
 app is built *around* that object; do not rebuild it. Wallet-side
-patch landed: sign-poisoning fix in `verifyEnvelope`, bundled
-version bumped to `0.1.1-wallet.0`.
+patches landed: sign-poisoning fix in `verifyEnvelope`,
+`journal` AttestationKind added, `metaHash` exported,
+`disclosureProof` + `verifyDisclosureProof` implemented (replacing
+the v1.1 stub). Bundled version `0.1.1-wallet.0`.
 
 ## Phase 1 — PWA shell + email auth + key generation [DONE]
 
-- Vite + React 18 + TypeScript + Tailwind project shell.
-- `tapit-attest` wired as `file:` dependency.
-- Supabase magic-link auth.
-- PWA manifest + hand-rolled service worker.
-- On first login: passphrase prompt → `generateKeypair()` →
-  encrypted snapshot → IndexedDB + Supabase `wallet_blobs`.
-- Home screen with the user's public key displayed.
-- All four gates green. Browser verification pending operator.
+Vite + React 18 + TypeScript + Tailwind project shell.
+`tapit-attest` wired as `file:` dependency. Supabase magic-link
+auth. PWA manifest + hand-rolled service worker. On first login:
+passphrase prompt → `generateKeypair()` → encrypted snapshot →
+IndexedDB + Supabase `wallet_blobs`. Home screen with the user's
+public key displayed.
 
 ## Phase 2 — Identity attestation + backup posture [DONE]
 
-- First-run display-name flow → self-signed `identityAttestation`
-  with display name + creation date + pubkey on the Merkle tree.
-- Attestation card renders on the home screen.
-- Settings screen: cloud-sync toggle (default ON), local
-  encrypted-backup download, sign-out.
-- Backup-status banner on home (stale > 24h, off, pending).
-- All four gates green.
+First-run display-name flow → self-signed `identityAttestation`
+with display name + creation date + pubkey on the Merkle tree.
+Attestation card renders on the home screen. Settings screen:
+cloud-sync toggle (default ON), local encrypted-backup download,
+sign-out. Backup-status banner on home (stale > 24h, off,
+pending).
 
-## Phase 3 — Social recovery designation + simulated recovery
+## Phase 2.5 — Diary wedge [DONE]
 
-- User designates 5+ trusted attesters by pubkey.
-- Each gets a recovery-attestation grant letter shareable
-  out-of-band.
-- Simulated end-to-end recovery: fresh wallet broadcasts a
-  recovery request, designated attesters sign meta-attestations,
-  N-of-M binds the new key into the succession chain, identity
-  continuity confirmed in a verifier view.
-- **Proof:** full social-recovery cycle in dev with two browser
-  profiles representing two attesters.
-- **Effort:** ~1 session.
+The operator's reframe from earlier: the wallet's day-one product
+is a cryptographically signed time-anchored personal diary that
+gets quietly corroborated by peers over time. Composer with text,
+subject picker (Me / Someone-else label), category picker (Diary,
+Family, Medical, Marriage, Witness plus free-form), optional
+attachment. Each entry signed by the wallet, queued for
+OpenTimestamps anchoring, rendered as a card on the home screen
+grouped by category tab. Detail view per entry with anchor status,
+signers, save-to-files download.
 
-## Phase 4 — Selective leaf disclosure
+## Phase 2.6 — Witness co-signing + custody handoff [DONE]
 
-- Implement `disclosureProof` in `tapit-attest`'s
-  `core/field-tree.ts` (the v1.1 slot the library was designed
-  for).
-- "Share Proof" button on the identity card. Picker for which
-  leaf to prove. Output: a copyable proof string + QR code.
-- A companion `/verify` route in the same PWA that validates a
-  pasted proof against a known signer pubkey.
-- **Proof:** "prove I'm over 21" proof generated in one browser,
-  validated in another.
-- **Effort:** ~1 session.
+Manual envelope-JSON paste-flow between operator and witness via
+any channel. CosignRequestModal (originator), CosignAsWitnessModal
+(witness paste → preview → sign), AbsorbCosignModal (originator
+absorbs). CustodyHandoffModal for the grandchild-thread custody
+arc (grandparent → parents → eventually the child themselves)
+via meta-kind attestation co-signed by both custodians.
 
-## Phase 5 — Inter-app sign request via deeplink
+## Phase 2.7 — Generic attachments [DONE]
 
-- Third-party app constructs a `tapit://sign?...` deeplink (or
-  `https://<wallet-host>/sign?...` for web).
-- Wallet renders a plain-English approval screen — who, what,
-  what is being signed.
-- Approve → wallet signs, returns via callback URL. Decline →
-  structured decline message.
-- Nostr NIP-46 transport sits behind a feature flag, OFF in v1.
-- **Proof:** stub third-party demo page constructs a sign
-  request, wallet handles it end-to-end.
-- **Effort:** ~1-2 sessions.
+Claim leaves renamed `photo_*` → `attachment_*` plus
+`attachment_name`. Composer has separate 📷 Photo (camera shortcut
+preserved) and 📄 Document (broad MIME picker) buttons.
 
-## Phase 6 — Family-mode custody
+## Verify pass + security polish [DONE]
 
-- "Add child" flow under Settings. Parent enters child's name +
-  birth date.
-- Wallet generates a child keypair, stores it encrypted under the
-  parent's passphrase.
-- Parent can sign attestations about the child (birth,
-  vaccination, school enrollment).
-- Child's attestations appear as a separate card cluster on home,
-  labelled by name.
-- "Hand off to child" exports child's seed + history as an
-  encrypted package + a printable recovery card.
-- Receive-handoff flow on a fresh wallet install.
-- **Proof:** parent creates a child, signs a birth attestation,
-  hands off to a fresh wallet instance, child wallet shows the
-  inherited identity and attestation history.
-- **Effort:** ~1-2 sessions.
+Adversarial code review found two real bugs: entry-digest used
+non-canonical JSON.stringify hash (fixed to `envelopeId`), and
+confirmed anchors never attached to held attestations (lost
+Bitcoin block heights on backup-restore; fixed with subscribing
+to the worker and attaching anchors on confirm).
+
+Idle-timeout hook (DESIGN.md §5) — default 30 min, configurable
+in Settings, re-prompts for passphrase on activity-timeout.
+Closes the mid-session-abandonment window the passphrase-in-
+context move from Phase 2.5 widened.
+
+Anchor-worker polish: 30s fetch timeout via wrapped OtsTransport
+with AbortController; exponential backoff for failed rows
+(`min(5min × 2^attempts, 1hr)`).
+
+## Phase 3 — Layer 2 inter-app deeplink pathway [DONE]
+
+Third-party apps construct a URL pointing at `/sign` with a
+base64url-encoded SignRequest. The wallet decodes, validates,
+renders a plain-English approval screen showing the claimed
+origin + the actual callback host + the content being signed.
+On approve, builds the attestation via `wallet.attest`, signs,
+holds, queues anchoring, redirects with a SignGrant. On decline,
+redirects with a structured SignDecline. Per-kind plain-English
+template surfaces prominent fields by name. Intent='attest' only
+in v1; NIP-46 transport is a future swap of the deeplink layer
+for the same SignRequest/SignGrant message shapes.
+
+## Phase 4 — Selective leaf disclosure [DONE]
+
+The "math, not trust" demonstration most legible to a
+non-technical user. From any entry's detail page, the operator
+picks one leaf of the claim tree and the wallet produces a
+DisclosureProofBundle they hand to a verifier. The companion
+`/verify` route lives outside `AuthGate` so the verifier
+(third-party context) can paste and check the proof without a
+wallet of their own. Library work: `disclosureProof` +
+`verifyDisclosureProof` in `tapit-attest/src/core/field-tree.ts`;
+`metaHash` exported from `envelope.ts` so the verifier uses the
+same canonical hashing the signer used.
+
+## Phase 5 — Social recovery + Mycelium peer network
+
+Deferred to its own spec (`MYCELIUM_NETWORK_SPEC.md`). The brief
+of 2026-05-21 promoted Shamir-based cascade recovery to this
+phase per the operator's no-pre-stashed-key sharpening: M-of-N
+peers initiate, every subscribed peer encrypts their share to
+the new keypair, reassembly happens on the new device, M peers
+co-sign a recovery-succession event that handoff signing
+authority to the new key. Technical note carried in
+`carpenter-state-for-foreman.md`: the Shamir split must be over
+the encryption key for the cloud-mirrored backup blob, NOT over
+the signing keypair, so M-of-N collusion does not equal total
+identity capture forever.
+
+## Phase 6 — Family-mode custody (full keypair)
+
+The original DESIGN.md Phase 6 generates a real child keypair at
+birth and stores it under the parent's passphrase. The operator's
+2026-05-21 message refined the model to "identity by attestation
+not by key" — the grandchild's identity is a typed-label subject
+that accumulates signed attestations from custodians, and the
+grandchild eventually absorbs the thread into their own keypair
+when they get one. That lighter model already ships in Phase 2.6.
+Full-keypair custody is now optional, not required for v1.
 
 ## Phase 7+ — explicit non-goals for v1
 
 - Wallet bot (conversational guide). Dormant scaffolding is
   preserved in `src/features/{persona,snapshot-builder,suggested-questions,temporal}/`
   with `pause_safe: true` manifests, awaiting this launch.
-- Mycelium peer network (Layer 3).
+- Mycelium peer network (Layer 3) — wallet-to-wallet contact
+  discovery, transitive trust weighting. Spec-first.
 - Group keys with FROST / MuSig2 quorums.
 - Charter governance, silent-objection admission.
-- Nostr NIP-46 transport (deeplink only in v1).
+- Nostr NIP-46 transport (deeplink only in v1; NIP-46 swaps in
+  the same SignRequest/SignGrant shapes when it lands).
 - NFC tap-to-cosign and tap-to-bump-for-recovery (D24, D25).
 - Voice input/output.
 - WebAuthn / biometric unlock.
+- QR-as-transport for co-signing (paste-flow ships in v1; QR is
+  later UX polish on the same primitives).
 
-## Honest estimate
+## Known follow-ups (logged, not blocking)
 
-Phases 3-6: roughly 4-6 focused sessions to a launchable v1.
-Phase 7+ is post-launch.
+- Multi-tab worker coordination (BroadcastChannel leader election).
+- HEIC/WebP photo re-encode in composer for cross-device
+  portability (`canvas.toBlob`).
+- Pre-commit library-seam audit script — convert the verbal
+  pre-push pattern that caught the digest + anchor-attach bugs
+  into a mechanical check.
+- Bundle-budget audit before the next phase that meaningfully
+  enlarges the post-auth chunks.
+- OTS fixture restoration (4 skipped tests in `tapit-attest`).
+- `Tap-it-Attest-main.zip` cleanup at repo root.
 
 ## Do NOT
 
@@ -150,10 +201,15 @@ Phase 7+ is post-launch.
   `src/features-registry.ts` without a decision logged in
   `project-memory/.../decisions.md` and a matching `manifest.ts`.
 
-## Recommended first move after Phase 2
+## Recommended first move after Phase 4
 
-Operator verifies Phases 1+2 end-to-end in a browser against a
-real Supabase project. If the magic-link round-trip,
-key-generation, encrypted-snapshot persistence, identity-attestation
-creation, settings toggle, and local-export download all work
-cleanly, Phase 3 (social recovery) is the next cutting session.
+Operator browser-verifies the full Phase 1+2+2.5+2.6+2.7+3+4
+stack against the live Netlify+Supabase deploy. Walk: login →
+passphrase → display-name → home with identity card → New entry
+with photo → wait for Time-verified · block N → Hand a co-sign
+request to a family device → witness signs → absorb → home shows
+multi-signer count → /entry/:digest → Share a proof of one field
+→ paste into /verify in another tab → confirms math → /sign with
+a constructed test request → approve → callback host received
+the grant. If any step stalls, that's the next session's first
+business.
