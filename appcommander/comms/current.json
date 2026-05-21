@@ -1,37 +1,39 @@
 {
   "v": 1,
-  "ts": "2026-05-21T06:10:00Z",
-  "session_id": "brief-diary-wedge-2026-05-21-1779343150",
-  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
+  "ts": "2026-05-21T06:40:00Z",
+  "session_id": "phase-2-5-cut-2026-05-21-1779344735",
+  "who": { "actor": "carpenter", "feature_slug": "journal" },
   "where": {
     "files": [
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-21-diary-first-wedge.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md",
-      "CLAUDE_ROOT.md (via bootstrap merge)"
+      "tapit-attest/src/types.ts",
+      "tapit-attest/src/core/builders.ts",
+      "tapit-attest/src/core/envelope.ts",
+      "src/features/journal/*",
+      "src/features/anchoring/*",
+      "src/features/storage/mediaStore.ts",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/App.tsx"
     ],
-    "screen_path": "/"
+    "screen_path": "/, /entry/:digest"
   },
-  "layer": "doctrine",
-  "action": "intake",
-  "summary": "Operator surfaced a major design brief (diary-first wedge reframe, Mycelium 5-layer model, six-kinds review, AI-defenses inventory, no-better-plan competitive framing, Shamir cascade recovery with operator's own no-pre-stashed-key sharpening, OTS-port-from-AppCommander, phase-mapping changes). Carpenter engaged substantively in chat — acknowledged the wedge reframe, recommended adding a journal kind to tapit-attest, flagged a technical clarification for the Shamir recovery design (split the encryption key for the cloud blob, NOT the signing keypair), proposed Phase 2.5 (diary surface) and Phase 2.75/early-3 (OTS port) ahead of Phase 3 inter-app, pushed back on framing recovery as a marketing moment and on letting the bot ever sign. Brief filed verbatim with the Carpenter response captured in a footer; 10 idea entries logged to ideas.md per the LIVING-IDEAS doctrine. CLAUDE_ROOT.md was discovered landing on main via AppCommander bootstrap commit f61cf2d between fetch and push; merged into branch, stale 'not yet present' notes corrected, gates re-run green, pushed.",
+  "layer": "ui",
+  "action": "build",
+  "summary": "Phase 2.5 — the diary wedge — shipped end-to-end. Library got the 'journal' AttestationKind (7 kinds now), the journalAttestation builder, the envelope-whitelist update, and the per-kind test. Wallet got a new journal feature (composer with text + subject picker + category picker + photo upload, card with live anchor-status badge, tabs by category, detail view with photo + signers + anchor block height + save-to-files download) and a new anchoring feature (OpenTimestamps provider singleton consuming tapit-attest's already-fetch-based OpenTimestampsProvider, IDB-backed anchor queue keyed by attestation digest, background worker that scans on app mount + polls every 5 minutes while open + pauses on offline + resumes on online via navigator events, useAnchorStatus + useAnchorWorker hooks). Storage extended with mediaStore for SHA-256-keyed encrypted photo bytes. WalletProvider exposes passphrase + anchorWorker through context; passphrase cleared on sign-out. HomeScreen hosts JournalTabs above a floating + New entry button that opens the composer inline. The grandchild scenario is now reachable end-to-end — operator can sign 'Grandson Tom Jr born on date at hospital' with a photo and watch it cycle queued → pending → confirmed-at-Bitcoin-block.",
   "why": {
-    "text": "Operator asked the Carpenter to 'chew on this and tell me what you think.' Primary deliverable: substantive engagement in chat. Secondary deliverable: preservation per LIVING-IDEAS doctrine — every meaningful idea surfaced gets logged in the same session it surfaced. The brief is large enough that filing it verbatim plus the idea entries is the honest record. The bootstrap-merge surprise was a real-world reminder that origin can move under your feet — handled by fetching before pushing and merging cleanly when divergence is orthogonal.",
+    "text": "Operator greenlit Phase 2.5 with the OTS port pulled forward and explicitly named the time-delay lifecycle as needing helpers — answered with the anchor queue + background worker pattern. The pre-cut investigation found that tapit-attest's OpenTimestampsProvider was already dependency-free (the brief's port-from-AppCommander recommendation predated the library's current state), which let me focus the session on lifecycle plumbing rather than re-implementing the protocol. User-sovereign default per operator's directive: photos stay in encrypted IndexedDB with save-to-files download; no Supabase Storage bucket; paid hosted-storage tier deferred entirely.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-BRIEF-DIARY-WEDGE-006"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-PHASE-2-5-DIARY-007"
   },
   "outcome": {
-    "files_changed": [
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-21-diary-first-wedge.md (created)",
-      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md (+10 entries)",
-      "merged CLAUDE_ROOT.md from origin/main bootstrap"
-    ],
-    "tests_passing": "root 16/16, tapit-attest 74/74 active (unchanged)",
+    "files_changed": ["27 files: 4 library files modified, 13 new wallet files across 2 new features (journal, anchoring) + media store, plus updates to WalletProvider, HomeScreen, App, registry, and the storage manifest."],
+    "tests_passing": "root 16/16 (manifest-registry correctly picked up the 2 new slugs). tapit-attest 74/74 active, 4 skipped — the journal-kind round-trip test passes.",
     "build_green": true,
-    "notes": "Three commits on the feature branch this session: b78b867 (brief + ideas), 56c9740 (merge of origin/main bringing in CLAUDE_ROOT.md), 28fb359 (correct stale 'not yet present' notes). Branch and main both at 28fb359. No wallet implementation changes — this was an intake session, not a cut session. Phase 2.5 (diary surface), Phase 2.75 (OTS port), and journal-kind addition to tapit-attest are all proposals awaiting operator greenlight."
+    "notes": "Commit f299c7d on branch + main (fast-forward). Bundle posture: login surface unchanged ~110KB gzipped; new lazy chunks JournalDetail 1.61KB gz, anchorQueue 0.77KB gz, useAnchorStatus 2.83KB gz; HomeScreen grew to 3.69KB gz; WalletProvider 3.54KB gz; attest chunk grew to 25.17KB gz to carry the new journal builder export. NOT VERIFIED in a browser — sandbox has no browser. Operator should walk: sign-in → home → '+ New entry' → fill text + subject ('Someone else' → label) + category + photo → 'Sign this entry' → home shows the new card with 'Anchor queued' → wait/refresh → 'Anchored — waiting on Bitcoin confirmation' → eventually 'Confirmed at Bitcoin block NNN'."
   },
-  "confidence": 88,
-  "uncertainty": "Whether the operator wants Phase 2.5 cut next or wants further design conversation on the recovery cascade / journal kind decisions before code lands. The brief itself names everything as 'suggestions, not job orders' so the next move is a direction signal from the operator, not autonomous Carpenter execution.",
-  "ripple": ["wallet-core", "backup-recovery", "wallet-bot", "doctrine"],
-  "next": "Operator decides which of the proposals to greenlight: (a) add journal kind to tapit-attest as a precursor to Phase 2.5, (b) cut Phase 2.5 (diary surface — composer + journal-kind attestation + entry cards on home + selective-recall view + mocked anchor), (c) cut Phase 2.75 (OTS port from AppCommander), (d) something else from the brief, or (e) continue browser verification of Phases 1+2 first. The Carpenter recommendation is the sequence a → b → c then revisit Phase 3.",
+  "confidence": 87,
+  "uncertainty": "End-to-end against a real OpenTimestamps calendar has not been verified — the provider is the existing tapit-attest implementation which has unit-level coverage against fake transports but the live-network round-trip is operator-side. Anchor worker behavior under flaky-network / app-backgrounding scenarios is also browser-runtime-dependent. If anything stalls, the failure modes are: (1) STAMP fails → row stays in failed state, retried every 5 min; (2) UPGRADE returns pending forever → row stays pending; (3) status badge stuck → useAnchorStatus reactivity issue. Each is debuggable.",
+  "ripple": ["wallet-core", "storage", "anchoring", "journal", "backup-recovery", "app-connections"],
+  "next": "Operator browser-verifies Phase 2.5 against real Supabase + real OTS calendar. If clean, Phase 2.6 (multi-witness co-signing via in-person QR exchange + custody-handoff mechanism for the grandchild scenario) is the next cutting session. If anything stalls, the next session diagnoses and fixes before proceeding. Phase 2.7 (documents) reuses the photo path. Then Phase 3 (Nostr NIP-46) and Phase 5 (Mycelium peer + Shamir recovery) per the brief's mapping.",
   "signals": ["pulse"]
 }
