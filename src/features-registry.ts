@@ -7,6 +7,7 @@ import { manifest as settings } from './features/settings/manifest.ts';
 import { manifest as journal } from './features/journal/manifest.ts';
 import { manifest as anchoring } from './features/anchoring/manifest.ts';
 import { manifest as cosigning } from './features/cosigning/manifest.ts';
+import { manifest as signRequest } from './features/sign-request/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online.
@@ -23,6 +24,7 @@ export const features: readonly FeatureManifest[] = [
   journal,
   anchoring,
   cosigning,
+  signRequest,
   persona,
   snapshotBuilder,
   suggestedQuestions,

@@ -27,6 +27,11 @@ const JournalDetail = lazy(() =>
     default: m.JournalDetail,
   })),
 );
+const SignApprovalScreen = lazy(() =>
+  import('./features/sign-request/SignApprovalScreen.tsx').then((m) => ({
+    default: m.SignApprovalScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -50,6 +55,7 @@ export function App() {
                     <Route path="/" element={<HomeScreen />} />
                     <Route path="/settings" element={<SettingsScreen />} />
                     <Route path="/entry/:digest" element={<JournalDetail />} />
+                    <Route path="/sign" element={<SignApprovalScreen />} />
                   </Routes>
                 </WalletProvider>
               </Suspense>
