@@ -8,14 +8,28 @@ import { anchorQueue, type AnchorRow } from './anchorQueue.ts';
 // flips to false the worker pauses; when it flips back to true it
 // resumes immediately rather than waiting for the next interval.
 //
-// The worker is intentionally simple: no exponential backoff state
-// machine, no max retry cap. Each attempt records its outcome on
-// the row; a row that fails N times in a row stays failed but is
-// still retried on every scan, since transient calendar outages are
-// the dominant failure mode and we want recovery to be free.
+// Failed rows get exponential backoff per processOne — see
+// nextAttemptDelay. A row that fails N times will be skipped until
+// last_attempt + min(5min × 2^N, 1hr) has elapsed. The worker still
+// scans every POLL_MS but processOne returns early for rows that
+// aren't due yet, so the calendar gets retries that scale to the
+// outage's duration. The maximum retry interval is one hour so a
+// calendar that comes back after a day-long outage still gets
+// retried within an hour of the user reopening the app.
 
 const POLL_MS = 5 * 60 * 1000;
 const MAX_PARALLEL = 4;
+const BACKOFF_MIN_MS = 5 * 60 * 1000;
+const BACKOFF_MAX_MS = 60 * 60 * 1000;
+
+function nextAttemptDue(row: AnchorRow): number {
+  if (!row.last_attempt) return 0;
+  if (row.state !== 'failed') return 0;
+  const last = Date.parse(row.last_attempt);
+  if (!Number.isFinite(last)) return 0;
+  const delay = Math.min(BACKOFF_MIN_MS * 2 ** Math.max(0, row.attempts - 1), BACKOFF_MAX_MS);
+  return last + delay;
+}
 
 export interface WorkerHandle {
   stop(): void;
@@ -38,6 +52,12 @@ export function startAnchorWorker(ownerId: string): WorkerHandle {
 
   async function processOne(row: AnchorRow): Promise<void> {
     if (row.state === 'confirmed') return;
+    // Exponential backoff for failed rows. Queued and pending rows
+    // are processed immediately on every scan; failed rows wait
+    // until their next-attempt-time before retrying so a calendar
+    // outage doesn't get hammered.
+    const due = nextAttemptDue(row);
+    if (due > Date.now()) return;
     const digest = hexToBytes(row.digestHex);
     try {
       let result;
