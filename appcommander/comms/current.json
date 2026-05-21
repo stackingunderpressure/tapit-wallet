@@ -1,43 +1,42 @@
 {
   "v": 1,
-  "ts": "2026-05-21T03:15:00Z",
-  "session_id": "phase-1-shell-2026-05-21-1779332445",
+  "ts": "2026-05-21T03:35:00Z",
+  "session_id": "phase-2-identity-2026-05-21-1779333887",
   "who": { "actor": "carpenter", "feature_slug": "wallet-core" },
   "where": {
     "files": [
-      "package.json",
-      "vite.config.ts",
-      "tsconfig.json",
-      "tailwind.config.ts",
-      "index.html",
-      "public/sw.js",
+      "src/features/wallet-core/createIdentityAttestation.ts",
+      "src/features/wallet-core/DisplayNamePrompt.tsx",
+      "src/features/wallet-core/AttestationCard.tsx",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/wallet-core/saveWallet.ts",
+      "src/features/settings/SettingsScreen.tsx",
+      "src/features/settings/localExport.ts",
+      "src/features/storage/prefsStore.ts",
+      "src/features/storage/walletStore.ts",
       "src/App.tsx",
-      "src/main.tsx",
-      "src/features/auth/*",
-      "src/features/wallet-core/*",
-      "src/features/storage/*",
-      "src/features-registry.ts",
-      "supabase/migrations/20260521000001_create_wallet_blobs.sql"
+      "PLAN.md"
     ],
-    "screen_path": "/"
+    "screen_path": "/, /settings"
   },
   "layer": "ui",
-  "action": "scaffold",
-  "summary": "Phase 1 scaffold complete. Root Vite + React 18 + TypeScript + Tailwind project; tapit-attest wired as file: dependency; Supabase magic-link auth via @supabase/supabase-js; on first login the wallet prompts for a passphrase, calls Wallet.generate(), encrypts the snapshot via exportEncrypted(), persists ciphertext to both IndexedDB (local fast) and Supabase wallet_blobs (cross-device); on return, the unlock prompt decrypts via Wallet.restore. Home screen renders one IdentityCard. Feature-first folder structure under src/features/<slug>/ with a manifest.ts per slug per CLAUDE.md doctrine. Cheap fast shell — index.html paints inline before React mounts, Vite manualChunks splits react/supabase/attest into separate bundles, login surface ships ~110KB gzipped without IndexedDB or tapit-attest weight; wallet-core lazy-loads post-auth.",
+  "action": "build",
+  "summary": "Phase 2 landed per DESIGN.md §10. First-run flow now ends at a self-signed identityAttestation (display_name + pubkey + created_at on the Merkle field tree, tier routine). Held attestation renders as a card on home above the IdentityCard. Settings screen with cloud-sync toggle (default ON), passphrase-confirmed local encrypted-backup download, sign-out. Backup-status banner on home: off / pending / stale > 24h / fresh-no-banner. Storage layer adds unencrypted prefsStore (cloudSync, lastRemoteSync) keyed by ownerId; walletStore.save respects the pref and records lastRemoteSync. WalletProvider state machine extended (checking → first-login | locked → needs-identity? → unlocked); passphrase held in useRef so attestation creation can save without re-prompting, cleared on sign-out. PLAN.md rewritten to match DESIGN.md's six phases — Phases 1 and 2 marked DONE.",
   "why": {
-    "text": "Operator greenlit Phase 1 with explicit constraints: 'use efficient code modules easy to work on and cheap fast to load shell.' Translates to feature-first modularity (small focused files per concern, each in its slug folder), manualChunks code-splitting (login surface tiny, wallet weight deferred), hand-rolled SW (no workbox bloat), inline shell paint (first paint ~50ms). The scaffold composes tapit-attest primitives (Wallet.generate, exportEncrypted, Wallet.restore) without reimplementing crypto — one library, one envelope standard per CLAUDE.md prime directive.",
+    "text": "Operator greenlit with 'Yes' after the Phase 1 close-out which named Phase 2 as the next move. DESIGN.md §10 prescribes the exact deliverables: identity attestation first-run flow, settings backup posture, home-screen backup banner. The same DESIGN.md preamble required the PLAN.md update to happen in the same session as the Phase 2 commit so the two docs converge on a single phase numbering. Architecture choices preserved: efficient modules (settings is its own feature slug with a manifest), cheap fast shell (Settings lazy-loaded, login surface unchanged), tapit-attest composition (identityAttestation + wallet.sign + wallet.hold + wallet.exportEncrypted — no new crypto written).",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-PHASE-1-SHELL-004"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-PHASE-2-IDENTITY-005"
   },
   "outcome": {
-    "files_changed": ["48 files: configs, index.html, public/*, src/**, supabase/migrations/*, plus a one-line touch to src/shared/persona-contract.test.ts to remove an unused @ts-expect-error directive"],
-    "tests_passing": "root: 16/16 (12 persona-contract parity + 4 new manifest-registry coverage). tapit-attest: 74/74 active (4 skipped, unchanged from prior session)",
+    "files_changed": ["18 files: 6 created (createIdentityAttestation, saveWallet, DisplayNamePrompt, AttestationCard, prefsStore, settings/*) + 12 modified (WalletContext, WalletProvider, HomeScreen, walletStore, storage manifest, wallet-core manifest, App, features-registry, PLAN, plus comms artifacts)"],
+    "tests_passing": "root: 16/16 (4-test manifest-registry correctly picked up the new settings slug). tapit-attest: 74/74 active, 4 skipped (unchanged this session)",
     "build_green": true,
-    "notes": "All four root gates green — typecheck clean, lint 0/0, tests 16/16, vite build 2.01s producing 133 modules with manual chunks (react 52KB gz, supabase 54KB gz, attest 22KB gz, wallet-provider 2KB gz lazy, home 0.8KB gz lazy). One commit d29fbd0 pushed to claude/compare-library-wallet-OW5FF AND to main (fast-forward direct-push per PFOR-016). NOT VERIFIED: visual rendering or end-to-end auth round-trip in a browser — sandbox has no browser. Operator must run npm run dev locally with real Supabase credentials to confirm the magic-link flow."
+    "notes": "Commit c87e8a2 pushed to claude/compare-library-wallet-OW5FF AND to main (fast-forward direct-push). Bundle posture: login surface unchanged at ~110KB gzipped; WalletProvider grew from 5.91KB→9.67KB (gz 2.09→3.03KB) for the identity flow + display-name prompt; HomeScreen grew from 1.59KB→3.38KB (gz 0.82→1.39KB) for the attestation card + banner; new SettingsScreen chunk at 3.95KB gz 1.63KB lazy. NOT VERIFIED in a browser — sandbox has no browser. Operator should walk login → passphrase → display-name → home with identity card → settings → cloud-toggle → local-export → sign-out → re-login → unlock → home still showing identity card."
   },
   "confidence": 88,
-  "uncertainty": "Code correctness is verified by the four gates but feature correctness (does the magic-link redirect actually land authenticated? does the encrypted snapshot round-trip cleanly to Supabase under real RLS?) requires a browser session against a real Supabase project, which only the operator can run.",
-  "ripple": ["wallet-core", "auth", "storage", "backup-recovery", "app-connections"],
-  "next": "Operator provisions a Supabase project, fills .env.local with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY, applies the wallet_blobs migration, runs npm run dev, and walks the magic-link → passphrase → key-gen → home-screen flow. Once verified, Phase 2 (identity attestation + backup posture) is the next session — first-run display-name flow, self-signed identityAttestation, settings screen with cloud-toggle and local-export.",
+  "uncertainty": "The state-machine transition from needs-identity to unlocked depends on the just-created attestation being findable via wallet.holdings() — which calls loadVerified on the store and filters by verifyEnvelope().valid. If the self-signed routine-tier attestation fails to verify under the new quorum-of-good rule for any subtle reason, the user would land back at needs-identity instead of unlocked. The wallet test suite covers verifyEnvelope on signed envelopes but not specifically this hold→holdings round-trip on an identityAttestation. Add a vitest integration test in a follow-up if browser verification surfaces anything unexpected.",
+  "ripple": ["wallet-core", "storage", "settings", "auth", "backup-recovery"],
+  "next": "Operator verifies Phases 1+2 end-to-end in a browser with real Supabase credentials. If clean, Phase 3 (social recovery designation + simulated recovery cycle) is the next cutting session. If anything stalls (e.g., the held identity attestation does not re-verify on re-unlock), the next session diagnoses and fixes before proceeding.",
   "signals": ["pulse"]
 }
