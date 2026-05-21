@@ -32,6 +32,11 @@ const SignApprovalScreen = lazy(() =>
     default: m.SignApprovalScreen,
   })),
 );
+const VerifyProofScreen = lazy(() =>
+  import('./features/disclosure/VerifyProofScreen.tsx').then((m) => ({
+    default: m.VerifyProofScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -45,6 +50,14 @@ export function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route
+          path="/verify"
+          element={
+            <Suspense fallback={Pending}>
+              <VerifyProofScreen />
+            </Suspense>
+          }
+        />
         <Route
           path="/*"
           element={

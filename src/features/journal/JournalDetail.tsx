@@ -10,6 +10,7 @@ import { downloadJournalEntry } from './downloadEntry.ts';
 import { CosignRequestModal } from '../cosigning/CosignRequestModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
+import { ShareProofModal } from '../disclosure/ShareProofModal.tsx';
 
 function readString(claim: FieldBranch, name: string): string | undefined {
   const child = claim.children.find((c) => c.name === name);
@@ -21,9 +22,9 @@ export function JournalDetail() {
   const { digest } = useParams<{ digest: string }>();
   const { wallet, holdings, ownerId, passphrase } = useWallet();
   const worker = useAnchorWorker();
-  const [modal, setModal] = useState<'request' | 'absorb' | 'custody' | null>(
-    null,
-  );
+  const [modal, setModal] = useState<
+    'request' | 'absorb' | 'custody' | 'share-proof' | null
+  >(null);
 
   const entry = useMemo<Attestation | undefined>(() => {
     if (!digest) return undefined;
@@ -157,6 +158,13 @@ export function JournalDetail() {
         )}
         <button
           type="button"
+          onClick={() => setModal('share-proof')}
+          className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
+        >
+          Share a proof of one field
+        </button>
+        <button
+          type="button"
           onClick={() => downloadJournalEntry(ownerId, passphrase, entry)}
           className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
         >
@@ -176,6 +184,12 @@ export function JournalDetail() {
       {modal === 'custody' && (
         <CustodyHandoffModal
           subject={subject}
+          onClose={() => setModal(null)}
+        />
+      )}
+      {modal === 'share-proof' && (
+        <ShareProofModal
+          attestation={entry}
           onClose={() => setModal(null)}
         />
       )}
