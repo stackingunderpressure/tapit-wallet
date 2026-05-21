@@ -1,39 +1,29 @@
 {
   "v": 1,
-  "ts": "2026-05-21T12:50:00Z",
-  "session_id": "phase-4-disclosure-2026-05-21-1779367149",
-  "who": { "actor": "carpenter", "feature_slug": "disclosure" },
+  "ts": "2026-05-21T16:40:00Z",
+  "session_id": "library-seam-mechanism-2026-05-21-1779381209",
+  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
-    "files": [
-      "src/features/sign-request/*",
-      "tapit-attest/src/core/envelope.ts",
-      "tapit-attest/src/core/field-tree.ts",
-      "tapit-attest/test/field-tree.test.mjs",
-      "src/features/disclosure/*",
-      "src/App.tsx",
-      "src/features/journal/JournalDetail.tsx",
-      "src/features-registry.ts",
-      "PLAN.md"
-    ],
-    "screen_path": "/, /sign, /verify, /entry/:digest"
+    "files": ["src/library-seam.test.ts"],
+    "screen_path": "/"
   },
-  "layer": "service+ui+doctrine",
-  "action": "autonomous-block-2",
-  "summary": "Second autonomous-work block under the operator's 'pick the next job ... good reason ... grounded ... until we get the website' directive. Four commits landed. Phase 3 (e789d2c) — Layer 2 inter-app deeplink pathway: new sign-request feature with SignRequest/SignGrant/SignDecline types, base64url-decoded URL param + strict shape validation, plain-English per-kind approval screen showing claimed origin AND actual callback host, approve calls wallet.attest + holds + queues anchoring + redirects to callback with grant, decline redirects with structured reason. Phase 4 library (c0bcda1) — selective leaf disclosure: metaHash exported from envelope.ts, real disclosureProof + verifyDisclosureProof in field-tree.ts (DisclosureProofBundle = meta + leaf + sibling-hash steps + signatures), five new tests covering round-trip, non-disclosure property, tamper detection, path errors. Phase 4 wallet UI (6ee7f34) — disclosure feature with leafIndex helper, ShareProofModal (pick-leaf-then-generate-then-copy), public /verify route outside AuthGate, parseDisclosureProof shape-validator. PLAN.md refresh (39664c4) — brings the phase map current with shipped reality. Branch and main both at 39664c4.",
+  "layer": "doctrine",
+  "action": "mechanism",
+  "summary": "Converted the verbal pre-push library-seam audit into a mechanical check per CLAUDE_ROOT.md non-negotiable #5 ('Mechanism over prose. When a rule keeps getting missed, the fix is a check that fails — not another paragraph in this file'). New src/library-seam.test.ts walks every .ts/.tsx file under src/features, extracts function/class/const-arrow-assignment definitions via regex, and fails if any name overlaps a runtime export of tapit-attest. ALLOWLIST exists for intentional coincidences but is currently empty by design. Verified the check fails when it should by temporarily injecting an `envelopeId` collision in src/features/journal/__canary.ts — test surfaced the exact file path + name + ALLOWLIST guidance. Removed canary, re-ran clean. One commit (66637f1) on branch + main.",
   "why": {
-    "text": "Operator directive: 'pick the next job plan it out keep up the good clean habits double check everything don't trust verify make sure you have a good reason to do anything and you're following the Claude MD and stay in grounded. Continue with the next piece until we get the website.' Treated as sustained autonomous-work with strict discipline. Phase 3 picked first because it was the next-named feature on PLAN.md/DESIGN.md and serves thesis-principle #2 (every other app connects to the wallet to get something signed; other apps never hold keys themselves). Phase 4 picked next because the library's field tree was literally designed for selective disclosure with the v1.1 slot stubbed and the operator's diary-wedge brief named it as a v1 feature. PLAN.md refresh chosen as the closing housekeeping piece because the file was meaningfully out of date with shipped reality and the operator may pull it alongside the Netlify wire-up.",
+    "text": "Operator: 'Fire up read Claude Md stay centered work on next task. Still working on netlify verify don't trust.' Re-read CLAUDE_ROOT.md fresh — non-negotiable #5 directly applies: the tapit-attest-integrity rule has been caught three times across autonomous-work blocks (entry-digest, anchor-attachment, useWalletIdentity reference), each by the verbal pattern that requires Carpenter attention. Doctrine literally says: when a rule keeps getting missed, add a check, not a paragraph. The name-collision subset of the rule is the dominant failure mode and is automatable; semantic-collision-without-name-overlap is rarer and still needs human attention. Single focused commit, mechanical, no operator-attention cost, preserved across future sessions.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-AUTONOMOUS-BLOCK-2-011"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-LIBRARY-SEAM-MECHANISM-012"
   },
   "outcome": {
-    "files_changed": ["Four commits, ~20 files: sign-request feature (7 files) + disclosure feature (5 files) + library envelope.ts/field-tree.ts/field-tree.test.mjs + App routes + journal detail + features-registry + PLAN.md"],
-    "tests_passing": "root 16/16 on every commit. tapit-attest 82 total (was 78) / 78 pass / 0 fail / 4 skipped — four new disclosure tests pass, baseline corrupted-fixture skips unchanged.",
+    "files_changed": ["src/library-seam.test.ts (new)"],
+    "tests_passing": "17/17 — 16 prior + 1 new library-seam test. Runtime ~13ms (negligible). tapit-attest unchanged.",
     "build_green": true,
-    "notes": "Library-seam audit clean on every commit. Adversarial diff review caught one copy bug pre-push (SignApprovalScreen busy-state referenced a useMemo'd value only resolvable in ready-state; tightened to just 'Signing…'). Keys-never-leave audit clean: sign-request only redirects with public envelopes; disclosure proofs contain only public meta + leaf + sibling hashes + signatures, no private key ever appears. File-size rule still satisfied (largest source 273 lines)."
+    "notes": "Commit 66637f1 on branch + main. No bundle impact (test file excluded from build). The 'don't trust verify' framing applied to the check itself — I deliberately injected a collision and confirmed the test detected it before removing the canary."
   },
-  "confidence": 92,
-  "uncertainty": "End-to-end against the live Netlify+Supabase deploy still pending operator. New paths to walk: sign-request deeplink round-trip (third-party constructs URL → wallet decodes → approve → callback receives grant), disclosure proof round-trip (pick a leaf in one tab → paste into /verify in another → math checks), /verify accessible publicly without auth (it's outside AuthGate).",
-  "ripple": ["wallet-core", "journal", "anchoring", "sign-request", "disclosure", "doctrine"],
-  "next": "Pausing at a strong stop. Phase 5 (social recovery + Mycelium) requires MYCELIUM_NETWORK_SPEC.md to exist first per existing doctrine — that spec is operator-side work the brief named as input. Phase 6 (full-keypair family custody) is marked optional in PLAN.md now that Phase 2.6's lighter identity-by-attestation model already covers the operator's grandchild scenario. Phase 7+ are explicit non-goals for v1. Remaining follow-ups (multi-tab, HEIC re-encode, pre-commit script, bundle audit, OTS fixture, zip cleanup) are all non-blocking. The v1 surface is now feature-complete for the operator's described use cases — diary + photos + documents + witness signing + custody handoff + inter-app deeplink + selective disclosure + idle-lock + anchor-lifecycle.",
+  "confidence": 95,
+  "uncertainty": "The regex for definitions is intentionally broad (matches function/class/const-arrow). Edge cases like destructured-then-reassigned imports or rebinding via `const { x } = lib` are NOT caught. If those become a real failure mode, the check can extend. For now the simple case covers the historical bugs.",
+  "ripple": ["doctrine"],
+  "next": "Pausing at a clean stop. Library-seam check now runs on every `npm test` and on every CI pass. The five remaining follow-ups are non-blocking: multi-tab worker coordination, HEIC/WebP photo re-encode, bundle-budget audit, OTS fixture restoration, Tap-it-Attest-main.zip cleanup. v1 surface unchanged — still feature-complete. Operator's Netlify+Supabase verification work is the next bridge to real deploy.",
   "signals": ["pulse"]
 }
