@@ -1,42 +1,37 @@
 {
   "v": 1,
-  "ts": "2026-05-21T03:35:00Z",
-  "session_id": "phase-2-identity-2026-05-21-1779333887",
-  "who": { "actor": "carpenter", "feature_slug": "wallet-core" },
+  "ts": "2026-05-21T06:10:00Z",
+  "session_id": "brief-diary-wedge-2026-05-21-1779343150",
+  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
     "files": [
-      "src/features/wallet-core/createIdentityAttestation.ts",
-      "src/features/wallet-core/DisplayNamePrompt.tsx",
-      "src/features/wallet-core/AttestationCard.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/saveWallet.ts",
-      "src/features/settings/SettingsScreen.tsx",
-      "src/features/settings/localExport.ts",
-      "src/features/storage/prefsStore.ts",
-      "src/features/storage/walletStore.ts",
-      "src/App.tsx",
-      "PLAN.md"
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-21-diary-first-wedge.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md",
+      "CLAUDE_ROOT.md (via bootstrap merge)"
     ],
-    "screen_path": "/, /settings"
+    "screen_path": "/"
   },
-  "layer": "ui",
-  "action": "build",
-  "summary": "Phase 2 landed per DESIGN.md §10. First-run flow now ends at a self-signed identityAttestation (display_name + pubkey + created_at on the Merkle field tree, tier routine). Held attestation renders as a card on home above the IdentityCard. Settings screen with cloud-sync toggle (default ON), passphrase-confirmed local encrypted-backup download, sign-out. Backup-status banner on home: off / pending / stale > 24h / fresh-no-banner. Storage layer adds unencrypted prefsStore (cloudSync, lastRemoteSync) keyed by ownerId; walletStore.save respects the pref and records lastRemoteSync. WalletProvider state machine extended (checking → first-login | locked → needs-identity? → unlocked); passphrase held in useRef so attestation creation can save without re-prompting, cleared on sign-out. PLAN.md rewritten to match DESIGN.md's six phases — Phases 1 and 2 marked DONE.",
+  "layer": "doctrine",
+  "action": "intake",
+  "summary": "Operator surfaced a major design brief (diary-first wedge reframe, Mycelium 5-layer model, six-kinds review, AI-defenses inventory, no-better-plan competitive framing, Shamir cascade recovery with operator's own no-pre-stashed-key sharpening, OTS-port-from-AppCommander, phase-mapping changes). Carpenter engaged substantively in chat — acknowledged the wedge reframe, recommended adding a journal kind to tapit-attest, flagged a technical clarification for the Shamir recovery design (split the encryption key for the cloud blob, NOT the signing keypair), proposed Phase 2.5 (diary surface) and Phase 2.75/early-3 (OTS port) ahead of Phase 3 inter-app, pushed back on framing recovery as a marketing moment and on letting the bot ever sign. Brief filed verbatim with the Carpenter response captured in a footer; 10 idea entries logged to ideas.md per the LIVING-IDEAS doctrine. CLAUDE_ROOT.md was discovered landing on main via AppCommander bootstrap commit f61cf2d between fetch and push; merged into branch, stale 'not yet present' notes corrected, gates re-run green, pushed.",
   "why": {
-    "text": "Operator greenlit with 'Yes' after the Phase 1 close-out which named Phase 2 as the next move. DESIGN.md §10 prescribes the exact deliverables: identity attestation first-run flow, settings backup posture, home-screen backup banner. The same DESIGN.md preamble required the PLAN.md update to happen in the same session as the Phase 2 commit so the two docs converge on a single phase numbering. Architecture choices preserved: efficient modules (settings is its own feature slug with a manifest), cheap fast shell (Settings lazy-loaded, login surface unchanged), tapit-attest composition (identityAttestation + wallet.sign + wallet.hold + wallet.exportEncrypted — no new crypto written).",
+    "text": "Operator asked the Carpenter to 'chew on this and tell me what you think.' Primary deliverable: substantive engagement in chat. Secondary deliverable: preservation per LIVING-IDEAS doctrine — every meaningful idea surfaced gets logged in the same session it surfaced. The brief is large enough that filing it verbatim plus the idea entries is the honest record. The bootstrap-merge surprise was a real-world reminder that origin can move under your feet — handled by fetching before pushing and merging cleanly when divergence is orthogonal.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-PHASE-2-IDENTITY-005"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-BRIEF-DIARY-WEDGE-006"
   },
   "outcome": {
-    "files_changed": ["18 files: 6 created (createIdentityAttestation, saveWallet, DisplayNamePrompt, AttestationCard, prefsStore, settings/*) + 12 modified (WalletContext, WalletProvider, HomeScreen, walletStore, storage manifest, wallet-core manifest, App, features-registry, PLAN, plus comms artifacts)"],
-    "tests_passing": "root: 16/16 (4-test manifest-registry correctly picked up the new settings slug). tapit-attest: 74/74 active, 4 skipped (unchanged this session)",
+    "files_changed": [
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-21-diary-first-wedge.md (created)",
+      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md (+10 entries)",
+      "merged CLAUDE_ROOT.md from origin/main bootstrap"
+    ],
+    "tests_passing": "root 16/16, tapit-attest 74/74 active (unchanged)",
     "build_green": true,
-    "notes": "Commit c87e8a2 pushed to claude/compare-library-wallet-OW5FF AND to main (fast-forward direct-push). Bundle posture: login surface unchanged at ~110KB gzipped; WalletProvider grew from 5.91KB→9.67KB (gz 2.09→3.03KB) for the identity flow + display-name prompt; HomeScreen grew from 1.59KB→3.38KB (gz 0.82→1.39KB) for the attestation card + banner; new SettingsScreen chunk at 3.95KB gz 1.63KB lazy. NOT VERIFIED in a browser — sandbox has no browser. Operator should walk login → passphrase → display-name → home with identity card → settings → cloud-toggle → local-export → sign-out → re-login → unlock → home still showing identity card."
+    "notes": "Three commits on the feature branch this session: b78b867 (brief + ideas), 56c9740 (merge of origin/main bringing in CLAUDE_ROOT.md), 28fb359 (correct stale 'not yet present' notes). Branch and main both at 28fb359. No wallet implementation changes — this was an intake session, not a cut session. Phase 2.5 (diary surface), Phase 2.75 (OTS port), and journal-kind addition to tapit-attest are all proposals awaiting operator greenlight."
   },
   "confidence": 88,
-  "uncertainty": "The state-machine transition from needs-identity to unlocked depends on the just-created attestation being findable via wallet.holdings() — which calls loadVerified on the store and filters by verifyEnvelope().valid. If the self-signed routine-tier attestation fails to verify under the new quorum-of-good rule for any subtle reason, the user would land back at needs-identity instead of unlocked. The wallet test suite covers verifyEnvelope on signed envelopes but not specifically this hold→holdings round-trip on an identityAttestation. Add a vitest integration test in a follow-up if browser verification surfaces anything unexpected.",
-  "ripple": ["wallet-core", "storage", "settings", "auth", "backup-recovery"],
-  "next": "Operator verifies Phases 1+2 end-to-end in a browser with real Supabase credentials. If clean, Phase 3 (social recovery designation + simulated recovery cycle) is the next cutting session. If anything stalls (e.g., the held identity attestation does not re-verify on re-unlock), the next session diagnoses and fixes before proceeding.",
+  "uncertainty": "Whether the operator wants Phase 2.5 cut next or wants further design conversation on the recovery cascade / journal kind decisions before code lands. The brief itself names everything as 'suggestions, not job orders' so the next move is a direction signal from the operator, not autonomous Carpenter execution.",
+  "ripple": ["wallet-core", "backup-recovery", "wallet-bot", "doctrine"],
+  "next": "Operator decides which of the proposals to greenlight: (a) add journal kind to tapit-attest as a precursor to Phase 2.5, (b) cut Phase 2.5 (diary surface — composer + journal-kind attestation + entry cards on home + selective-recall view + mocked anchor), (c) cut Phase 2.75 (OTS port from AppCommander), (d) something else from the brief, or (e) continue browser verification of Phases 1+2 first. The Carpenter recommendation is the sequence a → b → c then revisit Phase 3.",
   "signals": ["pulse"]
 }

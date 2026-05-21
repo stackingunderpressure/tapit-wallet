@@ -9,210 +9,189 @@ knowing what this project looks like right now.
 
 The Carpenter overwrites this file at every `session_ended`.
 
-**Operator-mode note:** AppCommander has been down today. The
-operator has been reading the repo manually and asked the
-Carpenter to keep writing comms records here AND narrate live in
-chat. Both surfaces are current.
+**Operator-mode note:** AppCommander has been down today. Dual-
+surface comms remains active — files plus live chat narration.
 
 ---
 
 ## WHAT-CHANGED-RECENTLY
 
-**Phase 2 landed** as commit `c87e8a2` on both
-`claude/compare-library-wallet-OW5FF` and `main`. 18 files
-changed: 6 created, 12 modified. The wallet now holds its first
-signed identity attestation.
+**Operator surfaced a major design brief** — "Diary-First Wedge +
+Mycelial Recovery Design," 4.5k words. Reframes the wallet's wedge
+from sovereign-identity-platform to cryptographically-signed time-
+anchored personal diary that gets quietly corroborated by peers
+over time. Bitcoin 2010 analogy — start selfish, become substrate.
 
-The first-run flow has a new second screen: after the passphrase
-prompt creates the keypair and writes the encrypted snapshot, a
-display-name prompt captures the user's display name and the
-wallet calls `identityAttestation` from `tapit-attest` with
-`display_name`, `pubkey`, and `created_at` as leaves. The draft
-is signed by the wallet's own key (self-signed, tier routine),
-held on the wallet, and the snapshot is re-encrypted + re-saved.
+Filed verbatim into the repo at
+`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-21-diary-first-wedge.md`
+with a Carpenter-response footer summarizing the in-chat engagement.
+Ten idea entries appended to that project's `ideas.md` per the
+LIVING-IDEAS doctrine.
 
-The held attestation renders as a card on the home screen above
-the IdentityCard. The card uses plain English: display name
-large, friendly date string, tier label, "self-signed" wording.
-Other holdings (none in v1's Phase 2) would render below.
+**The Carpenter's chat engagement had four moves:**
+1. **Reframe accepted.** Phase 2 as shipped was a setup wizard, not
+   a daily-use tool. Diary-first is the right wedge.
+2. **Recommended adding a `journal` attestation kind** to
+   `tapit-attest` rather than reusing the existing `meta` kind.
+   Cost: one line in `AttestationKind` union + one builder export.
+   Reason: `meta` is the control-plane kind (revocation /
+   succession / death-declaration); mixing daily content creates
+   an inverse-filter smell.
+3. **Technical clarification on Shamir recovery design.** The
+   secret being split must be the encryption key for the cloud-
+   mirrored backup blob, NOT the operator's signing keypair. Else
+   M-of-N collusion = total identity capture forever. The M-of-N
+   recovery-succession event is what transfers authority to the
+   new keypair the operator generates on their fresh device.
+4. **Two push-backs:** (a) recovery is a marketing moment but
+   design it to work invisibly first; dramatizing the ceremony
+   adds friction for a real user sweating a decade of receipts;
+   (b) bot summarizes and prompts, NEVER signs — plain-English
+   approval screen is the last line of defense.
 
-A backup-status banner sits at the top of home when there's
-something to say:
-- "Cloud backup is off" — user toggled it off
-- "Cloud backup pending" — first sync hasn't completed
-- "Cloud backup is more than a day old" — stale > 24h
-- (no banner when fresh)
+**Phase-mapping proposal** the Carpenter named: Phase 2.5 (diary
+surface — composer, journal-kind attestation, entry cards on home,
+selective-recall view, mocked anchor badge) → Phase 2.75 / early
+Phase 3 (port AppCommander's `ots-stamp` / `verify-ots-stamp`
+protocol into `tapit-attest`'s `OtsProvider` interface to replace
+the unverified npm wrapper) → Phase 3 (Nostr NIP-46 inter-app) →
+Phase 5 (Mycelium peer + Shamir recovery as one). The
+selfish-first reasoning: a user journaling daily by week 2 is
+much more motivated to do recovery setup in week 3 than a user
+who has only ever made one identity attestation.
 
-**Settings is a new feature** at `src/features/settings/` with
-its own `manifest.ts` (`depends_on: ['auth', 'wallet-core',
-'storage']`) and a lazy-loaded route at `/settings`. Three cards:
-cloud-backup toggle (default ON, persists in `prefsStore`,
-re-saves immediately when flipped back on), local encrypted-backup
-download (passphrase-confirmed, writes the EncryptedBlob as
-indented JSON), and sign-out.
-
-**Storage layer additions:**
-- `prefsStore.ts` — new. Unencrypted user prefs keyed by
-  `prefs:<ownerId>`. Shape: `{ cloudSync: boolean,
-  lastRemoteSync: string | null }`.
-- `walletStore.save` — modified. Reads cloudSync pref before
-  remote write; records `lastRemoteSync` on success; returns a
-  `SaveOutcome` shape so callers can distinguish skipped vs
-  failed remote writes.
-
-**WalletProvider state machine:**
-- checking → first-login | locked → (needs-identity)? → unlocked
-- Passphrase held in `useRef` across the session for save-
-  without-re-prompt; cleared on sign-out via `useEffect` on
-  `session.session`.
-
-**App.tsx** now nests a `<Routes>` block inside the auth tree
-so `/` → HomeScreen and `/settings` → SettingsScreen.
-
-**PLAN.md** rewritten to match DESIGN.md's six-phase structure.
-Phases 1 and 2 marked DONE. Phase 7+ explicit non-goals
-enumerated (wallet bot, Mycelium, group keys, charter governance,
-Nostr transport, NFC, voice, WebAuthn).
+**`CLAUDE_ROOT.md` landed on `origin/main`** via AppCommander
+bootstrap commit `f61cf2d` between this session's fetch and push.
+Merged cleanly (orthogonal change, no conflicts). Stale "NOT YET
+PRESENT" claims in the Carpenter response footer and in the
+matching ideas.md entry were corrected. The wallet repo now
+carries BOTH `CLAUDE.md` (operational rulebook) AND `CLAUDE_ROOT.md`
+(thesis-style orienting doctrine with non-negotiables, thesis,
+four-layer architecture, doctrine map) at the root.
 
 ## Gates at session end
 
-**Root:**
+**Root (post-merge):**
 - typecheck: clean
 - lint: 0 errors, 0 warnings
-- test: 16/16 (12 persona-contract parity + 4 manifest-registry;
-  registry test correctly picked up the new `settings` slug)
-- build: 140 modules, 2.77s
+- test: 16/16 (12 persona-contract + 4 manifest-registry)
+- build: clean, bundle sizes unchanged (the merge brought only a
+  markdown file)
 
-**Bundle posture (login surface unchanged at ~110KB gzipped):**
-- main bundle: 7.48KB gz 3.24KB
-- react chunk: 162.19KB gz 52.95KB
-- supabase chunk: 207.71KB gz 54.28KB
-- attest chunk: 59.01KB gz 22.22KB (lazy, post-auth)
-- WalletProvider chunk: 9.67KB gz 3.03KB (lazy)
-- HomeScreen chunk: 3.38KB gz 1.39KB (lazy)
-- SettingsScreen chunk: 3.95KB gz 1.63KB (lazy)
+**tapit-attest:** unchanged this session.
 
-**tapit-attest:** 74 pass / 0 fail / 4 skipped (unchanged this
-session).
+**Commits pushed this session (3 total):**
+- `b78b867` — File diary-first-wedge brief + log 10 ideas
+- `56c9740` — Merge of `origin/main` (bringing in `CLAUDE_ROOT.md`)
+- `28fb359` — Update brief footer + ideas entry after merging
 
-**NOT VERIFIED:** visual rendering or end-to-end flow in a
-browser — sandbox has no browser. Operator must run `npm run dev`
-locally with real Supabase credentials.
+Branch and main both at `28fb359`. Working tree clean.
 
 ## WHAT'S-PENDING
 
-1. **Operator browser verification of Phases 1+2.** Walk: login →
-   passphrase → display-name → home with identity card →
-   /settings → toggle cloud-sync off (banner appears) → toggle
-   back on (banner clears) → download local backup (JSON file
-   downloads) → sign out → re-login → unlock → home still shows
-   identity card. Any stall or surprise becomes the next
-   session's first business.
-2. **Phase 3 — social recovery designation + simulated cycle.**
-   User designates 5+ trusted attesters by pubkey; each gets a
-   shareable recovery-attestation grant letter; simulated
-   end-to-end recovery from a fresh wallet with two browser
-   profiles representing two attesters. ~1 session.
-3. **Idle-timeout hook.** DESIGN.md §5 calls for 30-min default
-   idle-timeout configurable from 5min to "never until browser
-   close." Not yet implemented — passphrase ref stays in memory
-   until session.session goes null. Could be a Phase 2.5 (cut
-   before Phase 3) or roll into pre-launch polish. Operator's
-   call.
-4. **`Tap-it-Attest-main.zip`** (116KB) still at repo root.
-   Operator said "I'll delete zip later." Untouched.
-5. **OTS fixture restoration.** 4 skipped tests in tapit-attest
-   awaiting a clean fixture. 15-min focused job, can happen any
-   time, not blocking.
-6. **Integration test** for the `createIdentityAttestation →
-   wallet.hold → wallet.holdings → findIdentity` round-trip.
-   The component parts are tested in tapit-attest but the
-   end-to-end is not exercised in this repo. If browser
-   verification surfaces a "wallet keeps showing display-name
-   prompt after onboarding" symptom, this is the path. ~15 min
-   to add.
+1. **Operator direction on which brief proposals to greenlight.**
+   The brief is explicitly "suggestions, not job orders." Carpenter
+   recommendation order: (a) add `journal` kind to `tapit-attest`,
+   (b) cut Phase 2.5 diary surface, (c) cut Phase 2.75 OTS port,
+   (d) then Phase 3 inter-app, (e) eventually Phase 5
+   Mycelium-peer + Shamir recovery as one phase after
+   `MYCELIUM_NETWORK_SPEC.md` is written.
+2. **Browser verification of Phases 1+2** still pending operator
+   side — the magic-link round-trip, identity-attestation creation,
+   settings toggle, and local-export need to be walked against a
+   real Supabase project.
+3. **`MYCELIUM_NETWORK_SPEC.md`** does not exist yet. Phase 5
+   cannot start until that spec lands per existing doctrine. The
+   brief is input to that spec.
+4. **Standing follow-ups from prior sessions:** OTS fixture
+   restoration (4 skipped tests in `tapit-attest`); idle-timeout
+   hook (DESIGN.md §5); end-to-end integration test for the
+   identity-attestation round-trip; `Tap-it-Attest-main.zip`
+   cleanup at repo root.
 
 ## WHAT-TO-FLAG
 
-**Identity-attestation round-trip is unverified at the
-integration level.** Each piece (`identityAttestation`,
-`wallet.sign`, `wallet.hold`, `wallet.holdings`,
-`verifyEnvelope`) has unit-level coverage in tapit-attest, but
-the end-to-end "create attestation → re-encrypt snapshot →
-restore from blob → holdings still includes it → identity card
-renders" path is not tested. Quorum-of-good `verifyEnvelope`
-should handle the single-signature self-signed routine-tier
-case cleanly, but worth integration-testing if anything in
-browser verification looks odd.
+The diary-first reframe is load-bearing and changes what every
+subsequent phase ships toward. Frank should reset internal models
+when seeing this state file — the wallet is no longer pitching
+itself as a sovereign-identity-platform on day one; it is pitching
+itself as a tamper-evident private diary that becomes an identity
+substrate over months. Marketing copy, onboarding flow, and the
+order of phases all shift accordingly.
 
-**Mid-session security gap.** After unlock, anyone with access
-to the unlocked browser session can hit `/settings` and
-download an encrypted backup or toggle cloud-sync without
-re-entering the passphrase. DESIGN.md §5 calls for an idle
-timeout; not implemented yet. Operator should decide whether
-to add it before Phase 3 or as pre-launch polish.
+The Shamir-encryption-key-not-signing-keypair clarification is
+the most important technical detail in the brief. If Phase 5
+cuts it wrong — splitting the signing keypair directly — M
+coordinated peers can sign as the operator forever, which is the
+exact failure mode the wallet exists to prevent. The recovery-
+succession event signed by M peers is what transfers signing
+authority to the new keypair generated by the operator on their
+fresh device. This must be explicit in the Phase 5 brief.
 
-**Local-export file size posture.** The downloaded encrypted
-blob is JSON.stringify'd with two-space indent (~800 bytes vs
-~300 bytes compact). Picked indented for human readability of a
-power-user's backup. Easy to flip if size matters more.
+The bootstrap-merge surprise (`CLAUDE_ROOT.md` landing on main
+during the session) is a reminder that origin can move under the
+Carpenter's feet when AppCommander is involved. Future sessions
+that mention "the operator pasted X" or "AppCommander did Y"
+should always fetch before reporting on repo state.
+
+The Carpenter did substantial doctrine-compliant filing work
+(brief + 10 ideas + merge) after the chat reply without explicit
+operator greenlight. The reasoning was the LIVING-IDEAS doctrine
+requires same-session capture. If the operator wants a more
+conservative posture (engage in chat only and wait for filing
+greenlight), they should say so.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator runs `npm install && npm run dev` (or the production
-   build) with real Supabase credentials and walks both phases
-   end-to-end. Report back any stall, error, or surprise.
-2. If everything works, Phase 3 (social recovery) is the next
-   cutting session. About one session per DESIGN.md §10.
-3. Optionally before Phase 3: a 15-30 minute "Phase 2.5" pass
-   adding an idle-timeout hook and the integration test for the
-   identity-attestation round-trip. Recommendation: cut Phase 3
-   first unless the operator wants the polish first.
-4. The OTS fixture restoration remains a parallel-track short
-   job. Not blocking.
+1. Operator picks which proposal to greenlight next from: (a)
+   add `journal` kind, (b) Phase 2.5 diary surface, (c) Phase 2.75
+   OTS port, (d) Phase 3 inter-app, (e) browser-verify Phases 1+2
+   first.
+2. Carpenter recommendation order: a → b → c → browser-verify →
+   Phase 3 (with Phase 5 holding for `MYCELIUM_NETWORK_SPEC.md`).
+3. If operator wants `MYCELIUM_NETWORK_SPEC.md` drafted in
+   parallel, the brief is the substrate — a Carpenter or Foreman
+   session could pull the brief's sections 2, 4, 6, 7 plus the
+   existing core doctrine into a real spec.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Trusting and ready to ship. The Phase 2 cue was a single word
-("Yes"), continuing the pattern from earlier in the day. He is
-following the Carpenter's lead inside named constraints,
-delegating architectural calls, and not asking for spec
-ceremony. He is running manually because AppCommander is down
-and has explicitly extended the dual-surface comms mode (files
-plus chat narration) until otherwise. His emotional posture by
-the next exchange will partly depend on whether browser
-verification of Phases 1 and 2 goes clean against a real
-Supabase project. If clean, expect "Phase 3" or equivalent. If
-not clean, expect a specific debug request.
+Reflective and design-mode. The brief is a synthesis of a long
+operator-plus-Claude AppCommander session, indicating the operator
+spent real time in a different conversation crystallizing the
+thesis and asked the wallet Carpenter to engage with it as
+substrate rather than as a job order. The "chew on this and tell
+me what you think" framing signals they want intellectual
+engagement, not execution. The operator is comfortable letting
+the Carpenter make architectural calls inside named constraints
+and push back on framings the operator named (recovery as
+marketing, bot role). Expect the next message to be either a
+specific greenlight on one of the Carpenter's proposals or
+further design refinement on a piece the operator wants to
+re-think.
 
 ## Ideas ready to revisit
 
-The 27 provisional D-decisions from the library-context design
-doc remain unimported into
-`project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
-Top candidates by phase order: D24 NFC tap-context-aware (Phase 5
-polish), D25 tap-to-cosign (Phase 3 polish), D26 mycelium category
-defaults (post-v1), D27 transitive trust depth (post-v1), D2
-group keys with FROST/MuSig2 (Phase 8+).
+The 10 idea entries logged this session are all stage-tagged in
+`project-memory/foreman-memory/projects/tapit-wallet/ideas.md`:
+- Diary-first wedge reframe — sprouting
+- `journal` kind addition — matured (Carpenter recommendation made)
+- Mycelial cascade recovery — sprouting (technical clarification flagged)
+- Three-shape succession chain — sprouting
+- Mycelium five-layer model — matured doctrine
+- Honest AI-defenses framing — matured copy substrate
+- Recovery-as-marketing with Carpenter pushback — matured
+- Bot-never-signs rule — matured architectural rule for Phase 4
+- No-better-plan competitive framing — matured positioning substrate
+- CLAUDE_ROOT.md inheritance — matured (file now present)
 
-Standing structural observation carried from Phase 1: **the
-lazy-loaded auth-vs-wallet boundary is a security pattern.**
-Phase 2 preserved this — Settings is also lazy-loaded behind
-auth, so an unauthenticated visitor's browser never holds the
-wallet code, the settings code, or any cryptographic surface in
-memory. Attack surface stays minimal during the login phase.
+Standing observations from prior sessions still hold: the "documented
+TODO" decay pattern (4 SKIP_CORRUPTED_FIXTURE tests, idle-timeout
+TODO, identity round-trip integration-test TODO), and the lazy-
+loaded auth-vs-wallet boundary as a security pattern.
 
-New observation from this session worth naming: **passphrase-in-
-ref is a state-management pattern, not a security pattern.** It
-solves the "save without re-prompt" problem cleanly but it does
-NOT solve "user walked away from unlocked phone." Two separate
-problems with two separate solutions; the second one is the
-idle-timeout work above. Worth keeping this distinction crisp
-when future phases tempt us to treat them as one problem.
-
-Standing observation from the merge session: **the "documented
-TODO" decay pattern** — Frank should proactively surface skipped
-tests, dormant manifests, and the idle-timeout TODO during
-quieter periods so they don't slide into permanent state. Current
-set: 4 SKIP_CORRUPTED_FIXTURE tests, 4 dormant bot manifests,
-idle-timeout TODO, identity round-trip integration-test TODO.
+New standing observation worth naming: **origin can move under the
+Carpenter during a session when AppCommander is involved.** Always
+fetch before reporting on repo state for anything the operator
+mentions has been touched from outside the wallet's own commit
+history. Tag: doctrine-pattern.
