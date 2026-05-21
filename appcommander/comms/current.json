@@ -1,26 +1,26 @@
 {
   "v": 1,
-  "ts": "2026-05-18T00:00:00Z",
-  "session_id": "tapit-wallet-bootstrap-placeholder",
-  "who": { "actor": "frank", "feature_slug": "frank" },
-  "where": { "files": [], "screen_path": "/" },
+  "ts": "2026-05-21T00:00:00Z",
+  "session_id": "tapit-wallet-design-OW5FF-2026-05-21",
+  "who": { "actor": "carpenter", "feature_slug": "design" },
+  "where": { "files": ["DESIGN.md"], "screen_path": "/" },
   "layer": "doctrine",
-  "action": "capture",
-  "summary": "🌱 tapit-wallet incubated by Frank — skeleton committed; awaiting first Carpenter session.",
+  "action": "design",
+  "summary": "Wrote DESIGN.md — v1 wallet design synthesized from the 2026-05-21 operator conversation. Reframes identity as the attestation chain (not the key), defines a three-layer backup model with social recovery as the safety net, family-as-leaves with parent custody from birth, selective leaf disclosure via the library's Merkle field-tree slot, PWA-first with email magic link, no bot in v1, six build phases ending at family-mode custody.",
   "why": {
-    "text": "Frank's bootstrap-project run created the tapit-wallet repo and planted CLAUDE.md, DISCOVERY.md, FOREMAN_ORIENTATION.md, PLAN.md, the foreman-memory tree, the comms infrastructure, the five staged feature manifests (auth, wallet-core, app-connections, backup-recovery, wallet-bot), and the first job pack at appcommander/jobs/job-001.md. The chassis also supplied the tapit-attest library at the repo root. The first Carpenter session will replace this placeholder with its real session_ended 10D record.",
+    "text": "Operator uploaded the upstream tapit-attest library zip to transfer the 27 provisional D-decisions from a library-context design conversation, but did not treat those as concrete. Asked for a real wallet design that picks the best of what was sent, drops what does not fit, and lays out the next steps. This session produced that design as DESIGN.md.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-18-BOOTSTRAP-001"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-DESIGN-001"
   },
   "outcome": {
-    "files_changed": [],
+    "files_changed": ["DESIGN.md"],
     "tests_passing": null,
     "build_green": null,
-    "notes": "Bootstrap placeholder. Real outcome lands when Carpenter runs job-001."
+    "notes": "Markdown-only commit. No code touched. Gates not run because no code changed. The one code change identified (sign-poisoning fix to tapit-attest/src/core/keys.ts verifyEnvelope) is queued for Phase 1 prep, not done this session."
   },
-  "confidence": 100,
-  "uncertainty": "None — this is a placeholder, not a real session record.",
-  "ripple": [],
-  "next": "First Carpenter session reads CLAUDE_START_HERE.md, follows the read-list, opens job-001.md, executes.",
+  "confidence": 85,
+  "uncertainty": "The 27 provisional D-decisions from the library-context doc were summarized rather than imported verbatim. Operator may want them captured in their raw form somewhere in the repo for traceability before they get overwritten by the new design.",
+  "ripple": ["auth", "wallet-core", "backup-recovery", "app-connections", "wallet-bot"],
+  "next": "Operator reviews DESIGN.md. If approved, apply the sign-poisoning fix to tapit-attest, then begin Phase 1 (PWA shell + email auth + key generation). If changes wanted, revise DESIGN.md.",
   "signals": ["pulse"]
 }
