@@ -1,0 +1,76 @@
+# Netlify build configuration for the Tapit Wallet PWA.
+#
+# This file is auto-detected by Netlify when present at the repo
+# root — no dashboard configuration needed for build command,
+# publish directory, or Node version.
+
+[build]
+  # `npm install` runs automatically before this when Netlify
+  # sees package.json. The build script runs typecheck (tsc) then
+  # `vite build`, so any type error fails the deploy.
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # The wallet requires Node 20+ per package.json engines.
+  NODE_VERSION = "20"
+
+# SPA fallback. The wallet is a single-page React app with
+# client-side routes: /, /login, /auth/callback, /settings,
+# /entry/:digest, /sign, /verify. Without this rewrite, a user
+# who refreshes on /entry/abc would hit a 404 from Netlify's
+# static server. The 200 status here means "rewrite, not
+# redirect" — the URL stays /entry/abc, the body is index.html,
+# and React Router takes it from there.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Hashed asset chunks (Vite emits these under /assets/ with a
+# content hash in the filename, e.g. /assets/index-abc123.js).
+# Safe to cache aggressively because the filename changes on
+# every deploy.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Service worker — must always be revalidated so a new deploy's
+# SW replaces the previous one. If this were cached aggressively
+# the SW could keep serving stale shell forever.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    # Service-Worker-Allowed header is unnecessary here because
+    # /sw.js lives at the root and gets default root scope, but
+    # leaving the entry as a place to add it if scope ever needs
+    # to be widened.
+
+# index.html — must be revalidated because new deploys change
+# the bundle hashes referenced inside it. Cache-busts the rest
+# of the site implicitly.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# PWA manifest — small, occasionally updated, revalidate.
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+    Content-Type = "application/manifest+json"
+
+# Baseline security headers across the whole site. Intentionally
+# light: no Content-Security-Policy because it's a footgun for a
+# wallet that talks to Supabase auth + REST + realtime over both
+# https and wss plus the OpenTimestamps calendar; the operator
+# can add a tuned CSP later from this same headers block.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
