@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f6f1" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Tapit Wallet</title>
+    <!--
+      Inline shell paint: the user sees the wordmark within ~50ms of
+      the HTML arriving. React mounts on top. Keep this CSS minimal —
+      no fonts, no images, no JS — so first paint is cheap on a slow
+      phone connection.
+    -->
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #f7f6f1;
+        --ink: #0f1419;
+        --muted: #6b7280;
+      }
+      html, body, #root { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont,
+          'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .shell {
+        min-height: 100%;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+      }
+      .shell-mark {
+        font-weight: 600;
+        font-size: 1.5rem;
+        letter-spacing: -0.02em;
+      }
+      .shell-sub {
+        margin-top: 0.5rem;
+        color: var(--muted);
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="shell">
+        <div>
+          <div class="shell-mark">Tapit Wallet</div>
+          <div class="shell-sub">Loading your wallet…</div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

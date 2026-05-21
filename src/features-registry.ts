@@ -1,0 +1,22 @@
+import type { FeatureManifest } from './shared/lib/manifest.ts';
+
+import { manifest as auth } from './features/auth/manifest.ts';
+import { manifest as walletCore } from './features/wallet-core/manifest.ts';
+import { manifest as storage } from './features/storage/manifest.ts';
+
+// Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
+// session brings the bot online.
+import { manifest as persona } from './features/persona/manifest.ts';
+import { manifest as snapshotBuilder } from './features/snapshot-builder/manifest.ts';
+import { manifest as suggestedQuestions } from './features/suggested-questions/manifest.ts';
+import { manifest as temporal } from './features/temporal/manifest.ts';
+
+export const features: readonly FeatureManifest[] = [
+  auth,
+  walletCore,
+  storage,
+  persona,
+  snapshotBuilder,
+  suggestedQuestions,
+  temporal,
+];

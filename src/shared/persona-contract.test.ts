@@ -21,8 +21,8 @@
 
 import { describe, expect, it } from "vitest";
 
-// @ts-expect-error — Deno-side module imported into vitest context.
-// Pure TS, no Deno-only globals, so the import resolves cleanly.
+// The Deno-side persona module is pure TS with no Deno-only globals,
+// so it imports cleanly into the vitest context.
 import * as serverPersona from "../../supabase/functions/_shared/persona";
 import * as clientPersona from "../features/persona/types";
 
