@@ -140,3 +140,8 @@
 {"v":1,"ts":"2026-05-21T06:59:11Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"lint","scope":"root"}
 {"v":1,"ts":"2026-05-21T06:59:11Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"test","scope":"root","detail":"16/16"}
 {"v":1,"ts":"2026-05-21T06:59:11Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"build","scope":"root"}
+{"v":1,"ts":"2026-05-21T07:01:46Z","session_id":"verify-pass-2026-05-21-1779346690","event":"file_touched","path":"src/features/wallet-core/WalletProvider.tsx","change_type":"modify","reason":"Added attach-anchors-on-confirm effect — subscribes to the anchor worker, when a row confirms with an anchor it finds the matching held attestation by envelopeId, replaces it with one carrying the anchor field, then debounces a 2-second wallet save so a flood of confirmations on app reopen produces one PBKDF2 cycle rather than N. Fixes a v1 correctness gap: backup/restore now preserves Bitcoin block heights."}
+{"v":1,"ts":"2026-05-21T07:01:46Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"typecheck","scope":"root"}
+{"v":1,"ts":"2026-05-21T07:01:46Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"lint","scope":"root"}
+{"v":1,"ts":"2026-05-21T07:01:46Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"test","scope":"root","detail":"16/16"}
+{"v":1,"ts":"2026-05-21T07:01:46Z","session_id":"verify-pass-2026-05-21-1779346690","event":"gate_passed","gate":"build","scope":"root"}

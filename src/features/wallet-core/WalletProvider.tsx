@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
 import { useSession } from '../auth/useSession.ts';
@@ -85,6 +86,62 @@ export function WalletProvider({ children }: Props) {
       setAnchorWorker(null);
     };
   }, [ownerId, phase.kind]);
+
+  // Attach confirmed anchors back onto held attestations and persist
+  // them, so backup/restore preserves the Bitcoin block height the
+  // user has earned. envelopeId is stable across the anchor field
+  // (it's not in the digest), so wallet.hold(updated) cleanly
+  // replaces the existing record by id. Multiple confirmations on
+  // app re-open get debounced into one save to avoid N parallel
+  // PBKDF2 cycles.
+  useEffect(() => {
+    if (!ownerId || !anchorWorker) return;
+    if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') return;
+    const wallet = phase.wallet;
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    let anyAttached = false;
+
+    const off = anchorWorker.subscribe(async (row) => {
+      if (row.state !== 'confirmed' || !row.anchor) return;
+      const held = (await wallet.holdings()).find(
+        (a) => envelopeId(a) === row.digestHex,
+      );
+      if (!held) return;
+      if (
+        held.anchor &&
+        held.anchor.status === 'confirmed' &&
+        held.anchor.btcHeight === row.anchor.btcHeight
+      ) {
+        return; // already attached + identical
+      }
+      const updated: Attestation = { ...held, anchor: row.anchor };
+      try {
+        await wallet.hold(updated);
+      } catch (err) {
+        console.warn('attach-anchor hold failed', err);
+        return;
+      }
+      anyAttached = true;
+      setHoldings(await wallet.holdings());
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        const pass = passphraseRef.current;
+        if (!pass || !anyAttached) return;
+        anyAttached = false;
+        try {
+          await saveWallet(wallet, pass, ownerId);
+          setPrefs(await prefsStore.load(ownerId));
+        } catch (err) {
+          console.warn('post-anchor-attach save failed', err);
+        }
+      }, 2000);
+    });
+
+    return () => {
+      off();
+      if (saveTimer) clearTimeout(saveTimer);
+    };
+  }, [ownerId, anchorWorker, phase]);
 
   async function landAfterUnlock(wallet: Wallet) {
     const held = await wallet.holdings();
