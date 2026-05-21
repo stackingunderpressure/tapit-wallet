@@ -3,6 +3,7 @@ import type { FeatureManifest } from './shared/lib/manifest.ts';
 import { manifest as auth } from './features/auth/manifest.ts';
 import { manifest as walletCore } from './features/wallet-core/manifest.ts';
 import { manifest as storage } from './features/storage/manifest.ts';
+import { manifest as settings } from './features/settings/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online.
@@ -15,6 +16,7 @@ export const features: readonly FeatureManifest[] = [
   auth,
   walletCore,
   storage,
+  settings,
   persona,
   snapshotBuilder,
   suggestedQuestions,

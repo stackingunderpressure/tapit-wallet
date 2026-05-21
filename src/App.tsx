@@ -4,9 +4,9 @@ import { AuthGate } from './features/auth/AuthGate.tsx';
 import { LoginPage } from './features/auth/LoginPage.tsx';
 import { AuthCallback } from './features/auth/AuthCallback.tsx';
 
-// wallet-core is the largest chunk — keep it lazy so the login
-// surface ships without it. The shell painted in index.html is what
-// the user sees until WalletProvider resolves.
+// wallet-core + settings are the largest chunks — keep them lazy so
+// the login surface ships without them. The shell painted in
+// index.html is what the user sees until WalletProvider resolves.
 const WalletProvider = lazy(() =>
   import('./features/wallet-core/WalletProvider.tsx').then((m) => ({
     default: m.WalletProvider,
@@ -15,6 +15,11 @@ const WalletProvider = lazy(() =>
 const HomeScreen = lazy(() =>
   import('./features/wallet-core/HomeScreen.tsx').then((m) => ({
     default: m.HomeScreen,
+  })),
+);
+const SettingsScreen = lazy(() =>
+  import('./features/settings/SettingsScreen.tsx').then((m) => ({
+    default: m.SettingsScreen,
   })),
 );
 
@@ -36,7 +41,10 @@ export function App() {
             <AuthGate>
               <Suspense fallback={Pending}>
                 <WalletProvider>
-                  <HomeScreen />
+                  <Routes>
+                    <Route path="/" element={<HomeScreen />} />
+                    <Route path="/settings" element={<SettingsScreen />} />
+                  </Routes>
                 </WalletProvider>
               </Suspense>
             </AuthGate>
