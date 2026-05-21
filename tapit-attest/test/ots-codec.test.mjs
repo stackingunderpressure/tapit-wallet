@@ -38,6 +38,22 @@ const realProof = new Uint8Array(
   readFileSync(new URL('./fixtures/authorship-record.ots', import.meta.url)),
 );
 
+// TODO(fixture-restoration): test/fixtures/authorship-record.ots was
+// corrupted at rest before this repo was bootstrapped — the binary
+// bytes that should be 0xbf 0x89 0xe2 0xe8 0x84 0xe8 0x92 0x94 (last
+// 8 bytes of the 31-byte OTS magic) were rewritten as runs of the
+// UTF-8 replacement character 0xef 0xbf 0xbd, almost certainly during
+// a web-upload pass in the chassis. Same bad bytes are in the
+// parts-copy commit ba3b3f7. Restoring requires either downloading a
+// clean copy of the original proof from elsewhere or re-stamping a
+// known source file against real OpenTimestamps calendars. Tracked
+// for a separate focused session. Until then, the four fixture-
+// dependent tests below are skipped with this reason. The OTS codec
+// is still exercised by the eight synthetic-proof tests further down.
+const SKIP_CORRUPTED_FIXTURE = {
+  skip: 'authorship-record.ots fixture is UTF-8-corrupted at rest; see TODO above',
+};
+
 const confirmedProof = (digest, height) =>
   serializeOtsProof({
     version: 1,
@@ -54,7 +70,7 @@ const pendingProof = (digest, uri) =>
     timestamp: node([{ item: 'attestation', attestation: { kind: 'pending', uri } }]),
   });
 
-test('parses the real AUTHORSHIP_RECORD proof', () => {
+test('parses the real AUTHORSHIP_RECORD proof', SKIP_CORRUPTED_FIXTURE, () => {
   const proof = parseOtsProof(realProof);
   assert.equal(proof.version, 1);
   assert.equal(proof.fileHashOp, 0x08);
@@ -64,7 +80,7 @@ test('parses the real AUTHORSHIP_RECORD proof', () => {
   );
 });
 
-test('finds the three pending calendars in the real proof', () => {
+test('finds the three pending calendars in the real proof', SKIP_CORRUPTED_FIXTURE, () => {
   const pendings = pendingAttestations(parseOtsProof(realProof));
   assert.deepEqual(
     pendings.map((p) => p.uri),
@@ -76,11 +92,11 @@ test('finds the three pending calendars in the real proof', () => {
   );
 });
 
-test('the real proof carries no Bitcoin attestation yet', () => {
+test('the real proof carries no Bitcoin attestation yet', SKIP_CORRUPTED_FIXTURE, () => {
   assert.equal(bitcoinHeight(parseOtsProof(realProof)), undefined);
 });
 
-test('re-serializing the real proof reproduces it byte for byte', () => {
+test('re-serializing the real proof reproduces it byte for byte', SKIP_CORRUPTED_FIXTURE, () => {
   assert.deepEqual(serializeOtsProof(parseOtsProof(realProof)), realProof);
 });
 
