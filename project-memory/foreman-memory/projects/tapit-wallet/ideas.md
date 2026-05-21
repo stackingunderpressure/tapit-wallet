@@ -197,13 +197,13 @@ Feature: doctrine
 ```
 Date: 2026-05-21
 Section: ideas
-Entry: CLAUDE_ROOT.md inheritance — the wallet should carry BOTH
-the operational CLAUDE.md (Carpenter rulebook) AND CLAUDE_ROOT.md
-(thesis-style orienting doctrine). Brief claims operator has pasted
-the latter; Carpenter confirms NOT YET PRESENT in repo as of
-2026-05-21 evening. Open file-to-add.
-Context: Brief section 12 question 7. Stage: raw — awaiting
-operator either pasting the file or asking the Carpenter to fetch
-it from the AppCommander source.
+Entry: CLAUDE_ROOT.md inheritance — the wallet now carries BOTH the
+operational CLAUDE.md (Carpenter rulebook) AND CLAUDE_ROOT.md
+(thesis-style orienting doctrine — non-negotiables, thesis, four
+layers, doctrine map). CLAUDE_ROOT.md landed via AppCommander
+bootstrap commit f61cf2d on 2026-05-21 and was merged into the
+wallet branch by the Carpenter while filing this brief.
+Context: Brief section 12 question 7. Stage: matured — file
+present, doctrine map in place, no open action.
 Feature: doctrine
 ```

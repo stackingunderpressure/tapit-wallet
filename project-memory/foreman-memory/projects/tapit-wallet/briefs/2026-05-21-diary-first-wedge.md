@@ -806,6 +806,10 @@ defense if the bot is compromised or hallucinates. Phase 4 must
 hold that line even when the bot's UX would feel smoother if it
 could sign on behalf.
 
-**Status notes:** `CLAUDE_ROOT.md` is NOT yet in the wallet repo
-despite section 12's claim — only `CLAUDE.md` and `CLAUDE_START_HERE.md`
-exist at the root. Open item.
+**Status notes:** `CLAUDE_ROOT.md` was confirmed missing during the
+initial Carpenter response, but landed on `origin/main` via an
+AppCommander bootstrap commit (`f61cf2d`) between the Carpenter's
+local fetch and the push. Merged into the wallet branch as the
+Carpenter integrated this brief; both `CLAUDE.md` (operational
+rulebook) and `CLAUDE_ROOT.md` (thesis-style orienting doctrine)
+now sit at the repo root.
