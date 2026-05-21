@@ -9,6 +9,7 @@ import { mediaStore } from '../storage/mediaStore.ts';
 import { downloadJournalEntry } from './downloadEntry.ts';
 import { CosignRequestModal } from '../cosigning/CosignRequestModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
+import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
 
 function readString(claim: FieldBranch, name: string): string | undefined {
   const child = claim.children.find((c) => c.name === name);
@@ -18,10 +19,12 @@ function readString(claim: FieldBranch, name: string): string | undefined {
 
 export function JournalDetail() {
   const { digest } = useParams<{ digest: string }>();
-  const { holdings, ownerId, passphrase } = useWallet();
+  const { wallet, holdings, ownerId, passphrase } = useWallet();
   const worker = useAnchorWorker();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [modal, setModal] = useState<'request' | 'absorb' | null>(null);
+  const [modal, setModal] = useState<'request' | 'absorb' | 'custody' | null>(
+    null,
+  );
 
   const entry = useMemo<Attestation | undefined>(() => {
     if (!digest) return undefined;
@@ -68,6 +71,10 @@ export function JournalDetail() {
   const category = readString(entry.claim, 'category') ?? 'Diary';
   const subject = entry.subject;
   const writtenAt = readString(entry.claim, 'written_at') ?? entry.issuedAt;
+  // about-me entries use wallet.identity as subject; about-other
+  // entries use a typed label. Hand-off only makes sense for the
+  // latter.
+  const aboutSelf = subject === wallet.identity;
 
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto">
@@ -120,6 +127,15 @@ export function JournalDetail() {
         >
           Add a co-signer's signature
         </button>
+        {!aboutSelf && (
+          <button
+            type="button"
+            onClick={() => setModal('custody')}
+            className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
+          >
+            Hand off custody of {subject}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => downloadJournalEntry(ownerId, passphrase, entry)}
@@ -137,6 +153,12 @@ export function JournalDetail() {
       )}
       {modal === 'absorb' && (
         <AbsorbCosignModal onClose={() => setModal(null)} />
+      )}
+      {modal === 'custody' && (
+        <CustodyHandoffModal
+          subject={subject}
+          onClose={() => setModal(null)}
+        />
       )}
     </div>
   );
