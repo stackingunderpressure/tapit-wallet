@@ -3,6 +3,7 @@ import type { Attestation } from 'tapit-attest';
 import { disclosureProof } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
+import { QrShow } from '../qr/QrShow.tsx';
 
 interface Props {
   attestation: Attestation;
@@ -33,6 +34,7 @@ export function ShareProofModal({ attestation, onClose }: Props) {
   const [step, setStep] = useState<Step>({ kind: 'pick' });
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   function generate() {
     if (!path) {
@@ -145,6 +147,14 @@ export function ShareProofModal({ attestation, onClose }: Props) {
               rows={8}
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
+            <button
+              type="button"
+              onClick={() => setShowQr((v) => !v)}
+              className="mt-2 text-xs text-accent hover:underline"
+            >
+              {showQr ? 'Hide QR' : 'Show as QR code'}
+            </button>
+            {showQr && <QrShow text={step.json} label="Disclosure proof" />}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
                 <button

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
 import { canShare, shareText } from '../../shared/lib/share.ts';
+import { QrShow } from '../qr/QrShow.tsx';
 
 interface Props {
   attestation: Attestation;
@@ -20,6 +21,7 @@ interface Props {
 // the signer signs, so matching downstream is reliable).
 export function CosignRequestModal({ attestation, onClose }: Props) {
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const json = canonicalEnvelope(attestation);
 
   async function copy() {
@@ -64,6 +66,14 @@ export function CosignRequestModal({ attestation, onClose }: Props) {
           rows={8}
           className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
         />
+        <button
+          type="button"
+          onClick={() => setShowQr((v) => !v)}
+          className="mt-2 text-xs text-accent hover:underline"
+        >
+          {showQr ? 'Hide QR' : 'Show as QR code'}
+        </button>
+        {showQr && <QrShow text={json} label="Co-sign request" />}
         <div className="mt-3 flex gap-2 flex-wrap">
           {canShare() && (
             <button

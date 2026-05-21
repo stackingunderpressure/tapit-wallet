@@ -4,6 +4,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { parseEnvelope } from './parseEnvelope.ts';
 import { EnvelopePreview } from './EnvelopePreview.tsx';
 import { mergeSignatures } from './mergeSignatures.ts';
+import { QrScanModal } from '../qr/QrScanModal.tsx';
 
 interface Props {
   onClose: () => void;
@@ -28,6 +29,7 @@ export function AbsorbCosignModal({ onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ added: number } | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   async function absorb() {
     setError(null);
@@ -101,14 +103,23 @@ export function AbsorbCosignModal({ onClose }: Props) {
             {raw.trim().length > 0 && !error && (
               <PreviewIfParseable raw={raw} />
             )}
-            <button
-              type="button"
-              disabled={busy || raw.trim().length === 0}
-              onClick={absorb}
-              className="mt-3 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
-            >
-              {busy ? 'Absorbing…' : 'Absorb signature'}
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={busy || raw.trim().length === 0}
+                onClick={absorb}
+                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              >
+                {busy ? 'Absorbing…' : 'Absorb signature'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                className="rounded-md border border-ink/15 px-4 py-2 text-sm"
+              >
+                Scan QR
+              </button>
+            </div>
             {error && (
               <p className="mt-3 text-sm text-red-600" role="alert">
                 {error}
@@ -117,6 +128,15 @@ export function AbsorbCosignModal({ onClose }: Props) {
           </>
         )}
       </div>
+      {scanning && (
+        <QrScanModal
+          onScanned={(text) => {
+            setRaw(text);
+            setScanning(false);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }

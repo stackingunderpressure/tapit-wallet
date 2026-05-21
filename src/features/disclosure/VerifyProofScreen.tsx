@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { verifyDisclosureProof, type DisclosureProofBundle } from 'tapit-attest';
 import { parseDisclosureProof } from './parseDisclosureProof.ts';
+import { QrScanModal } from '../qr/QrScanModal.tsx';
 
 type Outcome =
   | { kind: 'idle' }
@@ -29,6 +30,7 @@ function asString(v: unknown): string {
 export function VerifyProofScreen() {
   const [raw, setRaw] = useState('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
+  const [scanning, setScanning] = useState(false);
 
   function verify() {
     try {
@@ -74,15 +76,34 @@ export function VerifyProofScreen() {
           placeholder="Paste the proof here…"
           className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
         />
-        <button
-          type="button"
-          onClick={verify}
-          disabled={raw.trim().length === 0}
-          className="mt-3 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
-        >
-          Verify
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={verify}
+            disabled={raw.trim().length === 0}
+            className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+          >
+            Verify
+          </button>
+          <button
+            type="button"
+            onClick={() => setScanning(true)}
+            className="rounded-md border border-ink/15 px-4 py-2 text-sm"
+          >
+            Scan QR
+          </button>
+        </div>
       </section>
+
+      {scanning && (
+        <QrScanModal
+          onScanned={(text) => {
+            setRaw(text);
+            setScanning(false);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
 
       {outcome.kind === 'error' && (
         <section className="mt-4 rounded-2xl bg-white border border-amber-200 p-5 shadow-sm">

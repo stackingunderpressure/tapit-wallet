@@ -5,6 +5,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { createCustodyHandoff } from './createCustodyHandoff.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
+import { QrShow } from '../qr/QrShow.tsx';
 
 interface Props {
   /** Pre-filled from the entry the operator was viewing. */
@@ -38,6 +39,7 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<Step>({ kind: 'compose' });
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -159,6 +161,16 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
               rows={8}
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
+            <button
+              type="button"
+              onClick={() => setShowQr((v) => !v)}
+              className="mt-2 text-xs text-accent hover:underline"
+            >
+              {showQr ? 'Hide QR' : 'Show as QR code'}
+            </button>
+            {showQr && (
+              <QrShow text={canonicalEnvelope(step.signed)} label="Custody handoff" />
+            )}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
                 <button

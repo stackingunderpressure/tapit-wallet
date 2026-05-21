@@ -5,6 +5,8 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { parseEnvelope } from './parseEnvelope.ts';
 import { EnvelopePreview } from './EnvelopePreview.tsx';
 import { canShare, shareText } from '../../shared/lib/share.ts';
+import { QrShow } from '../qr/QrShow.tsx';
+import { QrScanModal } from '../qr/QrScanModal.tsx';
 
 interface Props {
   onClose: () => void;
@@ -34,6 +36,8 @@ export function CosignAsWitnessModal({ onClose }: Props) {
   const [raw, setRaw] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   function review() {
     setError(null);
@@ -106,14 +110,23 @@ export function CosignAsWitnessModal({ onClose }: Props) {
               placeholder="Paste the entry here…"
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
-            <button
-              type="button"
-              disabled={raw.trim().length === 0}
-              onClick={review}
-              className="mt-3 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
-            >
-              Review
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={raw.trim().length === 0}
+                onClick={review}
+                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              >
+                Review
+              </button>
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                className="rounded-md border border-ink/15 px-4 py-2 text-sm"
+              >
+                Scan QR
+              </button>
+            </div>
           </>
         )}
 
@@ -158,6 +171,16 @@ export function CosignAsWitnessModal({ onClose }: Props) {
               rows={8}
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
+            <button
+              type="button"
+              onClick={() => setShowQr((v) => !v)}
+              className="mt-2 text-xs text-accent hover:underline"
+            >
+              {showQr ? 'Hide QR' : 'Show as QR code'}
+            </button>
+            {showQr && (
+              <QrShow text={canonicalEnvelope(step.signed)} label="Signed envelope" />
+            )}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
                 <button
@@ -194,6 +217,15 @@ export function CosignAsWitnessModal({ onClose }: Props) {
           </p>
         )}
       </div>
+      {scanning && (
+        <QrScanModal
+          onScanned={(text) => {
+            setRaw(text);
+            setScanning(false);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }
