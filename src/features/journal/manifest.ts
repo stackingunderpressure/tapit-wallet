@@ -13,6 +13,7 @@ export const manifest: FeatureManifest = {
     'src/features/journal/createJournalEntry.ts',
     'src/features/journal/downloadEntry.ts',
     'src/features/journal/categories.ts',
+    'src/features/journal/normalizeImage.ts',
   ],
   depends_on: ['wallet-core', 'storage', 'anchoring'],
   pause_safe: false,

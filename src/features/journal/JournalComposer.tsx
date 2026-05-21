@@ -3,6 +3,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { createJournalEntry } from './createJournalEntry.ts';
 import { SUGGESTED_CATEGORIES } from './categories.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
+import { normalizeImage } from './normalizeImage.ts';
 
 const DOC_ACCEPT =
   'application/pdf,text/plain,application/json,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/heic';
@@ -27,8 +28,36 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
   const photoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Picker handler — normalizes HEIC/HEIF/etc. to JPEG so the photo
+  // renders everywhere (iPhone captures HEIC by default; Chrome and
+  // Android cannot display HEIC in an <img> tag). Visible
+  // attachmentBusy lets the operator see something is happening
+  // when the conversion takes a second on a big photo.
+  async function onPickAttachment(file: File | null) {
+    if (!file) {
+      setAttachment(null);
+      return;
+    }
+    setError(null);
+    setAttachmentBusy(true);
+    try {
+      const normalized = await normalizeImage(file);
+      setAttachment(normalized);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `Could not read photo: ${err.message}`
+          : 'Could not read photo on this device.',
+      );
+      setAttachment(null);
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -154,16 +183,15 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
           ref={photoRef}
           type="file"
           accept="image/*"
-          capture="environment"
           hidden
-          onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+          onChange={(e) => onPickAttachment(e.target.files?.[0] ?? null)}
         />
         <input
           ref={docRef}
           type="file"
           accept={DOC_ACCEPT}
           hidden
-          onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+          onChange={(e) => onPickAttachment(e.target.files?.[0] ?? null)}
         />
         <div className="mt-1 flex gap-2">
           <button
@@ -181,10 +209,16 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
             📄 Document
           </button>
         </div>
-        {attachment && (
+        {attachmentBusy && (
+          <p className="mt-2 text-xs text-muted">Reading photo…</p>
+        )}
+        {!attachmentBusy && attachment && (
           <div className="mt-2 flex items-center justify-between">
             <p className="text-xs text-muted truncate">
-              {attachment.name} — {Math.round(attachment.size / 1024)} KB
+              ✓ {attachment.name} — {Math.round(attachment.size / 1024)} KB
+              {attachment.type && (
+                <span className="ml-1">({attachment.type})</span>
+              )}
             </p>
             <button
               type="button"
