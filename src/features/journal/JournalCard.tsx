@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import type { Attestation, FieldBranch } from 'tapit-attest';
-import { sha256 } from '@noble/hashes/sha256';
+import { envelopeId } from 'tapit-attest';
 import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
-import { bytesToHex } from '../anchoring/hex.ts';
 
 interface Props {
   attestation: Attestation;
@@ -44,10 +43,7 @@ function toneClass(tone: 'verified' | 'verifying'): string {
 export function JournalCard({ attestation }: Props) {
   const { ownerId } = useWallet();
   const worker = useAnchorWorker();
-  const digestHex = useMemo(
-    () => bytesToHex(sha256(JSON.stringify(attestation))),
-    [attestation],
-  );
+  const digestHex = useMemo(() => envelopeId(attestation), [attestation]);
   const row = useAnchorStatus(ownerId, digestHex, worker);
 
   const text = readString(attestation.claim, 'text');

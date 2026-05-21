@@ -1,10 +1,8 @@
 import type { Attestation, Wallet } from 'tapit-attest';
-import { journalAttestation } from 'tapit-attest';
+import { journalAttestation, envelopeId } from 'tapit-attest';
 import { mediaStore } from '../storage/mediaStore.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex } from '../anchoring/hex.ts';
 
 export interface JournalInput {
   /** Free-text body of the entry. */
@@ -57,7 +55,12 @@ export async function createJournalEntry(
   const signed = wallet.sign(draft);
   await wallet.hold(signed);
 
-  const digestHex = bytesToHex(sha256(JSON.stringify(signed)));
+  // envelopeId is tapit-attest's canonical content address — hex of
+  // attestationDigest(signed). Stable across added signatures (so the
+  // URL still works after Phase 2.6 witnesses sign), deterministic
+  // across engines (library-controlled canonical serialization),
+  // and exactly what the OTS proof commits to via stamp(digest).
+  const digestHex = envelopeId(signed);
   await anchorQueue.upsert(ownerId, {
     digestHex,
     state: 'queued',

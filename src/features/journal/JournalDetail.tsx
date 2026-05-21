@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { sha256 } from '@noble/hashes/sha256';
 import type { Attestation, FieldBranch } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { mediaStore } from '../storage/mediaStore.ts';
 import { downloadJournalEntry } from './downloadEntry.ts';
-import { bytesToHex } from '../anchoring/hex.ts';
 
 function readString(claim: FieldBranch, name: string): string | undefined {
   const child = claim.children.find((c) => c.name === name);
@@ -24,8 +23,7 @@ export function JournalDetail() {
   const entry = useMemo<Attestation | undefined>(() => {
     if (!digest) return undefined;
     for (const a of holdings) {
-      const h = bytesToHex(sha256(JSON.stringify(a)));
-      if (h === digest) return a;
+      if (envelopeId(a) === digest) return a;
     }
     return undefined;
   }, [holdings, digest]);
