@@ -1,26 +1,37 @@
 {
   "v": 1,
-  "ts": "2026-05-21T00:00:00Z",
-  "session_id": "tapit-wallet-design-OW5FF-2026-05-21",
-  "who": { "actor": "carpenter", "feature_slug": "design" },
-  "where": { "files": ["DESIGN.md"], "screen_path": "/" },
-  "layer": "doctrine",
-  "action": "design",
-  "summary": "Wrote DESIGN.md — v1 wallet design synthesized from the 2026-05-21 operator conversation. Reframes identity as the attestation chain (not the key), defines a three-layer backup model with social recovery as the safety net, family-as-leaves with parent custody from birth, selective leaf disclosure via the library's Merkle field-tree slot, PWA-first with email magic link, no bot in v1, six build phases ending at family-mode custody.",
+  "ts": "2026-05-21T02:30:00Z",
+  "session_id": "sign-poison-fix-2026-05-21-1779331068",
+  "who": { "actor": "carpenter", "feature_slug": "wallet-core" },
+  "where": {
+    "files": [
+      "tapit-attest/src/core/keys.ts",
+      "tapit-attest/test/keys.test.mjs",
+      "tapit-attest/package.json"
+    ],
+    "screen_path": "/"
+  },
+  "layer": "service",
+  "action": "fix",
+  "summary": "Applied the sign-poisoning fix to tapit-attest verifyEnvelope per DESIGN.md §11. Switched to quorum-of-good semantics: at least one valid signature suffices, invalid signatures are reported in errors but no longer poison the result, and duplicate bad rows for an otherwise-valid signer are dropped from errors. Added two regression tests covering the relayer-appended junk signature vector and the duplicate-bad-row case. Bumped tapit-attest version to 0.1.1-wallet.0 to mark wallet-side divergence. Operator is in manual mode (AppCommander down) and asked me to keep going until I judged the design was ready to start Phase 1 code. My judgement: ready.",
   "why": {
-    "text": "Operator uploaded the upstream tapit-attest library zip to transfer the 27 provisional D-decisions from a library-context design conversation, but did not treat those as concrete. Asked for a real wallet design that picks the best of what was sent, drops what does not fit, and lays out the next steps. This session produced that design as DESIGN.md.",
+    "text": "DESIGN.md §11 named the sign-poisoning fix as the one-time pre-Phase-1 library cherry-pick. The bug was live in tapit-attest/src/core/keys.ts verifyEnvelope: returning valid=false the moment any signature failed let a malicious relayer poison a genuine envelope by appending a junk signature. The upstream library timeline in the uploaded zip already had the fix in quorum-of-good shape; this session adapts that fix to the wallet's bundled VerifyResult shape so no caller of verifyEnvelope needs to change. Caller audit confirmed: sync.ts, weighting.ts, revocation.ts, recovery.ts, wallet.ts all benefit from the new semantics; none break. The version bump prevents a future fresh-upstream-pull from silently reverting the patch.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-DESIGN-001"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-SIGN-POISON-FIX-002"
   },
   "outcome": {
-    "files_changed": ["DESIGN.md"],
-    "tests_passing": null,
-    "build_green": null,
-    "notes": "Markdown-only commit. No code touched. Gates not run because no code changed. The one code change identified (sign-poisoning fix to tapit-attest/src/core/keys.ts verifyEnvelope) is queued for Phase 1 prep, not done this session."
+    "files_changed": [
+      "tapit-attest/src/core/keys.ts",
+      "tapit-attest/test/keys.test.mjs",
+      "tapit-attest/package.json"
+    ],
+    "tests_passing": "74 of 78 — the 4 failures are baseline (ots-codec parsing a UTF-8-corrupted fixture), unrelated to this change; verified by stashing changes and re-running",
+    "build_green": true,
+    "notes": "Two commits pushed to claude/compare-library-wallet-OW5FF: a8e9b09 (sign-poisoning fix + tests) and 9d1a131 (version bump). typecheck / lint / build all green on tapit-attest. The ots-codec fixture test/fixtures/authorship-record.ots is corrupted at rest — bytes 0xbf 0x89 ... became UTF-8 replacement-character runs 0xef 0xbf 0xbd ..., almost certainly from web-upload bootstrap. Tracked as a separate-session task; out of scope here."
   },
-  "confidence": 85,
-  "uncertainty": "The 27 provisional D-decisions from the library-context doc were summarized rather than imported verbatim. Operator may want them captured in their raw form somewhere in the repo for traceability before they get overwritten by the new design.",
-  "ripple": ["auth", "wallet-core", "backup-recovery", "app-connections", "wallet-bot"],
-  "next": "Operator reviews DESIGN.md. If approved, apply the sign-poisoning fix to tapit-attest, then begin Phase 1 (PWA shell + email auth + key generation). If changes wanted, revise DESIGN.md.",
+  "confidence": 90,
+  "uncertainty": "The two regression tests cover the documented attack vector cleanly, but the wider field-tree-and-anchoring path through verifyEnvelope has not been re-exercised since the semantic change. Existing test suite passing is reasonable assurance; a brief integration pass during Phase 2 would close the loop completely.",
+  "ripple": ["wallet-core", "backup-recovery", "app-connections"],
+  "next": "Operator decision: start Phase 1 (PWA shell + Supabase magic-link auth + key generation + encrypted snapshot) in the next session, OR request more design work first. My judgement is the former — DESIGN.md, DISCOVERY.md, and the now-patched library are sufficient context to begin cutting Phase 1.",
   "signals": ["pulse"]
 }
