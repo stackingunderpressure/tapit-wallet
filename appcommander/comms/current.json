@@ -1,29 +1,39 @@
 {
   "v": 1,
-  "ts": "2026-05-21T16:40:00Z",
-  "session_id": "library-seam-mechanism-2026-05-21-1779381209",
-  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
+  "ts": "2026-05-21T22:05:00Z",
+  "session_id": "qr-cosigning-disclosure-2026-05-21-1779400607",
+  "who": { "actor": "carpenter", "feature_slug": "qr" },
   "where": {
-    "files": ["src/library-seam.test.ts"],
-    "screen_path": "/"
+    "files": [
+      "supabase/migrations/20260522000001_create_wallet_media_bucket.sql",
+      "src/features/storage/remoteMediaStore.ts",
+      "src/features/storage/mediaStore.ts",
+      "src/shared/lib/share.ts",
+      "src/features/qr/*",
+      "src/features/cosigning/*",
+      "src/features/disclosure/*",
+      "src/features/journal/createJournalEntry.ts",
+      "src/features/journal/JournalComposer.tsx"
+    ],
+    "screen_path": "/, /entry/:digest, /verify"
   },
-  "layer": "doctrine",
-  "action": "mechanism",
-  "summary": "Converted the verbal pre-push library-seam audit into a mechanical check per CLAUDE_ROOT.md non-negotiable #5 ('Mechanism over prose. When a rule keeps getting missed, the fix is a check that fails — not another paragraph in this file'). New src/library-seam.test.ts walks every .ts/.tsx file under src/features, extracts function/class/const-arrow-assignment definitions via regex, and fails if any name overlaps a runtime export of tapit-attest. ALLOWLIST exists for intentional coincidences but is currently empty by design. Verified the check fails when it should by temporarily injecting an `envelopeId` collision in src/features/journal/__canary.ts — test surfaced the exact file path + name + ALLOWLIST guidance. Removed canary, re-ran clean. One commit (66637f1) on branch + main.",
+  "layer": "service+ui",
+  "action": "punch-list-block",
+  "summary": "Post-deploy punch list completed end-to-end after the operator's verify-don't-trust re-grounding directive. Three cuts landed this autonomous block plus the previously-shipped photo fix: Cut 2 (commit 49dbb09) — Supabase Storage for media when cloud-sync is ON: new SQL migration 20260522000001 creates the wallet_media bucket with four owner-scoped RLS policies (storage.foldername(name)[1] = auth.uid()::text); new remoteMediaStore.ts uploads/downloads JSON-wrapped { blob, mime } objects with upsert + 404 handling; mediaStore.ts is now a local+remote coordinator (encrypts once, writes IDB always, pushes Storage if cloudSync, get tries local first then remote-fallback with local cache on remote-hit). Cut 3 (commit ba04481) — Web Share API in src/shared/lib/share.ts wraps navigator.share with feature-detect + clipboard fallback + AbortError-as-cancelled handling; wired into all four producer modals (CosignRequest, CosignAsWitness signed step, CustodyHandoff signed step, ShareProof generated step) as a primary 'Share via AirDrop / Messages / …' button alongside Copy. Cut 4 (commit 701d39f) — QR encode via qrcode npm package (SVG output, low error correction for max payload capacity, friendly 'too large for one QR' message); QR decode via native window.BarcodeDetector API (Chrome / Edge / iPhone Safari 17+; Firefox shows 'use Paste or Share' fallback). Producer modals get a 'Show as QR code' toggle; receiver modals (AbsorbCosign, CosignAsWitness paste step, VerifyProofScreen) get a 'Scan QR' button that opens QrScanModal with the device camera. Branch and main both at 701d39f.",
   "why": {
-    "text": "Operator: 'Fire up read Claude Md stay centered work on next task. Still working on netlify verify don't trust.' Re-read CLAUDE_ROOT.md fresh — non-negotiable #5 directly applies: the tapit-attest-integrity rule has been caught three times across autonomous-work blocks (entry-digest, anchor-attachment, useWalletIdentity reference), each by the verbal pattern that requires Carpenter attention. Doctrine literally says: when a rule keeps getting missed, add a check, not a paragraph. The name-collision subset of the rule is the dominant failure mode and is automatable; semantic-collision-without-name-overlap is rarer and still needs human attention. Single focused commit, mechanical, no operator-attention cost, preserved across future sessions.",
+    "text": "Operator: 'Yes, absolutely reground make sure you read the Claud MD file verify everything twice. Do not trust and do not trust anyone else else's word go back to the source and re-ground relearn verify and continue knocking the list out.' Re-read CLAUDE.md + CLAUDE_ROOT.md fresh before each cut; re-ran all four gates from a verified-clean state before each commit; verified the prior photo-fix actually does what I claimed (via grep) rather than trusting my own notes. The four-item punch list from the operator's post-deploy report drove the work: photo capture bug (already done last turn), Supabase Storage for cloud-sync media (operator greenlit; 'I'll pay for it'), AirDrop for envelope handoff (Web Share surfaces iOS share sheet including AirDrop), QR for the cosigning + disclosure round-trip. NFC stays the documented platform-gap (Safari iOS doesn't implement WebNFC). Each cut went through the library-seam mechanical check on every test cycle — no accidental tapit-attest re-implementations slipped through.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-LIBRARY-SEAM-MECHANISM-012"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-PUNCH-LIST-013"
   },
   "outcome": {
-    "files_changed": ["src/library-seam.test.ts (new)"],
-    "tests_passing": "17/17 — 16 prior + 1 new library-seam test. Runtime ~13ms (negligible). tapit-attest unchanged.",
+    "files_changed": ["Four commits, ~22 files total. Three new feature folders/helpers: storage/remoteMediaStore.ts + media migration, shared/lib/share.ts, features/qr/* (manifest + encode + barcodeDetector + QrShow + QrScanModal). Modifications to all four producer + three receiver modals to wire share/QR. Package.json gained qrcode + @types/qrcode."],
+    "tests_passing": "root 17/17 on every commit (library-seam audit clean each time); tapit-attest 82 total / 78 pass / 0 fail / 4 skipped (corrupted-fixture baseline unchanged).",
     "build_green": true,
-    "notes": "Commit 66637f1 on branch + main. No bundle impact (test file excluded from build). The 'don't trust verify' framing applied to the check itself — I deliberately injected a collision and confirmed the test detected it before removing the canary."
+    "notes": "Bundle posture (login surface unchanged ~110KB gz): new QrShow lazy chunk 29.19KB gz 11.62KB carries the qrcode library and only loads when an operator opens a Share modal and toggles 'Show as QR'. New share-* chunk hoisted earlier 8.77KB gz 4.14KB. HomeScreen grew 4.63→5.37KB gz; JournalDetail 4.87→5.29KB gz across the four cuts. All within healthy budgets. Three pre-push catches by gates this block: typecheck on QrScanModal's null-detector closure, lint on unused react/no-danger directive, plus the persisted-shell-cwd mistake on first gate run (re-ran from root after explicit cd). Library-seam audit ran clean on each commit; the mechanical check from the previous session continues to enforce 'never re-implement tapit-attest' without operator-attention cost."
   },
-  "confidence": 95,
-  "uncertainty": "The regex for definitions is intentionally broad (matches function/class/const-arrow). Edge cases like destructured-then-reassigned imports or rebinding via `const { x } = lib` are NOT caught. If those become a real failure mode, the check can extend. For now the simple case covers the historical bugs.",
-  "ripple": ["doctrine"],
-  "next": "Pausing at a clean stop. Library-seam check now runs on every `npm test` and on every CI pass. The five remaining follow-ups are non-blocking: multi-tab worker coordination, HEIC/WebP photo re-encode, bundle-budget audit, OTS fixture restoration, Tap-it-Attest-main.zip cleanup. v1 surface unchanged — still feature-complete. Operator's Netlify+Supabase verification work is the next bridge to real deploy.",
+  "confidence": 90,
+  "uncertainty": "End-to-end against the live Netlify+Supabase deploy still pending the operator. New paths to walk: Cut 2 — sign an entry with a photo while cloud-sync is ON, sign out, clear IndexedDB, sign back in, photo still loads in the detail view (proves the remote-media fallback). Cut 3 — Share button on any signed envelope surfaces the iOS share sheet with AirDrop. Cut 4 — Show as QR toggle renders the QR; another device's Scan QR button reads it and fills the textarea. Operator-side SQL: run the new 20260522000001 migration in Supabase SQL editor before redeploying.",
+  "ripple": ["wallet-core", "journal", "anchoring", "cosigning", "disclosure", "storage", "qr"],
+  "next": "Punch list complete. Five non-blocking follow-ups remain logged in carpenter-state-for-foreman: multi-tab worker coordination, bundle-budget audit, OTS fixture restoration, Tap-it-Attest-main.zip cleanup, and a 'backfill remote media for pre-existing entries' button if the operator wants media that was created before Cut 2 to also mirror to Storage retroactively. None block browser verification. NFC stays a platform-gap (iPhone family). The wallet's v1 surface plus the operator's deploy-time punch list are now all in code; next session is either operator browser-verify findings or a new direction.",
   "signals": ["pulse"]
 }
