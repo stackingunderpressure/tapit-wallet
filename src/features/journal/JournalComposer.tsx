@@ -4,6 +4,9 @@ import { createJournalEntry } from './createJournalEntry.ts';
 import { SUGGESTED_CATEGORIES } from './categories.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 
+const DOC_ACCEPT =
+  'application/pdf,text/plain,application/json,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/heic';
+
 interface Props {
   /** Called with the new entry's digest when the entry lands. */
   onCreated: (digestHex: string) => void;
@@ -21,8 +24,9 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
   const [customCategory, setCustomCategory] = useState('');
   const [subjectMode, setSubjectMode] = useState<SubjectMode>('me');
   const [subjectLabel, setSubjectLabel] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [photo, setPhoto] = useState<File | null>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const docRef = useRef<HTMLInputElement>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +60,7 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
           subjectMode === 'me'
             ? wallet.identity
             : subjectLabel.trim(),
-        photo: photo ?? undefined,
+        attachment: attachment ?? undefined,
       });
       // Persist wallet state so the held attestation survives reload.
       await save();
@@ -145,19 +149,51 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
       </div>
 
       <div>
-        <span className="text-sm font-medium">Photo (optional)</span>
+        <span className="text-sm font-medium">Attachment (optional)</span>
         <input
-          ref={fileRef}
+          ref={photoRef}
           type="file"
           accept="image/*"
           capture="environment"
-          onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-          className="mt-1 block w-full text-sm"
+          hidden
+          onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
         />
-        {photo && (
-          <p className="mt-1 text-xs text-muted">
-            {photo.name} — {Math.round(photo.size / 1024)} KB
-          </p>
+        <input
+          ref={docRef}
+          type="file"
+          accept={DOC_ACCEPT}
+          hidden
+          onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
+        />
+        <div className="mt-1 flex gap-2">
+          <button
+            type="button"
+            onClick={() => photoRef.current?.click()}
+            className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm hover:bg-ink/5"
+          >
+            📷 Photo
+          </button>
+          <button
+            type="button"
+            onClick={() => docRef.current?.click()}
+            className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm hover:bg-ink/5"
+          >
+            📄 Document
+          </button>
+        </div>
+        {attachment && (
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-xs text-muted truncate">
+              {attachment.name} — {Math.round(attachment.size / 1024)} KB
+            </p>
+            <button
+              type="button"
+              onClick={() => setAttachment(null)}
+              className="text-xs text-muted hover:text-ink ml-2 shrink-0"
+            >
+              Remove
+            </button>
+          </div>
         )}
       </div>
 

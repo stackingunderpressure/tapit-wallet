@@ -12,8 +12,13 @@ export interface JournalInput {
   /** Subject the entry is about. Self by default; a typed label for
    *  the grandchild case. */
   subject: string;
-  /** Optional photo file. */
-  photo?: File;
+  /**
+   * Optional attachment — photo, PDF, scan, signed document, audio
+   * memo, anything. Stored encrypted in IndexedDB keyed by its
+   * SHA-256; the same hash becomes a leaf in the claim so the
+   * attestation tamper-evidently commits to the exact bytes.
+   */
+  attachment?: File;
 }
 
 export interface JournalEntryResult {
@@ -34,17 +39,14 @@ export async function createJournalEntry(
     written_at: new Date().toISOString(),
   };
 
-  if (input.photo) {
-    const bytes = new Uint8Array(await input.photo.arrayBuffer());
-    const stored = await mediaStore.put(
-      ownerId,
-      passphrase,
-      bytes,
-      input.photo.type || 'application/octet-stream',
-    );
-    fields.photo_sha256 = stored.hashHex;
-    fields.photo_mime = input.photo.type || 'application/octet-stream';
-    fields.photo_bytes = String(stored.byteLength);
+  if (input.attachment) {
+    const bytes = new Uint8Array(await input.attachment.arrayBuffer());
+    const mime = input.attachment.type || 'application/octet-stream';
+    const stored = await mediaStore.put(ownerId, passphrase, bytes, mime);
+    fields.attachment_sha256 = stored.hashHex;
+    fields.attachment_mime = mime;
+    fields.attachment_bytes = String(stored.byteLength);
+    if (input.attachment.name) fields.attachment_name = input.attachment.name;
   }
 
   const draft = journalAttestation({

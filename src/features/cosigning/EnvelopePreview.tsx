@@ -12,7 +12,7 @@ interface Props {
 // string."
 //
 // Supports the journal-kind shape (subject + text + category +
-// optional photo hash). Other kinds get a minimal fallback —
+// optional attachment hash). Other kinds get a minimal fallback —
 // kind / tier / subject / signers — until later phases.
 
 function readString(claim: FieldBranch, name: string): string | undefined {
@@ -30,7 +30,8 @@ export function EnvelopePreview({ attestation }: Props) {
   const text = readString(attestation.claim, 'text');
   const category = readString(attestation.claim, 'category') ?? 'Diary';
   const writtenAt = readString(attestation.claim, 'written_at') ?? attestation.issuedAt;
-  const photoHash = readString(attestation.claim, 'photo_sha256');
+  const attachmentHash = readString(attestation.claim, 'attachment_sha256');
+  const attachmentMime = readString(attestation.claim, 'attachment_mime');
 
   const kindLabel = attestation.kind.charAt(0).toUpperCase() + attestation.kind.slice(1);
   const subjectLabel = attestation.subject.length > 32
@@ -49,10 +50,12 @@ export function EnvelopePreview({ attestation }: Props) {
       {text && (
         <p className="mt-3 whitespace-pre-wrap text-sm">{text}</p>
       )}
-      {photoHash && (
+      {attachmentHash && (
         <p className="mt-3 text-xs text-muted">
-          Includes a photo (not shown — only the signer who created the entry
-          has the photo bytes). The signature commits to the photo's hash.
+          Includes a{' '}
+          {attachmentMime?.startsWith('image/') ? 'photo' : 'document'}{' '}
+          (not shown — only the signer who created the entry has the bytes).
+          The signature commits to the attachment's hash.
         </p>
       )}
       <div className="mt-3 text-xs text-muted">

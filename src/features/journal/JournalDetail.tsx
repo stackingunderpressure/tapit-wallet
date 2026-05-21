@@ -21,7 +21,6 @@ export function JournalDetail() {
   const { digest } = useParams<{ digest: string }>();
   const { wallet, holdings, ownerId, passphrase } = useWallet();
   const worker = useAnchorWorker();
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [modal, setModal] = useState<'request' | 'absorb' | 'custody' | null>(
     null,
   );
@@ -34,25 +33,36 @@ export function JournalDetail() {
     return undefined;
   }, [holdings, digest]);
 
-  const photoHash = entry ? readString(entry.claim, 'photo_sha256') : undefined;
+  const attachmentHash = entry
+    ? readString(entry.claim, 'attachment_sha256')
+    : undefined;
+  const attachmentMime = entry
+    ? readString(entry.claim, 'attachment_mime')
+    : undefined;
+  const attachmentName = entry
+    ? readString(entry.claim, 'attachment_name')
+    : undefined;
+  const attachmentIsImage = !!attachmentMime?.startsWith('image/');
+
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let revoked: string | null = null;
     let alive = true;
-    if (photoHash) {
-      mediaStore.get(ownerId, passphrase, photoHash).then((m) => {
+    if (attachmentHash) {
+      mediaStore.get(ownerId, passphrase, attachmentHash).then((m) => {
         if (!alive || !m) return;
         const blob = new Blob([m.bytes as BlobPart], { type: m.mime });
         const url = URL.createObjectURL(blob);
         revoked = url;
-        setPhotoUrl(url);
+        setAttachmentUrl(url);
       });
     }
     return () => {
       alive = false;
       if (revoked) URL.revokeObjectURL(revoked);
     };
-  }, [photoHash, ownerId, passphrase]);
+  }, [attachmentHash, ownerId, passphrase]);
 
   const row = useAnchorStatus(ownerId, digest ?? null, worker);
 
@@ -92,12 +102,21 @@ export function JournalDetail() {
         </div>
         <div className="mt-1 text-xs text-muted">About: {subject}</div>
         {text && <p className="mt-3 whitespace-pre-wrap">{text}</p>}
-        {photoUrl && (
+        {attachmentUrl && attachmentIsImage && (
           <img
-            src={photoUrl}
+            src={attachmentUrl}
             alt=""
             className="mt-4 w-full rounded-lg border border-ink/10"
           />
+        )}
+        {attachmentUrl && !attachmentIsImage && (
+          <a
+            href={attachmentUrl}
+            download={attachmentName ?? 'attachment'}
+            className="mt-4 inline-flex items-center gap-2 rounded-md border border-ink/15 bg-white px-3 py-2 text-sm font-medium hover:bg-ink/5"
+          >
+            📄 Open {attachmentName ?? 'attachment'}
+          </a>
         )}
         <div className="mt-4 text-xs text-muted">
           Signers:{' '}

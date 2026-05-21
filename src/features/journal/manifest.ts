@@ -4,7 +4,7 @@ export const manifest: FeatureManifest = {
   slug: 'journal',
   born: '2026-05-21',
   purpose:
-    'The diary wedge. Composer for signed journal-kind attestations with a subject picker (Me / Someone-else label), a category picker (Diary / Family / Medical / Marriage / Witness plus free-form), free-text entry, optional photo attachment. Each entry is signed by the wallet, queued for OpenTimestamps anchoring, and renders as a card on the home screen grouped by category tab. Detail view per entry exposes a save-to-files download (zip of photo + envelope JSON).',
+    'The diary wedge. Composer for signed journal-kind attestations with a subject picker (Me / Someone-else label), a category picker (Diary / Family / Medical / Marriage / Witness plus free-form), free-text entry, optional attachment (photo via camera shortcut or document via file picker — PDF, text, Word, Excel, etc.). Each entry is signed by the wallet, queued for OpenTimestamps anchoring, and renders as a card on the home screen grouped by category tab. Detail view per entry shows the attachment (image inline, document as a download link) and exposes a save-to-files download.',
   touches: [
     'src/features/journal/JournalComposer.tsx',
     'src/features/journal/JournalCard.tsx',

@@ -43,18 +43,36 @@ export async function downloadJournalEntry(
     `tapit-entry-${date}-${subject}.json`,
   );
 
-  const photoHash = attestation.claim.children.find(
-    (c) => c.name === 'photo_sha256' && c.node === 'leaf',
+  const attachmentHash = attestation.claim.children.find(
+    (c) => c.name === 'attachment_sha256' && c.node === 'leaf',
   );
-  if (!photoHash || photoHash.node !== 'leaf' || typeof photoHash.value !== 'string') {
+  if (
+    !attachmentHash ||
+    attachmentHash.node !== 'leaf' ||
+    typeof attachmentHash.value !== 'string'
+  ) {
     return;
   }
-  const media = await mediaStore.get(ownerId, passphrase, photoHash.value);
+  const media = await mediaStore.get(ownerId, passphrase, attachmentHash.value);
   if (!media) return;
-  const ext =
-    media.mime.startsWith('image/') ? media.mime.slice('image/'.length) : 'bin';
+  // Prefer the original filename if we recorded it; otherwise derive
+  // a sensible extension from the MIME.
+  const nameLeaf = attestation.claim.children.find(
+    (c) => c.name === 'attachment_name' && c.node === 'leaf',
+  );
+  const originalName =
+    nameLeaf && nameLeaf.node === 'leaf' && typeof nameLeaf.value === 'string'
+      ? nameLeaf.value
+      : undefined;
+  const filename =
+    originalName ??
+    (media.mime.startsWith('image/')
+      ? `tapit-entry-${date}-${subject}-photo.${media.mime.slice('image/'.length)}`
+      : media.mime === 'application/pdf'
+        ? `tapit-entry-${date}-${subject}.pdf`
+        : `tapit-entry-${date}-${subject}-attachment.bin`);
   triggerDownload(
     new Blob([media.bytes as BlobPart], { type: media.mime }),
-    `tapit-entry-${date}-${subject}-photo.${ext}`,
+    filename,
   );
 }

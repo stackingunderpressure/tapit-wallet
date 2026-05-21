@@ -49,7 +49,12 @@ export function JournalCard({ attestation }: Props) {
   const text = readString(attestation.claim, 'text');
   const category = readString(attestation.claim, 'category') ?? 'Diary';
   const writtenAt = readString(attestation.claim, 'written_at') ?? attestation.issuedAt;
-  const hasPhoto = !!readString(attestation.claim, 'photo_sha256');
+  const attachmentMime = readString(attestation.claim, 'attachment_mime');
+  const attachmentIcon = attachmentMime
+    ? attachmentMime.startsWith('image/')
+      ? '📷'
+      : '📄'
+    : null;
 
   const badge = verificationBadge(row?.state, row?.anchor?.btcHeight);
 
@@ -70,9 +75,9 @@ export function JournalCard({ attestation }: Props) {
         <p className="mt-2 text-sm whitespace-pre-wrap line-clamp-4">{text}</p>
       )}
       <div className="mt-3 flex items-center gap-2 flex-wrap">
-        {hasPhoto && (
+        {attachmentIcon && (
           <span className="text-xs rounded-full px-2 py-0.5 border border-ink/10 text-muted">
-            📎 photo
+            {attachmentIcon} attachment
           </span>
         )}
         <span
