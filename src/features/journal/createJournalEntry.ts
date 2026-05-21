@@ -32,6 +32,7 @@ export async function createJournalEntry(
   passphrase: string,
   worker: WorkerHandle | null,
   input: JournalInput,
+  cloudSync: boolean,
 ): Promise<JournalEntryResult> {
   const fields: Record<string, string> = {
     text: input.text,
@@ -42,7 +43,13 @@ export async function createJournalEntry(
   if (input.attachment) {
     const bytes = new Uint8Array(await input.attachment.arrayBuffer());
     const mime = input.attachment.type || 'application/octet-stream';
-    const stored = await mediaStore.put(ownerId, passphrase, bytes, mime);
+    const stored = await mediaStore.put(
+      ownerId,
+      passphrase,
+      bytes,
+      mime,
+      cloudSync,
+    );
     fields.attachment_sha256 = stored.hashHex;
     fields.attachment_mime = mime;
     fields.attachment_bytes = String(stored.byteLength);

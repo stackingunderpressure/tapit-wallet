@@ -18,7 +18,7 @@ interface Props {
 type SubjectMode = 'me' | 'other';
 
 export function JournalComposer({ onCreated, onCancel }: Props) {
-  const { wallet, ownerId, passphrase, save } = useWallet();
+  const { wallet, ownerId, passphrase, prefs, save } = useWallet();
   const worker = useAnchorWorker();
   const [text, setText] = useState('');
   const [category, setCategory] = useState<string>(SUGGESTED_CATEGORIES[0]);
@@ -82,15 +82,22 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const result = await createJournalEntry(wallet, ownerId, passphrase, worker, {
-        text: text.trim(),
-        category: chosenCategory,
-        subject:
-          subjectMode === 'me'
-            ? wallet.identity
-            : subjectLabel.trim(),
-        attachment: attachment ?? undefined,
-      });
+      const result = await createJournalEntry(
+        wallet,
+        ownerId,
+        passphrase,
+        worker,
+        {
+          text: text.trim(),
+          category: chosenCategory,
+          subject:
+            subjectMode === 'me'
+              ? wallet.identity
+              : subjectLabel.trim(),
+          attachment: attachment ?? undefined,
+        },
+        prefs.cloudSync,
+      );
       // Persist wallet state so the held attestation survives reload.
       await save();
       onCreated(result.digestHex);
