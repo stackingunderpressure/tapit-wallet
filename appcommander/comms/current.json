@@ -1,40 +1,39 @@
 {
   "v": 1,
-  "ts": "2026-05-21T07:55:00Z",
-  "session_id": "anchor-polish-2026-05-21-1779350009",
-  "who": { "actor": "carpenter", "feature_slug": "anchoring" },
+  "ts": "2026-05-21T12:50:00Z",
+  "session_id": "phase-4-disclosure-2026-05-21-1779367149",
+  "who": { "actor": "carpenter", "feature_slug": "disclosure" },
   "where": {
     "files": [
-      "src/features/cosigning/*",
-      "src/features/journal/*",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/useIdleLock.ts",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/anchoring/anchorProvider.ts",
-      "src/features/anchoring/anchorWorker.ts",
-      "src/features/storage/prefsStore.ts",
-      "src/features/settings/SettingsScreen.tsx",
-      "src/features-registry.ts"
+      "src/features/sign-request/*",
+      "tapit-attest/src/core/envelope.ts",
+      "tapit-attest/src/core/field-tree.ts",
+      "tapit-attest/test/field-tree.test.mjs",
+      "src/features/disclosure/*",
+      "src/App.tsx",
+      "src/features/journal/JournalDetail.tsx",
+      "src/features-registry.ts",
+      "PLAN.md"
     ],
-    "screen_path": "/, /entry/:digest, /settings"
+    "screen_path": "/, /sign, /verify, /entry/:digest"
   },
-  "layer": "service+ui",
-  "action": "autonomous-work-block",
-  "summary": "Five focused commits under the operator's 'continue with the feature logic ... double-check each time ... look over your shoulder ... execute like a professional' directive. Phase 2.6a (witness co-signing via manual envelope-JSON exchange) at 88a7c89, Phase 2.6b (custody handoff for the grandchild thread) at a036a27, Phase 2.7 (generic attachments — photos + documents with renamed claim schema) at 9e7ab4b, idle-timeout hook (DESIGN.md §5, default 30 min, configurable in Settings, closes the mid-session-abandonment window Phase 2.5 widened by exposing passphrase in context) at 076327c, anchor-worker polish (30s fetch timeout via wrapped OtsTransport + AbortController, exponential backoff for failed rows: min(5min × 2^attempts, 1hr)) at 3889fc4. Branch and main both at 3889fc4. All four root gates green on every commit; tapit-attest 74/74 active unchanged.",
+  "layer": "service+ui+doctrine",
+  "action": "autonomous-block-2",
+  "summary": "Second autonomous-work block under the operator's 'pick the next job ... good reason ... grounded ... until we get the website' directive. Four commits landed. Phase 3 (e789d2c) — Layer 2 inter-app deeplink pathway: new sign-request feature with SignRequest/SignGrant/SignDecline types, base64url-decoded URL param + strict shape validation, plain-English per-kind approval screen showing claimed origin AND actual callback host, approve calls wallet.attest + holds + queues anchoring + redirects to callback with grant, decline redirects with structured reason. Phase 4 library (c0bcda1) — selective leaf disclosure: metaHash exported from envelope.ts, real disclosureProof + verifyDisclosureProof in field-tree.ts (DisclosureProofBundle = meta + leaf + sibling-hash steps + signatures), five new tests covering round-trip, non-disclosure property, tamper detection, path errors. Phase 4 wallet UI (6ee7f34) — disclosure feature with leafIndex helper, ShareProofModal (pick-leaf-then-generate-then-copy), public /verify route outside AuthGate, parseDisclosureProof shape-validator. PLAN.md refresh (39664c4) — brings the phase map current with shipped reality. Branch and main both at 39664c4.",
   "why": {
-    "text": "Operator gave a sustained autonomous-work directive with strict discipline: continue feature logic, verify each step, library-seam audit, adversarial diff read pre-push. Treated the directive as license to keep cutting until the immediate Phase 2.x feature surface plus the highest-priority security and lifecycle polish items were all done. Multi-tab worker coordination, HEIC/WebP photo re-encode, pre-commit library-seam audit script, OTS fixture restoration, Tap-it-Attest-main.zip cleanup, and the Phase 3 inter-app pathway remain queued. None block the operator's grandchild-scenario shippability; all are documented in carpenter-state-for-foreman.",
+    "text": "Operator directive: 'pick the next job plan it out keep up the good clean habits double check everything don't trust verify make sure you have a good reason to do anything and you're following the Claude MD and stay in grounded. Continue with the next piece until we get the website.' Treated as sustained autonomous-work with strict discipline. Phase 3 picked first because it was the next-named feature on PLAN.md/DESIGN.md and serves thesis-principle #2 (every other app connects to the wallet to get something signed; other apps never hold keys themselves). Phase 4 picked next because the library's field tree was literally designed for selective disclosure with the v1.1 slot stubbed and the operator's diary-wedge brief named it as a v1 feature. PLAN.md refresh chosen as the closing housekeeping piece because the file was meaningfully out of date with shipped reality and the operator may pull it alongside the Netlify wire-up.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-AUTONOMOUS-BLOCK-010"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-AUTONOMOUS-BLOCK-2-011"
   },
   "outcome": {
-    "files_changed": ["Five commits, ~35 files net across the block including 8 new files (cosigning feature + idle-lock hook). Plus one comms-refresh commit (38727c8) at the midpoint."],
-    "tests_passing": "root 16/16 on every commit; tapit-attest 74/74 active + 4 skipped unchanged.",
+    "files_changed": ["Four commits, ~20 files: sign-request feature (7 files) + disclosure feature (5 files) + library envelope.ts/field-tree.ts/field-tree.test.mjs + App routes + journal detail + features-registry + PLAN.md"],
+    "tests_passing": "root 16/16 on every commit. tapit-attest 82 total (was 78) / 78 pass / 0 fail / 4 skipped — four new disclosure tests pass, baseline corrupted-fixture skips unchanged.",
     "build_green": true,
-    "notes": "Library-seam audit clean on every commit — wallet code consumes envelopeId, canonicalEnvelope, signEnvelope-via-wallet.sign, verifyEnvelope, assertWellFormed, metaAttestation, OpenTimestampsProvider with custom transport injection. Two mid-session bugs caught pre-push by adversarial diff review: phantom useWalletIdentity helper reference (Phase 2.6b) and missing idleTimeoutMs in initial Prefs state (idle-timeout). Both fixed in their landing commits. Keys-never-leave audit re-confirmed across the block: signing always local via wallet.sign, only public envelopes cross via copy-paste in cosigning, encrypted blobs through storage, passphrase still in WalletContext but now bounded by the idle-lock timer that re-prompts after 30 min (configurable). Bundle posture: login surface unchanged ~110KB gzipped; HomeScreen lazy chunk ~4.6KB gz, JournalDetail ~4.2KB gz, attest chunk ~25.8KB gz, all within healthy budgets but trending monotonic (bundle-budget audit logged as pre-Phase-3 follow-up)."
+    "notes": "Library-seam audit clean on every commit. Adversarial diff review caught one copy bug pre-push (SignApprovalScreen busy-state referenced a useMemo'd value only resolvable in ready-state; tightened to just 'Signing…'). Keys-never-leave audit clean: sign-request only redirects with public envelopes; disclosure proofs contain only public meta + leaf + sibling hashes + signatures, no private key ever appears. File-size rule still satisfied (largest source 273 lines)."
   },
-  "confidence": 91,
-  "uncertainty": "End-to-end against a real Netlify+Supabase deploy still pending the operator's wire-up work. Specific new validation paths for this block: copy-paste flow between two real devices for witness co-signing, custody-handoff round-trip (operator signs → new custodian signs back → operator absorbs), document-attachment picker on iOS and Android, idle timer firing after 30 min of inactivity, anchor worker fetch-timeout behavior under deliberately-slow network conditions. The pieces compose from gate-verified primitives, so the risk profile is integration-level not code-level.",
-  "ripple": ["wallet-core", "journal", "cosigning", "anchoring", "storage", "settings"],
-  "next": "Pausing at a natural stop point. The operator's immediate Phase 2.x feature surface plus the highest-priority security and lifecycle polish items are complete. Six follow-ups remain logged: multi-tab worker coordination (BroadcastChannel), HEIC/WebP photo re-encode, pre-commit library-seam audit script, bundle-budget audit, OTS fixture restoration, Tap-it-Attest-main.zip cleanup. Phase 3 (inter-app deeplink or Nostr NIP-46) is the next meaningful feature cut but it is a bigger scope step that deserves an explicit greenlight rather than autonomous initiation. PLAN.md is now out of date with the actual phase ordering (Phase 2.5/2.6/2.7 not represented) — minor housekeeping for a future session.",
+  "confidence": 92,
+  "uncertainty": "End-to-end against the live Netlify+Supabase deploy still pending operator. New paths to walk: sign-request deeplink round-trip (third-party constructs URL → wallet decodes → approve → callback receives grant), disclosure proof round-trip (pick a leaf in one tab → paste into /verify in another → math checks), /verify accessible publicly without auth (it's outside AuthGate).",
+  "ripple": ["wallet-core", "journal", "anchoring", "sign-request", "disclosure", "doctrine"],
+  "next": "Pausing at a strong stop. Phase 5 (social recovery + Mycelium) requires MYCELIUM_NETWORK_SPEC.md to exist first per existing doctrine — that spec is operator-side work the brief named as input. Phase 6 (full-keypair family custody) is marked optional in PLAN.md now that Phase 2.6's lighter identity-by-attestation model already covers the operator's grandchild scenario. Phase 7+ are explicit non-goals for v1. Remaining follow-ups (multi-tab, HEIC re-encode, pre-commit script, bundle audit, OTS fixture, zip cleanup) are all non-blocking. The v1 surface is now feature-complete for the operator's described use cases — diary + photos + documents + witness signing + custody handoff + inter-app deeplink + selective disclosure + idle-lock + anchor-lifecycle.",
   "signals": ["pulse"]
 }
