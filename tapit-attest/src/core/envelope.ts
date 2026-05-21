@@ -52,8 +52,22 @@ export function createDraft(input: DraftInput): Attestation {
   };
 }
 
-/** metaHash = taggedHash(meta, canonicalJson{v,kind,tier,subject,issuedAt}). */
-function metaHash(a: Attestation): Uint8Array {
+/**
+ * metaHash = taggedHash(meta, canonicalJson{v,kind,tier,subject,issuedAt}).
+ *
+ * Exported so the selective-disclosure verifier in `field-tree.ts` can
+ * recompute the canonical attestation digest from just the meta-fields
+ * plus a recovered claim root, without depending on the rest of the
+ * claim tree. Same function the signer used; same bytes go into the
+ * `tapit/root` tagged hash.
+ */
+export function metaHash(a: {
+  v: 1;
+  kind: AttestationKind;
+  tier: TierName;
+  subject: string;
+  issuedAt: string;
+}): Uint8Array {
   return taggedHash(
     'tapit/meta',
     utf8ToBytes(

@@ -7,6 +7,10 @@ import {
   fieldTreeRoot,
   findLeafValue,
   disclosureProof,
+  verifyDisclosureProof,
+  identityAttestation,
+  signEnvelope,
+  generateKeypair,
 } from '../dist/index.js';
 
 test('leaf and branch build the expected node shapes', () => {
@@ -36,6 +40,84 @@ test('nested objects become branches and resolve by path', () => {
   assert.equal(findLeafValue(tree, 'fields'), undefined);
 });
 
-test('disclosureProof is a v1.1 slot and throws', () => {
-  assert.throws(() => disclosureProof(), /v1\.1 slot/);
+test('disclosureProof + verifyDisclosureProof round-trip on a signed attestation', () => {
+  const kp = generateKeypair();
+  const signed = signEnvelope(
+    identityAttestation({
+      subject: 'did:example:ada',
+      tier: 'routine',
+      fields: { display_name: 'Ada', over_21: true, born_year: 1815 },
+    }),
+    kp.privateKey,
+  );
+  const proof = disclosureProof(signed, 'over_21');
+  assert.equal(proof.leaf.name, 'over_21');
+  assert.equal(proof.leaf.value, true);
+  const result = verifyDisclosureProof(proof);
+  assert.equal(result.valid, true);
+  assert.equal(result.signers[0].signer, kp.publicKey);
+  assert.equal(result.signers[0].valid, true);
+});
+
+test('disclosureProof reveals only the chosen leaf — others are hashes', () => {
+  const kp = generateKeypair();
+  const signed = signEnvelope(
+    identityAttestation({
+      subject: 'did:example:ada',
+      tier: 'routine',
+      fields: { display_name: 'Ada', over_21: true, born_year: 1815 },
+    }),
+    kp.privateKey,
+  );
+  const proof = disclosureProof(signed, 'over_21');
+  const serialized = JSON.stringify(proof);
+  assert.ok(!serialized.includes('Ada'), 'display_name leaked');
+  assert.ok(!serialized.includes('1815'), 'born_year leaked');
+});
+
+test('a tampered disclosed leaf fails verification', () => {
+  const kp = generateKeypair();
+  const signed = signEnvelope(
+    identityAttestation({
+      subject: 'did:example:ada',
+      tier: 'routine',
+      fields: { over_21: true },
+    }),
+    kp.privateKey,
+  );
+  const proof = disclosureProof(signed, 'over_21');
+  const tampered = { ...proof, leaf: { ...proof.leaf, value: false } };
+  assert.equal(verifyDisclosureProof(tampered).valid, false);
+});
+
+test('a tampered meta-field fails verification', () => {
+  const kp = generateKeypair();
+  const signed = signEnvelope(
+    identityAttestation({
+      subject: 'did:example:ada',
+      tier: 'routine',
+      fields: { over_21: true },
+    }),
+    kp.privateKey,
+  );
+  const proof = disclosureProof(signed, 'over_21');
+  const tampered = {
+    ...proof,
+    meta: { ...proof.meta, subject: 'did:example:impostor' },
+  };
+  assert.equal(verifyDisclosureProof(tampered).valid, false);
+});
+
+test('disclosureProof throws when path misses or lands on a branch', () => {
+  const kp = generateKeypair();
+  const signed = signEnvelope(
+    identityAttestation({
+      subject: 'did:example:ada',
+      tier: 'routine',
+      fields: { fields: { nested: 'x' } },
+    }),
+    kp.privateKey,
+  );
+  assert.throws(() => disclosureProof(signed, 'missing'), /not found/);
+  assert.throws(() => disclosureProof(signed, 'fields'), /terminate at a leaf/);
 });
