@@ -8,199 +8,157 @@ comms active.
 
 ## WHAT-CHANGED-RECENTLY
 
-**Post-deploy punch list completed** under operator's
-verify-don't-trust re-grounding directive. Four cuts shipped
-across two sessions; three landed in this block. Branch and
-main at `701d39f`.
+**Bundle-budget mechanism shipped** at commit `5a933a9` on
+branch + main. Third mechanism-over-prose conversion this
+session-week (after library-seam audit `66637f1` and the
+photo-capture/punch-list block). Per CLAUDE_ROOT.md
+non-negotiable #5.
 
-1. **Cut 1 — photo capture fix** (`05fcd1c`, previous turn).
-   Dropped `capture="environment"` (iOS PWA standalone
-   interaction was unreliable). Added HEIC→JPEG normalization
-   via canvas. Visible "Reading photo…" state during the async
-   normalize.
+New `scripts/bundle-budget.mjs`:
+- Reads every `.js` and `.css` file under `dist/assets` post-
+  vite-build, gzips each, asserts size against per-pattern
+  budget.
+- Each currently-emitted chunk has an explicit named budget
+  with 20-40% headroom above today's measured size. Patterns
+  match Vite's content-hashed filenames.
+- Catch-all at 3KB gz forces any new unrecognized chunk to
+  surface immediately with "add a named budget" guidance.
+- Failure output: file, over-by, three-fix recipe (code-split
+  / audit-and-bump / refactor).
+- Wired into `npm run build` after `vite build` so the build
+  gate fails on budget violations. Standalone via
+  `npm run check-bundle`.
 
-2. **Cut 2 — Supabase Storage for media when cloud-sync ON**
-   (`49dbb09`). New SQL migration `20260522000001_create_wallet_media_bucket.sql`
-   creates the wallet_media bucket + four owner-scoped RLS
-   policies on storage.objects keyed by
-   `(storage.foldername(name))[1] = auth.uid()::text`. Path:
-   `<owner_id>/<sha256-hex>.json`. New `remoteMediaStore.ts`
-   handles upload/download with upsert + 404 handling.
-   `mediaStore.ts` refactored to local+remote coordinator (same
-   shape as walletStore): encrypts once, IDB always, Storage if
-   cloudSync; get tries local first, falls back to remote on
-   miss with local-cache on hit (no re-encrypt under possibly-
-   different passphrase). `createJournalEntry` signature gained
-   cloudSync boolean; `JournalComposer` threads it from
-   prefs.cloudSync.
+**Verify-don't-trust applied to the check itself:** deliberately
+tightened the QrShow budget to 5KB gz against its real 11.62KB
+size, confirmed exit code 1 with the exact filename + over-by
++ three-fix message, restored to real 15KB, confirmed exit code
+0 with all 18 chunks named. Mechanism works end to end.
 
-3. **Cut 3 — Web Share API for AirDrop** (`ba04481`). New
-   `src/shared/lib/share.ts` wraps `navigator.share` with
-   feature-detect + clipboard fallback + AbortError-as-cancelled.
-   Wired into all four producer modals (CosignRequest,
-   CosignAsWitness signed step, CustodyHandoff signed step,
-   ShareProof generated step) as a primary "Share via AirDrop /
-   Messages / …" button alongside Copy. iOS surfaces the system
-   share sheet — AirDrop, Messages, Mail, anything installed.
-
-4. **Cut 4 — QR encode + scan** (`701d39f`). Encode via
-   `qrcode` npm package (^1.5.4, ~10KB gz tree-shaken, SVG
-   output, low error correction). Decode via native
-   `window.BarcodeDetector` API (Chrome / Edge / iPhone Safari
-   17+; Firefox shows "use Paste or Share" fallback). New
-   `src/features/qr/` feature with manifest, encodeQr,
-   barcodeDetector helpers, QrShow (async-rendered SVG with
-   friendly too-large message), QrScanModal (camera stream +
-   rAF detect loop + cleanup on unmount). Producer modals got
-   "Show as QR code" toggle; receiver modals (AbsorbCosign,
-   CosignAsWitness paste step, VerifyProofScreen) got "Scan QR"
-   button.
-
-**Pre-commit catches this block (verify-don't-trust working):**
-- Typecheck on `QrScanModal`: detector could be null inside
-  start() async closure. Fixed by capturing in non-null local.
-- Lint on `QrShow`: unused react/no-danger eslint-disable
-  directive. Removed.
-- Mid-session: shell cwd persisted from earlier `cd tapit-attest`,
-  caught when gates output showed wrong package. Explicitly
-  `cd /home/user/tapit-wallet` before re-running.
-- Library-seam audit ran clean on every commit — no new wallet
-  function names collided with tapit-attest exports.
+**Mid-session caught a shell-cwd-persisted error** when running
+the script after a prior `cd dist/assets`. The Node module-not-
+found error surfaced the issue cleanly; recovered with explicit
+`cd /home/user/tapit-wallet`. Third time this session-week.
 
 ## Gates at session end
 
 **Root:** typecheck / lint / test (17/17) / build all green.
-Manifest-registry auto-picked up the new `qr` slug.
+Build gate now includes bundle-budget assertion.
 
-**tapit-attest:** 82 total / 78 pass / 0 fail / 4 skipped
-(corrupted-fixture baseline unchanged).
+**tapit-attest:** unchanged at 82 / 78 / 0 / 4.
 
-**Bundle posture (login surface unchanged at ~110KB gz):**
-- main: 8.34KB gz 3.49KB
-- react: 162.87KB gz 53.19KB
-- supabase: 207.71KB gz 54.28KB
-- attest (lazy): 71.10KB gz 26.40KB
-- WalletProvider (lazy): 11.90KB gz 3.90KB
-- HomeScreen (lazy): 17.28KB gz 5.37KB
-- JournalDetail (lazy): 18.75KB gz 5.29KB
-- SettingsScreen (lazy): ~3.95KB gz 1.63KB
-- SignApprovalScreen (lazy): 8.28KB gz 2.86KB
-- VerifyProofScreen (lazy): ~5KB gz est
-- QrShow (lazy, new): 29.19KB gz 11.62KB — qrcode library
-- share-* (lazy): 8.77KB gz 4.14KB
+**Bundle posture (login surface unchanged ~110KB gz):** all 18
+emitted chunks under their named budgets:
+- index (login main): 3.50KB gz / 5KB budget
+- WalletProvider: 3.90KB / 5.5KB
+- HomeScreen: 5.37KB / 8KB
+- JournalDetail: 5.29KB / 8KB
+- SettingsScreen: 1.88KB / 3KB
+- SignApprovalScreen: 2.83KB / 4KB
+- VerifyProofScreen: under 5KB
+- QrShow (qrcode lib): 11.62KB / 15KB
+- QrScanModal: 1.33KB / 3KB
+- WalletContext: 0.13KB / 0.5KB
+- useWallet hook: 0.21KB / 0.5KB
+- useAnchorWorker hook: 0.18KB / 0.5KB
+- anchorQueue: 0.58KB / 1.5KB
+- saveWallet: 0.78KB / 2KB
+- attest vendor (lazy): 26.40KB / 35KB
+- react vendor: 53.19KB / 60KB
+- supabase vendor: 54.28KB / 60KB
+- css: ~3KB / 6KB
 
-Post-auth surface trending monotonic. Bundle-budget audit
-remains on follow-up list; a mechanical chunk-size assertion in
-vitest is the next mechanism-over-prose candidate.
+**Keys-never-leave audit clean.** Doctrine-only commit, no
+runtime surface touched.
 
-**Keys-never-leave audit clean.** Cut 2 encrypts client-side
-before any Storage upload; Cut 3 and Cut 4 only surface public
-envelope/proof JSON the clipboard already exposes; the private
-key never appears in any payload at any layer.
-
-**File-size rule** (CLAUDE_ROOT.md 400-line warn): satisfied.
-QrScanModal is the largest new file at ~140 lines.
+**File-size rule satisfied.** Largest source file remains
+`WalletProvider.tsx` at 273 lines. NO MECHANICAL CHECK YET —
+that's the next mechanism candidate (see below).
 
 ## WHAT'S-PENDING
 
-1. **Operator browser-verifies all four cuts** against the
-   live Netlify + Supabase deploy.
-   - Cut 1: photo capture flow works with the standard file
-     picker; HEIC photo from iPhone renders correctly in detail
-     view (canvas-converted to JPEG).
-   - Cut 2: sign-entry-with-photo + cloud-sync-ON → sign out →
-     clear IndexedDB → sign back in → photo still loads in
-     detail view (remote fallback works).
-   - Cut 3: Share button on any signed envelope surfaces iOS
-     share sheet including AirDrop.
-   - Cut 4: Show QR renders; another device's Scan QR reads it
-     and fills the textarea.
-2. **Operator-side: run the new SQL migration** in Supabase
-   SQL editor BEFORE redeploying. Without it, Cut 2's photo
-   upload throws (caught + logged, local save still works, but
-   no cloud mirror until the bucket exists).
-3. **Five non-blocking follow-ups** (all logged):
+1. **Operator browser-verifies the Cut-1-through-Cut-4 punch
+   list** against the live Netlify + Supabase deploy (still
+   pending from the previous block). PLAN.md and prior
+   comms have the walk-through.
+2. **Operator-side: Cut 2 migration** still needs running in
+   Supabase SQL editor if not already (the wallet_media
+   bucket migration from `20260522000001_create_wallet_media_bucket.sql`).
+3. **Five non-blocking follow-ups** unchanged:
    - Multi-tab worker coordination (BroadcastChannel).
-   - Bundle-budget audit + dynamic-import the qrcode library.
    - OTS fixture restoration (4 skipped library tests).
    - `Tap-it-Attest-main.zip` cleanup at repo root.
-   - Backfill remote media for entries created before Cut 2.
-4. **NFC remains the documented platform-gap** — Safari iOS
-   doesn't implement WebNFC. Not v1.
-5. **Phase 5 — Mycelium + Shamir recovery** still waits for
-   `MYCELIUM_NETWORK_SPEC.md`.
-6. **Phase 6 — Full-keypair family custody** optional now.
+   - Backfill remote media for pre-Cut-2 entries.
+   - Total-post-auth-bytes ceiling (this block's gap — the
+     per-chunk check doesn't catch death-by-a-thousand-cuts).
+4. **Next mechanism candidate logged: file-size limit.**
+   CLAUDE_ROOT.md mentions 400-line warn / 800 error but no
+   check fails. Same conversion shape as library-seam +
+   bundle-budget. Small, mechanical, preventive. Logged in
+   the bundle-budget commit message and in ideas.
 
 ## WHAT-TO-FLAG
 
-**The doctrine continues to select tasks deterministically.**
-This block was the operator's punch list — every item had a
-clear "why" tied to a specific user-observable behavior. The
-mechanical-check pattern from CLAUDE_ROOT.md non-negotiable #5
-caught three would-be bugs across this block plus the previous
-one. The next mechanism candidate I can see: a bundle-size
-assertion. The post-auth chunks are trending monotonic and
-there's currently no check that fails when they cross a
-budget. Vitest can read dist sizes post-build and assert; that
-converts "watch the trend" into a test-fails-on-regression.
+**Third mechanism conversion this session-week.** Library-seam
+(commit 66637f1), now bundle-budget (5a933a9). Same pattern
+each time: re-ground in CLAUDE_ROOT.md, find the verbal rule
+that's been holding by attention, convert to a check that
+fails. Each conversion reduces ongoing Carpenter-attention
+cost. The remaining attention can go to actual product work.
 
-**Cut 2 operator-side migration is the only deploy-blocking
-step** for the punch list to be visible to users. The wallet
-code doesn't crash without the bucket — uploads fail gracefully
-— but the cloud-sync promise isn't real until the bucket
-exists.
+**The pattern of doctrine-driven task selection is robust.**
+This session: operator said "reground, next piece" — the
+doctrine itself selected the task. Worth keeping crisp: when
+the operator gives an ambiguous "next piece" directive, the
+mechanism-over-prose non-negotiable is a reliable source for
+the next-piece pick whenever a verbal rule has been holding
+by attention for several sessions.
 
-**Cut 4 BarcodeDetector API is iOS Safari 17+ / Chrome / Edge
-only.** Firefox families get the friendly fallback. If the
-operator's family includes any Firefox-on-Android users, set
-expectations.
-
-**The bundle-bloat trend is now actively meaningful.** Login
-surface still holds at ~110KB gz but post-auth chunks crossed
-into substantial territory this block. Next feature work
-should be preceded by a budget audit.
+**Shell-cwd-persistence keeps biting.** Three times this
+session-week. The Bash tool documentation says cwd persists;
+my workflow needs to always prefix significant commands with
+explicit `cd /home/user/tapit-wallet &&` when there's any
+chance a prior command cd'd elsewhere. Could log as a
+Carpenter operating-protocol pattern.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator runs the new SQL migration in Supabase.
-2. Operator redeploys via Netlify (auto-deploys from main).
-3. Operator walks the four-cut verify checklist above.
-4. If clean: ship. If any stall: report the specific failure.
-5. The five non-blocking follow-ups available for any quiet
-   slot; highest-leverage is the bundle-budget audit (preventive
-   before more features land).
+1. Operator browser-verifies the Cut-1-through-Cut-4 punch
+   list against the live deploy whenever they're ready.
+2. If clean: ship. If any stall: report the specific failure.
+3. Next mechanism conversion (file-size limit) is available
+   for any quiet slot.
+4. The non-blocking follow-ups remain available.
+5. Phase 5 (Mycelium + Shamir recovery) still waits for
+   MYCELIUM_NETWORK_SPEC.md.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Disciplined, focused, post-deploy mode. The verify-don't-trust
-re-grounding directive was sharp — "do not trust anyone else's
-word go back to the source" — and the Carpenter took it
-seriously, re-reading both doctrine files fresh and re-verifying
-the prior photo fix via grep rather than trusting written notes.
-The operator is doing real testing work in parallel on Netlify;
-the Carpenter has now cleared the four-item punch list that
-came from that testing. Next exchange will be either a
-browser-verify outcome on the now-shipped cuts or a new
-direction.
+Disciplined, doctrine-anchored. The "reground, verify don't
+trust, take care of the next piece" directive is becoming a
+recurring rhythm — each invocation produces one focused
+commit that does what the doctrine asks. The mechanism-over-
+prose pattern is the throughline. Expect either browser-verify
+findings or another reground-and-next-piece directive next.
 
 ## Ideas ready to revisit
 
-All earlier idea entries hold. New observation worth naming:
+All earlier idea entries hold. Updated observations from this
+session:
 
-- **Bundle-size assertion as the next mechanism candidate.**
-  Post-auth lazy chunks are trending monotonic; CLAUDE_ROOT.md
-  has a 400-line file-size mechanism but no chunk-size one.
-  vitest can read post-build dist sizes and assert against a
-  budget. Catches the next bundle-bloat regression without
-  operator-attention cost.
+- **The third mechanism-over-prose conversion landed.** The
+  conversion treatment is increasingly the right answer to
+  the operator's "next piece" directives because each one
+  visibly reduces the rule-keeps-getting-missed risk class.
 
-- **The dynamic-import-on-toggle pattern is the right next
-  optimization for QrShow.** Currently QrShow's parent (e.g.,
-  CosignRequestModal) pulls the qrcode library when the modal
-  mounts. Wrapping QrShow in a React.lazy that only resolves
-  when the Show-as-QR toggle fires would defer the 11.6KB gz
-  cost until first use. Small refactor, big savings for users
-  who never tap Show as QR.
+- **File-size limit is the next mechanism candidate.**
+  CLAUDE_ROOT.md 400-line warn / 800 error has been holding
+  by attention but has no check. Same conversion shape.
+
+- **Total-post-auth-bytes ceiling** is a gap in the bundle-
+  budget mechanism — death by a thousand cuts where every
+  chunk creeps toward its budget ceiling without any single
+  chunk failing. Worth adding if the trend continues.
 
 The 16+ earlier idea entries are stage-tagged in
 `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
