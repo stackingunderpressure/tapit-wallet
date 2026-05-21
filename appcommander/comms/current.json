@@ -1,39 +1,40 @@
 {
   "v": 1,
-  "ts": "2026-05-21T07:50:00Z",
-  "session_id": "phase-2-6-cosigning-2026-05-21-1779349061",
-  "who": { "actor": "carpenter", "feature_slug": "cosigning" },
+  "ts": "2026-05-21T07:55:00Z",
+  "session_id": "anchor-polish-2026-05-21-1779350009",
+  "who": { "actor": "carpenter", "feature_slug": "anchoring" },
   "where": {
     "files": [
       "src/features/cosigning/*",
-      "src/features/journal/createJournalEntry.ts",
-      "src/features/journal/JournalComposer.tsx",
-      "src/features/journal/JournalCard.tsx",
-      "src/features/journal/JournalDetail.tsx",
-      "src/features/journal/downloadEntry.ts",
-      "src/features/journal/manifest.ts",
+      "src/features/journal/*",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/wallet-core/useIdleLock.ts",
       "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/anchoring/anchorProvider.ts",
+      "src/features/anchoring/anchorWorker.ts",
+      "src/features/storage/prefsStore.ts",
+      "src/features/settings/SettingsScreen.tsx",
       "src/features-registry.ts"
     ],
-    "screen_path": "/, /entry/:digest"
+    "screen_path": "/, /entry/:digest, /settings"
   },
-  "layer": "ui",
-  "action": "build",
-  "summary": "Three focused features shipped this session under the operator's 'continue on while I get the Netlify site ready ... don't trust verify execute like a professional' directive. Phase 2.6a — witness co-signing via manual envelope-JSON exchange: new cosigning feature folder with parseEnvelope (assertWellFormed-validated paste), mergeSignatures (envelopeId-match + dedupe + verifyEnvelope sanity), EnvelopePreview (plain-English render), and three modals (request / sign-as-witness / absorb). Phase 2.6b — custody handoff: createCustodyHandoff builds a meta-kind attestation with action='custody_handoff', signed by the current custodian; the witness flow handles the new custodian's signature; absorb merges. JournalDetail surfaces 'Hand off custody of {subject}' only when subject != wallet.identity. Phase 2.7 — generic attachments: renamed claim leaves photo_* → attachment_*, composer has two upload buttons (📷 Photo with capture=environment for the grandchild scenario, 📄 Document with broad MIME accept), Card/Detail/downloadEntry/EnvelopePreview all updated to handle image vs document rendering. Three commits landed (88a7c89, a036a27, 9e7ab4b) plus the prior verify-pass commits (528dc81, 78baa01, a33474e). Branch and main both at 9e7ab4b.",
+  "layer": "service+ui",
+  "action": "autonomous-work-block",
+  "summary": "Five focused commits under the operator's 'continue with the feature logic ... double-check each time ... look over your shoulder ... execute like a professional' directive. Phase 2.6a (witness co-signing via manual envelope-JSON exchange) at 88a7c89, Phase 2.6b (custody handoff for the grandchild thread) at a036a27, Phase 2.7 (generic attachments — photos + documents with renamed claim schema) at 9e7ab4b, idle-timeout hook (DESIGN.md §5, default 30 min, configurable in Settings, closes the mid-session-abandonment window Phase 2.5 widened by exposing passphrase in context) at 076327c, anchor-worker polish (30s fetch timeout via wrapped OtsTransport + AbortController, exponential backoff for failed rows: min(5min × 2^attempts, 1hr)) at 3889fc4. Branch and main both at 3889fc4. All four root gates green on every commit; tapit-attest 74/74 active unchanged.",
   "why": {
-    "text": "Operator directive 2026-05-21: 'continue with all of the logic in the features and double check our work each time stay grounded stay within the guard rails look over your shoulder verified don't trust and execute like a professional.' Treated as a sustained autonomous-work mandate with strict discipline. Library-seam audit before each commit (confirming envelopeId, canonicalEnvelope, signEnvelope/wallet.sign, verifyEnvelope, assertWellFormed, metaAttestation are all consumed not duplicated). Adversarial diff read before each commit (caught one mid-session bug — a non-existent useWalletIdentity reference — before push). Gates green before each push. Direct-to-main per CLAUDE.md doctrine. Three features chosen because they complete the v1 vertical slice the operator described in earlier messages: diary entries with witnesses (co-signing), grandchild thread custody handoff to parents (custody flow), photos AND documents both supported (generic attachments). The 'don't worry don't trust verify' framing carried into this session's rhythm: every commit verified its own diff before push, every change went through library-seam audit, every gate ran fresh.",
+    "text": "Operator gave a sustained autonomous-work directive with strict discipline: continue feature logic, verify each step, library-seam audit, adversarial diff read pre-push. Treated the directive as license to keep cutting until the immediate Phase 2.x feature surface plus the highest-priority security and lifecycle polish items were all done. Multi-tab worker coordination, HEIC/WebP photo re-encode, pre-commit library-seam audit script, OTS fixture restoration, Tap-it-Attest-main.zip cleanup, and the Phase 3 inter-app pathway remain queued. None block the operator's grandchild-scenario shippability; all are documented in carpenter-state-for-foreman.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-PHASE-2-6-AND-2-7-009"
+    "linked_mission_id": "TAPITWALLET-2026-05-21-AUTONOMOUS-BLOCK-010"
   },
   "outcome": {
-    "files_changed": ["Three commits, 24 files total: cosigning feature (8 new files) + journal updates (5 files) + home/registry/manifest updates (3 files) + comms artifacts"],
-    "tests_passing": "root 16/16 across all three commits. tapit-attest 74/74 active, 4 skipped (corrupted fixture, unchanged).",
+    "files_changed": ["Five commits, ~35 files net across the block including 8 new files (cosigning feature + idle-lock hook). Plus one comms-refresh commit (38727c8) at the midpoint."],
+    "tests_passing": "root 16/16 on every commit; tapit-attest 74/74 active + 4 skipped unchanged.",
     "build_green": true,
-    "notes": "Bundle posture: login surface unchanged at ~110KB gzipped (everything new is lazy-loaded post-auth). After three commits: HomeScreen chunk 4.62KB gz (was 1.39KB pre-Phase-2.5), JournalDetail 4.15KB gz (was 1.61KB pre-Phase-2.5 → carries 4 modals + attachment-rendering), WalletProvider 3.40KB gz, attest chunk 25.76KB gz (carries journal + meta builders). All within reasonable budgets. Library-seam audit ran clean on each commit. Mid-session bug (referenced a non-existent helper) caught by typecheck-driven diff review pre-push. Keys-never-leave audit: cosigning signing happens locally via wallet.sign (private key never leaves the Wallet object); only public envelopes cross the wire via copy-paste; the witness's key never leaves their device; the originator's wallet only receives a signature (no key)."
+    "notes": "Library-seam audit clean on every commit — wallet code consumes envelopeId, canonicalEnvelope, signEnvelope-via-wallet.sign, verifyEnvelope, assertWellFormed, metaAttestation, OpenTimestampsProvider with custom transport injection. Two mid-session bugs caught pre-push by adversarial diff review: phantom useWalletIdentity helper reference (Phase 2.6b) and missing idleTimeoutMs in initial Prefs state (idle-timeout). Both fixed in their landing commits. Keys-never-leave audit re-confirmed across the block: signing always local via wallet.sign, only public envelopes cross via copy-paste in cosigning, encrypted blobs through storage, passphrase still in WalletContext but now bounded by the idle-lock timer that re-prompts after 30 min (configurable). Bundle posture: login surface unchanged ~110KB gzipped; HomeScreen lazy chunk ~4.6KB gz, JournalDetail ~4.2KB gz, attest chunk ~25.8KB gz, all within healthy budgets but trending monotonic (bundle-budget audit logged as pre-Phase-3 follow-up)."
   },
-  "confidence": 90,
-  "uncertainty": "Browser verification still pending operator (the in-progress Netlify+Supabase wire-up). End-to-end paste-from-clipboard-back-and-forth between two real devices, the meta-attestation custody chain rendering correctly under quorum-of-good verification, and the attachment download cycle with non-image MIME types are all browser-runtime-dependent and need real-device walking. None of the code paths are speculative — each is verified at gate level — but feature correctness requires the operator's hands.",
-  "ripple": ["wallet-core", "journal", "anchoring", "cosigning", "storage"],
-  "next": "Continuing under the operator's autonomous-work directive. Next planned cut: idle-timeout hook (DESIGN.md §5) — highest-priority security item from the verify pass because passphrase is now in WalletContext. After idle-timeout: anchor worker fetch timeout (AbortController), multi-tab worker coordination (BroadcastChannel), exponential backoff. Then back to feature work — Phase 3 (Nostr NIP-46 inter-app pathway) when the operator names it. Phase 5 (Mycelium + Shamir recovery) holds for MYCELIUM_NETWORK_SPEC.md to land first per existing doctrine.",
+  "confidence": 91,
+  "uncertainty": "End-to-end against a real Netlify+Supabase deploy still pending the operator's wire-up work. Specific new validation paths for this block: copy-paste flow between two real devices for witness co-signing, custody-handoff round-trip (operator signs → new custodian signs back → operator absorbs), document-attachment picker on iOS and Android, idle timer firing after 30 min of inactivity, anchor worker fetch-timeout behavior under deliberately-slow network conditions. The pieces compose from gate-verified primitives, so the risk profile is integration-level not code-level.",
+  "ripple": ["wallet-core", "journal", "cosigning", "anchoring", "storage", "settings"],
+  "next": "Pausing at a natural stop point. The operator's immediate Phase 2.x feature surface plus the highest-priority security and lifecycle polish items are complete. Six follow-ups remain logged: multi-tab worker coordination (BroadcastChannel), HEIC/WebP photo re-encode, pre-commit library-seam audit script, bundle-budget audit, OTS fixture restoration, Tap-it-Attest-main.zip cleanup. Phase 3 (inter-app deeplink or Nostr NIP-46) is the next meaningful feature cut but it is a bigger scope step that deserves an explicit greenlight rather than autonomous initiation. PLAN.md is now out of date with the actual phase ordering (Phase 2.5/2.6/2.7 not represented) — minor housekeeping for a future session.",
   "signals": ["pulse"]
 }

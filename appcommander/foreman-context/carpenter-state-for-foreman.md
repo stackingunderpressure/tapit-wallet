@@ -1,185 +1,194 @@
 # Carpenter state — for Foreman's eyes
 
-**Format note:** This file is the Carpenter's testimony, written
-for the Foreman's eyes (Frank, running in AppCommander). The
-Foreman edge function fetches it from main on every call and
-injects it into Frank's system prompt BEFORE peer-memory rules.
-
 **Operator-mode note:** AppCommander has been down all day.
-Operator is wiring up Netlify + Supabase in parallel. Dual-
-surface comms remains active.
+Operator wiring up Netlify + Supabase in parallel. Dual-surface
+comms active.
 
 ---
 
 ## WHAT-CHANGED-RECENTLY
 
-**Three features shipped in autonomous-work mode** under the
-operator's "continue while I get the Netlify site ready ... don't
-trust verify execute like a professional" directive. Each one
-landed as a single commit with library-seam audit + adversarial
-diff read pre-push.
+**Five-commit autonomous-work block** under the operator's
+"continue with the feature logic ... don't trust verify execute
+like a professional" directive. All commits on branch + main,
+all gates green, library-seam audit clean on each.
 
-**Phase 2.6a — witness co-signing** (commit `88a7c89`). New
-`src/features/cosigning/` folder. Operator A taps "Request a
-co-sign" on an entry → wallet shows canonical envelope JSON in a
-copyable textarea → operator hands it off via whatever channel.
-Operator B taps "Sign someone else's entry" on home → pastes →
-plain-English `EnvelopePreview` → "I confirm" → `wallet.sign()`
-appends witness signature → copy return JSON. Operator A pastes
-return into "Add a co-signer's signature" → `mergeSignatures`
-helper dedupes by signer+sig and runs `verifyEnvelope` sanity →
-`wallet.hold()` replaces by `envelopeId` → save. All primitives
-from `tapit-attest`: `envelopeId`, `canonicalEnvelope`,
-`signEnvelope` via `wallet.sign`, `verifyEnvelope`,
-`assertWellFormed`.
+1. **Phase 2.6a — witness co-signing** (`88a7c89`). New
+   `src/features/cosigning/` folder. Three modals (request /
+   sign-as-witness / absorb) sharing helpers — parseEnvelope
+   (assertWellFormed-validated paste), mergeSignatures
+   (envelopeId-match + dedupe + verifyEnvelope sanity),
+   EnvelopePreview (plain-English render). Manual envelope-JSON
+   exchange between operator and witness via whatever channel
+   (text, AirDrop, Signal). QR transport is later polish on the
+   same primitives.
 
-**Phase 2.6b — custody handoff** (commit `a036a27`). The
-grandparent → parents → grandchild custody arc gets its middle
-step. `createCustodyHandoff` builds a meta-kind attestation,
-tier `notable`, claim `{action: custody_handoff, from, to,
-transferred_at, note?}`. Signed by current custodian, held,
-queued for OTS anchoring, wallet saved. New custodian signs via
-the existing witness flow; originator absorbs via the existing
-absorb modal. Multi-signed + anchored meta-attestation is the
-chain authority event. Button only renders when `entry.subject !==
-wallet.identity` so self-entries don't show it.
+2. **Phase 2.6b — custody handoff for the grandchild thread**
+   (`a036a27`). createCustodyHandoff builds a meta-kind
+   attestation (action='custody_handoff', from, to,
+   transferred_at, note?), tier notable, signed by current
+   custodian, held, anchor-queued, wallet saved. New custodian
+   signs via existing witness flow; originator absorbs via
+   existing absorb modal. "Hand off custody of {subject}" button
+   only renders when entry.subject !== wallet.identity.
 
-**Phase 2.7 — generic attachments** (commit `9e7ab4b`). Claim
-leaves renamed `photo_*` → `attachment_*` plus new
-`attachment_name`. Composer has two upload buttons: 📷 Photo
-(keeps `capture="environment"` for the mobile-camera shortcut
-that the grandchild scenario depends on) and 📄 Document (broad
-file picker — PDF, text, Word, Excel, HEIC). Card shows the
-appropriate icon based on MIME. Detail renders images inline,
-documents as a download link. downloadEntry uses original
-filename when recorded. EnvelopePreview says "photo" or "document"
-based on MIME.
+3. **Phase 2.7 — generic attachments** (`9e7ab4b`). Renamed
+   claim leaves photo_* → attachment_* + new attachment_name.
+   Composer has two upload buttons: 📷 Photo (keeps
+   capture=environment for mobile camera shortcut), 📄 Document
+   (broad MIME picker — PDF, text, Word, Excel, HEIC). Card
+   shows MIME-appropriate icon; Detail renders images inline,
+   documents as a download link with original filename.
 
-**Mid-session bug caught + fixed pre-push:** referenced a
-non-existent `useWalletIdentity` helper in JournalDetail while
-wiring the custody button. The typecheck-driven adversarial diff
-review caught it before commit; replaced with `wallet.identity`
-from the existing `useWallet` destructure. Pattern works.
+4. **Idle-timeout hook** (`076327c`). DESIGN.md §5.
+   prefs.idleTimeoutMs default 30 min, configurable in Settings
+   (5/15/30/60/240 min or Never). New useIdleLock listens for
+   mousedown/keydown/touchstart/scroll/visibilitychange. Expiry
+   reloads encrypted blob via walletStore.load, clears
+   passphrase, transitions to locked phase. Closes the
+   mid-session-abandonment window Phase 2.5 widened.
+
+5. **Anchor-worker polish** (`3889fc4`). Two changes within the
+   anchoring/ feature:
+   - anchorProvider wraps OpenTimestampsProvider with a custom
+     OtsTransport (injection point on the library) that uses
+     AbortController with 30s per-request timeout. No library
+     change.
+   - anchorWorker.processOne skips failed rows until last_attempt
+     + min(5min × 2^(attempts-1), 1hr) has elapsed. Queued and
+     pending still process every scan; only failed backs off.
+     Max interval 1 hour so a returning calendar gets retried
+     within an hour of app reopen.
+
+Multi-tab worker coordination deferred — most users one tab, cost
+of two-tab races is wasted network + queue dedupes anyway, and
+leader-election UX cost is real friction.
+
+Plus a comms-refresh commit (`38727c8`) at the midpoint of the
+session.
+
+**Two mid-session bugs caught pre-push** by typecheck-driven
+adversarial diff review:
+- Phase 2.6b: referenced a non-existent useWalletIdentity helper.
+  Replaced with wallet.identity from existing useWallet
+  destructure.
+- Idle-timeout: initial-state Prefs object in WalletProvider
+  missing the new idleTimeoutMs field. Fixed in the same commit.
+
+The pre-push verify rhythm is doing its job.
 
 ## Gates at session end
 
-**Root:** typecheck / lint / test (16/16) / build all green on
-every one of the three commits. Manifest-registry vitest test
-auto-picked up the new `cosigning` slug.
+**Root (every commit):** typecheck / lint / test (16/16) / build
+all green. Manifest-registry vitest test auto-picked up the new
+cosigning slug.
 
-**Bundle posture (login surface unchanged at ~110KB gzipped):**
+**Bundle posture (login surface unchanged at ~110KB gz):**
 - main: 7.81KB gz 3.37KB
-- react: 162KB gz 53KB
-- supabase: 207KB gz 54KB
-- attest (lazy, post-auth): 69KB gz 25.76KB — grew to carry
-  journal + meta builders
+- react: 162.28KB gz 52.97KB
+- supabase: 207.71KB gz 54.28KB
+- attest (lazy): 69.03KB gz 25.76KB
 - WalletProvider (lazy): 10.55KB gz 3.40KB
-- HomeScreen (lazy): 15.12KB gz 4.62KB
+- HomeScreen (lazy): 15.12KB gz 4.61KB
 - JournalDetail (lazy): 13.14KB gz 4.15KB
 - SettingsScreen (lazy): 3.95KB gz 1.63KB
 - useAnchorStatus (lazy): 5.66KB gz 2.83KB
 - anchorQueue (lazy): 1.58KB gz 0.77KB
 
-**tapit-attest:** 74 pass / 0 fail / 4 skipped (corrupted fixture
-unchanged).
+All within healthy budgets but lazy chunks are trending
+monotonic. Bundle-audit logged as pre-Phase-3 follow-up.
 
-**Keys-never-leave audit:** clean across all three commits.
-Witness signing happens locally via `wallet.sign`; only public
-envelopes cross the wire via copy-paste; the witness's key
-never leaves their device; the originator's wallet only
-receives a signature.
+**tapit-attest:** 74 pass / 0 fail / 4 skipped (unchanged).
 
-**File-size rule** (CLAUDE_ROOT.md 400-line warn): satisfied.
-Largest source file remains `WalletProvider.tsx` at 273 lines.
+**Keys-never-leave audit clean across the block.** Witness
+signing local via wallet.sign, only public envelopes cross the
+wire, passphrase in WalletContext now bounded by idle-timer
+re-prompt.
+
+**NOT VERIFIED:** end-to-end against a real Supabase + real OTS
+calendar deploy. Operator's Netlify+Supabase wire-up is in
+progress in parallel.
 
 ## WHAT'S-PENDING
 
-1. **Continuing now: idle-timeout hook** (DESIGN.md §5) —
-   highest-priority security item per the verify pass. The
-   passphrase lives in WalletContext as of Phase 2.5; an
-   unlocked wallet stays unlocked until sign-out today, which
-   means a teenager grabbing the phone has full wallet powers.
-   Fix: a 30-minute idle timer that re-prompts for the
-   passphrase. Small enough for one focused commit.
-2. **Anchor worker fetch timeout** — AbortController with
-   ~30s timeout so a slow calendar can't hang a scan.
-3. **Multi-tab worker coordination** — BroadcastChannel-based
-   leader election or shared worker. Two tabs currently both
-   stamp the same digest.
-4. **Anchor worker exponential backoff** — `min(5min × 2^attempts,
-   1hr)` to be polite when calendar is down for hours.
-5. **Phase 3** — Nostr NIP-46 inter-app pathway. The remote
-   transport equivalent of the in-person QR/paste cosigning
-   flow. Bigger session.
-6. **Pre-commit library-seam audit script** — convert the
-   verbal commitment into a check (grep new code for function
-   names that overlap tapit-attest's public surface). Catches
-   the next variant of the digest/envelopeId bug class.
-7. **Bundle-budget audit** — one focused pass to split anything
-   over 10KB gz and hoist common code. Login surface budget is
-   holding but the lazy chunks are trending monotonic.
-8. **Browser verification by operator** — pending the Netlify +
-   Supabase wire-up. Specific new tests for this session:
-   paste-flow round-trip between two devices for co-signing,
-   restore-and-verify-anchors-preserved (the Bug #2 fix from
-   the verify pass), document-attachment download round-trip.
-9. **Standing parallel-track items:** OTS fixture restoration
-   (4 skipped library tests), `Tap-it-Attest-main.zip` cleanup,
-   HEIC/WebP re-encode polish.
+1. **Operator browser-verifies the full stack** against the
+   real Netlify+Supabase deploy when it lands. New paths to
+   walk: paste-flow witness co-signing between two devices,
+   custody-handoff round-trip, document attachment picker on
+   iOS + Android, idle timer firing after 30 min, fetch
+   timeout behavior under deliberately-slow network.
+2. **Phase 3** — inter-app deeplink or Nostr NIP-46 pathway.
+   Bigger scope step; deserves explicit operator greenlight
+   rather than autonomous initiation.
+3. **Multi-tab worker coordination** (BroadcastChannel leader
+   election). Logged.
+4. **HEIC/WebP photo re-encode** in composer for cross-device
+   portability. Phase 2.5.5 polish.
+5. **Pre-commit library-seam audit script.** Convert the
+   verbal commitment into a check that grep's new code for
+   function names overlapping tapit-attest's public surface.
+6. **Bundle-budget audit.** One focused pass to split chunks
+   crossing 10KB gz and hoist hot common code. Login surface
+   budget is holding but trend matters.
+7. **PLAN.md update** to reflect Phase 2.5 / 2.6 / 2.7 having
+   shipped. Currently out of date.
+8. **OTS fixture restoration** (4 skipped library tests).
+9. **`Tap-it-Attest-main.zip` cleanup** at repo root.
 
 ## WHAT-TO-FLAG
 
-The grandchild-clock pressure is the real schedule. The wallet
-is feature-shippable today for the operator's scenario; the
-remaining work is polish + security + Phase 3 networking. Frank
-should treat any operator message about the grandchild as urgent
-and confirm-not-tasked.
+The wallet is feature-shippable today for the operator's
+grandchild scenario. The remaining unfinished items are polish,
+documentation, and the next-phase scope step (Phase 3). Frank
+should treat any operator message naming the grandchild as
+urgent and confirm-not-tasked.
 
-The bundle bloat trend is monotonic across phases. Currently
-under budget but worth a bundle-audit session before Phase 3.
+The pre-push verify rhythm caught two bugs this block that would
+have shipped otherwise. Pattern: typecheck-driven adversarial
+diff read before push. Worth promoting to a doctrine pattern with
+a mechanical pre-commit check. Logged as item 5 above.
 
-The mid-session-bug catch pattern (typecheck-driven adversarial
-diff read pre-push) saved one push this session. Worth promoting
-to a doctrine pattern — the "look over your shoulder" instruction
-the operator gave is what made it operational.
+The library-seam audit pattern is the discipline that prevented
+duplicating tapit-attest primitives in the cosigning + custody +
+attachment work. Worth mechanically enforcing too.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Carpenter cuts the idle-timeout hook next under the same
-   autonomous-work directive.
-2. Then the anchor-worker polish three (fetch timeout, multi-
-   tab, backoff) — could be one commit or three.
-3. Operator browser-verifies whenever the Netlify+Supabase
-   wire-up lands.
-4. Then operator decides whether to greenlight Phase 3 (Nostr
-   NIP-46) or sit on the wedge to gather real-family-use feedback
-   first.
+1. Operator finishes Netlify+Supabase wire-up, browser-verifies
+   the full Phase 1+2+2.5+2.6+2.7 surface against real infra.
+2. If clean, operator decides between Phase 3 cut (inter-app
+   pathway) or pre-launch polish pass (multi-tab + bundle audit
+   + HEIC re-encode + PLAN.md update).
+3. Standing parallel-track items remain available for any quiet
+   slot.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Trusting and parallel-working. The "execute like a professional"
-directive is high-velocity but not loose — explicit verify-each-
-step framing. The operator is in flow on the infra side; the
-Carpenter is in flow on the feature side; both threads converge
-when the operator returns to browser-verify.
+Trusting, parallel-working, in-flow on infra. Gave a high-velocity
+directive ("continue ... execute like a professional") with
+explicit verify-each-step discipline. Carpenter executed five
+focused commits and stopped at a natural pause point because
+Phase 3 deserves an explicit greenlight rather than autonomous
+initiation. Expecting next message to be either browser-verify
+report from operator's parallel work, or a Phase 3 greenlight, or
+feedback on something landed this block.
 
 ## Ideas ready to revisit
 
-Standing observations from prior sessions hold. New patterns this
-session worth naming:
+All earlier-session idea entries hold. New standing observations
+from this block:
 
-- **The pre-commit library-seam audit** is doctrine in spirit
-  but should become a check. Pattern: any new function in
-  `src/features/*` whose name overlaps `tapit-attest`'s public
-  exports gets flagged for review.
-- **Mid-session bug catching by typecheck-driven adversarial
-  diff** — the "look over your shoulder" instruction the
-  operator gave fires before push, not after gates. Operationalize
-  as a pre-commit step.
-- **Bundle bloat is monotonic across phases.** Lazy chunks
-  trending up. Watch for the moment the cumulative-download
-  cost for a returning user breaks 100KB gzipped (currently
-  comfortably under).
+- **Pre-push adversarial diff review** catches bugs that gates
+  alone don't surface (phantom helpers, missing initial-state
+  fields). Worth a mechanical pre-commit hook.
+- **Library-seam audit** before every commit prevents the
+  re-implement-tapit-attest class of bug. Same kind of
+  mechanical hook could check for function-name collisions
+  with tapit-attest's public exports.
+- **Lazy-chunk bloat trend** is real but slow. Each phase adds
+  ~1KB gz to the WalletProvider chunk, ~1-2KB to HomeScreen,
+  ~0.5-1KB to JournalDetail. Cumulative growth needs a periodic
+  audit before Phase 3.
 
 The 16 idea entries from earlier sessions plus the doctrine
 pattern entries are all stage-tagged in
