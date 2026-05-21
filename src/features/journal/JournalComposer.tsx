@@ -1,0 +1,188 @@
+import { useRef, useState } from 'react';
+import { useWallet } from '../wallet-core/useWallet.ts';
+import { createJournalEntry } from './createJournalEntry.ts';
+import { SUGGESTED_CATEGORIES } from './categories.ts';
+import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
+
+interface Props {
+  /** Called with the new entry's digest when the entry lands. */
+  onCreated: (digestHex: string) => void;
+  /** Called when the user dismisses without creating. */
+  onCancel: () => void;
+}
+
+type SubjectMode = 'me' | 'other';
+
+export function JournalComposer({ onCreated, onCancel }: Props) {
+  const { wallet, ownerId, passphrase, save } = useWallet();
+  const worker = useAnchorWorker();
+  const [text, setText] = useState('');
+  const [category, setCategory] = useState<string>(SUGGESTED_CATEGORIES[0]);
+  const [customCategory, setCustomCategory] = useState('');
+  const [subjectMode, setSubjectMode] = useState<SubjectMode>('me');
+  const [subjectLabel, setSubjectLabel] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (text.trim().length === 0) {
+      setError('Write something for the entry.');
+      return;
+    }
+    if (subjectMode === 'other' && subjectLabel.trim().length === 0) {
+      setError("Name the subject (or pick 'About me').");
+      return;
+    }
+    const chosenCategory =
+      category === '__custom' ? customCategory.trim() : category;
+    if (chosenCategory.length === 0) {
+      setError('Pick or type a category.');
+      return;
+    }
+    if (!passphrase) {
+      setError('Wallet is locked — sign in again.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await createJournalEntry(wallet, ownerId, passphrase, worker, {
+        text: text.trim(),
+        category: chosenCategory,
+        subject:
+          subjectMode === 'me'
+            ? wallet.identity
+            : subjectLabel.trim(),
+        photo: photo ?? undefined,
+      });
+      // Persist wallet state so the held attestation survives reload.
+      await save();
+      onCreated(result.digestHex);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save entry.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="text-sm font-medium" htmlFor="entry-text">
+          What happened?
+        </label>
+        <textarea
+          id="entry-text"
+          required
+          rows={5}
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          placeholder="What did you do today? Who was there? What do you want to remember?"
+        />
+      </div>
+
+      <div>
+        <span className="text-sm font-medium">About</span>
+        <div className="mt-1 flex gap-3">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              checked={subjectMode === 'me'}
+              onChange={() => setSubjectMode('me')}
+            />
+            Me
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              checked={subjectMode === 'other'}
+              onChange={() => setSubjectMode('other')}
+            />
+            Someone else
+          </label>
+        </div>
+        {subjectMode === 'other' && (
+          <input
+            type="text"
+            value={subjectLabel}
+            onChange={(e) => setSubjectLabel(e.target.value)}
+            placeholder='e.g. "Grandson Tom Jr"'
+            className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        )}
+      </div>
+
+      <div>
+        <label className="text-sm font-medium" htmlFor="entry-category">
+          Category
+        </label>
+        <select
+          id="entry-category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        >
+          {SUGGESTED_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+          <option value="__custom">Custom…</option>
+        </select>
+        {category === '__custom' && (
+          <input
+            type="text"
+            value={customCategory}
+            onChange={(e) => setCustomCategory(e.target.value)}
+            placeholder="Type a category"
+            className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        )}
+      </div>
+
+      <div>
+        <span className="text-sm font-medium">Photo (optional)</span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+          className="mt-1 block w-full text-sm"
+        />
+        {photo && (
+          <p className="mt-1 text-xs text-muted">
+            {photo.name} — {Math.round(photo.size / 1024)} KB
+          </p>
+        )}
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="flex-1 rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
+        >
+          {busy ? 'Signing & anchoring…' : 'Sign this entry'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className="rounded-md border border-ink/15 px-4 py-2 text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+      {error && (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
+  );
+}

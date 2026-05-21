@@ -29,5 +29,13 @@ export const predictionAttestation = builder('prediction');
 /** A multi-party mutual commitment. (`trust_doc`.) */
 export const agreementAttestation = builder('agreement');
 
+/**
+ * A daily content entry — diary, photo, document, location note. The
+ * content kind, distinct from the control-plane `meta` kind. Produced
+ * often, never mutates the chain's metadata. Use this for personal
+ * receipts, witnessed events, and any "this happened" record.
+ */
+export const journalAttestation = builder('journal');
+
 /** Repudiation / revocation / key-succession. (`death_declaration`.) */
 export const metaAttestation = builder('meta');

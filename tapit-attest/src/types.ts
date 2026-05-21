@@ -1,5 +1,5 @@
 /**
- * The attestation kind — what the claim is *about*. Six roles, one
+ * The attestation kind — what the claim is *about*. Seven roles, one
  * envelope shape. The kind is a label, never a code path.
  */
 export type AttestationKind =
@@ -8,6 +8,7 @@ export type AttestationKind =
   | 'credential'
   | 'prediction'
   | 'agreement'
+  | 'journal'
   | 'meta';
 
 /** Stakes tier. Configuration on the same primitive — never separate code. */

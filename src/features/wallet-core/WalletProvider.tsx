@@ -11,6 +11,10 @@ import { unlockWallet } from './unlockWallet.ts';
 import { createIdentityAttestation } from './createIdentityAttestation.ts';
 import { saveWallet } from './saveWallet.ts';
 import { WalletContext, type WalletContextValue } from './WalletContext.ts';
+import {
+  startAnchorWorker,
+  type WorkerHandle,
+} from '../anchoring/anchorWorker.ts';
 import type { StoredBlob } from '../storage/localStore.ts';
 
 type Phase =
@@ -42,12 +46,19 @@ export function WalletProvider({ children }: Props) {
     cloudSync: true,
     lastRemoteSync: null,
   });
-
-  // Passphrase is held in a ref so it never re-renders the tree and
-  // never appears in React DevTools props. Cleared on sign-out.
+  const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
+  // Passphrase lives in state because it's exposed via context anyway
+  // (callers need to encrypt photos, sign + persist on demand) — the
+  // ref-with-tick pattern was a half-measure that did not survive the
+  // context exposure. Cleared on sign-out by the session effect below.
+  const [passphrase, setPassphraseState] = useState<string | null>(null);
   const passphraseRef = useRef<string | null>(null);
 
-  // Decide phase: load stored blob, load prefs, branch.
+  function setPassphrase(value: string | null) {
+    passphraseRef.current = value;
+    setPassphraseState(value);
+  }
+
   useEffect(() => {
     if (!ownerId) return;
     let alive = true;
@@ -63,8 +74,18 @@ export function WalletProvider({ children }: Props) {
     };
   }, [ownerId]);
 
-  // After unlock, populate holdings and either land on home or
-  // prompt for the missing identity attestation.
+  // Start/stop the anchor worker as a function of unlock state.
+  useEffect(() => {
+    if (!ownerId) return;
+    if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') return;
+    const worker = startAnchorWorker(ownerId);
+    setAnchorWorker(worker);
+    return () => {
+      worker.stop();
+      setAnchorWorker(null);
+    };
+  }, [ownerId, phase.kind]);
+
   async function landAfterUnlock(wallet: Wallet) {
     const held = await wallet.holdings();
     setHoldings(held);
@@ -78,12 +99,9 @@ export function WalletProvider({ children }: Props) {
     async (passphrase: string) => {
       if (!ownerId) throw new Error('no session');
       const wallet = await createWallet(ownerId, passphrase);
-      passphraseRef.current = passphrase;
-      // Fresh wallet has empty holdings, so identity is always missing
-      // here — go straight to the display-name prompt.
+      setPassphrase(passphrase);
       setHoldings([]);
       setPhase({ kind: 'needs-identity', wallet });
-      // Reload prefs in case createWallet wrote them.
       setPrefs(await prefsStore.load(ownerId));
     },
     [ownerId],
@@ -93,7 +111,7 @@ export function WalletProvider({ children }: Props) {
     async (passphrase: string) => {
       if (phase.kind !== 'locked') throw new Error('not in locked state');
       const wallet = await unlockWallet(phase.stored.blob, passphrase);
-      passphraseRef.current = passphrase;
+      setPassphrase(passphrase);
       await landAfterUnlock(wallet);
     },
     [phase],
@@ -126,6 +144,7 @@ export function WalletProvider({ children }: Props) {
       phase.kind === 'unlocked' ? phase.wallet : phase.wallet;
     const outcome = await saveWallet(wallet, passphrase, ownerId);
     setPrefs(await prefsStore.load(ownerId));
+    setHoldings(await wallet.holdings());
     return outcome;
   }, [phase, ownerId]);
 
@@ -147,24 +166,26 @@ export function WalletProvider({ children }: Props) {
     [prefs, ownerId],
   );
 
-  // Clear the in-memory passphrase whenever the session goes away.
   useEffect(() => {
-    if (!session.session) passphraseRef.current = null;
+    if (!session.session) setPassphrase(null);
   }, [session.session]);
 
   const value = useMemo<WalletContextValue | null>(() => {
     if (phase.kind !== 'unlocked') return null;
+    if (!passphrase) return null;
     return {
       wallet: phase.wallet,
       ownerId: ownerId ?? '',
+      passphrase,
       holdings,
       identity: findIdentity(holdings, phase.wallet.identity),
       prefs,
+      anchorWorker,
       save,
       updatePrefs,
       refresh,
     };
-  }, [phase, holdings, ownerId, prefs, save, updatePrefs, refresh]);
+  }, [phase, holdings, ownerId, prefs, save, updatePrefs, refresh, anchorWorker, passphrase]);
 
   if (!ownerId || phase.kind === 'checking') {
     return (

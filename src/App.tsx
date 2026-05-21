@@ -22,6 +22,11 @@ const SettingsScreen = lazy(() =>
     default: m.SettingsScreen,
   })),
 );
+const JournalDetail = lazy(() =>
+  import('./features/journal/JournalDetail.tsx').then((m) => ({
+    default: m.JournalDetail,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -44,6 +49,7 @@ export function App() {
                   <Routes>
                     <Route path="/" element={<HomeScreen />} />
                     <Route path="/settings" element={<SettingsScreen />} />
+                    <Route path="/entry/:digest" element={<JournalDetail />} />
                   </Routes>
                 </WalletProvider>
               </Suspense>

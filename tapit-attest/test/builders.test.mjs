@@ -6,6 +6,7 @@ import {
   credentialAttestation,
   predictionAttestation,
   agreementAttestation,
+  journalAttestation,
   metaAttestation,
 } from '../dist/index.js';
 
@@ -16,6 +17,7 @@ test('each builder stamps its kind onto one shared envelope shape', () => {
     [credentialAttestation, 'credential'],
     [predictionAttestation, 'prediction'],
     [agreementAttestation, 'agreement'],
+    [journalAttestation, 'journal'],
     [metaAttestation, 'meta'],
   ];
   for (const [build, kind] of cases) {

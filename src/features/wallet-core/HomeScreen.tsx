@@ -1,9 +1,11 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
+import { JournalComposer } from '../journal/JournalComposer.tsx';
+import { JournalTabs } from '../journal/JournalTabs.tsx';
 
-// Show "stale" if a cloud-backed snapshot is more than this old.
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 function backupBanner(prefs: {
@@ -25,10 +27,22 @@ function backupBanner(prefs: {
 
 export function HomeScreen() {
   const { wallet, holdings, identity, prefs } = useWallet();
+  const [composerOpen, setComposerOpen] = useState(false);
   const banner = backupBanner(prefs);
 
+  const journalEntries = useMemo(
+    () =>
+      holdings
+        .filter((a) => a.kind === 'journal')
+        .sort(
+          (a, b) =>
+            new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+        ),
+    [holdings],
+  );
+
   return (
-    <div className="min-h-screen p-5 max-w-md mx-auto">
+    <div className="min-h-screen p-5 max-w-md mx-auto pb-24">
       <header className="flex items-center justify-between py-2">
         <h1 className="text-lg font-semibold">Tapit Wallet</h1>
         <Link
@@ -53,33 +67,37 @@ export function HomeScreen() {
         </div>
       )}
 
-      <section className="mt-4">
+      <section className="mt-4 space-y-3">
         <IdentityCard publicKey={wallet.publicKey} />
+        {identity && <AttestationCard attestation={identity} />}
       </section>
 
-      {identity && (
-        <section className="mt-3">
-          <AttestationCard attestation={identity} />
-        </section>
-      )}
+      <section className="mt-6">
+        <h2 className="text-sm font-medium text-muted">Your diary</h2>
+        <div className="mt-2">
+          <JournalTabs entries={journalEntries} />
+        </div>
+      </section>
 
-      {holdings.length > 1 && (
-        <section className="mt-4 space-y-3">
-          <div className="text-xs uppercase tracking-wide text-muted">
-            Held attestations
+      {composerOpen ? (
+        <section className="mt-6 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+          <h2 className="text-base font-semibold">New entry</h2>
+          <div className="mt-3">
+            <JournalComposer
+              onCreated={() => setComposerOpen(false)}
+              onCancel={() => setComposerOpen(false)}
+            />
           </div>
-          {holdings
-            .filter((a) => a !== identity)
-            .map((a, i) => (
-              <AttestationCard key={i} attestation={a} />
-            ))}
         </section>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setComposerOpen(true)}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-ink text-paper px-5 py-3 font-medium shadow-lg"
+        >
+          + New entry
+        </button>
       )}
-
-      <p className="mt-6 text-xs text-muted">
-        Your keypair lives on this device, encrypted. The host stores only
-        ciphertext.
-      </p>
     </div>
   );
 }

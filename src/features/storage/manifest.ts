@@ -10,6 +10,7 @@ export const manifest: FeatureManifest = {
     'src/features/storage/localStore.ts',
     'src/features/storage/remoteStore.ts',
     'src/features/storage/prefsStore.ts',
+    'src/features/storage/mediaStore.ts',
     'supabase/migrations/20260521000001_create_wallet_blobs.sql',
   ],
   depends_on: [],

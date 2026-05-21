@@ -8,6 +8,7 @@ const KINDS: readonly AttestationKind[] = [
   'credential',
   'prediction',
   'agreement',
+  'journal',
   'meta',
 ];
 const TIERS: readonly TierName[] = ['routine', 'notable', 'high_stakes'];
