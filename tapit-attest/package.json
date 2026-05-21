@@ -1,6 +1,6 @@
 {
   "name": "tapit-attest",
-  "version": "0.1.0",
+  "version": "0.1.1-wallet.0",
   "description": "Standalone signed-attestation primitive: one envelope, six kinds, three tiers. Schnorr/secp256k1, Merkle field tree, OpenTimestamps anchoring. Zero Bitcoin-script dependency.",
   "license": "MIT",
   "type": "module",
