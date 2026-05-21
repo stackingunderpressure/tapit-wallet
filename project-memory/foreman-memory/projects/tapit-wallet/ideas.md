@@ -207,3 +207,115 @@ Context: Brief section 12 question 7. Stage: matured — file
 present, doctrine map in place, no open action.
 Feature: doctrine
 ```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: Grandchild-from-birth documentation scenario — the strongest
+concrete first-cut use case the operator has named for the diary
+wedge. On the day the operator's grandchild is born, the operator
+writes a signed diary entry naming the birth, attaches a photo of
+the newborn, OpenTimestamps-anchors against a Bitcoin block so the
+timestamp is provable a decade from now, and family members
+co-sign as witnesses. Then the operator keeps doing it as the
+child grows. Every other v1 scenario composes from the same
+primitives.
+Context: Operator message 2026-05-21 evening. This becomes the
+proof-target scenario for Phase 2.5. Grandchild's own keypair is
+deferred to Phase 6 (family-mode custody) — Phase 2.5 records
+attestations ABOUT the grandchild without a child wallet existing.
+Stage: matured — drives the Phase 2.5 scoping.
+Feature: wallet-core
+```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: Life-layer tabs as user-facing categorization — categories
+like Diary, Family, Medical, Marriage, Witness are USER-FACING
+filters over a category field that lives as a leaf inside each
+attestation's Merkle field tree. Orthogonal to the protocol-level
+AttestationKind taxonomy. Carpenter recommendation: hybrid schema
+— ship suggested categories as defaults plus free-form typing
+that auto-creates a tab.
+Context: Operator's "tabs for different layers of life" framing.
+A user's category choice is signed into the attestation (so it is
+tamper-evident) but the kind taxonomy stays small and protocol-
+level. Stage: sprouting — needs UX iteration once Phase 2.5
+ships.
+Feature: wallet-core
+```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: Court-grade witness alibi scenario — multiple family
+members or peers each sign a "Tom was at location X from time T1
+to time T2" attestation, the attestation is OpenTimestamps-anchored
+against a Bitcoin block, and the multi-signature plus pre-event
+timestamp gives admissible evidence in court a year later if Tom
+is accused of being elsewhere. Each signature can be independently
+verified against the witness's pubkey; the OTS anchor prevents
+after-the-fact forgery; witnesses can be subpoenaed for testimony.
+This is the strongest "math, not trust" demonstration the
+architecture can produce.
+Context: Operator explicitly named this as a v1 use case. Maps to
+Phase 2.6 (family witness co-signing in person via QR). The
+architecture supports it natively — multi-sig envelopes with
+quorum-of-good verification + OTS anchoring + the Merkle field
+tree are all already in tapit-attest.
+Stage: matured — proof-target scenario for Phase 2.6.
+Feature: wallet-core
+```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: Family-bootstrap network — instead of starting with a
+Nostr-mediated peer-discovery layer, the wallet's first network
+is the operator's family co-signing in person via QR exchange.
+Nostr NIP-46 (Phase 3) becomes the remote/asynchronous version of
+the same flow. Carpenter recommendation: Phase 2.6 does the
+in-person co-sign without any networking; Phase 3 layers Nostr
+on top of the same primitives.
+Context: Operator described the network growing from family
+outward — "my family will be starting it and then from there on
+out it'll just be do you wanna do it." Maps to Phase 2.6.
+Stage: matured — drives the Phase 2.6 scoping.
+Feature: wallet-core
+```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: Photos + documents in v1 — media attachments to attestations
+using the hash-on-chain bytes-in-encrypted-storage pattern. Photo
+or document hash becomes a leaf in the attestation's field tree
+(so it is signed and tamper-evident); bytes encrypted client-side
+via tapit-attest's encrypt() and stored in a new Supabase Storage
+bucket (wallet_media) RLS-scoped to the owner. Operator can flip
+cloud media OFF as a settings toggle parallel to wallet_blobs
+cloud-sync.
+Context: Operator named photos and documents as v1. Maps to Phase
+2.5 (photos) and Phase 2.7 (documents). Same code path, just
+different MIME types.
+Stage: sprouting — design clear, needs implementation in Phase 2.5
+and Phase 2.7.
+Feature: storage
+```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: OpenTimestamps port pulled forward into Phase 2.5. Operator
+named OTS anchoring explicitly as part of the diary value prop.
+The wallet's current OtsProvider wraps the unverified opentimestamps
+npm package; porting AppCommander's ots-stamp / verify-ots-stamp
+edge-function protocol into tapit-attest's OtsProvider interface
+closes the unverified dependency surface AND delivers real
+anchoring shipping in the same session as the diary surface.
+Context: Operator message 2026-05-21 evening + brief section 8.
+Was previously scoped as a separate Phase 2.75 but pulls forward.
+Stage: matured — Carpenter recommendation: do it in Phase 2.5.
+Feature: wallet-core
+```
