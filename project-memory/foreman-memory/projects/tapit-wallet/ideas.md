@@ -319,3 +319,28 @@ Was previously scoped as a separate Phase 2.75 but pulls forward.
 Stage: matured — Carpenter recommendation: do it in Phase 2.5.
 Feature: wallet-core
 ```
+
+```
+Date: 2026-05-21
+Section: ideas
+Entry: Signing is the commit; verification is async metadata.
+Operator's reframe on the OTS lifecycle: the entry is committed
+the moment it is signed (the user's act of recording is complete
+on that gesture), and OpenTimestamps anchoring is metadata that
+arrives later — usually within an hour, sometimes after days of
+calendar retry. The UI must never present an entry as "waiting"
+or "pending" or "failed"; only the verification badge varies,
+between "Time-verifying…" (anything in progress, muted neutral
+tone, never alarming) and "Time-verified · block NNN" (once
+Bitcoin confirms). The state machine in the queue stays granular
+(queued/pending/failed/confirmed) because the worker needs it for
+retry logic; only the rendering collapses.
+Context: Operator message 2026-05-21 — "There's no sense in it
+being directly having to be tied to it and you're waiting on it.
+It's more like it will be verified. It just takes time. It's
+already committed." Doctrine pattern for the wallet — applies to
+any future async-confirm lifecycle (Nostr ack, Shamir share
+collection, peer recovery). Stage: matured — implemented in
+commit 6cee87b across JournalCard, JournalDetail, JournalComposer.
+Feature: doctrine
+```
