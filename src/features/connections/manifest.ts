@@ -12,6 +12,7 @@ export const manifest: FeatureManifest = {
     'src/features/connections/createMembership.ts',
     'src/features/connections/ConnectionCard.tsx',
     'src/features/connections/MembershipCard.tsx',
+    'src/features/connections/PeerPicker.tsx',
   ],
   depends_on: ['wallet-core', 'qr', 'cosigning', 'anchoring'],
   pause_safe: true,

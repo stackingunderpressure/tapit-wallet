@@ -4,6 +4,7 @@ import { canonicalEnvelope } from 'tapit-attest';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
+import { PeerPicker } from '../connections/PeerPicker.tsx';
 
 interface Props {
   attestation: Attestation;
@@ -23,7 +24,7 @@ const HEX_64 = /^[0-9a-f]{64}$/i;
 // JSON serialization (envelopeId is over the same canonical bytes
 // the signer signs, so matching downstream is reliable).
 export function CosignRequestModal({ attestation, onClose }: Props) {
-  const { prefs, sendEnvelope } = useWallet();
+  const { wallet, holdings, prefs, sendEnvelope } = useWallet();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [recipient, setRecipient] = useState('');
@@ -103,19 +104,17 @@ export function CosignRequestModal({ attestation, onClose }: Props) {
           <div className="mt-4 rounded-md bg-accent/5 border border-accent/30 p-3">
             <div className="text-xs font-medium text-accent">Send via Mycelium</div>
             <p className="mt-1 text-xs text-muted">
-              Paste their public key (64 hex characters). Encrypted to
+              Pick a connection or paste a public key. Encrypted to
               them and delivered through your shared Nostr relays.
             </p>
-            <input
-              type="text"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              placeholder="64-character hex public key"
-              className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
-              spellCheck={false}
-              autoCapitalize="none"
-              autoCorrect="off"
-            />
+            <div className="mt-2">
+              <PeerPicker
+                holdings={holdings}
+                myIdentity={wallet.identity}
+                value={recipient}
+                onChange={setRecipient}
+              />
+            </div>
             <button
               type="button"
               onClick={sendViaNostr}

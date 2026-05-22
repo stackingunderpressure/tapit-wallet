@@ -92,6 +92,11 @@ const BUDGETS = [
   // JournalDetail and HomeScreen import it (5c-i-ε inbox routing).
   // ~2.8KB gz today.
   { pattern: /^AbsorbCosignModal-.*\.js$/, gz: 4_000, label: 'AbsorbCosignModal' },
+  // The handshake helpers (createHandshake + leafValue +
+  // displayNameOf + isHandshake + readHandshake) get hoisted once
+  // PeerPicker (5c-i-θ) joins HandshakeModal as an importer.
+  // ~3KB gz today.
+  { pattern: /^createHandshake-.*\.js$/, gz: 4_000, label: 'createHandshake helpers' },
 
   // Phase 5c-i-δ peer-transport chunk, dynamically imported by
   // WalletProvider only when the operator opts into the Mycelium
