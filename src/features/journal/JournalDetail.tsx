@@ -87,6 +87,17 @@ export function JournalDetail() {
   // latter.
   const aboutSelf = subject === wallet.identity;
 
+  // Prefer the anchor persisted on the attestation — the durable
+  // verified state that rides the encrypted wallet backup. The live
+  // queue row is only a fallback for entries not yet confirmed, so a
+  // verified entry stays verified across reloads and restores.
+  const verifiedAnchor =
+    entry.anchor?.status === 'confirmed'
+      ? entry.anchor
+      : row?.state === 'confirmed'
+        ? row.anchor
+        : null;
+
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto">
       <header className="flex items-center justify-between py-2">
@@ -126,8 +137,10 @@ export function JournalDetail() {
             : `${entry.signatures.length} signers`}
         </div>
         <div className="mt-1 text-xs text-muted">
-          {row?.state === 'confirmed' && row.anchor?.btcHeight
-            ? `Time-verified · Bitcoin block ${row.anchor.btcHeight}`
+          {verifiedAnchor
+            ? verifiedAnchor.btcHeight
+              ? `Time-verified · Bitcoin block ${verifiedAnchor.btcHeight}`
+              : 'Time-verified'
             : 'Time-verifying… (usually within an hour; can take days)'}
         </div>
       </article>

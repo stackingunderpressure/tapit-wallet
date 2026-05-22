@@ -56,7 +56,20 @@ export function JournalCard({ attestation }: Props) {
       : '📄'
     : null;
 
-  const badge = verificationBadge(row?.state, row?.anchor?.btcHeight);
+  // The verified state lives durably on the attestation itself — the
+  // WalletProvider attaches the confirmed anchor and it rides the
+  // encrypted wallet backup. Read that first; the live queue is only
+  // a fallback for entries not yet confirmed. This keeps a verified
+  // badge sticky across reloads, re-unlocks, and device restores.
+  const verifiedAnchor =
+    attestation.anchor?.status === 'confirmed'
+      ? attestation.anchor
+      : row?.state === 'confirmed'
+        ? row.anchor
+        : null;
+  const badge = verifiedAnchor
+    ? verificationBadge('confirmed', verifiedAnchor.btcHeight)
+    : verificationBadge(row?.state);
 
   return (
     <Link
