@@ -257,19 +257,54 @@ other; that is enough.
 
 ## 12. Social recovery rides on the network
 
-Phase 5 was always "Mycelium + social recovery." Once the peer
-network exists, the people in it are who can recover you. The
-Shamir cascade recovery design is already worked out — see the
-2026-05-21 entries in
-`project-memory/foreman-memory/projects/tapit-wallet/ideas.md`:
-M-of-N peers initiate, every subscribed peer encrypts their
-share to the new keypair, reassembly happens on the new device,
-and M peers co-sign a recovery-succession event. The load-
-bearing technical constraint, recorded there: the Shamir split
-is over the **encryption key of the cloud-mirrored backup blob**,
-never over the signing keypair, so M-of-N collusion cannot equal
-permanent identity capture. This spec adopts that design by
-reference; recovery is a Layer 3 increment, not a separate spec.
+Phase 5 was always "Mycelium + social recovery," and the
+operator's framing makes the connection exact: **your recovery
+network is not a separate thing you set up — it IS the network
+you have already woven.** The peers you handshaked in Phase 5a
+and the organizations you joined in Phase 5b are precisely the
+people and entities who can put you back together. The bar where
+you are a member, the church you belong to, the workplace, the
+handful of people whose wallets hold a Tier P handshake with
+yours — every one of those is both a leaf in your tree and a
+potential holder of a piece of your recovery. Any one of them
+can help; enough of them together can fully restore you.
+
+**The slime.** Mycelium leaves a substrate behind it everywhere
+it grows. In the operator's words, as you live and interact
+through your network you leave your "slime" across it.
+Concretely: the encryption key to your cloud-mirrored backup
+blob is split by Shamir Secret Sharing (SLIP-0039) into shares,
+and each share — each piece of slime — is held by a trusted node
+in your web: a peer, or an organization you belong to. No single
+holder can do anything with one share. But gather **M of your N**
+shares back and the key reconstructs, the backup decrypts, and
+your whole verifiable life is yours again.
+
+**The mechanism, with no pre-stashed key.** Recovery is
+initiated by M-of-N peers who verify it is really you — in
+person or over video, your face against the person they know.
+Each subscribed peer's wallet then encrypts its share to your
+**new** keypair, generated fresh on the new device, and pushes
+it to a recovery relay. The new device reassembles the M shares,
+decrypts the backup, and M peers co-sign a **recovery-succession
+event** — the peer-witnessed shape of the three-shape succession
+chain (self-signed rotation / dual-signed transition /
+peer-witnessed recovery) — which makes the new key authoritative
+for your identity going forward.
+
+**The load-bearing constraint, unchanged.** The Shamir split is
+over the **encryption key of the backup blob — never over the
+signing keypair.** A colluding M-of-N can at worst decrypt one
+backup snapshot; they cannot become you, because signing
+authority only ever transfers through a succession event your
+recovered wallet itself produces. M-of-N collusion is not
+identity capture.
+
+Recovery is a later Phase 5 increment (5e), built on top of the
+handshakes (5a) and memberships (5b) that create the cohort in
+the first place. It needs no separate spec — it is the network
+of this document, used backwards: the same web that proves who
+you are is the web that restores you when the device is gone.
 
 ## 13. The honest meaning of "the whole world in your tree"
 

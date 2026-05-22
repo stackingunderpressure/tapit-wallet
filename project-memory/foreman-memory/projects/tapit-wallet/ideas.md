@@ -494,3 +494,30 @@ move is to WRITE MYCELIUM_NETWORK_SPEC.md, not to improvise it
 into the Phase 4.5 tab build.
 Feature: app-connections
 ```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: "The slime" — the operator's mycelial framing for
+social-recovery shares. As you live and interact through your
+network you leave your slime across it: each trusted node (a
+Phase 5a handshake peer, or a Phase 5b organization you belong
+to) holds one Shamir share of the encryption key to your
+cloud-mirrored backup blob. No single holder can use one share;
+gather M of N shares back and your whole verifiable life
+reconstructs. The key point the operator drew: recovery is NOT a
+separate setup step — your recovery cohort IS the network you
+already wove through handshakes and memberships. "Any one of
+those can help me recover." Organizations can hold shares too,
+because an organization is also a wallet and also a peer.
+Context: Operator 2026-05-22, confirming Phase 5b and connecting
+it to the existing Shamir cascade recovery design (ideas.md
+2026-05-21). "Slime" is the experiential name for the share. The
+load-bearing constraint is unchanged — the split is over the
+backup encryption key, never the signing keypair, so M-of-N
+collusion is not identity capture. Worked into
+MYCELIUM_NETWORK_SPEC.md section 12.
+Feature: backup-recovery
+Stage: matured — the recovery design plus the operator's
+connective framing are both now in the spec; awaits Phase 5e.
+```
