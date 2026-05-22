@@ -1,27 +1,41 @@
 {
   "v": 1,
-  "ts": "2026-05-22T03:37:00Z",
-  "session_id": "tabbed-home-2026-05-22-1779421800",
-  "who": { "actor": "carpenter", "feature_slug": "wallet-core" },
-  "where": { "files": ["src/features/wallet-core/HomeScreen.tsx"], "screen_path": "/" },
+  "ts": "2026-05-22T04:24:00Z",
+  "session_id": "capture-bridge-t1-2026-05-22-1779423600",
+  "who": { "actor": "carpenter", "feature_slug": "capture" },
+  "where": {
+    "files": [
+      "src/features/capture/CaptureScreen.tsx",
+      "src/features/capture/manifest.ts",
+      "public/manifest.webmanifest",
+      "src/App.tsx",
+      "src/features/journal/createJournalEntry.ts",
+      "src/features-registry.ts",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "scripts/bundle-budget.mjs"
+    ],
+    "screen_path": "/capture"
+  },
   "layer": "ui",
   "action": "feature",
-  "summary": "Phase 4.5 first piece (commit ca184b9). The operator confirmed v1 is done — the email plumbing is complete — and asked to continue with the next phase. HomeScreen was restructured from a single scrolling surface into a top-level segmented-control tab bar with three tabs: Journal (the diary — the existing JournalTabs with its life-layer category sub-tabs), Identity (the IdentityCard plus the signed identity attestation), and Captured (an honest, explicit coming-soon placeholder for the capture bridge that is not yet built). There is deliberately no People tab — the operator's People vision is the Mycelium peer network, Layer 3, spec-blocked by D-04. The backup-health banner stays above the tab bar so a warning is never hidden behind a tab; the journal composer and the Sign-someone-else / New-entry buttons render only on the Journal tab. Tabs are a segmented control under the header rather than a bottom bar, which would have collided with the floating New-entry button.",
+  "summary": "Capture Bridge Tier 1 (commit 66e9beb) — the Web Share Target, the everyday on-ramp of Layer 2. A GET share_target in manifest.webmanifest registers the installed wallet as an operating-system share destination for title/text/url. A new capture feature adds a /capture route and CaptureScreen that composes the shared content into an editable body and, on confirm, signs and OpenTimestamps-anchors a journal-kind attestation carrying a source=capture leaf, reusing the existing createJournalEntry pipeline. The home Captured tab is now live: it shows captured entries (or an instructive empty state), while the Journal tab filters captures out so the diary and captures are genuinely separate. Grounding in the actual code caught a real constraint: the hand-rolled Phase 1 service worker only intercepts GET requests, so a GET text/link share target works with zero service-worker risk, but photo/file capture needs a POST the service worker must intercept — that is the Tier 1b follow-on, surfaced to the operator and agreed before the cut. Three chunks Vite hoisted (CaptureScreen, and the now-shared createJournalEntry and mediaStore) were given named bundle budgets.",
   "why": {
-    "text": "Operator 2026-05-22: 'Awesome let's continue building the next phase. Email is complete v1 done.' Phase 4.5 (tabbed home) was decided in D-08 and the tab structure was grounded against the real HomeScreen.tsx and operator-blessed in prior turns. The code was re-read fresh before editing, per the grounding-gate hook now in force.",
+    "text": "Operator confirmed v1 done and approved the capture-bridge plan: PWA-first (D-07), GET text/links now with files as Tier 1b, and the marked-capture data model (a source leaf, captures their own thing in the Captured tab). The build was grounded by re-reading manifest.webmanifest, sw.js, App.tsx, and the journal pipeline before any edit, per the grounding-gate hook. The SW-only-GET finding was surfaced before acting, as the gate requires.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-TABBED-HOME-020"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-CAPTURE-BRIDGE-T1-021"
   },
   "outcome": {
-    "files_changed": ["src/features/wallet-core/HomeScreen.tsx (modify) — one commit plus comms"],
-    "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). tapit-attest unchanged 82/78/0/4.",
+    "files_changed": [
+      "src/features/capture/CaptureScreen.tsx (new), src/features/capture/manifest.ts (new), public/manifest.webmanifest (modify), src/App.tsx (modify), src/features/journal/createJournalEntry.ts (modify), src/features-registry.ts (modify), src/features/wallet-core/HomeScreen.tsx (modify), scripts/bundle-budget.mjs (modify) — one commit plus comms"
+    ],
+    "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). The features-registry coverage test confirms the new capture manifest is registered. tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "[P-001] HomeScreen restructured into Journal / Identity / Captured tabs (commit ca184b9). [P-002] Captured is an honest coming-soon placeholder; no People tab. [P-003] all four gates green; HomeScreen ~155 lines, under the file-size warn tier. Build-verified, NOT Carpenter-pixel-verified — operator verifies on the live deploy. [FEEDBACK->Foreman]: no notes — the tab structure was grounded and blessed before the cut, a clean single pass.",
+    "notes": "[P-001] capture feature + /capture route + share_target (commit 66e9beb). [P-002] Captured tab live; Journal tab filters captures out via the source=capture leaf. [P-003] all four gates green; CaptureScreen 1.35KB gz; three hoisted chunks given named budgets. [P-004] Tier 1b (photo/file via POST + service-worker interception) deferred. [FEEDBACK->Foreman]: no notes — the SW-only-GET scope refinement was surfaced and agreed before the cut, a clean grounded pass.",
     "tests_passing_detail": "typecheck clean, lint clean"
   },
-  "confidence": 88,
-  "uncertainty": "A UI change verified only by gates that cannot see pixels. The tab interaction, the segmented-control styling, and the Captured placeholder all read well in the markup but want the operator's eyes on a phone. Edge case left intentionally simple: switching away from the Journal tab while the composer is open keeps the composer state — it simply is not rendered until the Journal tab is active again.",
-  "ripple": ["wallet-core", "journal"],
-  "next": "Operator verifies the tabbed home on the live deploy. Next build is Capture Bridge Tier 1 — the Web Share Target — which the Captured tab is the home for. Then MYCELIUM_NETWORK_SPEC.md so the People tab can be designed properly.",
+  "confidence": 86,
+  "uncertainty": "A UI + manifest change verified only by gates that cannot see pixels or exercise the OS share sheet. The Web Share Target cannot be tested in CI at all — it needs the updated PWA installed on a real Android device, the share sheet opened from another app, and Tapit Wallet chosen. iOS does not support Web Share Target into a PWA, so on iOS /capture works only when reached directly, not from the share sheet — that is expected and is what Tier 1b plus the native shell address.",
+  "ripple": ["capture", "journal", "wallet-core"],
+  "next": "Operator pushes 66e9beb to main and verifies on the live deploy: reinstall/refresh the PWA, then from another Android app share a link or text and confirm Tapit Wallet appears as a destination and the capture lands signed in the Captured tab. Tier 1b is photo/file capture (service-worker POST interception). Then MYCELIUM_NETWORK_SPEC.md for the People tab.",
   "signals": ["pulse"]
 }
