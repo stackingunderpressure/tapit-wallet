@@ -1,36 +1,35 @@
 {
   "v": 1,
-  "ts": "2026-05-22T20:11:00Z",
-  "session_id": "org-governance-and-5c-sketch-2026-05-22-1779480300",
-  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
+  "ts": "2026-05-22T20:34:00Z",
+  "session_id": "phase-5c-decisions-2026-05-22-1779481800",
+  "who": { "actor": "carpenter", "feature_slug": "app-connections" },
   "where": {
     "files": [
-      "MYCELIUM_NETWORK_SPEC.md",
-      "PLAN.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-22-phase-5c-nostr-transport-sketch.md"
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-22-phase-5c-nostr-transport-sketch.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/decisions.md"
     ],
     "screen_path": "/"
   },
   "layer": "doctrine",
-  "action": "spec",
-  "summary": "The operator asked how an organization's signing key works under quorum control, and after the answer asked to write it into the spec, slot it in the sequence, push to main, and continue autonomously. MYCELIUM_NETWORK_SPEC.md section 6 gained the organization-key governance model: the design is a split, because an org key does two jobs. Everyday issuance — signing memberships — stays fast: a clerk signs and it is valid instantly, and other officials co-sign later as ratification that only accumulates (no redo, no revoke), which needs no new cryptography because the tapit-attest envelope is multi-signature by nature. Constitutional acts — changing officials, rotating the key, joining a larger org, dissolving — require a true M-of-N threshold, the HEARTWOOD higher-threshold-for-higher-stakes principle. In the full quorum model the org's authority is distributed across the officials' wallets — there is no single org key to steal. This was slotted into the phasing as Phase 5f, and PLAN.md updated to 5a-5f. A Phase 5c (Nostr transport) design sketch was written so the next Layer 3 increment is ready to bless. Branch and main both pushed.",
+  "action": "planning",
+  "summary": "The operator asked for the Phase 5c sketch bulleted in chat and the open questions as chips. The four sketch questions were assessed: two were genuine operator decisions and two were settled from doctrine, so only two chips were raised. The operator answered both — relays ship as a default, replaceable set (works out of the box, sovereign users swap their own), and the in-person handshake bootstraps the remote channel (meeting someone exchanges relay info so the woven network is reachable remotely, which is what lets peers hold and return recovery shares; all relay traffic stays encrypted). The two doctrine-settled answers: each tapit-attest envelope rides inside a custom encrypted Nostr event (NIP-46 reserved for the app-to-wallet sign pathway), and the wallet key is reused as the Nostr identity (D-06). All recorded as D-11; the Phase 5c sketch updated from open-questions to resolved decisions. Phase 5c is now fully designed.",
   "why": {
-    "text": "Operator: 'Yes, and put it where it goes in the sequence ... push to main ... you continue on.' The governance answer was grounded in the existing doctrine (spec section 6's deferral, HEARTWOOD's threshold-by-stakes, tapit-attest's native multi-signature). With the operator stepping away, autonomous work was kept to the well-determined and safe: the approved spec enrichment and a design sketch for the forky Phase 5c — not a solo cut of a big networking feature.",
+    "text": "Operator: 'give me the chips of the questions and we'll just get this right on down the road.' The four sketch questions were filtered per the operator's own discipline — chip only where genuinely needed — so two went to chips and two were decided from D-06 and the envelope-is-the-standard rule.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-ORG-GOVERNANCE-5C-SKETCH-027"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-PHASE-5C-DECISIONS-028"
   },
   "outcome": {
     "files_changed": [
-      "MYCELIUM_NETWORK_SPEC.md (modify — section 6 governance, section 14 Phase 5f), PLAN.md (modify — 5a-5f), briefs/2026-05-22-phase-5c-nostr-transport-sketch.md (new) — one commit plus comms"
+      "briefs/2026-05-22-phase-5c-nostr-transport-sketch.md (modify), decisions.md (modify — D-11) — two commits (7d4bcaa, dbd6ce6) plus comms"
     ],
     "tests_passing": "Unchanged — no source code touched. Gates last green at 85d6a51 (Phase 5b).",
     "build_green": true,
-    "notes": "[P-001] Org-key governance model in spec section 6. [P-002] Phase 5f slotted in section 14; PLAN.md 5a-5f. [P-003] Phase 5c Nostr-transport sketch written with four open questions. [P-004] branch and main pushed. [FEEDBACK->Foreman]: no notes — the operator's three-option question resolved cleanly to a split design grounded in the existing doctrine.",
+    "notes": "[P-001] Two genuine chips raised and answered; two questions decided from doctrine. [P-002] D-11 recorded; the 5c sketch updated to resolved decisions. [P-003] A first edit to the sketch missed on a memory mismatch — caught, re-read the file, corrected. [FEEDBACK->Foreman]: no notes — the chip-filtering discipline the operator taught held; only the genuine decisions cost the operator a tap.",
     "tests_passing_detail": "no gates run — documentation only"
   },
-  "confidence": 92,
-  "uncertainty": "Spec and sketch, not code. The governance model is consistent with the doctrine and the operator's own framing. The Phase 5c sketch carries four genuine open questions (relays, event shapes, addressing, identity reuse) that want the operator's input before 5c-i is cut — which is why 5c was sketched, not solo-built, while the operator was away.",
-  "ripple": ["doctrine", "connections", "app-connections"],
-  "next": "Operator reviews the Phase 5c sketch and blesses (or redirects) the 5c-i/ii/iii slicing and the four open questions; then cut 5c-i — the transport interface plus async peer delivery. Field-testing of the 5a/5b flows (two devices) still pending.",
+  "confidence": 94,
+  "uncertainty": "Planning, not code. Phase 5c is fully designed. The next cut, 5c-i, is a genuine infrastructure build — a Nostr transport client — which is plumbing with no immediate visible surface and carries a build-architecture choice (a minimal hand-rolled transport reusing tapit-attest keys versus a Nostr library); that choice will be grounded and made when 5c-i is cut.",
+  "ripple": ["app-connections", "connections", "doctrine"],
+  "next": "Cut Phase 5c-i — the transport-agnostic interface plus a minimal Nostr client and encrypted async peer delivery. Then 5c-ii (remote handshakes) and 5c-iii (connection sync). Two-device field test of 5a/5b still pending.",
   "signals": ["pulse"]
 }
