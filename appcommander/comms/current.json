@@ -1,37 +1,27 @@
 {
   "v": 1,
-  "ts": "2026-05-22T00:18:00Z",
-  "session_id": "login-otp-and-ceremony-2026-05-22-1779408638",
+  "ts": "2026-05-22T01:36:00Z",
+  "session_id": "login-landing-copy-2026-05-22-1779413400",
   "who": { "actor": "carpenter", "feature_slug": "auth" },
-  "where": {
-    "files": [
-      "src/features/auth/LoginPage.tsx",
-      "src/features/wallet-core/IdentityCeremony.tsx",
-      "src/features/wallet-core/createIdentityAttestation.ts",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/manifest.ts"
-    ],
-    "screen_path": "/login, /needs-identity"
-  },
+  "where": { "files": ["src/features/auth/LoginPage.tsx"], "screen_path": "/login" },
   "layer": "ui",
   "action": "feature",
-  "summary": "Two operator-reported items cut. Cut A (commit 4f1dd7f) — LoginPage rewritten from a magic-link flow to a two-step in-app email-then-6-digit-code flow. signInWithOtp sends the code; verifyOtp({type:'email'}) verifies it inside the PWA, so the auth session lands in the PWA's own storage scope and persists across launches. Root cause of 'magic-link login not remembered, redo every time': on iOS a magic link opens in Safari, a separate storage scope from the installed PWA, so the PWA never sees the session. The code screen has resend and use-different-email; /auth/callback is kept as a fallback for anyone who clicks the link. Cut B (commit e52603e) — the bare single-field DisplayNamePrompt replaced by a four-screen guided IdentityCeremony: welcome (the keypair is born, the responsibility is real), name (display name required, full name optional), declaration (read and affirm a founding statement via checkbox), signing. createIdentityAttestation now takes an IdentityInput object and signs display_name, full_name, declaration, pubkey, created_at as leaves; the identity attestation tier was raised routine to notable because the founding identity is the root of the whole chain.",
+  "summary": "Landing copy built into the login screen (commit 083ee21). The operator wanted a landing surface that captures sovereignty — taking responsibility for your own identity, refusing to rent it from a company, and the circle of people who keep an identity correctly attributed and unfakeable — without leaning into government or identity-document framing. The decision: a wallet PWA has no separate marketing site, its front door IS the login screen, so the message goes into LoginPage's email step rather than a new route. The email step now opens with a small Tapit Wallet wordmark, the headline 'The record of your life belongs to you.', and a moving paragraph, then the email field below. This satisfies all three of the operator's placement instincts at once — it is persistent on every login, it is unintrusive because it simply frames the email field, and it vanishes the moment a person authenticates. A condensed one-line version was handed to the operator to paste into the Supabase sign-in email template (operator-side, not a repo file).",
   "why": {
-    "text": "Operator: 'Not remembering magic link login it's making you redo every time. Name attestation needs to be more formal and walk you down the birth of your identity the responsibility and make it special guided moment with proper fields.' Two distinct cuts. Cut A is a real bug with a real root cause — the iOS PWA storage-scope split — fixed by keeping the entire login inside the PWA context via a typed code rather than a clicked link. Cut B is a deliberate ceremony: the operator wanted the moment of identity creation to convey weight and responsibility, not be a throwaway form field. The founding declaration is signed as a leaf on the identity attestation, so the person did not just tap through — they signed a statement. Both verified: all four gates green at 19/19 after each cut.",
+    "text": "Operator: 'I want to have a landing page for the wallet ... capture the sovereignty ... the importance of taking responsibility for your own identity ... not requiring another company to keep up with your stuff ... a group of people around you who care about you and your identity being correctly attributed to you and not stolen or fabricated ... something simple but moving.' The operator explicitly did not want the government / ID route. The copy was drafted and approved by the operator before any code was touched, per the don't-implement-until-agreed discipline.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-LOGIN-OTP-AND-CEREMONY-016"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-LOGIN-LANDING-COPY-017"
   },
   "outcome": {
-    "files_changed": [
-      "src/features/auth/LoginPage.tsx (modify), src/features/wallet-core/IdentityCeremony.tsx (new), src/features/wallet-core/DisplayNamePrompt.tsx (delete), src/features/wallet-core/createIdentityAttestation.ts (modify), src/features/wallet-core/WalletProvider.tsx (modify), src/features/wallet-core/manifest.ts (modify) — two commits plus comms"
-    ],
+    "files_changed": ["src/features/auth/LoginPage.tsx (modify) — one commit plus comms"],
     "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "[P-A] Cut A in-app 6-digit-code login shipped (commit 4f1dd7f). [P-B] Cut B four-screen IdentityCeremony shipped (commit e52603e). [P-GATES] all four gates green after each cut. Operator-side follow-up required for Cut A: the Supabase 'Magic Link' email template must include the {{ .Token }} variable or the email will not carry the 6-digit code. [FEEDBACK->Foreman]: no notes — the two operator directives were concrete and the root cause of the login bug was unambiguous once traced to the iOS storage-scope split."
+    "notes": "[P-001] Landing copy shipped into LoginPage email step (commit 083ee21). [P-002] Form restructured so it wraps only the input and button; hero content sits outside the form. [P-003] all four gates green. Operator-side follow-up: paste the one-line email version into the Supabase template. [FEEDBACK->Foreman]: no notes — the operator gave full content direction and approved the draft before the cut, which made this a clean single-pass.",
+    "tests_passing_detail": "typecheck clean, lint clean"
   },
-  "confidence": 90,
-  "uncertainty": "Cut A is gate-verified but not browser-verified end to end — the verifyOtp path depends on the operator adding {{ .Token }} to the Supabase email template, which is operator-side work the Carpenter cannot do or test. Until the operator walks the real flow on a phone, the fix is correct-by-construction but not confirmed-in-the-field.",
-  "ripple": ["auth", "wallet-core"],
-  "next": "Operator browser-verifies both flows against the live Netlify + Supabase deploy: the 6-digit-code login surviving a fresh PWA launch, and the four-screen identity ceremony. Operator adds {{ .Token }} to the Supabase Magic Link email template. Operator runs the Cut-2 media-bucket migration if not yet done. No further Carpenter work is queued; the v1 surface is feature-complete pending field verification.",
+  "confidence": 92,
+  "uncertainty": "Gate-verified but not browser-verified — the moving paragraph is five sentences and on a narrow mobile login screen it adds real vertical height; it reads well in the markup but the operator should glance at it on a phone to confirm it does not feel heavy above the email field. Copy is a matter of taste and the operator may want it shorter or warmer after seeing it live.",
+  "ripple": ["auth"],
+  "next": "Operator pastes the one-line landing message into the Supabase sign-in email template. Operator decides whether this commit also goes to main so the live Netlify deploy picks it up. Operator browser-verifies the login screen on a phone and redirects the copy if the voice or length wants adjusting.",
   "signals": ["pulse"]
 }

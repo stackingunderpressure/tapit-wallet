@@ -8,155 +8,123 @@ comms active.
 
 ## WHAT-CHANGED-RECENTLY
 
-**Two operator-reported items cut and shipped** under the
-operator's "not remembering magic link login / name attestation
-needs to be a formal guided moment" directive. Branch
-`claude/compare-library-wallet-OW5FF` at `e52603e`.
+**Landing copy shipped into the login screen** (`083ee21`),
+branch `claude/compare-library-wallet-OW5FF`.
 
-1. **Cut A — in-app 6-digit code login** (`4f1dd7f`).
-   `src/features/auth/LoginPage.tsx` rewritten from a magic-link
-   flow to a two-step email-then-code flow. `signInWithOtp`
-   sends the code; a second screen calls `verifyOtp({type:
-   'email'})`. Root cause of "login not remembered, redo every
-   time": on iOS a magic link opens in Safari, a separate
-   storage scope from the installed PWA, so the PWA never sees
-   the session. Verifying the code in-PWA keeps the session in
-   the PWA's own storage scope and it persists across launches.
-   `/auth/callback` kept as a fallback for clicked links.
+The operator wanted a landing surface capturing sovereignty —
+self-custody of identity, refusing to rent it from a company,
+and the circle of people who keep an identity correctly
+attributed and unfakeable — explicitly WITHOUT government or
+identity-document framing. Decision: a wallet PWA has no
+separate marketing site, its front door is the login screen, so
+the message went into `LoginPage.tsx`'s email step rather than a
+new route. The email step now leads with a Tapit Wallet
+wordmark, the headline "The record of your life belongs to
+you.", and a moving paragraph, then the email field. This is
+persistent on every login, unintrusive, and vanishes on auth —
+all three of the operator's placement instincts at once. The
+`<form>` was restructured to wrap only the input + button.
+All four gates green. Copy was operator-approved before the cut.
 
-2. **Cut B — guided identity ceremony** (`e52603e`). The bare
-   single-field `DisplayNamePrompt` replaced by
-   `src/features/wallet-core/IdentityCeremony.tsx`, a four-screen
-   walk: welcome (keypair born, responsibility real) → name
-   (display name required + optional full name) → declaration
-   (read + affirm a founding statement via checkbox) → signing.
-   `createIdentityAttestation` now takes an `IdentityInput`
-   object and signs `display_name`, `full_name`, `declaration`,
-   `pubkey`, `created_at` as leaves. Identity attestation tier
-   raised `routine` → `notable`. `FOUNDING_DECLARATION` exported
-   as a constant. `DisplayNamePrompt.tsx` deleted (grep clean).
-   wallet-core manifest updated in the same commit.
-
-## GATE FENCE STATUS
-
-Unchanged from last session — mechanically complete. All five
-CLAUDE_ROOT.md gate-fence rules are base gates or mechanical
-checks except the SessionStart branch hook. The five mechanical
-guardrail tests (persona-contract, features-registry,
-library-seam, file-size, keys-never-leave) all pass.
+A condensed one-line email version was handed to the operator
+to paste into the Supabase sign-in email template — operator-
+side, not a repo file.
 
 ## Gates at session end
 
 **Root:** typecheck / lint / test (19/19 across 5 test files) /
-build all green — verified after each of the two cuts.
-
-**tapit-attest:** unchanged 82 / 78 / 0 / 4.
-
-**File-size guardrail:** new `IdentityCeremony.tsx` at ~270
-lines is under the 400-warn tier. Largest wallet file still
-`WalletProvider.tsx` at 290 lines (grew slightly with the
-`onCreateIdentity` rename) — under 400, check passes clean.
+build all green. tapit-attest unchanged 82/78/0/4. Largest
+wallet file still WalletProvider.tsx (~290 lines), under the
+400-line warn tier.
 
 ## WHAT'S-PENDING
 
-1. **Operator-side, REQUIRED for Cut A to function:** add the
-   `{{ .Token }}` variable to the Supabase "Magic Link" email
-   template. Without it the email carries no 6-digit code and
-   the new login flow has nothing to verify. Template can keep
-   `{{ .ConfirmationURL }}` too — the `/auth/callback` fallback
-   still uses it.
-2. **Operator browser-verifies** both new flows against the
-   live deploy: the 6-digit-code login surviving a fresh PWA
-   launch (force-quit then reopen, still logged in), and the
-   four-screen identity ceremony. Plus the standing
-   Cut-1-through-Cut-4 punch list and full v1 stack.
-3. **Operator-side: Cut 2 migration**
-   (`20260522000001_create_wallet_media_bucket.sql`) in the
-   Supabase SQL editor if not already run.
-4. **Non-blocking follow-ups** unchanged: multi-tab worker
+1. **Operator-side, in progress:** Resend custom-SMTP setup.
+   DNS records (DKIM TXT, MX, SPF TXT) being entered into the
+   Northwest Registered Agent DNS panel; nameservers are
+   `hosting.businessidentity.llc`. Operator reported the records
+   in and propagating. Once Resend verifies the domain, plug its
+   SMTP credentials into Supabase Authentication → Custom SMTP,
+   and raise Supabase's own email rate limit under Auth → Rate
+   Limits.
+2. **Operator-side:** add the `{{ .Token }}` variable to the
+   Supabase Magic Link email template (for the 6-digit code),
+   and paste the one-line landing message into the same
+   template.
+3. **Deploy decision:** commit `083ee21` is on the branch only.
+   Operator to decide whether it also goes to main so the live
+   Netlify deploy picks up the landing copy.
+4. **Copy review:** the landing paragraph is five sentences —
+   operator to eyeball it on a real phone and decide whether to
+   trim; flagged in carpenter-opinions.md.
+5. **Non-blocking follow-ups** unchanged: multi-tab worker
    coordination, OTS fixture restoration (4 skipped library
    tests), Tap-it-Attest-main.zip cleanup, backfill remote
    media for pre-Cut-2 entries.
-5. **Lower-value guardrail candidates** still surfaced, not cut:
-   total-post-auth-bytes ceiling (worth it if the bundle trend
-   climbs); manifest touches-array accuracy (Carpenter leans
-   AGAINST — friction outweighs benefit).
 6. **Phase 5** (Mycelium + Shamir recovery) still waits for
    MYCELIUM_NETWORK_SPEC.md.
 
 ## WHAT-TO-FLAG
 
-**Cut A is correct-by-construction but not field-verified.** The
-login fix is gate-green and the root-cause diagnosis (iOS
-storage-scope split) is sound, but the end-to-end chain depends
-on the operator adding `{{ .Token }}` to the Supabase email
-template — operator-side work the Carpenter cannot do or test.
-Until the operator walks the real flow on a phone, treat Cut A
-as diagnosed-and-fixed but unconfirmed.
+**Field verification is now actively happening and going
+well.** The operator reported a diary entry that completed end
+to end on the live deploy and a selfie attestation correctly
+showing as pending (anchor confirming async — working as
+designed). This is the first feature-level confidence the
+project has had; previously everything was gate-level only.
 
-**The v1 surface is now feature-complete.** Login, identity
-ceremony, diary, photos, cloud backup, QR, anchor worker,
-guardrails — all shipped, all gate-green. There is no Carpenter
-work queued. The remaining distance to ship is entirely
-operator-side browser verification against the live deploy.
-This is the natural moment to either confirm v1 in the field or
-name a new direction (Phase 5 needs the Mycelium spec first).
+**LoginPage.tsx now carries two jobs** — auth flow AND the
+landing/brand statement. Correct for this stage, but a future
+refactor of the auth logic must not accidentally gut the
+landing copy. Noted, not a problem today.
 
-**WalletProvider.tsx grew to 290 lines** with the
-`onDisplayName` → `onCreateIdentity` rename and the
-`IdentityInput` plumbing. Still well under the 400-line warn
-tier, but it is the largest wallet file and trending up; if it
-crosses 400 the file-size guardrail will warn and it should be
-split (the phase state machine and the anchor-attach effect are
-the natural extraction seams).
+**The email plumbing is the last thing between v1 and real
+users.** Once Resend verifies and Supabase custom SMTP is wired,
+the rate-limit wall that blocks sign-up clears. Everything else
+in the v1 surface is shipped and, increasingly, field-verified.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator adds `{{ .Token }}` to the Supabase email template.
-2. Operator browser-verifies both new flows plus the v1 punch
-   list against the live Netlify + Supabase deploy.
-3. If clean: ship v1. If any stall: report the specific failure
-   with screen + step.
-4. Phase 5 holds for MYCELIUM_NETWORK_SPEC.md. The two
-   lower-value guardrails remain available if the operator
-   wants them.
+1. Operator finishes the Resend domain verification, wires
+   Supabase custom SMTP, raises the Supabase email rate limit.
+2. Operator pastes `{{ .Token }}` plus the landing one-liner
+   into the Supabase email template.
+3. Operator decides whether `083ee21` goes to main for the live
+   deploy, and eyeballs the landing copy length on a phone.
+4. Phase 5 holds for MYCELIUM_NETWORK_SPEC.md.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Shifting from build to field-test. The operator is now deploying
-manually against live Netlify + Supabase and reporting real
-bugs found in actual use — the photo-capture bug last session,
-the login-not-remembered bug this session. The "verify don't
-trust, reground in CLAUDE.md, look over your shoulder" rhythm
-still governs every directive. The character of the work has
-changed: it is no longer "build the next feature" but "fix what
-the real deploy surfaces." Expect the next operator message to
-be browser-verification findings — either v1 confirmed clean or
-a specific new bug with reproduction steps.
+Energized and in flow. The operator browser-verified real
+features working on the live deploy and expressed genuine
+excitement about what was built and its significance. The work
+has shifted from building features to deploy plumbing (custom
+SMTP, DNS) and polish (the landing copy). The operator is
+moving fast, working ahead of the conversation, and values
+clear step-by-step guidance through the operator-side
+infrastructure tasks. Expect the next messages to be either
+Resend/Supabase setup checkpoints or a reaction to the landing
+copy on the live screen.
 
 ## Ideas ready to revisit
 
 All earlier idea entries hold. Updated this session:
 
-- **The identity ceremony as a signed-statement pattern.** Cut
-  B established that a UI moment can be more than UI — the
-  founding declaration is rendered, affirmed, AND signed as a
-  cryptographic leaf. This pattern (affirm-then-sign) is
-  reusable: any future moment where a person makes a commitment
-  (a relationship attestation, an agreement, a witness
-  statement) could use the same render → affirm-checkbox → sign
-  structure so the person's consent is itself part of the
-  verifiable record.
+- **The login screen as the landing page.** Established this
+  session: a wallet PWA's philosophy surface and its product
+  surface are the same screen. The landing copy is not a promise
+  about the future — it describes what happens to the user in
+  the next sixty seconds. This affirm-what-is-true-now framing
+  is reusable for any future onboarding surface.
 
-- **The v1-complete inflection point.** With the surface
-  feature-complete, the operator's leverage moves entirely to
-  field verification and then to Phase 5. Worth surfacing: the
-  build-to-verify-to-Phase-5 sequence is the current critical
-  path, and Phase 5 is blocked on a spec the operator owns.
+- **Affirm-then-sign pattern** (from the identity ceremony)
+  still holds as a reusable structure for future commitment
+  moments — relationship attestations, agreements, witness
+  statements.
 
-- **Two lower-value guardrail candidates remain** (total-bytes
-  ceiling, manifest touches-accuracy) — deliberately not cut to
-  avoid cruft per non-negotiable #3.
+- **Two lower-value guardrail candidates** (total-bytes ceiling,
+  manifest touches-accuracy) remain available, deliberately not
+  cut, per non-negotiable #3.
 
 The 16+ earlier idea entries are stage-tagged in
 `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
