@@ -10,6 +10,7 @@ export const manifest: FeatureManifest = {
     'src/features/transport/nostrEvent.ts',
     'src/features/transport/nostrTransport.ts',
     'src/features/transport/encryptedInbox.ts',
+    'src/features/transport/connectWallet.ts',
     'src/features/transport/defaultRelays.ts',
   ],
   depends_on: ['cosigning'],
@@ -17,5 +18,5 @@ export const manifest: FeatureManifest = {
   removal_safe: true,
   monetizable: false,
   notes:
-    'The wallet key is reused as the Nostr identity (D-11d) — same x-only BIP340 pubkey, same Schnorr signature. Signing a Nostr event id uses signDigest from tapit-attest so the wallet never re-implements crypto. encryptedInbox is the only entry point the rest of the wallet should call; it owns the NIP-44 wrap/unwrap and re-parses the inner envelope through the existing cosigning/parseEnvelope helper. The Nostr WebSocket client auto-reconnects with exponential backoff and dedupes events by id across relays; persistent offline outbox + sync resume are deferred to 5c-iii. depends_on lists cosigning because encryptedInbox imports its parseEnvelope helper.',
+    'The wallet key is reused as the Nostr identity (D-11d) — same x-only BIP340 pubkey, same Schnorr signature. The Wallet class exposes signDigest, nip44EncryptTo, and nip44DecryptFrom so this feature never sees the raw private key (D-03). encryptedInbox is the helper layer; connectWallet is the one-call entry point that opens a NostrTransport (or accepts an injected one for tests), subscribes the inbox, and returns a handle whose close() tears everything down. The Nostr WebSocket client auto-reconnects with exponential backoff and dedupes events by id across relays; persistent offline outbox + sync resume are deferred to 5c-iii. depends_on lists cosigning because encryptedInbox imports its parseEnvelope helper.',
 };

@@ -1,9 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  generateKeypair,
-  identityAttestation,
-  signEnvelope,
-} from 'tapit-attest';
+import { Wallet, identityAttestation } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 
 import {
@@ -15,6 +11,7 @@ import {
 } from './nostrEvent.ts';
 import { NostrTransport } from './nostrTransport.ts';
 import { sendEnvelopeTo, subscribeInbox } from './encryptedInbox.ts';
+import { connectWallet } from './connectWallet.ts';
 import type {
   Subscription,
   Transport,
@@ -62,25 +59,24 @@ function matches(filter: TransportFilter, event: TransportEvent): boolean {
   return true;
 }
 
-function signedIdentity(name: string): { att: Attestation; priv: string; pub: string } {
-  const kp = generateKeypair();
-  const att = signEnvelope(
+function newWalletAs(name: string): { wallet: Wallet; identity: Attestation } {
+  const wallet = Wallet.generate();
+  const identity = wallet.sign(
     identityAttestation({
-      subject: kp.publicKey,
+      subject: wallet.publicKey,
       tier: 'notable',
       fields: { display_name: name },
     }),
-    kp.privateKey,
   );
-  return { att, priv: kp.privateKey, pub: kp.publicKey };
+  return { wallet, identity };
 }
 
 describe('Nostr event signing', () => {
   it('round-trips through buildEvent + verifyEvent', async () => {
-    const kp = generateKeypair();
+    const wallet = Wallet.generate();
     const event = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'hello world',
     });
@@ -88,10 +84,10 @@ describe('Nostr event signing', () => {
   });
 
   it('rejects an event whose content was tampered', async () => {
-    const kp = generateKeypair();
+    const wallet = Wallet.generate();
     const event = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'original',
     });
@@ -100,11 +96,11 @@ describe('Nostr event signing', () => {
   });
 
   it('rejects an event whose pubkey was swapped', async () => {
-    const kp = generateKeypair();
-    const other = generateKeypair();
+    const wallet = Wallet.generate();
+    const other = Wallet.generate();
     const event = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'mine',
     });
@@ -113,17 +109,17 @@ describe('Nostr event signing', () => {
   });
 
   it('produces a deterministic id for fixed inputs', async () => {
-    const kp = generateKeypair();
+    const wallet = Wallet.generate();
     const a = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'same',
       created_at: 1_000_000,
     });
     const b = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'same',
       created_at: 1_000_000,
@@ -134,46 +130,45 @@ describe('Nostr event signing', () => {
 
 describe('encrypted inbox round-trip', () => {
   it('delivers a signed envelope from Alice to Bob through a transport', async () => {
-    const alice = signedIdentity('Alice');
-    const bob = signedIdentity('Bob');
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
     const transport = new FakeTransport();
     const received: Attestation[] = [];
-    subscribeInbox(transport, bob.pub, bob.priv, (item) => {
+    subscribeInbox(transport, bob.wallet, (item) => {
       received.push(item.envelope);
     });
-    await sendEnvelopeTo(transport, alice.att, bob.pub, alice.pub, alice.priv);
+    await sendEnvelopeTo(transport, alice.identity, bob.wallet.publicKey, alice.wallet);
     await flush();
     expect(received).toHaveLength(1);
-    expect(received[0]!.subject).toBe(alice.pub);
+    expect(received[0]!.subject).toBe(alice.wallet.publicKey);
   });
 
   it('uses the TAPIT_ENVELOPE_KIND and addresses the recipient in a p tag', async () => {
-    const alice = signedIdentity('Alice');
-    const bob = signedIdentity('Bob');
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
     const transport = new FakeTransport();
     let captured: TransportEvent | null = null;
     transport.subscribe({}, (e) => { captured = e; });
-    await sendEnvelopeTo(transport, alice.att, bob.pub, alice.pub, alice.priv);
+    await sendEnvelopeTo(transport, alice.identity, bob.wallet.publicKey, alice.wallet);
     await flush();
     expect(captured).not.toBeNull();
     const ev = captured as unknown as TransportEvent;
     expect(ev.kind).toBe(TAPIT_ENVELOPE_KIND);
-    expect(ev.tags.some((t) => t[0] === 'p' && t[1] === bob.pub)).toBe(true);
+    expect(ev.tags.some((t) => t[0] === 'p' && t[1] === bob.wallet.publicKey)).toBe(true);
   });
 
   it('drops a tampered event silently — handler is never called', async () => {
-    const alice = signedIdentity('Alice');
-    const bob = signedIdentity('Bob');
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
     const cheating = new FakeTransport();
     const seen: Attestation[] = [];
-    subscribeInbox(cheating, bob.pub, bob.priv, (item) => {
+    subscribeInbox(cheating, bob.wallet, (item) => {
       seen.push(item.envelope);
     });
-    // Build a real envelope event, then tamper its ciphertext.
     let captured: TransportEvent | null = null;
     const peek = new FakeTransport();
     peek.subscribe({}, (e) => { captured = e; });
-    await sendEnvelopeTo(peek, alice.att, bob.pub, alice.pub, alice.priv);
+    await sendEnvelopeTo(peek, alice.identity, bob.wallet.publicKey, alice.wallet);
     await flush();
     const ev = captured as unknown as TransportEvent;
     const tampered: TransportEvent = {
@@ -186,31 +181,60 @@ describe('encrypted inbox round-trip', () => {
   });
 
   it('drops an event addressed to a different recipient (wrong-recipient MAC failure)', async () => {
-    const alice = signedIdentity('Alice');
-    const bob = signedIdentity('Bob');
-    const eve = signedIdentity('Eve');
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const eve = newWalletAs('Eve');
     const transport = new FakeTransport();
     const seen: Attestation[] = [];
-    // Eve listens — Alice addresses Bob — Eve must not be able to decrypt
-    // even if she somehow rewrites the p tag to point at herself.
-    subscribeInbox(transport, eve.pub, eve.priv, (item) => {
+    subscribeInbox(transport, eve.wallet, (item) => {
       seen.push(item.envelope);
     });
     let captured: TransportEvent | null = null;
     const peek = new FakeTransport();
     peek.subscribe({}, (e) => { captured = e; });
-    await sendEnvelopeTo(peek, alice.att, bob.pub, alice.pub, alice.priv);
+    await sendEnvelopeTo(peek, alice.identity, bob.wallet.publicKey, alice.wallet);
     await flush();
     const ev = captured as unknown as TransportEvent;
     const rerouted: TransportEvent = {
       ...ev,
-      tags: [['p', eve.pub]],
+      tags: [['p', eve.wallet.publicKey]],
     };
-    // Note: the rerouted event's id no longer matches its content
-    // because we changed the tags; verifyEvent will reject it first.
     await transport.publish(rerouted);
     await flush();
     expect(seen).toHaveLength(0);
+  });
+});
+
+describe('connectWallet — the wallet-level entry point', () => {
+  it('opens a connection, routes incoming envelopes, and closes cleanly', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const transport = new FakeTransport();
+    const received: Attestation[] = [];
+    const connection = connectWallet(bob.wallet, {
+      transport,
+      onEnvelope: (item) => { received.push(item.envelope); },
+    });
+    await sendEnvelopeTo(transport, alice.identity, bob.wallet.publicKey, alice.wallet);
+    await flush();
+    expect(received).toHaveLength(1);
+    connection.close();
+    await sendEnvelopeTo(transport, alice.identity, bob.wallet.publicKey, alice.wallet);
+    await flush();
+    expect(received).toHaveLength(1);
+  });
+
+  it('closes the transport on close when the transport was created internally', () => {
+    const wallet = Wallet.generate();
+    // No transport passed — connectWallet creates a NostrTransport
+    // internally with an injectable WebSocket. We pass a fake WS so
+    // no real network is touched.
+    const connection = connectWallet(wallet, {
+      onEnvelope: () => undefined,
+      relays: ['wss://relay.example'],
+      webSocketImpl: noopWS(),
+    });
+    expect(() => connection.close()).not.toThrow();
   });
 });
 
@@ -222,11 +246,11 @@ describe('NostrTransport wire-protocol shape', () => {
       webSocketImpl: fake.WS,
     });
     fake.ready();
-    const kp = generateKeypair();
+    const wallet = Wallet.generate();
     transport.subscribe({ kinds: [1] }, () => undefined);
     const event = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'wire test',
     });
@@ -245,10 +269,10 @@ describe('NostrTransport wire-protocol shape', () => {
       webSocketImpl: fake.WS,
     });
     fake.ready();
-    const kp = generateKeypair();
+    const wallet = Wallet.generate();
     const event = await buildEvent({
-      pubkey: kp.publicKey,
-      privkey: kp.privateKey,
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
       kind: 1,
       content: 'inbound',
     });
@@ -297,6 +321,23 @@ function makeFakeWS() {
       }
     },
   };
+}
+
+// An inert WebSocket for tests that exercise connection lifecycle
+// without caring about the wire traffic.
+function noopWS(): typeof WebSocket {
+  class NoopWS {
+    onopen: (() => void) | null = null;
+    onmessage: ((e: { data: string }) => void) | null = null;
+    onclose: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    constructor(_url: string) {}
+    send(_frame: string) {}
+    close() {
+      if (this.onclose) this.onclose();
+    }
+  }
+  return NoopWS as unknown as typeof WebSocket;
 }
 
 // encryptedInbox's handler chains through crypto.subtle.digest in

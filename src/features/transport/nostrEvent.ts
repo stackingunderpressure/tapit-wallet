@@ -1,4 +1,4 @@
-import { signDigest, verifySignature } from 'tapit-attest';
+import { verifySignature } from 'tapit-attest';
 
 // Nostr (NIP-01) event construction. We reuse the wallet's secp256k1
 // key as the Nostr identity (D-11d) — same x-only pubkey, same
@@ -70,7 +70,12 @@ function hexToBytes32(hex: string): Uint8Array {
 
 export interface BuildEventInput {
   pubkey: string;
-  privkey: string;
+  /**
+   * Signs the 32-byte event id with the wallet's active key. The
+   * caller passes (digest) => wallet.signDigest(digest) — the private
+   * key never crosses this boundary (D-03).
+   */
+  sign: (digest: Uint8Array) => string;
   kind: number;
   content: string;
   tags?: readonly Tag[];
@@ -93,7 +98,7 @@ export async function buildEvent(input: BuildEventInput): Promise<TransportEvent
     input.content,
   );
   const id = await sha256Hex(serialized);
-  const sig = signDigest(hexToBytes32(id), input.privkey);
+  const sig = input.sign(hexToBytes32(id));
   return {
     id,
     pubkey: input.pubkey,

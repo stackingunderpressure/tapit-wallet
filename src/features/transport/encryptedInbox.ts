@@ -1,5 +1,4 @@
-import { encryptTo, decryptFrom } from 'tapit-attest';
-import type { Attestation } from 'tapit-attest';
+import type { Attestation, Wallet } from 'tapit-attest';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import {
   TAPIT_ENVELOPE_KIND,
@@ -25,6 +24,10 @@ import type {
 // Per D-11c, every Tapit envelope rides inside event kind
 // TAPIT_ENVELOPE_KIND — NIP-46 stays reserved for the separate
 // app-to-wallet sign pathway.
+//
+// Both halves take a Wallet (D-03) — the private key never crosses
+// this module's boundary; the Wallet performs the encryption and
+// signing internally.
 
 export interface SendOptions {
   /** Override the timestamp — tests use a fixed value for determinism. */
@@ -41,15 +44,14 @@ export async function sendEnvelopeTo(
   transport: Transport,
   envelope: Attestation,
   recipientPubkey: string,
-  senderPubkey: string,
-  senderPrivkey: string,
+  sender: Wallet,
   options: SendOptions = {},
 ): Promise<TransportEvent> {
   const plaintext = JSON.stringify(envelope);
-  const ciphertext = encryptTo(plaintext, recipientPubkey, senderPrivkey);
+  const ciphertext = sender.nip44EncryptTo(plaintext, recipientPubkey);
   const event = await buildEvent({
-    pubkey: senderPubkey,
-    privkey: senderPrivkey,
+    pubkey: sender.publicKey,
+    sign: (digest) => sender.signDigest(digest),
     kind: TAPIT_ENVELOPE_KIND,
     content: ciphertext,
     tags: [['p', recipientPubkey]],
@@ -71,10 +73,10 @@ export type InboxHandler = (item: InboxEnvelope) => void;
 /**
  * Subscribe to encrypted envelopes addressed to the wallet's pubkey.
  * Each event is verified (signature + id match) and decrypted with
- * the recipient's private key; only well-formed, MAC-valid messages
- * reach the handler. A tampered, mis-routed, or junk event is
- * silently dropped — exactly what the wallet wants from a hostile
- * relay.
+ * the wallet's private key (via the wallet); only well-formed,
+ * MAC-valid messages reach the handler. A tampered, mis-routed, or
+ * junk event is silently dropped — exactly what the wallet wants
+ * from a hostile relay.
  *
  * The optional `since` filter (Unix seconds) is forwarded to the
  * transport so a wallet coming online can ask only for events newer
@@ -82,18 +84,17 @@ export type InboxHandler = (item: InboxEnvelope) => void;
  */
 export function subscribeInbox(
   transport: Transport,
-  recipientPubkey: string,
-  recipientPrivkey: string,
+  recipient: Wallet,
   onEnvelope: InboxHandler,
   options: { since?: number } = {},
 ): Subscription {
   const handler: TransportEventHandler = (event) => {
-    void handleIncoming(event, recipientPubkey, recipientPrivkey, onEnvelope);
+    void handleIncoming(event, recipient, onEnvelope);
   };
   return transport.subscribe(
     {
       kinds: [TAPIT_ENVELOPE_KIND],
-      '#p': [recipientPubkey],
+      '#p': [recipient.publicKey],
       ...(options.since !== undefined ? { since: options.since } : {}),
     },
     handler,
@@ -102,14 +103,13 @@ export function subscribeInbox(
 
 async function handleIncoming(
   event: TransportEvent,
-  recipientPubkey: string,
-  recipientPrivkey: string,
+  recipient: Wallet,
   onEnvelope: InboxHandler,
 ): Promise<void> {
   if (!(await verifyEvent(event))) return;
   let plaintext: string;
   try {
-    plaintext = decryptFrom(event.content, event.pubkey, recipientPrivkey);
+    plaintext = recipient.nip44DecryptFrom(event.content, event.pubkey);
   } catch {
     return;
   }
@@ -125,7 +125,4 @@ async function handleIncoming(
     receivedAt: event.created_at,
     eventId: event.id,
   });
-  // recipientPubkey is preserved in the closure for future filter
-  // adjustments (e.g. per-recipient sub multiplexing); not used here.
-  void recipientPubkey;
 }
