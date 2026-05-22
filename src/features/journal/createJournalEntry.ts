@@ -19,6 +19,12 @@ export interface JournalInput {
    * attestation tamper-evidently commits to the exact bytes.
    */
   attachment?: File;
+  /**
+   * Marks an entry that arrived through the capture bridge rather
+   * than the diary composer (e.g. 'capture'). Written as a signed
+   * leaf so the home can surface captures apart from the diary.
+   */
+  source?: string;
 }
 
 export interface JournalEntryResult {
@@ -55,6 +61,8 @@ export async function createJournalEntry(
     fields.attachment_bytes = String(stored.byteLength);
     if (input.attachment.name) fields.attachment_name = input.attachment.name;
   }
+
+  if (input.source) fields.source = input.source;
 
   const draft = journalAttestation({
     subject: input.subject,

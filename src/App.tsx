@@ -37,6 +37,11 @@ const VerifyProofScreen = lazy(() =>
     default: m.VerifyProofScreen,
   })),
 );
+const CaptureScreen = lazy(() =>
+  import('./features/capture/CaptureScreen.tsx').then((m) => ({
+    default: m.CaptureScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -69,6 +74,7 @@ export function App() {
                     <Route path="/settings" element={<SettingsScreen />} />
                     <Route path="/entry/:digest" element={<JournalDetail />} />
                     <Route path="/sign" element={<SignApprovalScreen />} />
+                    <Route path="/capture" element={<CaptureScreen />} />
                   </Routes>
                 </WalletProvider>
               </Suspense>

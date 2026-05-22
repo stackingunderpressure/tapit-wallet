@@ -48,6 +48,8 @@ const BUDGETS = [
   { pattern: /^SettingsScreen-.*\.js$/, gz: 3_000, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
+  // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
+  { pattern: /^CaptureScreen-.*\.js$/, gz: 2_000, label: 'CaptureScreen' },
 
   // QR feature carries the qrcode library — known heavy.
   { pattern: /^QrShow-.*\.js$/, gz: 15_000, label: 'QrShow (qrcode lib)' },
@@ -68,6 +70,10 @@ const BUDGETS = [
   { pattern: /^useAnchorStatus-.*\.js$/, gz: 4_000, label: 'useAnchorStatus hook' },
   { pattern: /^anchorQueue-.*\.js$/, gz: 1_500, label: 'anchorQueue' },
   { pattern: /^saveWallet-.*\.js$/, gz: 2_000, label: 'saveWallet' },
+  // Hoisted into shared chunks once the capture bridge began sharing
+  // the journal pipeline with the composer. ~0.5KB / ~0.9KB gz today.
+  { pattern: /^createJournalEntry-.*\.js$/, gz: 1_000, label: 'createJournalEntry' },
+  { pattern: /^mediaStore-.*\.js$/, gz: 1_500, label: 'mediaStore' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },

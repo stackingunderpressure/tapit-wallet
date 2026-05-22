@@ -1,19 +1,21 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { Attestation, FieldBranch } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
 import { JournalComposer } from '../journal/JournalComposer.tsx';
 import { JournalTabs } from '../journal/JournalTabs.tsx';
+import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 // Top-level tabs separate the kinds of things the wallet holds.
-// Journal and Identity are live; Captured is an honest placeholder
-// until the capture bridge (Phase 4.5 Tier 1) ships. A People tab
-// is deliberately absent — it is the Mycelium peer network and
-// waits on MYCELIUM_NETWORK_SPEC.md.
+// Journal and Identity are live; Captured holds entries that came
+// in through the capture bridge. A People tab is deliberately
+// absent — it is the Mycelium peer network and waits on
+// MYCELIUM_NETWORK_SPEC.md.
 type Tab = 'journal' | 'identity' | 'captured';
 
 const TABS: { id: Tab; label: string }[] = [
@@ -39,6 +41,20 @@ function backupBanner(prefs: {
   return null;
 }
 
+// A capture (Phase 4.5 capture bridge) is a journal-kind
+// attestation carrying a source=capture leaf. The Captured tab
+// shows these; the Journal tab shows everything else.
+function isCapture(att: Attestation): boolean {
+  const claim = att.claim as FieldBranch;
+  const s = claim.children.find((x) => x.name === 'source');
+  return (
+    !!s &&
+    s.node === 'leaf' &&
+    typeof s.value === 'string' &&
+    s.value === 'capture'
+  );
+}
+
 export function HomeScreen() {
   const { wallet, holdings, identity, prefs } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
@@ -55,6 +71,14 @@ export function HomeScreen() {
             new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
         ),
     [holdings],
+  );
+  const diaryEntries = useMemo(
+    () => journalEntries.filter((a) => !isCapture(a)),
+    [journalEntries],
+  );
+  const capturedEntries = useMemo(
+    () => journalEntries.filter((a) => isCapture(a)),
+    [journalEntries],
   );
 
   return (
@@ -106,7 +130,7 @@ export function HomeScreen() {
         <section className="mt-5">
           <h2 className="text-sm font-medium text-muted">Your diary</h2>
           <div className="mt-2">
-            <JournalTabs entries={journalEntries} />
+            <JournalTabs entries={diaryEntries} />
           </div>
         </section>
       )}
@@ -119,16 +143,28 @@ export function HomeScreen() {
       )}
 
       {tab === 'captured' && (
-        <section className="mt-5 rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-10 text-center">
-          <div className="text-xs uppercase tracking-wide text-accent">
-            Coming soon
-          </div>
-          <h2 className="mt-2 text-base font-semibold">Capture anything</h2>
-          <p className="mt-2 text-sm text-muted">
-            Soon you'll be able to share a post, a photo, or a document
-            straight from any app into your wallet — signed and
-            time-stamped in one tap, without leaving where you are.
-          </p>
+        <section className="mt-5">
+          {capturedEntries.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-10 text-center">
+              <div className="text-xs uppercase tracking-wide text-accent">
+                Nothing captured yet
+              </div>
+              <h2 className="mt-2 text-base font-semibold">
+                Capture anything
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                From another app, share a post, a link, or a thought
+                into Tapit Wallet — it is signed and time-anchored in
+                one tap, and lands here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {capturedEntries.map((a, i) => (
+                <JournalCard key={i} attestation={a} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
