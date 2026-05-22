@@ -17,6 +17,7 @@ export * from './core/succession.js';
 export * from './core/weighting.js';
 export * from './core/revocation.js';
 export * from './core/encryption.js';
+export * from './core/nip44.js';
 export * from './core/sync.js';
 export * from './core/recovery.js';
 export * from './core/wallet.js';
