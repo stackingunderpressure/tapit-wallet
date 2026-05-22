@@ -1,29 +1,37 @@
 {
   "v": 1,
-  "ts": "2026-05-22T00:10:00Z",
-  "session_id": "keys-never-leave-guardrail-2026-05-22-1779408204",
-  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
+  "ts": "2026-05-22T00:18:00Z",
+  "session_id": "login-otp-and-ceremony-2026-05-22-1779408638",
+  "who": { "actor": "carpenter", "feature_slug": "auth" },
   "where": {
-    "files": ["src/file-size.test.ts", "src/keys-never-leave.test.ts"],
-    "screen_path": "/"
+    "files": [
+      "src/features/auth/LoginPage.tsx",
+      "src/features/wallet-core/IdentityCeremony.tsx",
+      "src/features/wallet-core/createIdentityAttestation.ts",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/wallet-core/manifest.ts"
+    ],
+    "screen_path": "/login, /needs-identity"
   },
-  "layer": "doctrine",
-  "action": "guardrails",
-  "summary": "Two mechanical guardrails added under the operator's 'continue adding guardrails, verify and justify every change' directive. File-size guardrail (commit 57e32bc) — src/file-size.test.ts walks every wallet source file, console.warns files over 400 lines, fails the test on any file over 800 lines, per CLAUDE_ROOT.md lines 83-84. Keys-never-leave guardrail (commit 75033ec) — src/keys-never-leave.test.ts greps every wallet source file for console.* calls or web-storage setItem calls passing a secret-named identifier (privateKey/passphrase/seed/mnemonic/secretKey), per non-negotiable #1, the rule that outranks every other rule and previously had NO mechanical check. Both verified by deliberate canary — file-size by lowering the threshold to 200 (caught WalletProvider at 273 lines), keys-never-leave by injecting a console.log of the passphrase into createJournalEntry (caught at the exact file + line). Branch and main both at 75033ec.",
+  "layer": "ui",
+  "action": "feature",
+  "summary": "Two operator-reported items cut. Cut A (commit 4f1dd7f) — LoginPage rewritten from a magic-link flow to a two-step in-app email-then-6-digit-code flow. signInWithOtp sends the code; verifyOtp({type:'email'}) verifies it inside the PWA, so the auth session lands in the PWA's own storage scope and persists across launches. Root cause of 'magic-link login not remembered, redo every time': on iOS a magic link opens in Safari, a separate storage scope from the installed PWA, so the PWA never sees the session. The code screen has resend and use-different-email; /auth/callback is kept as a fallback for anyone who clicks the link. Cut B (commit e52603e) — the bare single-field DisplayNamePrompt replaced by a four-screen guided IdentityCeremony: welcome (the keypair is born, the responsibility is real), name (display name required, full name optional), declaration (read and affirm a founding statement via checkbox), signing. createIdentityAttestation now takes an IdentityInput object and signs display_name, full_name, declaration, pubkey, created_at as leaves; the identity attestation tier was raised routine to notable because the founding identity is the root of the whole chain.",
   "why": {
-    "text": "Operator: 'Cut away make sure every change is verified and justified continue adding guardrails.' Re-grounded in CLAUDE_ROOT.md; non-negotiable #5 (mechanism over prose) plus the gate fence section ('When a rule matters enough to enforce, add a check') selected the work. The gate fence names five rules that matter — gates, keys-never-leave audit, tapit-attest integrity, feature-manifest coverage, branch gate. As of this session, four of the five are mechanical checks (features-registry, library-seam, plus the four base gates; this session adds keys-never-leave and the file-size rule from the Architecture section). The fifth, the branch gate, is explicitly a SessionStart hook concern, not a vitest test. Every change verified: each guardrail proven to fail-when-it-should via a deliberate canary before commit. Every change justified: each cites the exact CLAUDE_ROOT.md line it enforces.",
+    "text": "Operator: 'Not remembering magic link login it's making you redo every time. Name attestation needs to be more formal and walk you down the birth of your identity the responsibility and make it special guided moment with proper fields.' Two distinct cuts. Cut A is a real bug with a real root cause — the iOS PWA storage-scope split — fixed by keeping the entire login inside the PWA context via a typed code rather than a clicked link. Cut B is a deliberate ceremony: the operator wanted the moment of identity creation to convey weight and responsibility, not be a throwaway form field. The founding declaration is signed as a leaf on the identity attestation, so the person did not just tap through — they signed a statement. Both verified: all four gates green at 19/19 after each cut.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-GUARDRAILS-015"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-LOGIN-OTP-AND-CEREMONY-016"
   },
   "outcome": {
-    "files_changed": ["src/file-size.test.ts (new), src/keys-never-leave.test.ts (new) — two commits, plus comms"],
+    "files_changed": [
+      "src/features/auth/LoginPage.tsx (modify), src/features/wallet-core/IdentityCeremony.tsx (new), src/features/wallet-core/DisplayNamePrompt.tsx (delete), src/features/wallet-core/createIdentityAttestation.ts (modify), src/features/wallet-core/WalletProvider.tsx (modify), src/features/wallet-core/manifest.ts (modify) — two commits plus comms"
+    ],
     "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "Both guardrails pass clean on current code — no wallet file over 400 lines (largest WalletProvider.tsx at 273), no wallet file logs or web-stores a secret. The checks now stand guard for future regressions. keys-never-leave has two documented gaps it does NOT catch (transmits-on-wire, structurally prevented by the encrypt-before-network storage design; and indirect object leaks like console.log(wallet) which the by-name regex can't see) — both noted in the file's header comment, not silent."
+    "notes": "[P-A] Cut A in-app 6-digit-code login shipped (commit 4f1dd7f). [P-B] Cut B four-screen IdentityCeremony shipped (commit e52603e). [P-GATES] all four gates green after each cut. Operator-side follow-up required for Cut A: the Supabase 'Magic Link' email template must include the {{ .Token }} variable or the email will not carry the 6-digit code. [FEEDBACK->Foreman]: no notes — the two operator directives were concrete and the root cause of the login bug was unambiguous once traced to the iOS storage-scope split."
   },
-  "confidence": 95,
-  "uncertainty": "The keys-never-leave check is a heuristic — it catches the dominant by-name developer-mistake class but cannot catch every conceivable leak (an indirect object log, a leak through a renamed variable). It is a strong net for the common case, not a proof of absence. The gate fence's load-bearing-review-surface guidance for any code touching keys still applies on top of the mechanical check.",
-  "ripple": ["doctrine"],
-  "next": "The gate fence is now mechanically enforced end to end except the branch gate (a SessionStart hook concern, not a vitest test). The five named rules — gates, keys-never-leave, tapit-attest integrity, manifest coverage, branch gate — are all either base gates or mechanical checks. Further guardrails past this point would be inventing checks for rules the doctrine does not explicitly name as 'matters enough to enforce', which would risk cruft per non-negotiable #3. Lower-value candidates remain available if the operator wants them: total-post-auth-bytes ceiling (bundle-budget gap), manifest touches-array accuracy. Pausing here; the gate fence is complete.",
+  "confidence": 90,
+  "uncertainty": "Cut A is gate-verified but not browser-verified end to end — the verifyOtp path depends on the operator adding {{ .Token }} to the Supabase email template, which is operator-side work the Carpenter cannot do or test. Until the operator walks the real flow on a phone, the fix is correct-by-construction but not confirmed-in-the-field.",
+  "ripple": ["auth", "wallet-core"],
+  "next": "Operator browser-verifies both flows against the live Netlify + Supabase deploy: the 6-digit-code login surviving a fresh PWA launch, and the four-screen identity ceremony. Operator adds {{ .Token }} to the Supabase Magic Link email template. Operator runs the Cut-2 media-bucket migration if not yet done. No further Carpenter work is queued; the v1 surface is feature-complete pending field verification.",
   "signals": ["pulse"]
 }
