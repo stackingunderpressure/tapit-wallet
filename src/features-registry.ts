@@ -11,6 +11,7 @@ import { manifest as signRequest } from './features/sign-request/manifest.ts';
 import { manifest as disclosure } from './features/disclosure/manifest.ts';
 import { manifest as qr } from './features/qr/manifest.ts';
 import { manifest as capture } from './features/capture/manifest.ts';
+import { manifest as connections } from './features/connections/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online.
@@ -31,6 +32,7 @@ export const features: readonly FeatureManifest[] = [
   disclosure,
   qr,
   capture,
+  connections,
   persona,
   snapshotBuilder,
   suggestedQuestions,

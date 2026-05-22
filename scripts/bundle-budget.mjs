@@ -74,11 +74,16 @@ const BUDGETS = [
   // the journal pipeline with the composer. ~0.5KB / ~0.9KB gz today.
   { pattern: /^createJournalEntry-.*\.js$/, gz: 1_000, label: 'createJournalEntry' },
   { pattern: /^mediaStore-.*\.js$/, gz: 1_500, label: 'mediaStore' },
+  // Cosigning helpers (parseEnvelope + mergeSignatures) hoisted into
+  // a shared chunk once the connections feature began reusing them.
+  // ~1.9KB gz today.
+  { pattern: /^mergeSignatures-.*\.js$/, gz: 3_000, label: 'cosigning helpers' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },
   { pattern: /^react-.*\.js$/, gz: 60_000, label: 'react vendor' },
   { pattern: /^supabase-.*\.js$/, gz: 60_000, label: 'supabase vendor' },
+  { pattern: /^qrcode-.*\.js$/, gz: 15_000, label: 'qrcode vendor' },
 
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately

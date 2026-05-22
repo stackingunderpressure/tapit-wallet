@@ -18,6 +18,11 @@ export default defineConfig({
           react: ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           attest: ['tapit-attest'],
+          // qrcode is a heavy single-purpose library; pin it to its
+          // own deterministic chunk so the filename stays stable for
+          // the bundle-budget check — otherwise Rollup renames the
+          // shared chunk whenever its co-located modules change.
+          qrcode: ['qrcode'],
         },
       },
     },

@@ -8,20 +8,22 @@ import { JournalComposer } from '../journal/JournalComposer.tsx';
 import { JournalTabs } from '../journal/JournalTabs.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
+import { HandshakeModal } from '../connections/HandshakeModal.tsx';
+import { ConnectionCard } from '../connections/ConnectionCard.tsx';
+import { isHandshake } from '../connections/createHandshake.ts';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 // Top-level tabs separate the kinds of things the wallet holds.
-// Journal and Identity are live; Captured holds entries that came
-// in through the capture bridge. A People tab is deliberately
-// absent — it is the Mycelium peer network and waits on
-// MYCELIUM_NETWORK_SPEC.md.
-type Tab = 'journal' | 'identity' | 'captured';
+// Journal is the diary, Identity the founding card, Captured the
+// capture-bridge entries, People the Mycelium handshakes (Phase 5a).
+type Tab = 'journal' | 'identity' | 'captured' | 'people';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'identity', label: 'Identity' },
   { id: 'captured', label: 'Captured' },
+  { id: 'people', label: 'People' },
 ];
 
 function backupBanner(prefs: {
@@ -60,6 +62,7 @@ export function HomeScreen() {
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
+  const [handshakeOpen, setHandshakeOpen] = useState(false);
   const banner = backupBanner(prefs);
 
   const journalEntries = useMemo(
@@ -79,6 +82,16 @@ export function HomeScreen() {
   const capturedEntries = useMemo(
     () => journalEntries.filter((a) => isCapture(a)),
     [journalEntries],
+  );
+  const connectionEntries = useMemo(
+    () =>
+      holdings
+        .filter((a) => isHandshake(a))
+        .sort(
+          (a, b) =>
+            new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+        ),
+    [holdings],
   );
 
   return (
@@ -168,6 +181,43 @@ export function HomeScreen() {
         </section>
       )}
 
+      {tab === 'people' && (
+        <section className="mt-5">
+          <button
+            type="button"
+            onClick={() => setHandshakeOpen(true)}
+            className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium"
+          >
+            + New handshake
+          </button>
+          {connectionEntries.length === 0 ? (
+            <div className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-10 text-center">
+              <div className="text-xs uppercase tracking-wide text-accent">
+                No connections yet
+              </div>
+              <h2 className="mt-2 text-base font-semibold">
+                Your people, in person
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                Meet someone face to face and tap New handshake — two
+                phones, one exchange, and you each hold a signed,
+                time-anchored record that you connected.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {connectionEntries.map((a, i) => (
+                <ConnectionCard
+                  key={i}
+                  attestation={a}
+                  myIdentity={wallet.identity}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {tab === 'journal' &&
         (composerOpen ? (
           <section className="mt-6 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
@@ -200,6 +250,10 @@ export function HomeScreen() {
 
       {witnessOpen && (
         <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />
+      )}
+
+      {handshakeOpen && (
+        <HandshakeModal onClose={() => setHandshakeOpen(false)} />
       )}
     </div>
   );
