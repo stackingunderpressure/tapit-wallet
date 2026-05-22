@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import type { InboxEnvelope } from './encryptedInbox.ts';
+import { isHandshake } from '../connections/createHandshake.ts';
 
-// Phase 5c-i-δ — inbox surface. Lists encrypted envelopes that have
-// arrived through the transport since unlock. Each row names the
-// sender's pubkey (short form), the attestation kind, the receive
-// time, and offers a Copy-JSON action so the operator can paste it
-// into the matching modal (a handshake co-sign, an absorb, a
-// membership receive). Auto-routing to the right modal is the next
-// cut; today this is the surface that proves remote delivery works.
+// Phase 5c-i-δ/-ε — inbox surface for the People tab. Lists encrypted
+// envelopes that arrived through the transport since unlock, and
+// routes them to the matching modal so the operator does not have to
+// copy-and-paste.
+//
+// Routing (5c-i-ε):
+//   - handshake with one signature  → cosign-as-witness (peer wants me to counter-sign)
+//   - handshake with two signatures → absorb-cosign (a counter-signed copy is coming back)
+//   - anything else (memberships, journals, etc.) → manual Copy for now
+// Membership auto-receive is the next sub-cut.
+
+export type InboxRouteAction = 'cosign-witness' | 'absorb-cosign';
 
 interface Props {
   envelopes: readonly InboxEnvelope[];
   onDismiss: (eventId: string) => void;
+  onOpen: (envelope: Attestation, action: InboxRouteAction) => void;
 }
 
 function shortKey(hex: string): string {
@@ -30,7 +37,31 @@ function attKindLabel(att: Attestation): string {
   return att.kind.charAt(0).toUpperCase() + att.kind.slice(1);
 }
 
-export function InboxPanel({ envelopes, onDismiss }: Props) {
+interface Route {
+  action: InboxRouteAction;
+  label: string;
+  hint: string;
+}
+
+function routeFor(att: Attestation): Route | null {
+  if (isHandshake(att)) {
+    if (att.signatures.length <= 1) {
+      return {
+        action: 'cosign-witness',
+        label: 'Review & sign',
+        hint: 'A handshake waiting for your signature.',
+      };
+    }
+    return {
+      action: 'absorb-cosign',
+      label: 'Absorb signature',
+      hint: 'A counter-signed handshake — merge it into your copy.',
+    };
+  }
+  return null;
+}
+
+export function InboxPanel({ envelopes, onDismiss, onOpen }: Props) {
   if (envelopes.length === 0) return null;
   return (
     <section className="mb-4 rounded-2xl bg-accent/5 border border-accent/30 p-4">
@@ -42,11 +73,18 @@ export function InboxPanel({ envelopes, onDismiss }: Props) {
         </div>
       </div>
       <p className="mt-1 text-xs text-muted">
-        Encrypted to you and verified. Tap Copy to absorb into the matching modal.
+        Encrypted to you and verified. Open routes a handshake to the
+        right step; Copy puts the JSON on your clipboard for envelopes
+        the wallet does not yet auto-route.
       </p>
       <ul className="mt-3 space-y-2">
         {envelopes.map((item) => (
-          <InboxRow key={item.eventId} item={item} onDismiss={onDismiss} />
+          <InboxRow
+            key={item.eventId}
+            item={item}
+            onDismiss={onDismiss}
+            onOpen={onOpen}
+          />
         ))}
       </ul>
     </section>
@@ -56,10 +94,12 @@ export function InboxPanel({ envelopes, onDismiss }: Props) {
 interface RowProps {
   item: InboxEnvelope;
   onDismiss: (eventId: string) => void;
+  onOpen: (envelope: Attestation, action: InboxRouteAction) => void;
 }
 
-function InboxRow({ item, onDismiss }: RowProps) {
+function InboxRow({ item, onDismiss, onOpen }: RowProps) {
   const [copied, setCopied] = useState(false);
+  const route = routeFor(item.envelope);
 
   async function onCopy() {
     try {
@@ -79,15 +119,28 @@ function InboxRow({ item, onDismiss }: RowProps) {
           <div className="mt-0.5 text-xs text-muted truncate">
             From {shortKey(item.senderPubkey)} · {formatTime(item.receivedAt)}
           </div>
+          {route && (
+            <div className="mt-1 text-xs text-muted">{route.hint}</div>
+          )}
         </div>
         <div className="shrink-0 flex gap-2">
-          <button
-            type="button"
-            onClick={onCopy}
-            className="rounded-md border border-ink/15 px-3 py-1 text-xs font-medium hover:bg-ink/5"
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </button>
+          {route ? (
+            <button
+              type="button"
+              onClick={() => onOpen(item.envelope, route.action)}
+              className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-paper hover:bg-ink/90"
+            >
+              {route.label}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onCopy}
+              className="rounded-md border border-ink/15 px-3 py-1 text-xs font-medium hover:bg-ink/5"
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onDismiss(item.eventId)}

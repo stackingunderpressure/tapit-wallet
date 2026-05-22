@@ -10,6 +10,12 @@ import { QrScanModal } from '../qr/QrScanModal.tsx';
 
 interface Props {
   onClose: () => void;
+  /**
+   * When provided, the modal opens directly at the preview step —
+   * the operator does not paste. Used by the Nostr inbox to route an
+   * unsigned-by-me handshake straight here.
+   */
+  incoming?: Attestation;
 }
 
 type Step =
@@ -30,9 +36,11 @@ type Step =
 // the result has at most one signature per pubkey). That makes the
 // flow idempotent — pasting the same request twice produces the
 // same signed return.
-export function CosignAsWitnessModal({ onClose }: Props) {
+export function CosignAsWitnessModal({ onClose, incoming }: Props) {
   const { wallet } = useWallet();
-  const [step, setStep] = useState<Step>({ kind: 'paste' });
+  const [step, setStep] = useState<Step>(() =>
+    incoming ? { kind: 'preview', attestation: incoming } : { kind: 'paste' },
+  );
   const [raw, setRaw] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);

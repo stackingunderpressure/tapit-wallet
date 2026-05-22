@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { envelopeId } from 'tapit-attest';
+import type { Attestation } from 'tapit-attest';
+import { canonicalEnvelope, envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { parseEnvelope } from './parseEnvelope.ts';
 import { EnvelopePreview } from './EnvelopePreview.tsx';
@@ -8,6 +9,12 @@ import { QrScanModal } from '../qr/QrScanModal.tsx';
 
 interface Props {
   onClose: () => void;
+  /**
+   * When provided, the modal opens pre-filled with this envelope —
+   * the operator does not paste. Used by the Nostr inbox to route a
+   * counter-signed handshake straight here.
+   */
+  incoming?: Attestation;
 }
 
 // Step 3 of the co-sign flow. Originator pastes the signed envelope
@@ -23,9 +30,11 @@ interface Props {
 // different entry entirely), envelope-not-in-holdings (we don't
 // hold this entry — maybe the operator absorbed it on a different
 // device and not synced yet).
-export function AbsorbCosignModal({ onClose }: Props) {
+export function AbsorbCosignModal({ onClose, incoming }: Props) {
   const { wallet, holdings, save } = useWallet();
-  const [raw, setRaw] = useState('');
+  const [raw, setRaw] = useState(() =>
+    incoming ? canonicalEnvelope(incoming) : '',
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ added: number } | null>(null);

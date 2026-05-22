@@ -84,6 +84,10 @@ const BUDGETS = [
   // Tiny envelope-parse helper. Hoisted by Rollup when shared
   // between cosigning, connections, and transport. ~0.3KB gz today.
   { pattern: /^parseEnvelope-.*\.js$/, gz: 800, label: 'parseEnvelope helper' },
+  // The absorb-cosign modal is hoisted into its own chunk once both
+  // JournalDetail and HomeScreen import it (5c-i-ε inbox routing).
+  // ~2.8KB gz today.
+  { pattern: /^AbsorbCosignModal-.*\.js$/, gz: 4_000, label: 'AbsorbCosignModal' },
 
   // Phase 5c-i-δ peer-transport chunk, dynamically imported by
   // WalletProvider only when the operator opts into the Mycelium

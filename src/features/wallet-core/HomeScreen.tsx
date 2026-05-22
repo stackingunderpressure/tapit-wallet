@@ -8,13 +8,14 @@ import { JournalComposer } from '../journal/JournalComposer.tsx';
 import { JournalTabs } from '../journal/JournalTabs.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
+import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { ConnectionCard } from '../connections/ConnectionCard.tsx';
 import { isHandshake } from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
 import { MembershipCard } from '../connections/MembershipCard.tsx';
 import { isMembership } from '../connections/createMembership.ts';
-import { InboxPanel } from '../transport/InboxPanel.tsx';
+import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -69,6 +70,15 @@ export function HomeScreen() {
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
+  // 5c-i-ε — inbox routing. When an envelope is routed from the
+  // InboxPanel, the matching modal opens pre-filled with the envelope.
+  const [incomingForWitness, setIncomingForWitness] = useState<Attestation | null>(null);
+  const [incomingForAbsorb, setIncomingForAbsorb] = useState<Attestation | null>(null);
+
+  function routeInbox(envelope: Attestation, action: InboxRouteAction) {
+    if (action === 'cosign-witness') setIncomingForWitness(envelope);
+    else if (action === 'absorb-cosign') setIncomingForAbsorb(envelope);
+  }
   const banner = backupBanner(prefs);
 
   const journalEntries = useMemo(
@@ -224,7 +234,11 @@ export function HomeScreen() {
 
       {tab === 'people' && (
         <section className="mt-5">
-          <InboxPanel envelopes={inboxEnvelopes} onDismiss={dismissInboxEnvelope} />
+          <InboxPanel
+            envelopes={inboxEnvelopes}
+            onDismiss={dismissInboxEnvelope}
+            onOpen={routeInbox}
+          />
           <button
             type="button"
             onClick={() => setHandshakeOpen(true)}
@@ -292,6 +306,20 @@ export function HomeScreen() {
 
       {witnessOpen && (
         <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />
+      )}
+
+      {incomingForWitness && (
+        <CosignAsWitnessModal
+          incoming={incomingForWitness}
+          onClose={() => setIncomingForWitness(null)}
+        />
+      )}
+
+      {incomingForAbsorb && (
+        <AbsorbCosignModal
+          incoming={incomingForAbsorb}
+          onClose={() => setIncomingForAbsorb(null)}
+        />
       )}
 
       {handshakeOpen && (
