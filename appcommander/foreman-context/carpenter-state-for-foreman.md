@@ -8,157 +8,163 @@ comms active.
 
 ## WHAT-CHANGED-RECENTLY
 
-**Bundle-budget mechanism shipped** at commit `5a933a9` on
-branch + main. Third mechanism-over-prose conversion this
-session-week (after library-seam audit `66637f1` and the
-photo-capture/punch-list block). Per CLAUDE_ROOT.md
-non-negotiable #5.
+**Two mechanical guardrails shipped** under the operator's "cut
+away, verify and justify every change, continue adding
+guardrails" directive. Branch and main at `75033ec`.
 
-New `scripts/bundle-budget.mjs`:
-- Reads every `.js` and `.css` file under `dist/assets` post-
-  vite-build, gzips each, asserts size against per-pattern
-  budget.
-- Each currently-emitted chunk has an explicit named budget
-  with 20-40% headroom above today's measured size. Patterns
-  match Vite's content-hashed filenames.
-- Catch-all at 3KB gz forces any new unrecognized chunk to
-  surface immediately with "add a named budget" guidance.
-- Failure output: file, over-by, three-fix recipe (code-split
-  / audit-and-bump / refactor).
-- Wired into `npm run build` after `vite build` so the build
-  gate fails on budget violations. Standalone via
-  `npm run check-bundle`.
+1. **File-size guardrail** (`57e32bc`). `src/file-size.test.ts`
+   walks every wallet source file, counts total lines, applies
+   CLAUDE_ROOT.md lines 83-84's two tiers: `console.warn`
+   (non-fatal) over 400 lines, test FAILS over 800. Largest
+   wallet file today is WalletProvider.tsx at 273 lines — check
+   passes clean, stands guard.
 
-**Verify-don't-trust applied to the check itself:** deliberately
-tightened the QrShow budget to 5KB gz against its real 11.62KB
-size, confirmed exit code 1 with the exact filename + over-by
-+ three-fix message, restored to real 15KB, confirmed exit code
-0 with all 18 chunks named. Mechanism works end to end.
+2. **Keys-never-leave guardrail** (`75033ec`). `src/keys-never-leave.test.ts`
+   greps every wallet source file for two hard-fail patterns:
+   console.* calls passing a secret-named identifier
+   (privateKey/passphrase/seed/mnemonic/secretKey), and
+   localStorage/sessionStorage.setItem with a secret identifier.
+   This is the mechanical check for non-negotiable #1 — "keys
+   never leave unencrypted, outranks every other rule" — which
+   previously had NO check. Documented gaps (not silent):
+   "transmits" on-wire (structurally prevented by encrypt-
+   before-network storage design) and indirect object leaks
+   (console.log(wallet)).
 
-**Mid-session caught a shell-cwd-persisted error** when running
-the script after a prior `cd dist/assets`. The Node module-not-
-found error surfaced the issue cleanly; recovered with explicit
-`cd /home/user/tapit-wallet`. Third time this session-week.
+Both verified by deliberate canary:
+- file-size: lowered threshold to 200, confirmed WalletProvider
+  (273 lines) trips it, restored.
+- keys-never-leave: injected console.log of passphrase into
+  createJournalEntry, confirmed caught at exact file+line+kind,
+  restored byte-identical from backup.
+
+## GATE FENCE STATUS — now complete
+
+CLAUDE_ROOT.md gate fence names five rules that matter enough to
+enforce. As of this session all five are covered:
+- **gates (typecheck/lint/test/build)** — base gates, always run.
+- **keys-never-leave audit** — `src/keys-never-leave.test.ts` ✓ NEW
+- **tapit-attest integrity** — `src/library-seam.test.ts` ✓
+- **feature-manifest coverage** — `src/features-registry.test.ts` ✓
+- **branch gate** — SessionStart hook concern, not a vitest test.
+
+Plus two non-gate-fence mechanical checks added this week:
+- **bundle-budget** — `scripts/bundle-budget.mjs`, build-step ✓
+- **file-size 400/800** — `src/file-size.test.ts` ✓ NEW
+
+The doctrine is now legible in test results. Five mechanism-over-
+prose conversions total this session-week.
 
 ## Gates at session end
 
-**Root:** typecheck / lint / test (17/17) / build all green.
-Build gate now includes bundle-budget assertion.
+**Root:** typecheck / lint / test (19/19 across 5 test files:
+persona-contract, features-registry, library-seam, file-size,
+keys-never-leave) / build all green.
 
-**tapit-attest:** unchanged at 82 / 78 / 0 / 4.
+**tapit-attest:** unchanged 82 / 78 / 0 / 4.
 
-**Bundle posture (login surface unchanged ~110KB gz):** all 18
-emitted chunks under their named budgets:
-- index (login main): 3.50KB gz / 5KB budget
-- WalletProvider: 3.90KB / 5.5KB
-- HomeScreen: 5.37KB / 8KB
-- JournalDetail: 5.29KB / 8KB
-- SettingsScreen: 1.88KB / 3KB
-- SignApprovalScreen: 2.83KB / 4KB
-- VerifyProofScreen: under 5KB
-- QrShow (qrcode lib): 11.62KB / 15KB
-- QrScanModal: 1.33KB / 3KB
-- WalletContext: 0.13KB / 0.5KB
-- useWallet hook: 0.21KB / 0.5KB
-- useAnchorWorker hook: 0.18KB / 0.5KB
-- anchorQueue: 0.58KB / 1.5KB
-- saveWallet: 0.78KB / 2KB
-- attest vendor (lazy): 26.40KB / 35KB
-- react vendor: 53.19KB / 60KB
-- supabase vendor: 54.28KB / 60KB
-- css: ~3KB / 6KB
+**Both new guardrails pass clean** on current code — no wallet
+file over 400 lines, no wallet file logs or web-stores a secret.
 
-**Keys-never-leave audit clean.** Doctrine-only commit, no
-runtime surface touched.
+**Keys-never-leave audit:** now MECHANICAL plus still load-
+bearing review surface per the gate fence for any code touching
+keys.
 
-**File-size rule satisfied.** Largest source file remains
-`WalletProvider.tsx` at 273 lines. NO MECHANICAL CHECK YET —
-that's the next mechanism candidate (see below).
+**File-size rule:** now MECHANICAL. Largest file WalletProvider.tsx
+at 273 lines.
 
 ## WHAT'S-PENDING
 
 1. **Operator browser-verifies the Cut-1-through-Cut-4 punch
-   list** against the live Netlify + Supabase deploy (still
-   pending from the previous block). PLAN.md and prior
-   comms have the walk-through.
-2. **Operator-side: Cut 2 migration** still needs running in
-   Supabase SQL editor if not already (the wallet_media
-   bucket migration from `20260522000001_create_wallet_media_bucket.sql`).
-3. **Five non-blocking follow-ups** unchanged:
-   - Multi-tab worker coordination (BroadcastChannel).
-   - OTS fixture restoration (4 skipped library tests).
-   - `Tap-it-Attest-main.zip` cleanup at repo root.
-   - Backfill remote media for pre-Cut-2 entries.
-   - Total-post-auth-bytes ceiling (this block's gap — the
-     per-chunk check doesn't catch death-by-a-thousand-cuts).
-4. **Next mechanism candidate logged: file-size limit.**
-   CLAUDE_ROOT.md mentions 400-line warn / 800 error but no
-   check fails. Same conversion shape as library-seam +
-   bundle-budget. Small, mechanical, preventive. Logged in
-   the bundle-budget commit message and in ideas.
+   list** plus the full v1 stack against the live Netlify +
+   Supabase deploy. Still pending; verify-checklist in PLAN.md
+   and recent comms.
+2. **Operator-side: Cut 2 migration** (`20260522000001_create_wallet_media_bucket.sql`)
+   in Supabase SQL editor if not already run.
+3. **Lower-value guardrail candidates** (NOT cut — surfaced for
+   operator decision, would risk cruft per non-negotiable #3 if
+   added without need):
+   - Total-post-auth-bytes ceiling — bundle-budget gap
+     (death-by-a-thousand-cuts). Worth it if the trend climbs.
+   - Manifest touches-array accuracy — Carpenter leans AGAINST
+     (friction on every file add, low cost of staleness).
+4. **Non-blocking follow-ups** unchanged: multi-tab worker
+   coordination, OTS fixture restoration (4 skipped library
+   tests), Tap-it-Attest-main.zip cleanup, backfill remote
+   media for pre-Cut-2 entries.
+5. **Phase 5** (Mycelium + Shamir recovery) still waits for
+   MYCELIUM_NETWORK_SPEC.md.
 
 ## WHAT-TO-FLAG
 
-**Third mechanism conversion this session-week.** Library-seam
-(commit 66637f1), now bundle-budget (5a933a9). Same pattern
-each time: re-ground in CLAUDE_ROOT.md, find the verbal rule
-that's been holding by attention, convert to a check that
-fails. Each conversion reduces ongoing Carpenter-attention
-cost. The remaining attention can go to actual product work.
+**The gate fence is mechanically complete.** Every rule
+CLAUDE_ROOT.md names as worth enforcing is now either a base
+gate or a mechanical check, except the branch gate which is a
+SessionStart hook. The guardrail-adding directive has a natural
+stopping point here — further checks would be inventing
+enforcement for rules the doctrine does not name, which
+non-negotiable #3 warns against. The Carpenter stopped at two
+doctrine-named guardrails rather than manufacturing marginal
+ones.
 
-**The pattern of doctrine-driven task selection is robust.**
-This session: operator said "reground, next piece" — the
-doctrine itself selected the task. Worth keeping crisp: when
-the operator gives an ambiguous "next piece" directive, the
-mechanism-over-prose non-negotiable is a reliable source for
-the next-piece pick whenever a verbal rule has been holding
-by attention for several sessions.
+**Keys-never-leave is now mechanical but still heuristic.** It
+catches the by-name developer-mistake class (debug-logging a
+secret, web-storing a passphrase). It does NOT catch indirect
+object leaks or on-wire transmits. The gate fence's "load-
+bearing review surface" guidance for key-touching code still
+applies on top of the check. Frank should treat any new code
+that touches the Wallet object, the passphrase, or a network
+call as review surface even with the check passing.
 
-**Shell-cwd-persistence keeps biting.** Three times this
-session-week. The Bash tool documentation says cwd persists;
-my workflow needs to always prefix significant commands with
-explicit `cd /home/user/tapit-wallet &&` when there's any
-chance a prior command cd'd elsewhere. Could log as a
-Carpenter operating-protocol pattern.
+**The operator-verification debt is the real open item.** Five
+mechanism conversions + a full punch list shipped this session-
+week, all gate-level confidence only. Browser verification
+against the live deploy is the bridge to feature-level
+confidence and is operator-side work.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator browser-verifies the Cut-1-through-Cut-4 punch
-   list against the live deploy whenever they're ready.
+1. Operator browser-verifies the live deploy against the
+   PLAN.md checklist.
 2. If clean: ship. If any stall: report the specific failure.
-3. Next mechanism conversion (file-size limit) is available
-   for any quiet slot.
-4. The non-blocking follow-ups remain available.
-5. Phase 5 (Mycelium + Shamir recovery) still waits for
-   MYCELIUM_NETWORK_SPEC.md.
+3. The two lower-value guardrail candidates are available if
+   the operator wants them; the Carpenter recommends the
+   total-bytes ceiling only if the bundle trend keeps climbing
+   and recommends against the touches-accuracy check.
+4. Phase 5 holds for MYCELIUM_NETWORK_SPEC.md.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Disciplined, doctrine-anchored. The "reground, verify don't
-trust, take care of the next piece" directive is becoming a
-recurring rhythm — each invocation produces one focused
-commit that does what the doctrine asks. The mechanism-over-
-prose pattern is the throughline. Expect either browser-verify
-findings or another reground-and-next-piece directive next.
+Disciplined, guardrail-focused, doctrine-anchored. The recurring
+"reground, verify don't trust, next piece / continue adding
+guardrails" rhythm has produced five mechanism conversions
+across the session-week, each a clean focused commit. The
+operator values the mechanism-over-prose pattern and the
+verify-don't-trust discipline; the Carpenter has matched both.
+The natural completion of the gate fence is a good moment for
+the operator to either pivot to browser verification or name a
+new direction. Expect one of those next.
 
 ## Ideas ready to revisit
 
-All earlier idea entries hold. Updated observations from this
-session:
+All earlier idea entries hold. Updated this session:
 
-- **The third mechanism-over-prose conversion landed.** The
-  conversion treatment is increasingly the right answer to
-  the operator's "next piece" directives because each one
-  visibly reduces the rule-keeps-getting-missed risk class.
+- **The gate fence is mechanically complete.** Five mechanism-
+  over-prose conversions: manifest coverage, tapit-attest
+  integrity, bundle-budget, file-size, keys-never-leave. The
+  doctrine's enforce-worthy rules are now checks.
 
-- **File-size limit is the next mechanism candidate.**
-  CLAUDE_ROOT.md 400-line warn / 800 error has been holding
-  by attention but has no check. Same conversion shape.
+- **Two lower-value guardrail candidates remain** but the
+  Carpenter deliberately did NOT cut them to avoid cruft:
+  total-post-auth-bytes ceiling (worth it if bundle trend
+  climbs) and manifest touches-accuracy (recommended against —
+  friction outweighs benefit).
 
-- **Total-post-auth-bytes ceiling** is a gap in the bundle-
-  budget mechanism — death by a thousand cuts where every
-  chunk creeps toward its budget ceiling without any single
-  chunk failing. Worth adding if the trend continues.
+- **Mechanism converts attention to leverage.** Each check is a
+  one-time withdrawal from the Carpenter's attention budget
+  that never has to be repaid. The reclaimed attention is the
+  real product — future sessions spend more on the feature and
+  less on remembering the rules.
 
 The 16+ earlier idea entries are stage-tagged in
 `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.

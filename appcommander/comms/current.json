@@ -1,29 +1,29 @@
 {
   "v": 1,
-  "ts": "2026-05-21T22:30:00Z",
-  "session_id": "bundle-budget-mechanism-2026-05-21-1779402094",
+  "ts": "2026-05-22T00:10:00Z",
+  "session_id": "keys-never-leave-guardrail-2026-05-22-1779408204",
   "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
-    "files": ["scripts/bundle-budget.mjs", "package.json"],
+    "files": ["src/file-size.test.ts", "src/keys-never-leave.test.ts"],
     "screen_path": "/"
   },
   "layer": "doctrine",
-  "action": "mechanism",
-  "summary": "Converted the verbal 'bundle bloat is trending monotonic' watch-pattern into a mechanical check per CLAUDE_ROOT.md non-negotiable #5. New scripts/bundle-budget.mjs reads dist/assets after vite build, gzips each .js/.css file, and asserts each emitted chunk's gzipped size against a per-pattern budget. Every currently-emitted chunk has an explicit named budget with ~20-40% headroom above today's measured size; catch-all at 3KB gz forces any new unrecognized chunk to surface immediately and prompts an explicit named-budget addition. Wired into the build script so the build gate fails on budget violation. Verify-don't-trust applied to the check itself — deliberately tightened the QrShow budget to 5KB (against current 11.62KB), confirmed exit code 1 with file + budget + over-by + three-fix recipe, restored, confirmed exit code 0 with 18 chunks named. One commit (5a933a9) on branch + main.",
+  "action": "guardrails",
+  "summary": "Two mechanical guardrails added under the operator's 'continue adding guardrails, verify and justify every change' directive. File-size guardrail (commit 57e32bc) — src/file-size.test.ts walks every wallet source file, console.warns files over 400 lines, fails the test on any file over 800 lines, per CLAUDE_ROOT.md lines 83-84. Keys-never-leave guardrail (commit 75033ec) — src/keys-never-leave.test.ts greps every wallet source file for console.* calls or web-storage setItem calls passing a secret-named identifier (privateKey/passphrase/seed/mnemonic/secretKey), per non-negotiable #1, the rule that outranks every other rule and previously had NO mechanical check. Both verified by deliberate canary — file-size by lowering the threshold to 200 (caught WalletProvider at 273 lines), keys-never-leave by injecting a console.log of the passphrase into createJournalEntry (caught at the exact file + line). Branch and main both at 75033ec.",
   "why": {
-    "text": "Operator: 'Reground and take care of the next piece of the cut. Verify don't trust.' Re-read CLAUDE.md + CLAUDE_ROOT.md fresh; non-negotiable #5 directly selected the next task — the bundle-bloat trend has been a verbal note across multiple sessions and the doctrine literally says convert verbal patterns to mechanism. This block also continues the pattern from the library-seam audit (commit 66637f1): same conversion shape, same kind of pre-commit catch power. The next mechanism candidate I named in the commit message: file-size limit (CLAUDE_ROOT.md mentions 400-line warn / 800 error but there's no check that fails). Logged for the next mechanism-over-prose session if the operator wants it.",
+    "text": "Operator: 'Cut away make sure every change is verified and justified continue adding guardrails.' Re-grounded in CLAUDE_ROOT.md; non-negotiable #5 (mechanism over prose) plus the gate fence section ('When a rule matters enough to enforce, add a check') selected the work. The gate fence names five rules that matter — gates, keys-never-leave audit, tapit-attest integrity, feature-manifest coverage, branch gate. As of this session, four of the five are mechanical checks (features-registry, library-seam, plus the four base gates; this session adds keys-never-leave and the file-size rule from the Architecture section). The fifth, the branch gate, is explicitly a SessionStart hook concern, not a vitest test. Every change verified: each guardrail proven to fail-when-it-should via a deliberate canary before commit. Every change justified: each cites the exact CLAUDE_ROOT.md line it enforces.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-21-BUNDLE-BUDGET-MECHANISM-014"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-GUARDRAILS-015"
   },
   "outcome": {
-    "files_changed": ["scripts/bundle-budget.mjs (new), package.json (modified — build script now ends with node scripts/bundle-budget.mjs; new check-bundle script for standalone runs)"],
-    "tests_passing": "17/17 root, 82/78 tapit-attest. Build gate now includes the bundle-budget assertion.",
+    "files_changed": ["src/file-size.test.ts (new), src/keys-never-leave.test.ts (new) — two commits, plus comms"],
+    "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "Commit 5a933a9 on branch + main. Mid-session caught a shell-cwd-persisted issue (got 'cannot find module' from earlier cd into dist/assets); fixed with explicit cd /home/user/tapit-wallet before re-running. Pattern-driven catch-all narrowed from 6KB to 3KB after first run found 6 chunks hitting the catch-all (each was a tiny hoisted hook/context, all under 1.5KB gz); added explicit named budgets for each so 0 chunks hit the catch-all in the final state."
+    "notes": "Both guardrails pass clean on current code — no wallet file over 400 lines (largest WalletProvider.tsx at 273), no wallet file logs or web-stores a secret. The checks now stand guard for future regressions. keys-never-leave has two documented gaps it does NOT catch (transmits-on-wire, structurally prevented by the encrypt-before-network storage design; and indirect object leaks like console.log(wallet) which the by-name regex can't see) — both noted in the file's header comment, not silent."
   },
   "confidence": 95,
-  "uncertainty": "Vite's chunk-hoisting behavior is non-deterministic across runs in some edge cases — a small import-graph change can move code between named chunks. The catch-all at 3KB gz is the safety net for the next time that happens. The named budgets have 20-40% headroom; significant feature work could push named chunks over their budgets and the right response then is to either code-split or audit-and-bump.",
+  "uncertainty": "The keys-never-leave check is a heuristic — it catches the dominant by-name developer-mistake class but cannot catch every conceivable leak (an indirect object log, a leak through a renamed variable). It is a strong net for the common case, not a proof of absence. The gate fence's load-bearing-review-surface guidance for any code touching keys still applies on top of the mechanical check.",
   "ripple": ["doctrine"],
-  "next": "Pausing at a clean stop. The bundle-budget assertion now fires on every build. Remaining non-blocking follow-ups: multi-tab worker coordination (BroadcastChannel), OTS fixture restoration (4 skipped library tests), Tap-it-Attest-main.zip cleanup, backfill remote media for pre-Cut-2 entries. The next mechanism candidate I logged in the commit: file-size limit per CLAUDE_ROOT.md's 400-line warn / 800 error spec. v1 surface unchanged.",
+  "next": "The gate fence is now mechanically enforced end to end except the branch gate (a SessionStart hook concern, not a vitest test). The five named rules — gates, keys-never-leave, tapit-attest integrity, manifest coverage, branch gate — are all either base gates or mechanical checks. Further guardrails past this point would be inventing checks for rules the doctrine does not explicitly name as 'matters enough to enforce', which would risk cruft per non-negotiable #3. Lower-value candidates remain available if the operator wants them: total-post-auth-bytes ceiling (bundle-budget gap), manifest touches-array accuracy. Pausing here; the gate fence is complete.",
   "signals": ["pulse"]
 }
