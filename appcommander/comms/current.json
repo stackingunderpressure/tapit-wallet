@@ -1,40 +1,36 @@
 {
   "v": 1,
-  "ts": "2026-05-22T19:49:00Z",
-  "session_id": "phase-5b-membership-2026-05-22-1779478500",
-  "who": { "actor": "carpenter", "feature_slug": "connections" },
+  "ts": "2026-05-22T20:11:00Z",
+  "session_id": "org-governance-and-5c-sketch-2026-05-22-1779480300",
+  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
     "files": [
-      "src/features/connections/createMembership.ts",
-      "src/features/connections/MembershipModal.tsx",
-      "src/features/connections/MembershipCard.tsx",
-      "src/features/connections/createHandshake.ts",
-      "src/features/connections/manifest.ts",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "scripts/bundle-budget.mjs"
+      "MYCELIUM_NETWORK_SPEC.md",
+      "PLAN.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-22-phase-5c-nostr-transport-sketch.md"
     ],
     "screen_path": "/"
   },
-  "layer": "ui",
-  "action": "feature",
-  "summary": "Phase 5b shipped (commit 85d6a51) — organizations and membership, the second slice of Mycelium Layer 3. The architecture decision the operator blessed: an organization is simply a wallet — its own keypair and identity, named for the collective — which needs zero new key architecture and keeps organizations genuinely sovereign. A membership is a credential-kind attestation (credential_type=membership) the organization's wallet signs about a person, carrying both parties' ids and names. The new MembershipModal runs a one-directional two-QR flow, lighter than the handshake: the recipient shows their identity, the organization scans it and signs the membership, shows it back, and the recipient scans it and holds + anchors it — only the organization signs, because only the organization is vouching. Held memberships list in a new Memberships section on the Identity tab. Nesting is free: an organization holds a membership in a larger organization exactly the way a person does, because an organization is also a wallet. No new tapit-attest kinds — it reuses credentialAttestation, QrShow/QrScanModal, and the cosigning parseEnvelope helper.",
+  "layer": "doctrine",
+  "action": "spec",
+  "summary": "The operator asked how an organization's signing key works under quorum control, and after the answer asked to write it into the spec, slot it in the sequence, push to main, and continue autonomously. MYCELIUM_NETWORK_SPEC.md section 6 gained the organization-key governance model: the design is a split, because an org key does two jobs. Everyday issuance — signing memberships — stays fast: a clerk signs and it is valid instantly, and other officials co-sign later as ratification that only accumulates (no redo, no revoke), which needs no new cryptography because the tapit-attest envelope is multi-signature by nature. Constitutional acts — changing officials, rotating the key, joining a larger org, dissolving — require a true M-of-N threshold, the HEARTWOOD higher-threshold-for-higher-stakes principle. In the full quorum model the org's authority is distributed across the officials' wallets — there is no single org key to steal. This was slotted into the phasing as Phase 5f, and PLAN.md updated to 5a-5f. A Phase 5c (Nostr transport) design sketch was written so the next Layer 3 increment is ready to bless. Branch and main both pushed.",
   "why": {
-    "text": "Operator: 'Cut away.' Phase 5b was operator-blessed: an organization is a wallet (forced by the architecture — createWallet/walletStore are one-wallet-per-login), and the operator connected it to the recovery vision the prior session wove into the spec. The build was grounded by re-reading createHandshake.ts and the connections manifest first.",
+    "text": "Operator: 'Yes, and put it where it goes in the sequence ... push to main ... you continue on.' The governance answer was grounded in the existing doctrine (spec section 6's deferral, HEARTWOOD's threshold-by-stakes, tapit-attest's native multi-signature). With the operator stepping away, autonomous work was kept to the well-determined and safe: the approved spec enrichment and a design sketch for the forky Phase 5c — not a solo cut of a big networking feature.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-PHASE-5B-MEMBERSHIP-026"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-ORG-GOVERNANCE-5C-SKETCH-027"
   },
   "outcome": {
     "files_changed": [
-      "src/features/connections/{createMembership.ts,MembershipModal.tsx,MembershipCard.tsx} (new); createHandshake.ts (export leafValue), manifest.ts, src/features/wallet-core/HomeScreen.tsx, scripts/bundle-budget.mjs (modify) — one commit plus comms"
+      "MYCELIUM_NETWORK_SPEC.md (modify — section 6 governance, section 14 Phase 5f), PLAN.md (modify — 5a-5f), briefs/2026-05-22-phase-5c-nostr-transport-sketch.md (new) — one commit plus comms"
     ],
-    "tests_passing": "19/19 across 5 test files. tapit-attest unchanged 82/78/0/4.",
+    "tests_passing": "Unchanged — no source code touched. Gates last green at 85d6a51 (Phase 5b).",
     "build_green": true,
-    "notes": "[P-001] connections feature gains memberships — createMembership + MembershipModal + MembershipCard (commit 85d6a51). [P-002] Identity tab Memberships section live. [P-003] all four gates green. [P-004] bundle-budget flagged HomeScreen 284 bytes over; audited as legitimate growth (four tabs, three modal launchers) and recalibrated 8KB->11KB gz with a comment. [FEEDBACK->Foreman]: no notes — a clean grounded pass.",
-    "tests_passing_detail": "typecheck clean, lint clean"
+    "notes": "[P-001] Org-key governance model in spec section 6. [P-002] Phase 5f slotted in section 14; PLAN.md 5a-5f. [P-003] Phase 5c Nostr-transport sketch written with four open questions. [P-004] branch and main pushed. [FEEDBACK->Foreman]: no notes — the operator's three-option question resolved cleanly to a split design grounded in the existing doctrine.",
+    "tests_passing_detail": "no gates run — documentation only"
   },
-  "confidence": 83,
-  "uncertainty": "Build-verified only. Issuing a membership is a two-QR exchange between two devices and cannot be exercised in CI or on a single phone. The org-as-a-wallet model is sound and minimal; the modal flow reads correctly but wants a two-device field test. A small open point for later: organization identities are not formally typed as person-vs-organization in 5b — an org is just a wallet with a collective's name; formal typing can come if needed.",
-  "ripple": ["connections", "wallet-core"],
-  "next": "Operator field-tests the handshake and membership flows with two devices. Phase 5c — Nostr transport (remote Tier R links and remote sync) — is the next Layer 3 increment. Recovery stays Phase 5e.",
+  "confidence": 92,
+  "uncertainty": "Spec and sketch, not code. The governance model is consistent with the doctrine and the operator's own framing. The Phase 5c sketch carries four genuine open questions (relays, event shapes, addressing, identity reuse) that want the operator's input before 5c-i is cut — which is why 5c was sketched, not solo-built, while the operator was away.",
+  "ripple": ["doctrine", "connections", "app-connections"],
+  "next": "Operator reviews the Phase 5c sketch and blesses (or redirects) the 5c-i/ii/iii slicing and the four open questions; then cut 5c-i — the transport interface plus async peer delivery. Field-testing of the 5a/5b flows (two devices) still pending.",
   "signals": ["pulse"]
 }
