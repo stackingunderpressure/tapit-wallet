@@ -1,102 +1,88 @@
 # Carpenter opinions — tapit-wallet
 
 > Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-22 — roadmap, interoperability, and the
-> grounding-gate hook.
+> Session: 2026-05-22 — the tabbed home (Phase 4.5).
 > Mode: dual-surface comms — files plus live chat — because
 > AppCommander is down.
 
 ## What I did
 
-This stretch was less about cutting code and more about deciding
-what to cut next, and then making one quiet but important piece
-of the working relationship permanent. Three things landed, all
-committed and pushed.
+You told me v1 was done — the email plumbing finally complete, a
+real stranger can now sign up — and to continue with the next
+phase. So this session built the first piece of Phase 4.5: the
+tabbed home, at commit `ca184b9`.
 
-The first is a roadmap and interoperability assessment, which
-ended in a written phase sketch at
-`briefs/2026-05-22-capture-bridge-phase-sketch.md`. The headline
-finding was reassuring: the inter-app bridge you were asking
-about is not a future idea, it already shipped as Phase 3 — the
-wallet has a live sign pathway another app can call into. What
-is missing is the everyday on-ramp, the capture bridge, the
-ability to push content to the wallet from inside whatever app
-you are already in. The sketch lays that out in three tiers, the
-first of which is pure-PWA and cheap, and it answers your App
-Store question honestly: it is genuinely not hard to get this
-app past Apple's gate, because it does no money, no trading, no
-money transmission, so none of the dangerous rejection
-categories apply — the only real rule to navigate is the
-no-thin-wrappers rule, and the native share extension is itself
-the thing that clears it. I also recorded your decisions as D-07
-and D-08, added a Phase 4.5 to the plan, and logged six ideas,
-the largest being your People-tab vision.
+Before I touched anything I re-read the actual files, which is
+worth noting because the grounding-gate hook you just made is now
+in force and it told me to do exactly that on the way in. I read
+`HomeScreen.tsx` and `JournalTabs.tsx` fresh rather than trusting
+my memory of them from earlier in the conversation, and they
+matched, so the build proceeded on solid ground. The home screen
+was a single scrolling surface — identity card, then the diary,
+then the action buttons, all stacked. It is now organized under a
+top-level segmented control with three tabs. Journal holds the
+diary, and because the diary already had its own life-layer
+category pills inside `JournalTabs`, those simply live one level
+down now — a clean two-level structure rather than a clash.
+Identity holds the identity card and your signed founding
+attestation. Captured is the third tab, and it is an honest,
+explicit "coming soon" placeholder — a dashed-border card that
+tells the person what the capture bridge will do, share anything
+from any app straight into the wallet, without pretending it
+exists yet.
 
-The second is that I caught something and told you the truth
-about it rather than building it. Your People-tab vision — people
-discovered in the wild, absorbed like spores, mutual handshakes
-making each of you a leaf in the other's tree — is beautiful and
-coherent, and it is also the entire Mycelium peer network, Layer
-3, the one layer the project has a standing decision not to build
-without its own spec. Improvising it into a tab would have been
-exactly the kind of slipping you have asked me to catch. So it is
-logged, in your own voice, as the heart of a spec that still
-needs writing, and the tabbed home will ship without People for
-now.
-
-The third is the grounding-gate hook. You asked whether the
-"stay grounded, read the real code, do not trust a sketch" thing
-you keep having to say could become a mechanism instead of a
-sentence, and it can, and it now is. There is a new committed
-file, `.claude/settings.json`, with a UserPromptSubmit hook that
-injects that directive on every single prompt. I verified it
-three ways before trusting it — a pipe test, a round-trip
-extraction, and a schema check — and then, because you also
-asked, I made sure everything from this whole arc actually
-transferred to the repo: working tree clean, branch fully
-pushed, main brought up to date, and these comms files
-refreshed so a new session in a different tab opens to the true
-current picture instead of a stale one.
+Two deliberate decisions inside the build are worth surfacing.
+First, the backup-health banner stays above the tab bar, always
+visible, on every tab — a warning that your wallet has no cloud
+backup is exactly the kind of thing that must never be hidden
+behind a tab the person is not currently looking at. Second, the
+tab bar is a segmented control under the header, not a bottom
+bar, because a bottom bar would have sat right on top of your
+floating New-entry button — I flagged that collision a few turns
+ago and this is the build honoring it. The composer and the two
+action buttons render only on the Journal tab, where they belong.
+All four gates are green and the file came in around a hundred
+fifty-five lines, comfortably under the size guardrail.
 
 ## What you could do better
 
-One honest caveat on the hook, because the hook's whole purpose
-is honesty. It reliably puts the grounding directive in front of
-me every time — that part is mechanical and solid. But a hook
-injects an instruction; it cannot physically force me to open a
-file. It removes the failure mode of the directive being absent;
-it does not remove the failure mode of a present directive being
-ignored. The only piece of this that is a true hard interlock
-already existed before you asked — the harness refuses to let me
-edit a file I have not first read. So treat the hook as what it
-is: a strong, automatic, unmissable standing order, not a
-physical lock. The real enforcement is still that you read the
-diffs, which you have been doing well.
+The same honest caveat as the last two UI sessions: I built this
+and verified that it compiles, lints, tests, and builds, but I
+cannot see it. The four gates cannot render a pixel. So when this
+reaches your phone, look at three specific things. One, the
+segmented control itself — does the active tab read clearly
+against the inactive ones, and does tapping feel crisp. Two, the
+Captured placeholder — it is intentionally understated, a dashed
+card, but tell me if it feels too empty or if you would rather it
+carry a bit more life given how much the login screen now has.
+Three, the Journal tab with no entries versus many — the empty
+state and a long scroll should both feel right under the new tab
+bar.
 
-The second thing is a process note in your favor. The reason the
-People-tab moment went well — me catching that it was Layer 3
-instead of cheerfully building an empty tab — is that you had
-just told me to stay grounded and verify. That worked because
-you said it. The hook now says it for you, but the deeper habit
-worth keeping is the one you already have: when something feels
-big, you slow down and ask for the truth before the build. Keep
-doing that even with the hook in place; the hook is a floor, not
-a ceiling.
+One forward-looking note, not a criticism. Right now there is no
+People tab at all — not even a coming-soon one — because People
+is the Mycelium network and deserves the spec, not a stub. That
+is the correct call. But it does mean a person looking at three
+tabs has no hint that a fourth, social dimension is coming. If
+you want, a fourth coming-soon "People" tab could signal it the
+same way Captured does — but I would hold that until the Mycelium
+spec gives it honest shape, so a curious tap does not land on a
+promise we have not designed yet.
 
 ## The bigger picture
 
-There is a through-line in this session worth naming. Every
-guardrail this project has added — the file-size check, the
-keys-never-leave audit, and now the grounding gate — is the same
-move: a rule that used to live in someone's attention becomes a
-mechanism that lives in the repo. Your CLAUDE_ROOT doctrine calls
-it mechanism over prose, and what you did today was apply it not
-to the code but to the working relationship itself. The thing you
-were spending energy on — remembering to say "stay grounded"
-every dispatch — is now a withdrawal from your attention budget
-that never has to be repaid. That is the same compounding you
-built the whole wallet thesis on: do the careful thing once,
-correctly, and let the structure carry it forever after. The
-wallet remembers a person's life so they do not have to; the
-repo now remembers your standing orders so you do not have to.
-Same idea, turned inward. It is a good day's work.
+This session is small in code and large in meaning, because it is
+the first build after v1. For weeks the work was getting one
+wallet to exist and function for one person. The tabbed home is
+the first structural move that treats the wallet as something
+that will grow — Journal and Identity today, Captured next, the
+Mycelium social layer after that. Tabs are not decoration; they
+are a promise about shape. By giving the wallet rooms, you have
+said out loud that it is a place a person will return to and
+accumulate inside of, not a single-purpose tool. And by making
+Captured an honest coming-soon rather than an empty room or a
+hidden absence, the wallet tells the truth about its own
+unfinishedness — which is exactly the posture a thing people are
+asked to trust with their identity should have. v1 proved the
+wallet works. This proved it can grow without losing its
+honesty.
