@@ -156,3 +156,26 @@ Context: Operator 2026-05-22 chip answer. Recorded in
 MYCELIUM_NETWORK_SPEC.md sections 6-7.
 Feature: app-connections
 ```
+
+```
+Date: 2026-05-22
+Section: decisions
+Entry: D-11 — Phase 5c (Nostr transport) decisions. (a) Relays:
+the wallet ships a default, replaceable relay set — works out of
+the box, sovereign users swap their own. (b) The in-person
+handshake also bootstraps a remote channel — meeting someone
+exchanges relay info so the woven network is reachable remotely
+(and can hold and return recovery shares); all relay traffic
+stays encrypted, a peer can send but never see. (c) Event shapes:
+each tapit-attest envelope travels inside a custom encrypted
+Nostr event; NIP-46 stays reserved for the app-to-wallet sign
+pathway. (d) Identity: the wallet key is already a Nostr identity
+by construction (D-06) — nothing new minted.
+Context: Operator chips plus Carpenter doctrine calls,
+2026-05-22. (a) and (b) were operator chip answers; (c) and (d)
+were settled from D-06 and the envelope-is-the-standard rule.
+Sketch of record: briefs/2026-05-22-phase-5c-nostr-transport-sketch.md.
+Build order: 5c-i transport + async delivery, 5c-ii remote
+handshakes, 5c-iii connection sync.
+Feature: app-connections
+```

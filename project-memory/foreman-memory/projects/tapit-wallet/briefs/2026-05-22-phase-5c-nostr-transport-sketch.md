@@ -97,5 +97,5 @@ stays the standard — Nostr carries it, it is not replaced.
 
 ---
 
-*Next: operator reviews and blesses (or redirects) the slicing
-and the four open questions; then 5c-i is the first cut.*
+*All four design questions are resolved (D-11). The next cut is
+5c-i — the transport interface plus encrypted async delivery.*
