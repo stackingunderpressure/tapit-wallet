@@ -41,6 +41,17 @@ export function signEnvelope(a: Attestation, privateKey: string): Attestation {
   return { ...a, signatures };
 }
 
+/**
+ * Sign a 32-byte digest with a BIP340 Schnorr key. Returns a 64-byte
+ * signature as hex. The wallet uses this to sign Nostr event ids; the
+ * envelope path goes through signEnvelope and never touches this.
+ */
+export function signDigest(digest: Uint8Array, privateKey: string): string {
+  if (!isHex(privateKey, 32)) throw new Error('privateKey must be 32-byte hex');
+  if (digest.length !== 32) throw new Error('digest must be 32 bytes');
+  return bytesToHex(schnorr.sign(digest, hexToBytes(privateKey)));
+}
+
 /** Verify one Schnorr signature over a digest. Never throws. */
 export function verifySignature(
   digest: Uint8Array,
