@@ -22,6 +22,50 @@ import { supabase } from '../../shared/lib/supabase.ts';
 type Step = 'email' | 'code';
 type Status = 'idle' | 'busy' | 'error';
 
+// The login screen doubles as the wallet's landing page — there is no
+// separate marketing site. Frame is the shared shell: a warm paper
+// field, two soft drifting colour glows, and a frosted card that
+// rises in on mount. Both the email and code steps render inside it.
+function Frame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-paper">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-28 -top-32 h-[26rem] w-[26rem] animate-float rounded-full bg-accent/25 blur-3xl motion-reduce:animate-none"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-36 -right-28 h-[30rem] w-[30rem] animate-float-slow rounded-full bg-amber-400/20 blur-3xl motion-reduce:animate-none"
+      />
+      <div className="relative flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-sm animate-rise rounded-2xl border border-ink/10 bg-white/85 p-8 shadow-[0_24px_70px_-20px_rgba(15,20,25,0.35)] backdrop-blur-md motion-reduce:animate-none">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Wordmark() {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+      <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-accent">
+        Tapit Wallet
+      </span>
+    </div>
+  );
+}
+
+const inputClass =
+  'mt-1.5 w-full rounded-xl border border-ink/15 bg-paper/70 px-3.5 py-2.5 text-base text-ink transition focus:border-accent focus:bg-white focus:outline-none focus:ring-4 focus:ring-accent/15';
+
+const buttonClass =
+  'mt-5 w-full rounded-xl bg-gradient-to-b from-accent to-[#22503b] py-3.5 font-medium text-paper shadow-lg shadow-accent/30 transition active:scale-[0.99] disabled:opacity-40 disabled:shadow-none';
+
+const dividerClass =
+  'my-6 h-px bg-gradient-to-r from-transparent via-ink/10 to-transparent';
+
 export function LoginPage() {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -86,16 +130,19 @@ export function LoginPage() {
 
   if (step === 'code') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <form onSubmit={submitCode} className="w-full max-w-sm">
-          <h1 className="text-2xl font-semibold">Enter your code</h1>
-          <p className="mt-1 text-sm text-muted">
-            We emailed a 6-digit code to{' '}
-            <span className="font-mono">{email}</span>. Type it here to
-            finish signing in — no need to leave this screen.
-          </p>
-          <label className="mt-6 block">
-            <span className="text-sm font-medium">6-digit code</span>
+      <Frame>
+        <Wordmark />
+        <h1 className="mt-5 font-serif text-[1.8rem] font-semibold leading-[1.15] text-ink">
+          Enter your code
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-ink/70">
+          We emailed a 6-digit code to{' '}
+          <span className="font-medium text-ink">{email}</span>. Type it
+          here to finish signing in — no need to leave this screen.
+        </p>
+        <form onSubmit={submitCode} className="mt-6">
+          <label className="block">
+            <span className="text-sm font-medium text-ink">6-digit code</span>
             <input
               type="text"
               required
@@ -106,14 +153,14 @@ export function LoginPage() {
               maxLength={8}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))}
-              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base tracking-widest font-mono focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              className={`${inputClass} text-center font-mono text-lg tracking-[0.3em]`}
               placeholder="123456"
             />
           </label>
           <button
             type="submit"
             disabled={status === 'busy' || code.trim().length === 0}
-            className="mt-4 w-full rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
+            className={buttonClass}
           >
             {status === 'busy' ? 'Verifying…' : 'Verify & sign in'}
           </button>
@@ -122,83 +169,81 @@ export function LoginPage() {
               {error}
             </p>
           )}
-          <div className="mt-6 flex items-center justify-between text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setStep('email');
-                setCode('');
-                setError(null);
-              }}
-              className="text-muted hover:text-ink"
-            >
-              ← Use a different email
-            </button>
-            <button
-              type="button"
-              onClick={resend}
-              disabled={status === 'busy'}
-              className="text-accent hover:underline disabled:opacity-40"
-            >
-              {resent ? 'Code resent' : 'Resend code'}
-            </button>
-          </div>
         </form>
-      </div>
+        <div className={dividerClass} />
+        <div className="flex items-center justify-between text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setStep('email');
+              setCode('');
+              setError(null);
+            }}
+            className="text-muted transition hover:text-ink"
+          >
+            ← Use a different email
+          </button>
+          <button
+            type="button"
+            onClick={resend}
+            disabled={status === 'busy'}
+            className="font-medium text-accent transition hover:underline disabled:opacity-40"
+          >
+            {resent ? 'Code resent' : 'Resend code'}
+          </button>
+        </div>
+      </Frame>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <div className="text-xs uppercase tracking-wide text-accent">
-          Tapit Wallet
-        </div>
-        <h1 className="mt-2 text-2xl font-semibold leading-snug">
-          The record of your life belongs to you.
-        </h1>
-        <p className="mt-4 text-sm leading-relaxed text-ink/80">
-          Somewhere along the way we handed the story of our lives to
-          companies — our names, our histories, the proof of who we are —
-          and let them hold it, lose it, or lock us out of it. Tapit Wallet
-          takes it back. Your life is signed by your own key, kept on your
-          own device, and held true by the people who actually know you. No
-          company keeps it for you. No company can take it away. And because
-          the people who love you can stand with you and vouch for it, your
-          identity stays unmistakably, unfakeably yours.
-        </p>
-        <form onSubmit={submitEmail} className="mt-6">
-          <label className="block">
-            <span className="text-sm font-medium">Email</span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              inputMode="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              placeholder="you@example.com"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={status === 'busy' || email.trim().length === 0}
-            className="mt-4 w-full rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
-          >
-            {status === 'busy' ? 'Sending…' : 'Send my code'}
-          </button>
-          {error && (
-            <p className="mt-3 text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
-        </form>
-        <p className="mt-6 text-xs text-muted">
-          We email you a 6-digit code to sign in. Your keypair is generated
-          and held only on this device — never on the host.
-        </p>
-      </div>
-    </div>
+    <Frame>
+      <Wordmark />
+      <h1 className="mt-5 font-serif text-[1.8rem] font-semibold leading-[1.15] text-ink">
+        The record of your life belongs to you.
+      </h1>
+      <p className="mt-4 text-sm leading-relaxed text-ink/70">
+        Somewhere along the way we handed the story of our lives to
+        companies — our names, our histories, the proof of who we are —
+        and let them hold it, lose it, or lock us out of it. Tapit Wallet
+        takes it back. Your life is signed by your own key, kept on your
+        own device, and held true by the people who actually know you. No
+        company keeps it for you. No company can take it away. And because
+        the people who love you can stand with you and vouch for it, your
+        identity stays unmistakably, unfakeably yours.
+      </p>
+      <div className={dividerClass} />
+      <form onSubmit={submitEmail}>
+        <label className="block">
+          <span className="text-sm font-medium text-ink">Email</span>
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            inputMode="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputClass}
+            placeholder="you@example.com"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={status === 'busy' || email.trim().length === 0}
+          className={buttonClass}
+        >
+          {status === 'busy' ? 'Sending…' : 'Send my code'}
+        </button>
+        {error && (
+          <p className="mt-3 text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+      <p className="mt-6 text-xs leading-relaxed text-muted">
+        We email you a 6-digit code to sign in. Your keypair is generated
+        and held only on this device — never on the host.
+      </p>
+    </Frame>
   );
 }
