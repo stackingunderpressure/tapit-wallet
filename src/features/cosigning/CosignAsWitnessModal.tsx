@@ -16,6 +16,13 @@ interface Props {
    * unsigned-by-me handshake straight here.
    */
   incoming?: Attestation;
+  /**
+   * When provided alongside `incoming`, the signed envelope can be
+   * sent back to this peer via the Mycelium transport. Comes from
+   * the inbox routing — the envelope arrived from this pubkey, so
+   * the counter-signed return goes back to the same pubkey.
+   */
+  incomingSender?: string;
 }
 
 type Step =
@@ -36,8 +43,8 @@ type Step =
 // the result has at most one signature per pubkey). That makes the
 // flow idempotent — pasting the same request twice produces the
 // same signed return.
-export function CosignAsWitnessModal({ onClose, incoming }: Props) {
-  const { wallet } = useWallet();
+export function CosignAsWitnessModal({ onClose, incoming, incomingSender }: Props) {
+  const { wallet, sendEnvelope } = useWallet();
   const [step, setStep] = useState<Step>(() =>
     incoming ? { kind: 'preview', attestation: incoming } : { kind: 'paste' },
   );
@@ -46,6 +53,8 @@ export function CosignAsWitnessModal({ onClose, incoming }: Props) {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   function review() {
     setError(null);
@@ -87,6 +96,20 @@ export function CosignAsWitnessModal({ onClose, incoming }: Props) {
     if (outcome === 'copied') {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    }
+  }
+
+  async function sendBack() {
+    if (step.kind !== 'signed' || !incomingSender) return;
+    setError(null);
+    setSending(true);
+    try {
+      await sendEnvelope(incomingSender, step.signed);
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'send failed');
+    } finally {
+      setSending(false);
     }
   }
 
@@ -188,6 +211,20 @@ export function CosignAsWitnessModal({ onClose, incoming }: Props) {
             </button>
             {showQr && (
               <QrShow text={canonicalEnvelope(step.signed)} label="Signed envelope" />
+            )}
+            {incomingSender && (
+              <button
+                type="button"
+                onClick={sendBack}
+                disabled={sending || sent}
+                className="mt-3 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
+              >
+                {sent
+                  ? 'Sent back via Nostr'
+                  : sending
+                    ? 'Sending…'
+                    : 'Send back via Nostr'}
+              </button>
             )}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (

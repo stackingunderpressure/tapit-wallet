@@ -341,9 +341,11 @@ function noopWS(): typeof WebSocket {
 }
 
 // encryptedInbox's handler chains through crypto.subtle.digest in
-// verifyEvent — a real async task, not just a microtask. Sleep one
-// macrotask to give the promise chain time to drain before
-// assertions.
-function flush(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+// verifyEvent — a real async task, not just a microtask. Sleep
+// multiple macrotask cycles to give the promise chain time to drain
+// before assertions; one cycle was occasionally tight on cold runs.
+async function flush(): Promise<void> {
+  for (let i = 0; i < 4; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }

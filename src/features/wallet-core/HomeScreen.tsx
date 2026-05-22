@@ -72,12 +72,23 @@ export function HomeScreen() {
   const [membershipOpen, setMembershipOpen] = useState(false);
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
+  // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
+  // offer "Send back via Nostr" after the operator signs.
   const [incomingForWitness, setIncomingForWitness] = useState<Attestation | null>(null);
+  const [incomingSenderForWitness, setIncomingSenderForWitness] = useState<string | null>(null);
   const [incomingForAbsorb, setIncomingForAbsorb] = useState<Attestation | null>(null);
 
-  function routeInbox(envelope: Attestation, action: InboxRouteAction) {
-    if (action === 'cosign-witness') setIncomingForWitness(envelope);
-    else if (action === 'absorb-cosign') setIncomingForAbsorb(envelope);
+  function routeInbox(
+    envelope: Attestation,
+    action: InboxRouteAction,
+    senderPubkey: string,
+  ) {
+    if (action === 'cosign-witness') {
+      setIncomingForWitness(envelope);
+      setIncomingSenderForWitness(senderPubkey);
+    } else if (action === 'absorb-cosign') {
+      setIncomingForAbsorb(envelope);
+    }
   }
   const banner = backupBanner(prefs);
 
@@ -311,7 +322,11 @@ export function HomeScreen() {
       {incomingForWitness && (
         <CosignAsWitnessModal
           incoming={incomingForWitness}
-          onClose={() => setIncomingForWitness(null)}
+          incomingSender={incomingSenderForWitness ?? undefined}
+          onClose={() => {
+            setIncomingForWitness(null);
+            setIncomingSenderForWitness(null);
+          }}
         />
       )}
 

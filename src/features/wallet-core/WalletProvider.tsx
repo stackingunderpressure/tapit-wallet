@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
+import type { Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
@@ -61,6 +62,10 @@ export function WalletProvider({ children }: Props) {
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
+  // Holds the live transport so sendEnvelope can reach it from outside
+  // the effect. Cleared on lock/disable; never observable when the
+  // Mycelium preference is off.
+  const transportRef = useRef<Transport | null>(null);
   // Passphrase lives in state because it's exposed via context anyway
   // (callers need to encrypt photos, sign + persist on demand) — the
   // ref-with-tick pattern was a half-measure that did not survive the
@@ -123,10 +128,12 @@ export function WalletProvider({ children }: Props) {
           );
         },
       });
+      transportRef.current = conn.transport;
     });
     return () => {
       cancelled = true;
       if (conn) conn.close();
+      transportRef.current = null;
       setInboxEnvelopes([]);
     };
   }, [phase, prefs.nostrTransportEnabled]);
@@ -134,6 +141,25 @@ export function WalletProvider({ children }: Props) {
   const dismissInboxEnvelope = useCallback((eventId: string) => {
     setInboxEnvelopes((prev) => prev.filter((p) => p.eventId !== eventId));
   }, []);
+
+  const sendEnvelope = useCallback(
+    async (recipientPubkey: string, envelope: Attestation) => {
+      const transport = transportRef.current;
+      if (!transport) {
+        throw new Error(
+          'Mycelium network is not connected — enable it in Settings.',
+        );
+      }
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        throw new Error('wallet must be unlocked');
+      }
+      const { sendEnvelopeTo } = await import(
+        '../transport/encryptedInbox.ts'
+      );
+      await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
+    },
+    [phase],
+  );
 
   // Attach confirmed anchors back onto held attestations and persist
   // them, so backup/restore preserves the Bitcoin block height the
@@ -305,6 +331,7 @@ export function WalletProvider({ children }: Props) {
       anchorWorker,
       inboxEnvelopes,
       dismissInboxEnvelope,
+      sendEnvelope,
       save,
       updatePrefs,
       refresh,
@@ -321,6 +348,7 @@ export function WalletProvider({ children }: Props) {
     passphrase,
     inboxEnvelopes,
     dismissInboxEnvelope,
+    sendEnvelope,
   ]);
 
   if (!ownerId || phase.kind === 'checking') {

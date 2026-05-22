@@ -30,6 +30,13 @@ export interface WalletContextValue {
   inboxEnvelopes: InboxEnvelope[];
   /** Drop one inbox envelope by event id (e.g. after the operator acts on it). */
   dismissInboxEnvelope: (eventId: string) => void;
+  /**
+   * Encrypt an envelope to a peer's x-only pubkey and publish it
+   * through the Mycelium transport. Throws if the network is not
+   * connected. The wallet's private key never crosses this seam —
+   * encryption + signing happen inside the Wallet instance.
+   */
+  sendEnvelope: (recipientPubkey: string, envelope: Attestation) => Promise<void>;
   /** Re-encrypt the wallet's current state and persist it. */
   save: () => Promise<SaveOutcome>;
   /** Update prefs (e.g., toggle cloud-sync). */

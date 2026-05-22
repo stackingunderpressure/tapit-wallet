@@ -19,7 +19,11 @@ export type InboxRouteAction = 'cosign-witness' | 'absorb-cosign';
 interface Props {
   envelopes: readonly InboxEnvelope[];
   onDismiss: (eventId: string) => void;
-  onOpen: (envelope: Attestation, action: InboxRouteAction) => void;
+  onOpen: (
+    envelope: Attestation,
+    action: InboxRouteAction,
+    senderPubkey: string,
+  ) => void;
 }
 
 function shortKey(hex: string): string {
@@ -94,7 +98,11 @@ export function InboxPanel({ envelopes, onDismiss, onOpen }: Props) {
 interface RowProps {
   item: InboxEnvelope;
   onDismiss: (eventId: string) => void;
-  onOpen: (envelope: Attestation, action: InboxRouteAction) => void;
+  onOpen: (
+    envelope: Attestation,
+    action: InboxRouteAction,
+    senderPubkey: string,
+  ) => void;
 }
 
 function InboxRow({ item, onDismiss, onOpen }: RowProps) {
@@ -127,7 +135,7 @@ function InboxRow({ item, onDismiss, onOpen }: RowProps) {
           {route ? (
             <button
               type="button"
-              onClick={() => onOpen(item.envelope, route.action)}
+              onClick={() => onOpen(item.envelope, route.action, item.senderPubkey)}
               className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-paper hover:bg-ink/90"
             >
               {route.label}

@@ -42,7 +42,11 @@ const BUDGETS = [
   { pattern: /^index-.*\.css$/, gz: 6_000, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
-  { pattern: /^WalletProvider-.*\.js$/, gz: 5_500, label: 'WalletProvider' },
+  // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
+  // current is ~5.5KB gz, bumped to 7KB to carry headroom for the
+  // remaining 5c-i / 5c-ii / 5c-iii additions before code-splitting
+  // becomes the better option.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 7_000, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs (Journal,
   // Identity, Captured, People) and three modal launchers. ~8.3KB gz
   // today; budget carries headroom for modest further growth.
@@ -95,6 +99,10 @@ const BUDGETS = [
   // surface, default relays, and the connectWallet entry point.
   // ~1.6KB gz today; budget carries headroom for 5c-ii/-iii growth.
   { pattern: /^connectWallet-.*\.js$/, gz: 5_000, label: 'transport (Mycelium opt-in)' },
+  // The encryptedInbox helper hoisted into its own chunk once
+  // WalletProvider's sendEnvelope dynamically imports it (5c-i-ζ).
+  // Tiny — under 1KB gz today.
+  { pattern: /^encryptedInbox-.*\.js$/, gz: 2_000, label: 'encryptedInbox helper' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },
