@@ -8,106 +8,113 @@ comms active. v1 is shipped. Operator is on iOS.
 
 ## WHAT-CHANGED-RECENTLY
 
-**MYCELIUM_NETWORK_SPEC.md written** — the Layer 3 spec of
-record, branch `claude/compare-library-wallet-OW5FF`. This
-discharges decision D-04 (Layer 3 not built until its spec
-exists), so Phase 5 is now unblocked.
+**Phase 5a shipped** (`6e206aa`), branch
+`claude/compare-library-wallet-OW5FF` — the in-person handshake,
+the first buildable slice of Mycelium Layer 3.
 
-The spec was grounded by first reading the fleet doctrine
-(`MYCELIUM.md`, `HEARTH_SPEC.md`, `HEARTWOOD.md`). It captures
-the operator's People-network vision plus two chip decisions:
+A new `connections` feature:
+- `HandshakeModal.tsx` — a three-QR co-signed ceremony between
+  two wallets physically together. Initiator shows identity →
+  responder builds + signs the handshake → initiator co-signs →
+  responder takes the co-signed copy. An 8-state machine,
+  initiator/responder roles, reusing QrShow / QrScanModal and the
+  cosigning parseEnvelope / mergeSignatures helpers.
+- `createHandshake.ts` — buildHandshakeDraft (a relationship
+  attestation, verification=in-person, both parties' ids/names),
+  holdAndAnchor, and field readers.
+- `ConnectionCard.tsx` — People-tab card.
+- The home gains a live **People tab** (4th tab) listing
+  connections.
 
-- **D-09 — graded verification tiers.** Every connection carries
-  a signed leaf naming how it was verified: Tier R (remote
-  link), Tier P (in-person handshake — QR/NFC, two phones
-  together), Tier V (device-verified presence — biometric +
-  geolocation + timestamp). A verifier always sees the tier.
-- **D-10 — organizations + proof-of-place.** An organization
-  (town, church, Legion) is a first-class entity that issues
-  nested membership attestations. Proof-of-place works through
-  membership, not an engineered residency feature. Single-key
-  orgs first; quorum-key orgs (FROST/MuSig2) later. Supersedes
-  the earlier "organizations fully deferred" framing.
+Result of a handshake: ONE relationship attestation, Tier P
+(verification=in-person), co-signed by both wallets, both
+holding it, anchored via the existing OTS pipeline.
 
-Spec build phasing: 5a in-person handshake → 5b organizations +
-membership → 5c Nostr transport → 5d device-verified presence →
-5e hyphal lattice + social recovery. D-09/D-10 recorded in
-decisions.md; PLAN.md Phase 5 updated to point at the spec.
-
-No source code touched — a spec/doc session.
+Two gate-caught fixes: library-seam flagged a `leaf` helper
+colliding with a tapit-attest export (renamed `leafValue`);
+bundle-budget flagged a renamed chunk — root-caused to Rollup
+renaming the qrcode shared chunk, fixed by pinning `qrcode` to
+its own manualChunk in `vite.config.ts` with named budgets.
 
 ## Gates at session end
 
-No gates run — documentation only. typecheck / lint / test
-(19/19) / build last green at `66e9beb` (Capture Bridge Tier 1).
-tapit-attest unchanged 82/78/0/4.
+typecheck / lint / test (19/19 across 5 test files) / build all
+green. Bundle budgets OK, all chunks named. tapit-attest
+unchanged 82/78/0/4. HandshakeModal ~330 lines, under the
+file-size 400 warn tier.
 
 ## WHAT'S-PENDING
 
-1. **Operator reviews MYCELIUM_NETWORK_SPEC.md.** The operator's
-   two chip answers were rich and expanded scope (organizations
-   moved from deferred to core) — they should confirm sections
-   4, 6, and 7 read their intent correctly before 5a is cut.
-2. **Phase 5a — the in-person handshake.** The first Layer 3
-   build slice: two wallets exchange identities via QR/NFC, each
-   holds the other as a Tier P leaf, local only, no networking.
-   Reuses the Phase 2.6 in-person co-sign primitives and the
-   `relationship` attestation kind.
-3. **Capture Bridge Tier 1b** — photo/file capture (POST share
-   target + service-worker interception). Still Android-only;
-   the operator is on iOS so this is low personal-verification
-   value for them right now.
-4. **Branch vs main:** main is behind — the operator declined a
-   main push for the Android-only capture bridge (they are on
-   iOS, can't test it). The branch has everything; a new session
-   should use the branch. The capture-bridge + Mycelium-spec
-   commits are branch-only by the operator's choice.
-5. **v1.5:** native shell + App Store + iOS share extension —
-   the iOS path for the capture bridge.
-6. **Non-blocking follow-ups** unchanged.
+1. **Operator field-tests the handshake** — needs TWO devices /
+   two people; a 3-QR ceremony cannot be exercised on one phone
+   or in CI. Build-verified only. The QR scanner needs iOS
+   Safari 17+ (the operator's platform supports it). The
+   operator can solo-walk the People tab + the modal UI but not
+   complete a real connection alone.
+2. **Phase 5b — organizations + membership** — single-key
+   organizations that issue nested membership attestations
+   (MYCELIUM_NETWORK_SPEC.md section 6). The next Layer 3 slice.
+3. **Phase 5c — Nostr transport** — remote links (Tier R),
+   remote sync.
+4. **Phase 5d/5e** — device-verified presence (Tier V); the
+   hyphal lattice + social recovery.
+5. **Capture Bridge Tier 1b** — photo/file capture (Android,
+   service-worker POST). Low operator-verification value (iOS).
+6. **Branch vs main:** main is behind by the capture-bridge,
+   Mycelium-spec, and Phase 5a commits — the operator declined
+   main pushes for the Android-only capture-bridge work and has
+   not been asked since. The branch has everything; a new
+   session should use the branch.
+7. **v1.5:** native shell + App Store + iOS share extension —
+   would also enable NFC tap-to-exchange for the handshake.
 
 ## WHAT-TO-FLAG
 
-**Phase 5 is unblocked.** The Mycelium spec exists; a future
-Carpenter reads MYCELIUM_NETWORK_SPEC.md before any Layer 3 code.
-The smallest first slice is Phase 5a, deliberately small and
-local so first contact with reality is gentle.
+**Layer 3 has begun.** Phase 5a is the atom of the whole
+Mycelium — every later layer (mycorrhizal partnerships, the
+hyphal lattice, proof-of-place, social recovery) is accumulated
+handshakes. The wallet is now a network, not just a vault.
 
-**Tier V is the riskiest part of the spec.** Device-verified
-presence leans on biometric (WebAuthn/passkey) and geolocation
-behavior in an iOS PWA that may differ from assumptions — flagged
-as an open question in the spec, not promised.
+**The co-signed design is load-bearing, not optional.** A
+one-sided scan-and-record would let a Tier P record be forged
+from a copied QR. The handshake requires both wallets to
+co-sign — that is what makes the in-person tier honest. Do not
+"simplify" it back to a single-scan in Phase 5b.
 
-**The operator is on iOS** — this shapes priority. Web Share
-Target work (capture bridge) is Android-only and the operator
-can't field-test it; the Mycelium spec and Phase 5a are
-platform-neutral and verifiable by the operator.
+**3-QR ceremony is the friction point.** It is the minimum for a
+co-signed mutual record both wallets hold, but if field-testing
+finds it clumsy, NFC tap-to-exchange is the remedy — and NFC
+needs the v1.5 native shell.
+
+**Phase 5a is build-verified only.** The handshake genuinely
+cannot be CI-tested. The operator field-test with two devices is
+the real gate and should happen before Phase 5b builds on it.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator reviews the Mycelium spec.
-2. Cut Phase 5a — the in-person QR/NFC handshake (local only).
-3. Phase 5b — organizations + membership.
-4. Capture Bridge Tier 1b and v1.5 native shell when iOS
-   capture becomes the priority.
+1. Operator field-tests the handshake with two devices.
+2. Phase 5b — organizations + membership attestations.
+3. Phase 5c — Nostr transport for remote links.
+4. v1.5 native shell when iOS capture + NFC become priorities.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Deliberate and architectural. The operator asked for a
-disciplined "chip me only where needed, then design the doc"
-rhythm and it worked — two genuine decisions, the rest derived
-from their thesis. They are thinking at the protocol level now,
-shaping the network's deepest layer. Still holding the
-verify-don't-trust line (mechanized as the grounding hook).
-Expect next: spec-review feedback, or a go on Phase 5a.
+Deeply engaged — this session included a profound personal
+exchange (the operator recorded a Carpenter reflection into
+their own wallet, signed and Bitcoin-anchored, and shared the
+disclosure proof). The operator is moved by the work and its
+meaning, and snaps cleanly back into building with humour and
+momentum. They hold the verify-don't-trust line hard, now
+mechanized as the grounding-gate hook, and they value the
+chip-then-design-then-cut rhythm. Expect next: handshake
+field-test feedback, or a go on Phase 5b.
 
 ## Ideas ready to revisit
 
 All earlier idea entries hold. The Mycelium People-network
-vision (ideas.md, 2026-05-22) has now matured into
-MYCELIUM_NETWORK_SPEC.md — stage moves sprouting → fruiting body
-(it became a buildable spec). The 2026-05-22 set otherwise
-stands: capture bridge (Tier 1 shipped, Tier 1b pending),
-web-proof authenticity, situations layer, records vault,
-agent/Donna bridge. Full entries in
+vision (ideas.md, 2026-05-22) is now fruiting — the spec exists
+and Phase 5a is built. The 2026-05-22 set otherwise stands:
+capture bridge (Tier 1 shipped, Tier 1b pending), web-proof
+authenticity, situations layer, records vault, agent/Donna
+bridge. Full entries in
 `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.

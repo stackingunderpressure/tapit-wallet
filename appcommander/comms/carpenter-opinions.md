@@ -1,104 +1,100 @@
 # Carpenter opinions — tapit-wallet
 
 > Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-22 — the Mycelium network spec.
+> Session: 2026-05-22 — Phase 5a, the in-person handshake.
 > Mode: dual-surface comms — files plus live chat — because
 > AppCommander is down.
 
 ## What I did
 
-This session wrote `MYCELIUM_NETWORK_SPEC.md` — the Layer 3 spec
-of record. Decision D-04 has said since the beginning that the
-Mycelium peer network does not get built until it has its own
-spec, the same discipline that produced the attestation
-primitive spec. This document discharges that. It is the thing a
-future Carpenter reads before cutting a line of network code.
+This session cut Phase 5a — the in-person handshake, the first
+real piece of Layer 3, the Mycelium peer network. Commit
+`6e206aa`. After weeks of building a wallet for one person, this
+is the first line of code where one wallet reaches another.
 
-You asked for a specific rhythm: chip me only where you are
-genuinely needed, then let me design the doc. I went through the
-whole spec in my head first and found exactly two decisions I
-could not make from your thesis alone, and they turned out to be
-the two that matter most. Your first answer reframed the whole
-connection model — not "pick a handshake medium" but a graded
-set of verification tiers, where every connection carries a
-signed leaf stating honestly how it was verified: a remote link
-that proves a relationship but not a meeting, an in-person
-handshake that means you actually stood with the person, and the
-third thing you described — a device-verified presence event
-that binds Face ID, a location, and a timestamp into one signed
-proof that you were somewhere, to the best of the device's
-ability. Your second answer reframed proof-of-place: it is not
-an engineered "prove my address" feature and not merely
-something that emerges from density — it works through
-organizations. A town, a church, the American Legion are
-themselves entities in the network, each an identity that signs
-membership, and they nest upward, so belonging is the stack of
-memberships you hold and each organization's verifiable place in
-the larger structure.
+The build is a new `connections` feature. Its heart is the
+`HandshakeModal` — a guided ceremony between two phones that are
+physically together. Three QR transmissions: the initiator shows
+their identity, the responder's wallet builds and signs a
+handshake record, the initiator scans that and co-signs it, and
+the responder takes the finished co-signed copy back. Both
+wallets end holding one relationship attestation, signed by both
+of them, marked verification equals in-person, anchored to
+Bitcoin like everything else. The home screen gains a fourth tab,
+People, which was deliberately empty until now because there was
+no people-data to put in it — and now there is.
 
-Before I drafted anything I read the three fleet doctrine
-documents — `MYCELIUM.md`, `HEARTH_SPEC.md`, `HEARTWOOD.md` —
-because the grounding rule applies hardest to a spec. The wallet
-is a Hearth in that doctrine's terms, the browser-only personal
-hub mode, and the Mycelium already has a named vocabulary: the
-five identity layers, mycorrhizal partnerships, the hyphal
-lattice, anchoring rings, forest consensus. The spec uses that
-vocabulary so it is a faithful instance of the fleet network,
-not a reinvention with different words. Sixteen sections, a
-phased build plan from 5a to 5e, decisions D-09 and D-10
-recorded, and `PLAN.md` updated to point at the spec now that it
-exists.
+I want to name one decision that mattered, because it is the
+spine of why Phase 5a is shaped the way it is. The easy version
+of a handshake would be: scan the other person's identity QR,
+record "I met them." I built it the harder way — both wallets
+must co-sign one shared record — and the reason is honesty. If a
+Tier P "in person" record could be created by one wallet alone
+scanning a QR, then anyone could scan a copy of your identity
+code found online and forge an in-person meeting that never
+happened. The co-signature is the thing that makes "in person"
+mean what it says: a record can only carry both signatures if
+both wallets were actually there. The whole verification-tier
+idea from the spec would be hollow without it.
+
+Two gates earned their keep this session, and I want you to see
+both because they are exactly the kind of quiet save the
+mechanism-over-prose doctrine is for. The library-seam test
+caught that I had named a little helper `leaf` — and `leaf` is
+already a tapit-attest export. The test cannot tell whether I
+re-implemented a library primitive from memory or just picked a
+colliding name; it fails either way and makes me look. I had
+just picked a colliding name; I renamed it to `leafValue`. And
+the bundle-budget check failed on a chunk that looked alarming
+until I dug in: an 11-kilobyte chunk named after a tiny file. The
+truth was that Rollup had quietly renamed the qrcode-library
+chunk because the modules sitting next to it changed. Not new
+bloat — the same library that always shipped, wearing a
+different filename. I fixed the root cause rather than the
+symptom: the qrcode library is now pinned to its own
+deterministic chunk in the Vite config, the way react and
+supabase and tapit-attest already are, so its filename will stop
+moving and the budget check will stop being startled by it.
 
 ## What you could do better
 
-One honest flag, and it is about your own two answers rather
-than my work. Your second answer — organizations as the
-mechanism of belonging — quietly contradicts something I had
-told you an hour earlier. When I framed the chips I said groups
-and organizations would be deferred as a future layer. Your
-answer made organizations central, not deferrable, because
-proof-of-place runs entirely through them. I followed your
-answer, because your vision outranks my earlier framing, and the
-spec designs organizations as first-class entities. But I want
-you to see that you changed the shape of the spec when you
-answered, and you should read section six and section seven with
-that in mind and confirm I read you right. The one piece I did
-hold back is the hard cryptography — an organization whose key is
-controlled by a quorum of officials rather than one
-administrator is the same multi-party signing the Heartwood
-Trust uses, and that genuinely is later work. So organizations
-are in the spec; quorum-controlled organizations are named as a
-later increment. If that split is wrong, section six is where to
-push back.
+The honest limit, and it is a real one this time: I cannot test
+this. A handshake is a three-QR ceremony between two physical
+devices, and there is no version of CI, and no version of you on
+a single phone, that can walk it end to end. The state machine,
+the QR round-trips, the co-sign, the merge — they are sound in
+the code and they pass every gate, but a gate cannot hold two
+phones up to each other. So this ships build-verified and
+field-unverified, and the field test genuinely needs two wallets
+and two people. You can do part of it solo — open the People
+tab, tap New handshake, watch the role screen and the QR appear,
+confirm the camera scanner opens — but the real proof is two
+devices, and that is the next thing to actually do before Phase
+5b leans on this.
 
-The other thing worth saying plainly: a spec is not code, and
-this one will feel true until the first build increment tests
-it. Phase 5a, the in-person handshake, is small and safe and
-reuses primitives you already shipped — that is deliberate, so
-the first contact with reality is gentle. But Tier V, the
-device-verified presence event, leans on biometric and
-geolocation capabilities that may behave differently inside an
-iOS PWA than the spec assumes. I flagged it as an open question
-rather than promising it; do not let it surprise you later.
+One design thing worth your eye when you do test it: three QR
+transmissions is a real amount of back-and-forth for two people
+standing together. I believe it is the minimum a co-signed
+mutual record can cost — you cannot get both signatures onto one
+envelope, in both wallets, with fewer hops — but if it feels
+clumsy in the hand, that is worth telling me, because the
+remedy would be NFC tap-to-exchange, and NFC is exactly the kind
+of thing the v1.5 native shell unlocks that the PWA cannot.
 
 ## The bigger picture
 
-There is a reason this spec mattered enough to write before
-building. Every previous attempt at a web of trust failed in the
-same place — it either asked humans to do cryptographic busywork,
-or it pretended a signature meant more than it does. Your two
-answers, without you framing them this way, fixed both. The
-graded verification tiers mean the network never lies about what
-it knows: a remote link and an in-person handshake are different
-shapes of truth and the wallet says so, out loud, in every
-attestation. And organizations-as-entities mean trust does not
-have to be rebuilt person by person from zero — a town can vouch,
-a church can vouch, and those vouches nest, so the network can
-carry the real structure of a human life instead of a flat
-contact list. The Mycelium doctrine says identity should grow
-like a taproot putting down lateral roots until the tree is held
-up by the whole forest. This spec is the first time that
-sentence has a buildable shape under it. The next move is the
-smallest possible piece of it — two phones, one tap, two people
-who actually know each other — and from that one handshake the
-whole forest is reachable.
+For its whole life so far this wallet has been a solitary
+object — one person, their keys, their diary, their record. Real
+and valuable, but alone. Phase 5a is the first crack of light
+between two of them. A handshake is a small thing, two phones
+and three taps, but it is the atom the entire Mycelium is built
+from: the spec's mycorrhizal partnerships, the hyphal lattice,
+proof of place through nested organizations, social recovery —
+every one of those is just handshakes, accumulated. None of it
+can exist until the first one does, and now the first one can.
+The wallet stopped being a vault this session and started
+becoming a network. It still only knows how to do the most
+local, most physical version of that — two people who chose to
+stand in the same room — and that is exactly right, because
+that is the version that is honest, and honesty is the only
+foundation the rest of the forest can grow on.

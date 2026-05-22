@@ -1,36 +1,41 @@
 {
   "v": 1,
-  "ts": "2026-05-22T05:07:00Z",
-  "session_id": "mycelium-spec-2026-05-22-1779426000",
-  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
+  "ts": "2026-05-22T18:54:00Z",
+  "session_id": "phase-5a-handshake-2026-05-22-1779475200",
+  "who": { "actor": "carpenter", "feature_slug": "connections" },
   "where": {
     "files": [
-      "MYCELIUM_NETWORK_SPEC.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/decisions.md",
-      "PLAN.md"
+      "src/features/connections/HandshakeModal.tsx",
+      "src/features/connections/createHandshake.ts",
+      "src/features/connections/ConnectionCard.tsx",
+      "src/features/connections/manifest.ts",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/features-registry.ts",
+      "vite.config.ts",
+      "scripts/bundle-budget.mjs"
     ],
     "screen_path": "/"
   },
-  "layer": "doctrine",
-  "action": "spec",
-  "summary": "Wrote MYCELIUM_NETWORK_SPEC.md — the Layer 3 spec of record, which discharges decision D-04 (Layer 3 is not built until its spec exists). Grounded first by reading the fleet doctrine — MYCELIUM.md, HEARTH_SPEC.md, HEARTWOOD.md — so the wallet's spec uses the established vocabulary (the five identity layers, mycorrhizal partnerships, the hyphal lattice, anchoring rings, forest consensus) rather than reinventing it. The spec captures the operator's People-network vision plus the two design decisions the operator made via chips: D-09, graded verification tiers — every connection carries a signed leaf saying how it was verified, Tier R remote / Tier P in-person handshake / Tier V device-verified presence (biometric + geolocation + timestamp); and D-10, organizations as first-class network entities that issue nested membership attestations, with proof-of-place working through membership rather than through an engineered residency-proof feature. Sixteen sections, a 5a-5e build phasing, and an honest treatment of the three hard problems — sybil resistance, social-graph privacy, and the real meaning of 'the whole world in your tree'. Decisions D-09 and D-10 recorded in decisions.md; PLAN.md Phase 5 updated to point at the now-existing spec.",
+  "layer": "ui",
+  "action": "feature",
+  "summary": "Phase 5a shipped (commit 6e206aa) — the in-person handshake, the first buildable slice of Mycelium Layer 3, per MYCELIUM_NETWORK_SPEC.md. A new connections feature: HandshakeModal runs a three-QR co-signed ceremony between two wallets that are physically together — the initiator shows their identity, the responder builds and signs the handshake, the initiator co-signs, the responder takes the final copy. The result is one relationship-kind attestation carrying a verification=in-person leaf (Tier P), held by both wallets and anchored to Bitcoin. The home gains a live People tab — a fourth tab listing connections, with a New-handshake button. The build was grounded first: an Explore agent mapped the QR, co-sign, and relationship-attestation machinery, and the pattern files were read directly before any code was cut. The co-signed design is deliberate — a one-sided scan-and-record would let anyone forge a Tier P record from a copied QR, so both wallets must actively co-sign for the in-person tier to be honest.",
   "why": {
-    "text": "Operator: 'Let's do the spec.' The operator asked for a tight set of chips — only the decisions genuinely needed — answered two (verification tiers, proof-of-place), and asked the Carpenter to design the doc. D-04 required this spec before any Layer 3 code; writing it unblocks Phase 5. Grounded per the grounding-gate hook: the three fleet doctrine docs were read before drafting so the spec is consistent, not a reinvention.",
+    "text": "Operator approved the Mycelium spec and said to cut Phase 5a. The handshake choreography and the co-signed-not-scan-and-record decision were surfaced to the operator and blessed before the build. Grounded per the grounding-gate hook — the QR and co-sign machinery were read as they actually are.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-MYCELIUM-SPEC-022"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-PHASE-5A-HANDSHAKE-023"
   },
   "outcome": {
     "files_changed": [
-      "MYCELIUM_NETWORK_SPEC.md (new), project-memory/foreman-memory/projects/tapit-wallet/decisions.md (modify), PLAN.md (modify) — one commit plus comms"
+      "src/features/connections/{createHandshake.ts,HandshakeModal.tsx,ConnectionCard.tsx,manifest.ts} (new); src/features/wallet-core/HomeScreen.tsx, src/features-registry.ts, vite.config.ts, scripts/bundle-budget.mjs (modify) — one commit plus comms"
     ],
-    "tests_passing": "Unchanged — no source code touched. typecheck/lint/test/build last green at 66e9beb (Capture Bridge Tier 1).",
+    "tests_passing": "19/19 across 5 test files. The library-seam gate caught a local helper named leaf colliding with a tapit-attest export — renamed to leafValue. The features-registry gate confirms the new connections manifest is registered. tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "[P-001] MYCELIUM_NETWORK_SPEC.md written, discharges D-04. [P-002] D-09 and D-10 recorded. [P-003] PLAN.md Phase 5 updated; first build slice is Phase 5a, the in-person handshake. [FEEDBACK->Foreman]: no notes — the chip-then-design rhythm the operator asked for worked cleanly; two decisions were genuinely needed and the rest derived from doctrine.",
-    "tests_passing_detail": "no gates run — documentation only"
+    "notes": "[P-001] connections feature + 3-QR handshake ceremony (commit 6e206aa). [P-002] People tab live in HomeScreen. [P-003] all four gates green. [P-004] bundle-budget caught a Rollup chunk rename — root-caused (the qrcode shared chunk gets renamed when its co-located modules change) and fixed properly by pinning qrcode to its own manualChunk in vite.config.ts; named budgets added for the qrcode and cosigning-helpers chunks. [FEEDBACK->Foreman]: no notes — grounding caught both the leaf collision class and the chunk-rename root cause before they could become silent debt.",
+    "tests_passing_detail": "typecheck clean, lint clean"
   },
-  "confidence": 90,
-  "uncertainty": "A spec is a design draft, not running code — its real test is the build. The operator's two chip answers were rich and somewhat expanded scope (organizations moved from 'deferred' to core); the spec interprets them faithfully but the operator should read it and correct any misread before Phase 5a is cut. Tier V device-verified presence depends on biometric/geolocation capabilities whose feasibility in an iOS PWA is an open question flagged in the spec.",
-  "ripple": ["doctrine", "app-connections", "wallet-core"],
-  "next": "Operator reviews MYCELIUM_NETWORK_SPEC.md and corrects any misread. Then cut Phase 5a — the in-person QR/NFC handshake, local only, no networking — the smallest useful slice of Layer 3, reusing the Phase 2.6 in-person co-sign primitives and the relationship attestation kind.",
+  "confidence": 83,
+  "uncertainty": "Build-verified only. A real handshake is a 3-QR ceremony between two physical devices and cannot be exercised by CI or by the operator on a single phone — the state machine, the QR round-trips, the co-sign and merge are sound in the markup but unproven in the field. The QR scanner needs iOS Safari 17+ (the operator's platform supports it). The operator can see the People tab and walk the modal solo, but a full connection needs a second wallet.",
+  "ripple": ["connections", "wallet-core", "qr", "cosigning"],
+  "next": "Operator field-tests the handshake with two devices / two people. Phase 5b is organizations and membership attestations (single-key organizations first). Then Phase 5c, Nostr transport, for remote links.",
   "signals": ["pulse"]
 }
