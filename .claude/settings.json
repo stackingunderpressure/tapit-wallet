@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"GROUNDING GATE — standing order for every code dispatch in this repo. Before changing code: read the actual files you will touch and the code around them, and work only from the repository as it actually is — never from a sketch, a memory, or an assumption. Assess the real current state, reconcile it against the task and the directives, and re-ground in CLAUDE.md and CLAUDE_ROOT.md. Verify, do not trust — including not trusting yourself; catch yourself slipping. If the truth in the code contradicts the plan, surface it before acting.\"}}'"
+          }
+        ]
+      }
+    ]
+  }
+}
