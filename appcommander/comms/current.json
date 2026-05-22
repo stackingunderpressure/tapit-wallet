@@ -1,51 +1,54 @@
 {
   "v": 1,
-  "ts": "2026-05-22T23:14:30Z",
-  "session_id": "phase-5c-i-gamma-wire-2026-05-22-1779486900",
+  "ts": "2026-05-22T23:33:00Z",
+  "session_id": "phase-5c-i-delta-ui-2026-05-22-1779487500",
   "who": {
     "actor": "carpenter",
     "feature_slug": "transport"
   },
   "where": {
     "files": [
-      "tapit-attest/src/core/wallet.ts",
-      "tapit-attest/test/wallet-peer.test.mjs",
-      "src/features/transport/nostrEvent.ts",
-      "src/features/transport/encryptedInbox.ts",
-      "src/features/transport/connectWallet.ts",
-      "src/features/transport/transport.test.ts",
-      "src/features/transport/manifest.ts"
+      "src/features/storage/prefsStore.ts",
+      "src/features/wallet-core/WalletContext.ts",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/settings/SettingsScreen.tsx",
+      "src/features/transport/InboxPanel.tsx",
+      "src/features/transport/manifest.ts",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "library + feature internals (no UI this turn)"
+    "screen_path": "/settings (toggle) and /#people (inbox surface)"
   },
-  "layer": "service",
+  "layer": "ui",
   "action": "implement",
-  "summary": "Phase 5c-i-γ — wire the transport into the wallet without leaking keys. Wallet gained signDigest + nip44EncryptTo + nip44DecryptFrom; private keypair converted to a true JS #private field (D-03 now mechanically enforced at runtime, not just TS-private at compile time). buildEvent takes a sign-callback; sendEnvelopeTo/subscribeInbox take a Wallet. New connectWallet helper is the one-call entry point a UI layer will use. 6 new tapit-attest tests + 2 new wallet tests; all eight gates green; pushed branch-only.",
+  "summary": "Phase 5c-i-δ — wired the wallet to the Nostr network on opt-in. Added nostrTransportEnabled pref (default false), a Mycelium-network Settings toggle with a privacy explainer, a WalletProvider transport lifecycle (dynamic import so non-opting users pay zero bytes), and an InboxPanel surface at the top of the People tab. All eight gates green; pushed branch only.",
   "why": {
-    "text": "The transport feature shipped last cut with a raw-keys API, which the doctrine D-03 (keys never leave the wallet unencrypted) forbids in a wired-up system. This cut routes all peer-encryption + Nostr-event-signing through the Wallet so the private key stays inside the Wallet instance. The keypair-to-#private upgrade was triggered by the grounding gate: a test I wrote asserted that wallet.keypair was undefined, and it failed — TS-private is compile-time only, the keypair was accessible from outside. Converted to JS-#private so the rule is enforced by the runtime, not just documented.",
+    "text": "Phase 5c-i-α/-β/-γ shipped the cryptography, the wire client, and the Wallet-internal seam — but the wallet still never talked to a relay. This cut closes that loop on opt-in. Default-off because subscribing exposes the wallet pubkey to public relays (real metadata leak); the toggle gives the operator the choice with the trade-off named. Dynamic import keeps the WebSocket+NIP-44 stack out of the bundle for users who never opt in.",
     "linked_pixel_id": null,
-    "linked_mission_id": "phase-5c-i-gamma"
+    "linked_mission_id": "phase-5c-i-delta"
   },
   "outcome": {
     "files_changed": [
-      "tapit-attest/src/core/wallet.ts (3 methods + #private keypair)",
-      "tapit-attest/test/wallet-peer.test.mjs (new — 6 tests)",
-      "src/features/transport/nostrEvent.ts (sign-callback API)",
-      "src/features/transport/encryptedInbox.ts (Wallet-based API)",
-      "src/features/transport/connectWallet.ts (new — entry point)",
-      "src/features/transport/transport.test.ts (updated; +2 tests)",
-      "src/features/transport/manifest.ts (touches + notes)",
+      "src/features/storage/prefsStore.ts (Prefs.nostrTransportEnabled default false)",
+      "src/features/wallet-core/WalletContext.ts (inboxEnvelopes + dismissInboxEnvelope)",
+      "src/features/wallet-core/WalletProvider.tsx (transport lifecycle effect; dynamic import)",
+      "src/features/settings/SettingsScreen.tsx (Mycelium-network toggle + privacy note)",
+      "src/features/transport/InboxPanel.tsx (new — inbox UI)",
+      "src/features/transport/manifest.ts (InboxPanel + wallet-core dep)",
+      "src/features/wallet-core/HomeScreen.tsx (mount InboxPanel in People tab)",
+      "scripts/bundle-budget.mjs (named the transport chunk + parseEnvelope helper)",
       "appcommander/comms/in-flight.jsonl"
     ],
     "tests_passing": "tapit-attest 97/97 (4 skipped, network); wallet 31/31",
     "build_green": true,
-    "notes": "Pushed to claude/compare-library-wallet-OW5FF as commit 25be3ba. NOT pushed to main — operator has not said the word for this cut. Branch is now three commits ahead of main: 5c-i-α (NIP-44 primitive), 5c-i-β (transport wire), 5c-i-γ (Wallet wire-up). No WalletProvider integration yet — that lands with 5c-i-δ alongside an operator opt-in toggle, since enabling the transport by default would expose the wallet's pubkey to public relays on every unlock. Pre-existing tapit-attest encryption tamper-byte flake (1/256) still relevant from previous sessions."
+    "notes": "Pushed to claude/compare-library-wallet-OW5FF as commit 2679e13. NOT pushed to main. WalletProvider chunk landed at 5.33 KB gz of 5.5 KB budget — tight; further additions will probably need code-splitting too. transport opt-in chunk 1.6 KB gz of 5 KB budget. Pre-existing tapit-attest tamper-byte flake (1/256) still relevant. NIP-44 interop verification still outstanding — most urgent now because the next operator field test will actually hit real relays."
   },
-  "confidence": 92,
-  "uncertainty": "The transport-to-wallet seam is now correct and testable, but it has not been used by any real UI flow yet. The actual integration into WalletProvider (5c-i-δ) will need a settings opt-in, an inbox-state slot in the wallet context, and a routing component that surfaces incoming envelopes — none of which exists yet. NIP-44 interop against the upstream reference vectors still outstanding.",
+  "confidence": 88,
+  "uncertainty": "Real-relay round-trip behavior has not been exercised yet. The WebSocket reconnect logic is unit-tested via injected fakes but not against a live relay. Two-device test with two real wallets opting in would close the loop; that is the natural smoke test the operator can run when ready. NIP-44 byte-for-byte interop with third-party Nostr clients is still untested against the upstream reference vectors.",
   "ripple": [
-    "tapit-attest — new public surface (signDigest method, nip44EncryptTo, nip44DecryptFrom); private keypair is now JS-#private (no caller was reading it from outside, verified by grep before the change)",
-    "transport feature — public API changed (sendEnvelopeTo and subscribeInbox now take Wallet); no consumers outside the feature's own tests yet"
+    "wallet-core — WalletProvider now manages a third lifecycle (anchorWorker, transport)",
+    "connections — once routing arrives (next cut), incoming handshakes/memberships can complete remotely without the operator pasting JSON",
+    "settings — added a toggle the operator can now flip; the wallet visibly becomes network-active or not based on it"
   ],
-  "next": "Cut Phase 5c-i-δ — wire connectWallet into WalletProvider behind a settings opt-in toggle, expose inbox envelopes via WalletContext, and surface them in the UI (e.g. a People-tab notification or an absorb-modal route). Also: NIP-44 reference-vector cross-check before any encrypted messages hit a real relay."
+  "next": "Cut Phase 5c-i-ε — auto-route incoming envelopes to the matching modal (cosign as witness for unsigned handshakes, absorb-cosign for counter-signed handshakes, membership receive for credential-kind envelopes). Also: run the NIP-44 reference vectors before any real-relay field test."
 }
