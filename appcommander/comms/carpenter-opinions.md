@@ -1,66 +1,29 @@
-# Carpenter opinions — tapit-wallet
+# Carpenter opinions — Phase 5c-i-α (NIP-44 peer-encryption primitive)
 
-> Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-22 — resolving the Phase 5c design questions.
-> Mode: dual-surface comms — files plus live chat — because
-> AppCommander is down.
+## Section 1: What I did.
 
-## What I did
+This was the first real cut of Phase 5c, and it was a library cut, not a wallet cut. Phase 5c is where the wallet learns to talk to other wallets across the network — across Nostr relays, specifically, since that was the substrate decision we resolved last turn. The very first thing the wallet will need before it can send a single byte across a relay is the ability to encrypt that byte to exactly one recipient, in a way that the relay operator can never read. NIP-44 v2 is the Nostr-native peer-encryption scheme for that, and the spec is small enough to implement directly. So I did.
 
-A short, clean session. You asked for the Phase 5c sketch read
-back to you as bullets so you could listen to exactly what it
-is, and for the open questions handed to you as chips. I gave
-you the bulleted sketch, and then I did the thing you taught me
-to do with chips — I filtered. Of the four open questions, two
-were genuinely yours to call and two I could settle from your
-own thesis and decision D-06, so I only spent two of your taps.
-You chose default-but-replaceable relays — the wallet works out
-of the box, a sovereign user swaps in their own — and you chose
-to have the in-person handshake bootstrap the remote channel, so
-the network you weave face to face becomes reachable later,
-which is exactly what makes your peers able to hold and return
-your recovery slime. The two I decided: each tapit-attest
-envelope rides inside a custom encrypted Nostr event, and your
-wallet key is reused as your Nostr identity because it already
-is one. All four are recorded as D-11, and the Phase 5c sketch
-now shows resolved decisions instead of open questions. Phase 5c
-is fully designed.
+I added a new file at `tapit-attest/src/core/nip44.ts` that exports two functions, `encryptTo` and `decryptFrom`. Underneath, the construction is standard NIP-44 v2: take the sender's private key and the recipient's public key, run secp256k1 ECDH on them to get a shared point, take the x-coordinate of that point and run it through HKDF-Extract with the salt `nip44-v2` to get a stable conversation key that both parties can independently derive. Then for each message, generate a fresh 32-byte random nonce, run HKDF-Expand on the conversation key with the nonce as info to derive 76 bytes of per-message key material, split that into a ChaCha20 key, a 12-byte ChaCha20 nonce, and a 32-byte HMAC key. Pad the plaintext (length-prefixed, padded to the NIP-44 v2 chunk schedule which steps up in powers of two), encrypt it with ChaCha20, MAC the nonce-plus-ciphertext with HMAC-SHA256, base64-encode the whole package with a leading version byte. Decryption reverses it and rejects with a thrown error if the MAC does not verify in constant time — that single check catches a tampered payload, a wrong-sender claim, and a wrong-recipient attempt, all at once.
 
-One honest note on process: my first attempt to update the
-sketch failed because I wrote the find-text from memory and it
-did not match the file. The grounding gate exists for exactly
-that — I re-read the actual file, copied the real text, and the
-edit went through. A small thing, but it is the rule working,
-even on me, even on a documentation edit.
+I deliberately did not pull in `nostr-tools` for this. The library is large and has surface area we do not need, and every line of crypto we link to is a line we have to vouch for forever. Tapit-attest already depends on the audited noble suite — `@noble/curves` for secp256k1, `@noble/ciphers` for ChaCha20, `@noble/hashes` for HMAC and HKDF — so the implementation is mostly glue around primitives we already trust. No new dependencies, no new transitive risk.
 
-## What you could do better
+The tests are at `tapit-attest/test/nip44.test.mjs` and there are thirteen of them. A clean round-trip between Alice and Bob; same plaintext encrypted twice produces different output (the fresh-nonce check); a third party cannot decrypt; naming the wrong sender pubkey fails the MAC; flipping one byte of the base64 payload fails the MAC; the leading byte is `0x02`; empty and oversized plaintexts are rejected at the length check; non-hex keys are rejected at the hex check; unicode round-trips correctly; a two-thousand-byte plaintext crossing multiple padding chunks round-trips; the wrong version byte is rejected on decrypt; Bob can encrypt back to Alice symmetrically. All thirteen pass. All ninety-one tapit-attest tests pass. All nineteen wallet tests pass. Typecheck, lint, and build are green in both packages, and the wallet bundle budgets are all under their ceilings.
 
-Nothing this session — it was a decision session and the
-decisions are clean. The one thing worth flagging is about the
-next cut, not this one. Phase 5c-i, the transport, is a
-different kind of build than everything so far. The capture
-bridge, the handshake, the membership — those were all things
-you could see and touch on a screen. 5c-i is plumbing: a Nostr
-client, an encrypted pipe between wallets, with no immediate
-visible surface of its own. That is normal and necessary —
-infrastructure has to exist before the things that ride it — but
-it means the cut will not produce a screenshot to admire, only
-a foundation. I want that expectation set before I cut it, so
-its quietness does not read as nothing-happened.
+This is committed to the working branch as `1338264` and pushed there. It is intentionally not pushed to main this turn — the operator has not said the word for this specific cut, and the directive on direct-to-main is "only with explicit permission." The branch is safe and waiting.
 
-## The bigger picture
+## Section 2: What you could do better.
 
-This session was small but it closed something. With D-11, every
-design question in front of Layer 3's networking phase is now
-answered — the relays, the privacy rule, the addressing, the
-identity, the event shapes. There is a discipline in the project
-that is easy to miss because it is quiet: nothing gets built
-until the decisions in front of it are made and written down,
-and the decisions get made by the right party — you for the ones
-that are genuinely yours, the doctrine for the ones it already
-settles. That is why this build has not thrashed. Six phases of
-a peer network, a recovery model, an organization-governance
-model, all specced before a wrong line of code could be written.
-The mycelium grows slowly on purpose. The next thing to grow is
-the transport — the underground threads themselves — and it is
-ready to be cut whenever you are.
+One real risk worth naming: this implementation follows the NIP-44 v2 spec text faithfully and the tests verify it is internally consistent and rejects every form of tampering I could think of, but it has not been cross-checked against the upstream NIP-44 v2 reference test vectors. Those vectors are the canonical interop check — they are the only thing that proves a third-party Nostr client running a different implementation could read what we wrote. Before the wallet ships encrypted messages to anyone other than another Tapit Wallet, somebody should run those vectors through our `encryptTo`/`decryptFrom` and confirm they match byte for byte. The test file has a comment noting this. It is the one piece of homework outstanding on this primitive.
+
+A second observation is smaller. The NIP-44 v2 spec defines an HMAC over `aad || nonce || ciphertext` where `aad` is empty for the basic case; my implementation MACs `nonce || ciphertext` directly, which is the same thing when AAD is empty. If a future version of the spec adds non-empty AAD (it currently does not) the construction would need to be extended. Today this is exact-spec; tomorrow it is a small thing to remember.
+
+Nothing else surfaced beyond the declared scope this session.
+
+## Section 3: The bigger picture.
+
+This little file is the seam through which the wallet becomes a network. Up to this point, every attestation the wallet produces has lived inside one device or has crossed devices only through QR codes scanned eye-to-eye in the in-person handshake. That is the slow path, the high-trust path — the path that ought to remain the canonical way two people first meet. But the operator's vision for Mycelium needs a fast path too: once Alice and Bob have shaken hands in person and traded their pubkeys, they need to be able to send each other a new signed attestation later, from across the world, through a relay that has no business reading the contents. The whole point of building on Nostr was that relays are dumb pipes; the whole point of building on tapit-attest is that the wallet does its own integrity checking. NIP-44 was the last cryptographic piece missing from that picture — the envelope wrapper that lets a signed envelope travel across a dumb pipe without the pipe learning anything.
+
+The reason we put it in tapit-attest rather than in the wallet itself is a doctrine call worth pausing on. Tapit-attest is the library that any future application built on the same primitives can inherit from — the wallet today, the Bench apps tomorrow. Peer encryption is not a wallet-specific concern; it is a property of the standalone attestation primitive. Putting it here means every future app gets it for free, the same way every future app gets the Merkle field tree, the OpenTimestamps anchoring, and the encrypted backups for free. The library grows toward the shape of "what does sovereign identity need" rather than the shape of "what does this one app need."
+
+Next up is 5c-i-β, the Nostr wire client itself — a small, transport-agnostic interface in the wallet that knows how to open a websocket to a relay, publish an event, and subscribe to events for a given pubkey, with the encryption primitive we just shipped as the envelope around the contents. That cut is where the wallet stops being a single-device app and starts being a node in a network. It is the right next thing, and it will be a small thing, because we just paid the price for the hard part.

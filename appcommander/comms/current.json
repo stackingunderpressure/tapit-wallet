@@ -1,35 +1,43 @@
 {
   "v": 1,
-  "ts": "2026-05-22T20:34:00Z",
-  "session_id": "phase-5c-decisions-2026-05-22-1779481800",
-  "who": { "actor": "carpenter", "feature_slug": "app-connections" },
+  "ts": "2026-05-22T21:16:00Z",
+  "session_id": "phase-5c-i-alpha-nip44-2026-05-22-1779484200",
+  "who": {
+    "actor": "carpenter",
+    "feature_slug": "app-connections"
+  },
   "where": {
     "files": [
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-22-phase-5c-nostr-transport-sketch.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/decisions.md"
+      "tapit-attest/src/core/nip44.ts",
+      "tapit-attest/test/nip44.test.mjs",
+      "tapit-attest/src/index.ts"
     ],
-    "screen_path": "/"
+    "screen_path": "library-internal (no UI this turn)"
   },
-  "layer": "doctrine",
-  "action": "planning",
-  "summary": "The operator asked for the Phase 5c sketch bulleted in chat and the open questions as chips. The four sketch questions were assessed: two were genuine operator decisions and two were settled from doctrine, so only two chips were raised. The operator answered both — relays ship as a default, replaceable set (works out of the box, sovereign users swap their own), and the in-person handshake bootstraps the remote channel (meeting someone exchanges relay info so the woven network is reachable remotely, which is what lets peers hold and return recovery shares; all relay traffic stays encrypted). The two doctrine-settled answers: each tapit-attest envelope rides inside a custom encrypted Nostr event (NIP-46 reserved for the app-to-wallet sign pathway), and the wallet key is reused as the Nostr identity (D-06). All recorded as D-11; the Phase 5c sketch updated from open-questions to resolved decisions. Phase 5c is now fully designed.",
+  "layer": "logic",
+  "action": "implement",
+  "summary": "Phase 5c-i-α — NIP-44 v2 peer-encryption primitive added to tapit-attest. encryptTo / decryptFrom over secp256k1 ECDH + HKDF-SHA256 + ChaCha20 + HMAC-SHA256, built on @noble primitives already in deps, 13 spec-shaped tests covering round-trip, fresh-nonce, third-party MAC failure, wrong-sender MAC failure, tampered-payload MAC failure, version-byte 0x02, empty/oversized/non-hex rejection, unicode, multi-chunk padding, wrong-version rejection, and symmetry. All eight gates green; pushed to branch only.",
   "why": {
-    "text": "Operator: 'give me the chips of the questions and we'll just get this right on down the road.' The four sketch questions were filtered per the operator's own discipline — chip only where genuinely needed — so two went to chips and two were decided from D-06 and the envelope-is-the-standard rule.",
+    "text": "Phase 5c (the Mycelium remote channel through Nostr) needs encrypted messages between two wallets through relays that must see ciphertext only. tapit-attest had passphrase-based AES-GCM but no peer/public-key encryption. NIP-44 v2 is the Nostr-native peer-encryption scheme and the spec is small enough that adding it directly — using primitives already in tapit-attest's @noble deps — beats pulling nostr-tools (a much larger surface, more attack-area, more code we'd have to vouch for). Operator picked this option ('I want to go with your recommended version').",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-PHASE-5C-DECISIONS-028"
+    "linked_mission_id": "phase-5c-i-alpha"
   },
   "outcome": {
     "files_changed": [
-      "briefs/2026-05-22-phase-5c-nostr-transport-sketch.md (modify), decisions.md (modify — D-11) — two commits (7d4bcaa, dbd6ce6) plus comms"
+      "tapit-attest/src/core/nip44.ts (new, 207 lines)",
+      "tapit-attest/test/nip44.test.mjs (new, 134 lines)",
+      "tapit-attest/src/index.ts (added one export line)",
+      "appcommander/comms/in-flight.jsonl (session events)"
     ],
-    "tests_passing": "Unchanged — no source code touched. Gates last green at 85d6a51 (Phase 5b).",
+    "tests_passing": "tapit-attest 91/91 (4 skipped, network-dependent OTS); wallet 19/19",
     "build_green": true,
-    "notes": "[P-001] Two genuine chips raised and answered; two questions decided from doctrine. [P-002] D-11 recorded; the 5c sketch updated to resolved decisions. [P-003] A first edit to the sketch missed on a memory mismatch — caught, re-read the file, corrected. [FEEDBACK->Foreman]: no notes — the chip-filtering discipline the operator taught held; only the genuine decisions cost the operator a tap.",
-    "tests_passing_detail": "no gates run — documentation only"
+    "notes": "Pushed to claude/compare-library-wallet-OW5FF as commit 1338264. NOT pushed to main — operator hasn't said the word for this cut. Next is 5c-i-β: the Nostr wire client in the wallet that consumes encryptTo/decryptFrom and ships an encrypted envelope through a relay."
   },
-  "confidence": 94,
-  "uncertainty": "Planning, not code. Phase 5c is fully designed. The next cut, 5c-i, is a genuine infrastructure build — a Nostr transport client — which is plumbing with no immediate visible surface and carries a build-architecture choice (a minimal hand-rolled transport reusing tapit-attest keys versus a Nostr library); that choice will be grounded and made when 5c-i is cut.",
-  "ripple": ["app-connections", "connections", "doctrine"],
-  "next": "Cut Phase 5c-i — the transport-agnostic interface plus a minimal Nostr client and encrypted async peer delivery. Then 5c-ii (remote handshakes) and 5c-iii (connection sync). Two-device field test of 5a/5b still pending.",
-  "signals": ["pulse"]
+  "confidence": 92,
+  "uncertainty": "Implementation follows the NIP-44 v2 spec text and round-trips/tampers correctly, but interop against the upstream NIP-44 v2 reference vectors should be cross-checked before the wallet ships encrypted messages to real third-party Nostr clients. Tests note this explicitly.",
+  "ripple": [
+    "app-connections — will become the consumer of encryptTo/decryptFrom in 5c-i-β",
+    "tapit-attest itself — new public surface (encryptTo, decryptFrom)"
+  ],
+  "next": "Cut Phase 5c-i-β — minimal Nostr wire client in the wallet (websocket + JSON event publish/subscribe) wrapped behind a transport-agnostic interface, using the new tapit-attest NIP-44 primitive for envelope encryption."
 }
