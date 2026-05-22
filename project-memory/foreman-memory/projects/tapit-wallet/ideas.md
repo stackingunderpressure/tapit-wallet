@@ -389,3 +389,68 @@ tell the difference, it does not stop fabrication. Stage: raw —
 research-grade, long horizon, not v1 or v2.
 Feature: sign-request
 ```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: The "situations" layer — purpose-shaped presentation
+modes, distinct from the holding-tabs. Tabs (Journal / Identity
+/ People / Captured) organize what the wallet HOLDS; situations
+organize how you USE it in the world — a "Show a doctor", "Show
+an officer", "Apply for X" mode that shapes which attestations
+surface and exactly what is disclosed. Built on Phase 4
+selective disclosure: a situation IS a disclosure preset.
+CRITICAL: situations are user-invoked, never auto-detected — a
+sovereign wallet that geolocates you to know you are at a
+hospital is surveillance and betrays the thesis. The user
+declares the situation.
+Context: Operator 2026-05-22 — "each tab smart about how it
+interacts with the world ... hospital ... police station ...
+grouped by how/where/why you would use it." Stage: raw — design
+refinement layered on the Phase 4.5 tabbed home.
+Feature: wallet-core
+```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: The wallet as a sovereign encrypted vault for important
+documents — medical, legal, identity papers. Already possible
+with existing primitives: a document is an encrypted attachment
+on an attestation, its hash is signed into the Merkle tree
+(tamper-evident), bytes encrypted client-side, recoverable via
+the encrypted backup; the Medical life-layer tab already exists.
+Framing must be precise: the wallet holds your sovereign COPY
+with proof of integrity and timestamp — it is NOT the hospital's
+canonical system of record. The "host sees only ciphertext"
+property is also the regulatory shield (encrypted backup tool,
+not a health-data processor). Caution: large medical files
+(imaging) scale storage cost and encryption cycles — a real
+follow-up if this grows past document-sized attachments.
+Context: Operator 2026-05-22 — "are our medical records actually
+in the wallet ... the place we can always recover them." Stage:
+raw — candidate for a Vault / Records surface.
+Feature: storage
+```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: Donna (the operator's existing AI assistant) and any
+agent connect to the wallet across the Layer 2 bridge already
+built in Phase 3 — never rebuilt inside the wallet. An agent
+prepares, presents, navigates, negotiates, and constructs
+SignRequests; but the hard rule holds (existing idea 2026-05-21)
+— the bot NEVER signs; every signature passes through the human
+at the plain-English approval screen. True "sign on your behalf"
+autonomy would require a deliberate scoped delegation — a
+capability attestation, "agent may sign kind X up to limit Y for
+time Z", the wallet staying root authority — a future Phase 6+
+design, not v1. A bot is an amplifier, never a crutch for a
+confusing UI: the Prime Directive says a wallet a non-technical
+person cannot use does not exist.
+Context: Operator 2026-05-22 — "is Donna just gonna plug into
+that ... reach into this app and sign your attestations and
+negotiate the world on your behalf." Stage: raw.
+Feature: app-connections
+```
