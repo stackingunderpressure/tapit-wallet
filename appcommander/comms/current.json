@@ -1,30 +1,38 @@
 {
   "v": 1,
-  "ts": "2026-05-22T02:14:00Z",
-  "session_id": "login-elegant-restyle-2026-05-22-1779417000",
-  "who": { "actor": "carpenter", "feature_slug": "auth" },
+  "ts": "2026-05-22T03:13:00Z",
+  "session_id": "roadmap-and-grounding-gate-2026-05-22-1779420600",
+  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
-    "files": ["src/features/auth/LoginPage.tsx", "tailwind.config.ts"],
-    "screen_path": "/login"
+    "files": [
+      "PLAN.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/decisions.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-22-capture-bridge-phase-sketch.md",
+      ".claude/settings.json"
+    ],
+    "screen_path": "/"
   },
-  "layer": "ui",
-  "action": "polish",
-  "summary": "The operator saw the landing copy live and called the screen 'very very very plain', asking for elegance — shading, colour, life, 'like we're actually changing the world'. Commit ff5c37e restyles both the email and code steps. A new Frame component gives each step a frosted, elevated, rounded card sitting on the warm paper field, with two soft drifting colour glows behind it — an accent-green glow and a warm-amber glow, both heavily blurred and low-opacity, for organic colour without clutter. The headline is now a serif display face; the primary button is a green gradient with a colour-tinted shadow; inputs gained rounded corners and a soft focus ring; a gradient hairline divider separates the story from the action; a small accent-dot wordmark sits at the top; and the card rises in gently on mount. The Tailwind theme gained a serif family (system serif stack, zero network cost — New York on iOS, Georgia elsewhere) and rise/float keyframes. All motion respects prefers-reduced-motion.",
+  "layer": "doctrine",
+  "action": "planning",
+  "summary": "A strategic + doctrine arc, not a code cut. Assessed the roadmap and answered the operator's interoperability questions (timestamp a Facebook post — yes, witness-grade today; timestamp between — the existing co-sign primitive; the bridges — the Phase 3 deeplink exists, the everyday capture bridge does not). Wrote a capture-bridge phase sketch (briefs/2026-05-22-capture-bridge-phase-sketch.md) with three tiers — Web Share Target, native share extension, browser extension — and an App Store assessment (not hard to pass: no money, no exchange, no money transmission; the only real gate is Apple guideline 4.2, which the native share extension itself clears). Added PLAN.md Phase 4.5 (tabbed home + PWA-first capture bridge). Recorded decisions D-07 (capture bridge PWA-first; native + App Store deferred to v1.5) and D-08 (tabbed information architecture). Logged six ideas, the largest being the operator's Mycelium People-network vision — the People tab is not a contacts list, it is a discovered, propagated peer network where mutual handshakes make people leaves in each other's trees, and that is Layer 3, spec-blocked by D-04. Finally, converted the operator's recurring stay-grounded directive into a mechanism: a UserPromptSubmit grounding-gate hook in a new committed .claude/settings.json.",
   "why": {
-    "text": "Operator: 'It showed up but it's very very very plain looking. I want it all spruced up to look elegant. Add some shading add some color. Add some life and make it look like we're actually changing the world.' The restyle deliberately stayed inside the existing paper/ink/accent palette rather than introducing a new theme — depth and warmth come from glows, elevation, gradient, and a serif face, not from new brand colours, so the login screen still belongs to the same app as the wallet behind it. Tasteful over gaudy: the wallet's tone is serious and trustworthy.",
+    "text": "Operator drove a roadmap + interoperability strategy discussion, then asked to make the stay-grounded directive a hook so it does not depend on being repeated, then asked to verify everything transfers durably to the repo for clean session-to-session handoff. Mechanism over prose (CLAUDE_ROOT.md non-negotiable #5): the grounding directive became a check that fires. Verify-don't-trust: the People-tab vision was caught as Layer 3 and routed to the spec rather than improvised into a tab.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-LOGIN-ELEGANT-RESTYLE-018"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-ROADMAP-AND-GROUNDING-GATE-019"
   },
   "outcome": {
-    "files_changed": ["src/features/auth/LoginPage.tsx (modify), tailwind.config.ts (modify) — one commit plus comms"],
-    "tests_passing": "19/19 across 5 test files. typecheck and lint clean. tapit-attest unchanged 82/78/0/4.",
+    "files_changed": [
+      "PLAN.md (modify), decisions.md (modify), ideas.md (modify), briefs/2026-05-22-capture-bridge-phase-sketch.md (new), .claude/settings.json (new) — 7 commits 80d0b5f..198d737 plus this comms refresh"
+    ],
+    "tests_passing": "Unchanged — no source code touched since ff5c37e (the elegant restyle), where all four gates were green at 19/19. The strategic commits are docs + config only.",
     "build_green": true,
-    "notes": "[P-001] Both login steps restyled into the elegant Frame shell (commit ff5c37e). [P-002] Tailwind theme gained a serif family and rise/float motion. [P-003] all four gates green. Build-verified; NOT Carpenter-pixel-verified — no headless browser used, the operator verifies visually on the live deploy. [FEEDBACK->Foreman]: a headless-screenshot capability in the Carpenter sandbox would let visual changes be self-verified instead of leaning on the operator's phone loop.",
-    "tests_passing_detail": "typecheck clean, lint clean"
+    "notes": "Working tree clean, branch fully pushed, main brought up to date with all strategic commits. Comms handoff files refreshed so a new session resumes cleanly. [FEEDBACK->Foreman]: a headless-screenshot capability would let the Carpenter self-verify UI work instead of leaning on the operator's phone loop — restated from the restyle session.",
+    "tests_passing_detail": "typecheck/lint/test/build last green at ff5c37e"
   },
-  "confidence": 85,
-  "uncertainty": "This is a visual change verified only by typecheck/lint/test/build — none of which can see pixels. Tailwind silently drops unknown classes rather than erroring, and aesthetic judgement (glow strength, headline size, paragraph length on a narrow phone) cannot be gate-checked. The operator's eyes on the live deploy are the real verification, and taste may want the glows softer, the headline bigger, or the paragraph shorter.",
-  "ripple": ["auth"],
-  "next": "Operator looks at the restyled screen on the live deploy and redirects the visual direction if wanted. Operator decides whether ff5c37e goes to main so the live Netlify deploy picks it up. If the look lands, the same Frame treatment could be extended to the passphrase, unlock, and identity-ceremony screens for consistency.",
+  "confidence": 95,
+  "uncertainty": "The grounding-gate hook reliably injects the directive on every prompt, but a hook injects an instruction — it cannot physically force file reads. The only true hard interlock is the harness already refusing Edit without a prior Read. The hook hardens the surrounding discipline; it is not a literal gate.",
+  "ripple": ["doctrine", "auth", "wallet-core", "sign-request"],
+  "next": "Build the tabbed home (Phase 4.5): Journal and Identity as the two live tabs, Captured as an honest coming-soon tab, People deferred to MYCELIUM_NETWORK_SPEC.md. Tabs as a segmented control under the header (a bottom bar collides with the floating + New entry button). Operator-side: finish Resend custom SMTP + the email plumbing (the v1 launch blocker). Then Capture Bridge Tier 1, then write the Mycelium spec.",
   "signals": ["pulse"]
 }
