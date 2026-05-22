@@ -454,3 +454,43 @@ that ... reach into this app and sign your attestations and
 negotiate the world on your behalf." Stage: raw.
 Feature: app-connections
 ```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: The People tab IS the Mycelium network — discovered, not
+entered. The operator's vision: you never type a contact in; you
+find people "in the public, in the world, in the wild", and some
+"live in your home". You absorb them the way mycelium absorbs
+spores — you propagate someone into your people by accepting the
+identity attestation their wallet chooses to share, and they
+accept yours; that mutual handshake is what determines "what leaf
+they are and what leaf you are". Two leaves can later join to
+compose higher structures — an organization, a church, whatever.
+The network grows by discovery: the more you meet, the more of
+the town, the state, the country, the world resolves inside your
+wallet, until "your whole Merkle tree is made up in the wallet
+the way you see it in real life". And membership becomes proof of
+place: you prove where you live and where you are by proving,
+with your leaf, that you are woven into that local mycelial
+network.
+Context: Operator 2026-05-22, spirit preserved verbatim. This is
+Layer 3 — the Mycelium peer network — governed by decision D-04:
+NOT built until MYCELIUM_NETWORK_SPEC.md exists. The honest hard
+problems the spec must solve: (1) sybil resistance — what stops
+fabricated people and fabricated town-networks; the in-person
+handshake is the strongest defense and the spec must decide
+whether a remote handshake counts at all, because the moment it
+does the forgery gets cheap; (2) the privacy model of an
+extremely sensitive who-knows-whom-and-where social graph; (3)
+the honest meaning of "the whole world in your tree" — a wallet
+holds its own leaves and cryptographic proofs of connection, not
+the literal world. Parts map to existing primitives: the
+handshake is a cousin of the Phase 2.6 in-person co-sign
+exchange; a person-as-leaf is a relationship-kind attestation;
+group composition relates to the Phase 7+ FROST/MuSig2 group-key
+non-goal. Stage: sprouting — load-bearing vision; the right next
+move is to WRITE MYCELIUM_NETWORK_SPEC.md, not to improvise it
+into the Phase 4.5 tab build.
+Feature: app-connections
+```
