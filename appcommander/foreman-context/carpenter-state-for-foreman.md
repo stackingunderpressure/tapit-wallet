@@ -2,119 +2,112 @@
 
 **Operator-mode note:** AppCommander down. Operator running
 manual against live Netlify + Supabase deploy. Dual-surface
-comms active. v1 is shipped.
+comms active. v1 is shipped. Operator is on iOS.
 
 ---
 
 ## WHAT-CHANGED-RECENTLY
 
-**Capture Bridge Tier 1 shipped** (`66e9beb`), branch
-`claude/compare-library-wallet-OW5FF` — the second piece of
-Phase 4.5.
+**MYCELIUM_NETWORK_SPEC.md written** — the Layer 3 spec of
+record, branch `claude/compare-library-wallet-OW5FF`. This
+discharges decision D-04 (Layer 3 not built until its spec
+exists), so Phase 5 is now unblocked.
 
-A new `capture` feature: a GET `share_target` in
-`public/manifest.webmanifest` registers the installed wallet as
-an OS share destination; a `/capture` route + `CaptureScreen`
-composes shared title/text/url into an editable body and on
-confirm signs + OTS-anchors a journal-kind attestation carrying
-a `source=capture` leaf, reusing `createJournalEntry`. The home
-Captured tab is now live — it shows captures (or an instructive
-empty state); the Journal tab filters captures out via the
-`source` leaf so diary and captures are separate.
+The spec was grounded by first reading the fleet doctrine
+(`MYCELIUM.md`, `HEARTH_SPEC.md`, `HEARTWOOD.md`). It captures
+the operator's People-network vision plus two chip decisions:
 
-Grounding caught a real constraint: the hand-rolled Phase 1
-service worker only intercepts GET, so a GET text/link share
-target needs zero SW change — but photo/file capture needs a
-POST the SW must intercept, deferred to **Tier 1b**. Three
-Vite-hoisted shared chunks (CaptureScreen, createJournalEntry,
-mediaStore) were given named bundle budgets.
+- **D-09 — graded verification tiers.** Every connection carries
+  a signed leaf naming how it was verified: Tier R (remote
+  link), Tier P (in-person handshake — QR/NFC, two phones
+  together), Tier V (device-verified presence — biometric +
+  geolocation + timestamp). A verifier always sees the tier.
+- **D-10 — organizations + proof-of-place.** An organization
+  (town, church, Legion) is a first-class entity that issues
+  nested membership attestations. Proof-of-place works through
+  membership, not an engineered residency feature. Single-key
+  orgs first; quorum-key orgs (FROST/MuSig2) later. Supersedes
+  the earlier "organizations fully deferred" framing.
 
-Files: `src/features/capture/CaptureScreen.tsx` (new),
-`src/features/capture/manifest.ts` (new),
-`public/manifest.webmanifest`, `src/App.tsx`,
-`src/features/journal/createJournalEntry.ts` (added optional
-`source` to JournalInput), `src/features-registry.ts`,
-`src/features/wallet-core/HomeScreen.tsx`,
-`scripts/bundle-budget.mjs`.
+Spec build phasing: 5a in-person handshake → 5b organizations +
+membership → 5c Nostr transport → 5d device-verified presence →
+5e hyphal lattice + social recovery. D-09/D-10 recorded in
+decisions.md; PLAN.md Phase 5 updated to point at the spec.
+
+No source code touched — a spec/doc session.
 
 ## Gates at session end
 
-typecheck / lint / test (19/19 across 5 test files) / build all
-green. Bundle budgets OK, all chunks named. tapit-attest
-unchanged 82/78/0/4. CaptureScreen 1.35KB gz; HomeScreen
-~190 lines; all under the file-size warn tier.
+No gates run — documentation only. typecheck / lint / test
+(19/19) / build last green at `66e9beb` (Capture Bridge Tier 1).
+tapit-attest unchanged 82/78/0/4.
 
 ## WHAT'S-PENDING
 
-1. **Operator verifies the capture bridge** on the live deploy
-   (after a push to main): reinstall/refresh the PWA so the OS
-   re-reads the manifest, then from another Android app use
-   Share → Tapit Wallet and confirm the capture lands signed in
-   the Captured tab. NOTE: iOS does not support Web Share Target
-   into a PWA — on iPhone /capture works only when navigated to
-   directly; the iOS share-sheet path is Tier 1b + the native
-   shell.
-2. **Capture Bridge Tier 1b** — photo/file capture. Needs a
-   POST share_target and the hand-rolled service worker taught
-   to intercept the POST to /capture and hand the files to the
-   page. Real SW surgery — treat the offline/caching code as
-   review surface.
-3. **MYCELIUM_NETWORK_SPEC.md** — needs writing; the operator's
-   People-network vision (ideas.md, 2026-05-22) is its heart.
-   Once it exists the People tab can be designed.
-4. **v1.5:** native shell + App Store + iOS share extension
-   (D-07) — also the iOS path for the capture bridge.
-5. **Non-blocking follow-ups** unchanged: multi-tab worker
-   coordination, OTS fixture restoration, Tap-it-Attest-main.zip
-   cleanup, backfill remote media for pre-Cut-2 entries.
+1. **Operator reviews MYCELIUM_NETWORK_SPEC.md.** The operator's
+   two chip answers were rich and expanded scope (organizations
+   moved from deferred to core) — they should confirm sections
+   4, 6, and 7 read their intent correctly before 5a is cut.
+2. **Phase 5a — the in-person handshake.** The first Layer 3
+   build slice: two wallets exchange identities via QR/NFC, each
+   holds the other as a Tier P leaf, local only, no networking.
+   Reuses the Phase 2.6 in-person co-sign primitives and the
+   `relationship` attestation kind.
+3. **Capture Bridge Tier 1b** — photo/file capture (POST share
+   target + service-worker interception). Still Android-only;
+   the operator is on iOS so this is low personal-verification
+   value for them right now.
+4. **Branch vs main:** main is behind — the operator declined a
+   main push for the Android-only capture bridge (they are on
+   iOS, can't test it). The branch has everything; a new session
+   should use the branch. The capture-bridge + Mycelium-spec
+   commits are branch-only by the operator's choice.
+5. **v1.5:** native shell + App Store + iOS share extension —
+   the iOS path for the capture bridge.
+6. **Non-blocking follow-ups** unchanged.
 
 ## WHAT-TO-FLAG
 
-**The capture bridge cannot be CI-verified.** The Web Share
-Target needs a real Android device with the PWA reinstalled.
-Build-verified only. The operator must field-test it.
+**Phase 5 is unblocked.** The Mycelium spec exists; a future
+Carpenter reads MYCELIUM_NETWORK_SPEC.md before any Layer 3 code.
+The smallest first slice is Phase 5a, deliberately small and
+local so first contact with reality is gentle.
 
-**iOS limitation is structural, not a bug.** Apple does not
-implement Web Share Target for installed PWAs. The /capture
-route still works when reached directly; the share-sheet entry
-on iOS waits for the native shell (v1.5). Expectation set with
-the operator in this session.
+**Tier V is the riskiest part of the spec.** Device-verified
+presence leans on biometric (WebAuthn/passkey) and geolocation
+behavior in an iOS PWA that may differ from assumptions — flagged
+as an open question in the spec, not promised.
 
-**The grounding-gate hook is working.** This session it caught
-the service-worker-only-GET constraint on the re-read, which set
-honest scope (Tier 1 = text/links; Tier 1b = files) before any
-code was cut.
-
-**Phase 4.5 is nearly complete.** Tabbed home done; capture
-bridge Tier 1 done. Tier 1b (files) is the remaining Phase 4.5
-piece, and it is gated on service-worker work.
+**The operator is on iOS** — this shapes priority. Web Share
+Target work (capture bridge) is Android-only and the operator
+can't field-test it; the Mycelium spec and Phase 5a are
+platform-neutral and verifiable by the operator.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. Operator pushes 66e9beb to main and field-tests the capture
-   bridge on Android.
-2. Capture Bridge Tier 1b — photo/file capture via a POST
-   share_target + service-worker interception.
-3. Write MYCELIUM_NETWORK_SPEC.md from the logged vision.
-4. v1.5: native shell + App Store + iOS share extension.
+1. Operator reviews the Mycelium spec.
+2. Cut Phase 5a — the in-person QR/NFC handshake (local only).
+3. Phase 5b — organizations + membership.
+4. Capture Bridge Tier 1b and v1.5 native shell when iOS
+   capture becomes the priority.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Steady forward momentum, shipping piece by piece — v1 done,
-tabbed home done, capture bridge Tier 1 done, each as a clean
-gated commit. The operator confirmed v1 and immediately moved to
-the next phase. Trusts the Carpenter to ground and scope but
-holds the verify-don't-trust line (now mechanized as the hook).
-Expect next: capture-bridge field-test feedback from a phone, or
-a go on Tier 1b or the Mycelium spec.
+Deliberate and architectural. The operator asked for a
+disciplined "chip me only where needed, then design the doc"
+rhythm and it worked — two genuine decisions, the rest derived
+from their thesis. They are thinking at the protocol level now,
+shaping the network's deepest layer. Still holding the
+verify-don't-trust line (mechanized as the grounding hook).
+Expect next: spec-review feedback, or a go on Phase 5a.
 
 ## Ideas ready to revisit
 
-All earlier idea entries hold. The 2026-05-22 set — capture
-bridge (now Tier 1 shipped), web-proof authenticity, situations
-layer, records vault, agent/Donna bridge, and the Mycelium
-People-network vision — all stand. The Mycelium vision is the
-load-bearing one and should mature into MYCELIUM_NETWORK_SPEC.md.
-Tier 1b (file capture) is the next capture-bridge increment.
-Full entries are stage-tagged in
+All earlier idea entries hold. The Mycelium People-network
+vision (ideas.md, 2026-05-22) has now matured into
+MYCELIUM_NETWORK_SPEC.md — stage moves sprouting → fruiting body
+(it became a buildable spec). The 2026-05-22 set otherwise
+stands: capture bridge (Tier 1 shipped, Tier 1b pending),
+web-proof authenticity, situations layer, records vault,
+agent/Donna bridge. Full entries in
 `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.

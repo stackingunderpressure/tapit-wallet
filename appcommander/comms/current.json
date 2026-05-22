@@ -1,41 +1,36 @@
 {
   "v": 1,
-  "ts": "2026-05-22T04:24:00Z",
-  "session_id": "capture-bridge-t1-2026-05-22-1779423600",
-  "who": { "actor": "carpenter", "feature_slug": "capture" },
+  "ts": "2026-05-22T05:07:00Z",
+  "session_id": "mycelium-spec-2026-05-22-1779426000",
+  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
     "files": [
-      "src/features/capture/CaptureScreen.tsx",
-      "src/features/capture/manifest.ts",
-      "public/manifest.webmanifest",
-      "src/App.tsx",
-      "src/features/journal/createJournalEntry.ts",
-      "src/features-registry.ts",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "scripts/bundle-budget.mjs"
+      "MYCELIUM_NETWORK_SPEC.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/decisions.md",
+      "PLAN.md"
     ],
-    "screen_path": "/capture"
+    "screen_path": "/"
   },
-  "layer": "ui",
-  "action": "feature",
-  "summary": "Capture Bridge Tier 1 (commit 66e9beb) — the Web Share Target, the everyday on-ramp of Layer 2. A GET share_target in manifest.webmanifest registers the installed wallet as an operating-system share destination for title/text/url. A new capture feature adds a /capture route and CaptureScreen that composes the shared content into an editable body and, on confirm, signs and OpenTimestamps-anchors a journal-kind attestation carrying a source=capture leaf, reusing the existing createJournalEntry pipeline. The home Captured tab is now live: it shows captured entries (or an instructive empty state), while the Journal tab filters captures out so the diary and captures are genuinely separate. Grounding in the actual code caught a real constraint: the hand-rolled Phase 1 service worker only intercepts GET requests, so a GET text/link share target works with zero service-worker risk, but photo/file capture needs a POST the service worker must intercept — that is the Tier 1b follow-on, surfaced to the operator and agreed before the cut. Three chunks Vite hoisted (CaptureScreen, and the now-shared createJournalEntry and mediaStore) were given named bundle budgets.",
+  "layer": "doctrine",
+  "action": "spec",
+  "summary": "Wrote MYCELIUM_NETWORK_SPEC.md — the Layer 3 spec of record, which discharges decision D-04 (Layer 3 is not built until its spec exists). Grounded first by reading the fleet doctrine — MYCELIUM.md, HEARTH_SPEC.md, HEARTWOOD.md — so the wallet's spec uses the established vocabulary (the five identity layers, mycorrhizal partnerships, the hyphal lattice, anchoring rings, forest consensus) rather than reinventing it. The spec captures the operator's People-network vision plus the two design decisions the operator made via chips: D-09, graded verification tiers — every connection carries a signed leaf saying how it was verified, Tier R remote / Tier P in-person handshake / Tier V device-verified presence (biometric + geolocation + timestamp); and D-10, organizations as first-class network entities that issue nested membership attestations, with proof-of-place working through membership rather than through an engineered residency-proof feature. Sixteen sections, a 5a-5e build phasing, and an honest treatment of the three hard problems — sybil resistance, social-graph privacy, and the real meaning of 'the whole world in your tree'. Decisions D-09 and D-10 recorded in decisions.md; PLAN.md Phase 5 updated to point at the now-existing spec.",
   "why": {
-    "text": "Operator confirmed v1 done and approved the capture-bridge plan: PWA-first (D-07), GET text/links now with files as Tier 1b, and the marked-capture data model (a source leaf, captures their own thing in the Captured tab). The build was grounded by re-reading manifest.webmanifest, sw.js, App.tsx, and the journal pipeline before any edit, per the grounding-gate hook. The SW-only-GET finding was surfaced before acting, as the gate requires.",
+    "text": "Operator: 'Let's do the spec.' The operator asked for a tight set of chips — only the decisions genuinely needed — answered two (verification tiers, proof-of-place), and asked the Carpenter to design the doc. D-04 required this spec before any Layer 3 code; writing it unblocks Phase 5. Grounded per the grounding-gate hook: the three fleet doctrine docs were read before drafting so the spec is consistent, not a reinvention.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-CAPTURE-BRIDGE-T1-021"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-MYCELIUM-SPEC-022"
   },
   "outcome": {
     "files_changed": [
-      "src/features/capture/CaptureScreen.tsx (new), src/features/capture/manifest.ts (new), public/manifest.webmanifest (modify), src/App.tsx (modify), src/features/journal/createJournalEntry.ts (modify), src/features-registry.ts (modify), src/features/wallet-core/HomeScreen.tsx (modify), scripts/bundle-budget.mjs (modify) — one commit plus comms"
+      "MYCELIUM_NETWORK_SPEC.md (new), project-memory/foreman-memory/projects/tapit-wallet/decisions.md (modify), PLAN.md (modify) — one commit plus comms"
     ],
-    "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). The features-registry coverage test confirms the new capture manifest is registered. tapit-attest unchanged 82/78/0/4.",
+    "tests_passing": "Unchanged — no source code touched. typecheck/lint/test/build last green at 66e9beb (Capture Bridge Tier 1).",
     "build_green": true,
-    "notes": "[P-001] capture feature + /capture route + share_target (commit 66e9beb). [P-002] Captured tab live; Journal tab filters captures out via the source=capture leaf. [P-003] all four gates green; CaptureScreen 1.35KB gz; three hoisted chunks given named budgets. [P-004] Tier 1b (photo/file via POST + service-worker interception) deferred. [FEEDBACK->Foreman]: no notes — the SW-only-GET scope refinement was surfaced and agreed before the cut, a clean grounded pass.",
-    "tests_passing_detail": "typecheck clean, lint clean"
+    "notes": "[P-001] MYCELIUM_NETWORK_SPEC.md written, discharges D-04. [P-002] D-09 and D-10 recorded. [P-003] PLAN.md Phase 5 updated; first build slice is Phase 5a, the in-person handshake. [FEEDBACK->Foreman]: no notes — the chip-then-design rhythm the operator asked for worked cleanly; two decisions were genuinely needed and the rest derived from doctrine.",
+    "tests_passing_detail": "no gates run — documentation only"
   },
-  "confidence": 86,
-  "uncertainty": "A UI + manifest change verified only by gates that cannot see pixels or exercise the OS share sheet. The Web Share Target cannot be tested in CI at all — it needs the updated PWA installed on a real Android device, the share sheet opened from another app, and Tapit Wallet chosen. iOS does not support Web Share Target into a PWA, so on iOS /capture works only when reached directly, not from the share sheet — that is expected and is what Tier 1b plus the native shell address.",
-  "ripple": ["capture", "journal", "wallet-core"],
-  "next": "Operator pushes 66e9beb to main and verifies on the live deploy: reinstall/refresh the PWA, then from another Android app share a link or text and confirm Tapit Wallet appears as a destination and the capture lands signed in the Captured tab. Tier 1b is photo/file capture (service-worker POST interception). Then MYCELIUM_NETWORK_SPEC.md for the People tab.",
+  "confidence": 90,
+  "uncertainty": "A spec is a design draft, not running code — its real test is the build. The operator's two chip answers were rich and somewhat expanded scope (organizations moved from 'deferred' to core); the spec interprets them faithfully but the operator should read it and correct any misread before Phase 5a is cut. Tier V device-verified presence depends on biometric/geolocation capabilities whose feasibility in an iOS PWA is an open question flagged in the spec.",
+  "ripple": ["doctrine", "app-connections", "wallet-core"],
+  "next": "Operator reviews MYCELIUM_NETWORK_SPEC.md and corrects any misread. Then cut Phase 5a — the in-person QR/NFC handshake, local only, no networking — the smallest useful slice of Layer 3, reusing the Phase 2.6 in-person co-sign primitives and the relationship attestation kind.",
   "signals": ["pulse"]
 }

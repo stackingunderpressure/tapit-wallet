@@ -114,3 +114,45 @@ tabs idea (logged 2026-05-21). The Captured tab arrives with
 Capture Bridge Tier 1.
 Feature: wallet-core
 ```
+
+```
+Date: 2026-05-22
+Section: decisions
+Entry: D-09 — Mycelium connections carry graded verification
+tiers, each a signed leaf stating how the connection was
+verified. Tier R (remote link — a relationship exists, physical
+meeting NOT proven; the honest level for "I saw their post").
+Tier P (in-person handshake — two phones together, QR/NFC, the
+sybil-resistant tier). Tier V (device-verified presence —
+biometric auth + geolocation + timestamp, signed; proves the
+authenticated owner's device reported being at a place and time,
+to the best of the device's ability). A verifier always sees the
+tier and weighs accordingly; a weak link never masquerades as a
+strong one.
+Context: Operator 2026-05-22 chip answer — "I know this person,
+I saw them" is a different attestation than a remote signature.
+Recorded in MYCELIUM_NETWORK_SPEC.md section 4.
+Feature: app-connections
+```
+
+```
+Date: 2026-05-22
+Section: decisions
+Entry: D-10 — Proof of place works through organizations. An
+organization (a town, a church, the American Legion) is a
+first-class network entity — an identity that issues membership
+attestations ("this person is a member of this organization").
+Organizations nest: a person in the Legion, the Legion in the
+Town, the Town in the County. Belonging is the set of membership
+attestations held plus each issuing organization's verifiable
+position upward. Single-key organizations ship first;
+quorum-controlled organization keys (FROST/MuSig2 — the HEARTWOOD
+MAST pattern) are a later increment. The wallet does NOT build an
+authoritative residency-proof feature — that would be a dual-use
+surveillance surface; it offers tier-labeled evidence a person
+chooses to present. Supersedes the earlier "organizations fully
+deferred" framing — organizations are core to proof-of-place.
+Context: Operator 2026-05-22 chip answer. Recorded in
+MYCELIUM_NETWORK_SPEC.md sections 6-7.
+Feature: app-connections
+```
