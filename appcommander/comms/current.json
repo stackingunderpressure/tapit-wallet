@@ -1,35 +1,35 @@
 {
   "v": 1,
-  "ts": "2026-05-22T19:02:00Z",
-  "session_id": "verified-sticky-2026-05-22-1779476280",
-  "who": { "actor": "carpenter", "feature_slug": "journal" },
+  "ts": "2026-05-22T19:25:00Z",
+  "session_id": "recovery-woven-2026-05-22-1779477600",
+  "who": { "actor": "carpenter", "feature_slug": "backup-recovery" },
   "where": {
     "files": [
-      "src/features/journal/JournalCard.tsx",
-      "src/features/journal/JournalDetail.tsx"
+      "MYCELIUM_NETWORK_SPEC.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md"
     ],
     "screen_path": "/"
   },
-  "layer": "ui",
-  "action": "fix",
-  "summary": "Fixed the operator-reported bug where a diary entry shows Time-verified and then reverts to Time-verifying. Grounding found the cause: JournalCard and JournalDetail computed the verification badge ONLY from the transient anchor queue, which is device-local IndexedDB. When that queue does not have the entry's row — a re-unlock, a fresh browser session, a restore on a new device — the badge fell back to 'Time-verifying'. But the confirmed OpenTimestamps anchor is durably attached to the attestation itself (the WalletProvider effect attaches it and it rides the encrypted wallet backup). Both views now read attestation.anchor first and only fall back to the queue for entries not yet confirmed, so once an entry is verified the badge is sticky. Commit b2260f9.",
+  "layer": "doctrine",
+  "action": "spec",
+  "summary": "Two things this session. First, the operator blessed the Phase 5b design (an organization IS a wallet — its own identity, issuing membership attestations; organizations nest; zero new key architecture). Second, and the focus of the session, the operator connected Phase 5b to social recovery and asked for the existing recovery design to be read from the repo and fully worked in. MYCELIUM_NETWORK_SPEC.md section 12 was expanded from a one-paragraph by-reference note into a full treatment that captures the operator's framing: your recovery cohort is not configured separately — it IS the network you have already woven, the Phase 5a handshake peers and the Phase 5b organizations you belong to. The 'slime' is the operator's mycelial name for the shares: the encryption key to the cloud-mirrored backup blob is Shamir-split, each share held by a trusted node (a peer or an organization), and gathering M of N shares back reconstructs the key and restores the whole verifiable life. Recovery is initiated with no pre-stashed key (M peers verify the operator's face, then encrypt their shares to the fresh keypair), and M peers co-sign a recovery-succession event. The load-bearing constraint is unchanged — the split is over the backup encryption key, never the signing keypair. The slime framing was logged to ideas.md.",
   "why": {
-    "text": "Operator: a file shows verified, then comes back not verified; wants verified to stay persisted, with the math re-checkable on demand but no needless re-trying. Investigation confirmed nothing was actually re-verifying — the anchor worker already skips confirmed rows — it was purely a display reading the wrong source. The fix honours the durable verified state already persisted on the attestation.",
+    "text": "Operator confirmed Phase 5b and said: read the existing recovery design in the repo and get it all worked in, because the organizations, the peers, and recovery all nest together. Grounded by re-reading the ideas.md 2026-05-21 recovery entries and the existing section 12 before editing — verify, don't trust memory.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-VERIFIED-STICKY-024"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-RECOVERY-WOVEN-025"
   },
   "outcome": {
     "files_changed": [
-      "src/features/journal/JournalCard.tsx (modify), src/features/journal/JournalDetail.tsx (modify) — one commit plus comms"
+      "MYCELIUM_NETWORK_SPEC.md (modify — section 12 expanded), project-memory/foreman-memory/projects/tapit-wallet/ideas.md (modify — slime idea logged) — one commit plus comms"
     ],
-    "tests_passing": "19/19 across 5 test files. tapit-attest unchanged 82/78/0/4.",
+    "tests_passing": "Unchanged — no source code touched. Gates last green at b2260f9.",
     "build_green": true,
-    "notes": "[P-001] JournalCard + JournalDetail read attestation.anchor before the queue (commit b2260f9). [P-002] all four gates green. Display-only fix; no worker or data-model change — the verified state was always persisted, the views were not reading it. [FEEDBACK->Foreman]: no notes — the operator's bug report described the desired fix precisely and grounding confirmed it.",
-    "tests_passing_detail": "typecheck clean, lint clean"
+    "notes": "[P-001] Section 12 of the spec now fully captures social recovery and its connection to the peer/organization network (commit 4e30f34). [P-002] The slime framing logged to ideas.md. Recovery remains a Phase 5e increment — captured, not yet built. [FEEDBACK->Foreman]: no notes — the operator's instinct (recovery cohort = the woven network) matched and sharpened what was already in ideas.md.",
+    "tests_passing_detail": "no gates run — documentation only"
   },
-  "confidence": 92,
-  "uncertainty": "Build-verified. The real proof is the operator reloading the live deploy and confirming a previously-verified entry now stays verified. The fix is small and the cause well understood, so confidence is high.",
-  "ripple": ["journal"],
-  "next": "Operator confirms verified badges stay sticky on the live deploy after a reload / re-unlock. Phase 5b (organizations + membership) remains the next Layer 3 build.",
+  "confidence": 93,
+  "uncertainty": "A spec section, not code — its real test is Phase 5e when recovery is built. The design is consistent with the 2026-05-21 ideas.md recovery entries and adds the operator's connective framing without contradicting the load-bearing constraint.",
+  "ripple": ["backup-recovery", "connections", "doctrine"],
+  "next": "Cut Phase 5b — organizations as wallets, membership credential attestations issued org-to-person via a two-QR flow, and a Memberships section on the Identity tab. Recovery itself stays Phase 5e.",
   "signals": ["pulse"]
 }
