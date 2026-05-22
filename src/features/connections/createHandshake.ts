@@ -9,7 +9,7 @@ import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 // section 4). Both wallets hold the co-signed record; the home People
 // tab reads it. Built locally — no networking.
 
-function leafValue(att: Attestation, name: string): string {
+export function leafValue(att: Attestation, name: string): string {
   const claim = att.claim as FieldBranch;
   const node = claim.children.find((c) => c.name === name);
   if (node && node.node === 'leaf' && typeof node.value === 'string') {

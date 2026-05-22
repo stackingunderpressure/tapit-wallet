@@ -43,7 +43,10 @@ const BUDGETS = [
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   { pattern: /^WalletProvider-.*\.js$/, gz: 5_500, label: 'WalletProvider' },
-  { pattern: /^HomeScreen-.*\.js$/, gz: 8_000, label: 'HomeScreen' },
+  // HomeScreen is the post-auth main surface — four tabs (Journal,
+  // Identity, Captured, People) and three modal launchers. ~8.3KB gz
+  // today; budget carries headroom for modest further growth.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 11_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   { pattern: /^SettingsScreen-.*\.js$/, gz: 3_000, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },

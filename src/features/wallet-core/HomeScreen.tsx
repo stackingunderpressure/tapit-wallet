@@ -11,12 +11,16 @@ import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { ConnectionCard } from '../connections/ConnectionCard.tsx';
 import { isHandshake } from '../connections/createHandshake.ts';
+import { MembershipModal } from '../connections/MembershipModal.tsx';
+import { MembershipCard } from '../connections/MembershipCard.tsx';
+import { isMembership } from '../connections/createMembership.ts';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 // Top-level tabs separate the kinds of things the wallet holds.
-// Journal is the diary, Identity the founding card, Captured the
-// capture-bridge entries, People the Mycelium handshakes (Phase 5a).
+// Journal is the diary, Identity the founding card plus memberships,
+// Captured the capture-bridge entries, People the Mycelium
+// handshakes (Phase 5a).
 type Tab = 'journal' | 'identity' | 'captured' | 'people';
 
 const TABS: { id: Tab; label: string }[] = [
@@ -63,6 +67,7 @@ export function HomeScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
+  const [membershipOpen, setMembershipOpen] = useState(false);
   const banner = backupBanner(prefs);
 
   const journalEntries = useMemo(
@@ -87,6 +92,16 @@ export function HomeScreen() {
     () =>
       holdings
         .filter((a) => isHandshake(a))
+        .sort(
+          (a, b) =>
+            new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+        ),
+    [holdings],
+  );
+  const membershipEntries = useMemo(
+    () =>
+      holdings
+        .filter((a) => isMembership(a))
         .sort(
           (a, b) =>
             new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
@@ -152,6 +167,31 @@ export function HomeScreen() {
         <section className="mt-5 space-y-3">
           <IdentityCard publicKey={wallet.publicKey} />
           {identity && <AttestationCard attestation={identity} />}
+          <div className="pt-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-muted">Memberships</h2>
+              <button
+                type="button"
+                onClick={() => setMembershipOpen(true)}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                + Membership
+              </button>
+            </div>
+            {membershipEntries.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                No memberships yet. An organization — a club, a church,
+                a workplace — can declare you a member, and it lands
+                here.
+              </p>
+            ) : (
+              <div className="mt-2 space-y-3">
+                {membershipEntries.map((a, i) => (
+                  <MembershipCard key={i} attestation={a} />
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       )}
 
@@ -254,6 +294,10 @@ export function HomeScreen() {
 
       {handshakeOpen && (
         <HandshakeModal onClose={() => setHandshakeOpen(false)} />
+      )}
+
+      {membershipOpen && (
+        <MembershipModal onClose={() => setMembershipOpen(false)} />
       )}
     </div>
   );
