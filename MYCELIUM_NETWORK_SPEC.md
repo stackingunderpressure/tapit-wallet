@@ -166,6 +166,34 @@ work `PLAN.md` already lists as a Phase 7+ non-goal. The spec
 names quorum-controlled organizations as a later increment, not
 a v1 deliverable.
 
+**Organization key governance.** When the quorum increment is
+built, the design is not one model but a split, because an
+organization key does two jobs that want different rules.
+*Everyday issuance* — signing memberships, vouching — is
+high-volume and low individual stakes, so it must stay fast: a
+clerk or administrator signs and the membership is valid the
+instant they do, because in `tapit-attest` one valid signature
+is already a valid envelope. Other officials then **co-sign it
+later, at their leisure** — and because the envelope is
+multi-signature by nature, each added signature is a
+*ratification* that only accumulates; nothing is redone, nothing
+is revoked. A verifier reads "signed by the clerk, ratified by
+eight of eleven officials" and weighs it. That sign-now-ratify-
+later flow needs no new cryptography — it is the co-sign
+machinery already shipped, pointed at governance. *Constitutional
+acts* — changing the roster of officials, rotating the
+organization's key, the organization joining a larger one,
+dissolving it — are rare and high-stakes, and those require a
+true **M-of-N threshold** of officials, the `HEARTWOOD.md`
+principle of higher thresholds for higher-stakes decisions. In
+the full quorum model the organization's authority is not a
+single secret in one person's drawer at all — it is distributed
+across the officials' wallets, and the organization is whatever
+its current roster, by quorum, says it is. That is the more
+sovereign and more secure shape: there is no org private key to
+steal. The organization is genuinely controlled by the leaves of
+its own tree.
+
 Note: the organizations of this section are everyday human
 communities. They are distinct from the Heartwood Dynasty Trust,
 which governs the canonical *architecture*. Different scope,
@@ -336,8 +364,13 @@ Each increment is valuable on its own.
   timestamp.
 - **Phase 5e — the hyphal lattice and social recovery.**
   Transitive trust paths; the Shamir cascade recovery of §12.
-- **Later** — quorum-controlled organizations (FROST / MuSig2);
-  forest-consensus surfacing.
+- **Phase 5f — quorum-controlled organization keys.** The
+  governance split of §6 — sign-now-ratify-later co-signing for
+  everyday issuance, an M-of-N threshold for constitutional acts
+  (FROST / MuSig2 / the HEARTWOOD MAST pattern). A maturity
+  upgrade: single-key organizations work until an organization
+  grows large enough to need distributed control.
+- **Later** — forest-consensus surfacing.
 
 ## 15. Open questions
 

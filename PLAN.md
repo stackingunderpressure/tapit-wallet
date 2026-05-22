@@ -160,10 +160,10 @@ deferred to v1.5 — "coming soon". Sketch of record:
 
 The spec of record now exists — `MYCELIUM_NETWORK_SPEC.md`
 (written 2026-05-22) — which discharges D-04 and breaks Layer 3
-into increments 5a–5e: the in-person handshake, organizations +
-membership, Nostr transport, device-verified presence, then the
-hyphal lattice + social recovery. The first slice to cut is 5a,
-the in-person QR/NFC handshake, local only. The brief
+into increments 5a–5f: the in-person handshake, organizations +
+membership, Nostr transport, device-verified presence, the
+hyphal lattice + social recovery, then quorum-controlled
+organization keys. 5a and 5b are built; 5c is next. The brief
 of 2026-05-21 promoted Shamir-based cascade recovery to this
 phase per the operator's no-pre-stashed-key sharpening: M-of-N
 peers initiate, every subscribed peer encrypts their share to
