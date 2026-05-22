@@ -150,42 +150,55 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <form onSubmit={submitEmail} className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold">Tapit Wallet</h1>
-        <p className="mt-1 text-sm text-muted">
-          Your sovereign identity wallet. Sign in with email — we send a
-          6-digit code.
+      <div className="w-full max-w-sm">
+        <div className="text-xs uppercase tracking-wide text-accent">
+          Tapit Wallet
+        </div>
+        <h1 className="mt-2 text-2xl font-semibold leading-snug">
+          The record of your life belongs to you.
+        </h1>
+        <p className="mt-4 text-sm leading-relaxed text-ink/80">
+          Somewhere along the way we handed the story of our lives to
+          companies — our names, our histories, the proof of who we are —
+          and let them hold it, lose it, or lock us out of it. Tapit Wallet
+          takes it back. Your life is signed by your own key, kept on your
+          own device, and held true by the people who actually know you. No
+          company keeps it for you. No company can take it away. And because
+          the people who love you can stand with you and vouch for it, your
+          identity stays unmistakably, unfakeably yours.
         </p>
-        <label className="mt-6 block">
-          <span className="text-sm font-medium">Email</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-            placeholder="you@example.com"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={status === 'busy' || email.trim().length === 0}
-          className="mt-4 w-full rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
-        >
-          {status === 'busy' ? 'Sending…' : 'Send my code'}
-        </button>
-        {error && (
-          <p className="mt-3 text-sm text-red-600" role="alert">
-            {error}
-          </p>
-        )}
+        <form onSubmit={submitEmail} className="mt-6">
+          <label className="block">
+            <span className="text-sm font-medium">Email</span>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              placeholder="you@example.com"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={status === 'busy' || email.trim().length === 0}
+            className="mt-4 w-full rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
+          >
+            {status === 'busy' ? 'Sending…' : 'Send my code'}
+          </button>
+          {error && (
+            <p className="mt-3 text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
+        </form>
         <p className="mt-6 text-xs text-muted">
-          The code signs you into the wallet host. Your keypair is generated
+          We email you a 6-digit code to sign in. Your keypair is generated
           and held only on this device — never on the host.
         </p>
-      </form>
+      </div>
     </div>
   );
 }
