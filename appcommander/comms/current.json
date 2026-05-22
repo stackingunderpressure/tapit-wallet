@@ -1,41 +1,35 @@
 {
   "v": 1,
-  "ts": "2026-05-22T18:54:00Z",
-  "session_id": "phase-5a-handshake-2026-05-22-1779475200",
-  "who": { "actor": "carpenter", "feature_slug": "connections" },
+  "ts": "2026-05-22T19:02:00Z",
+  "session_id": "verified-sticky-2026-05-22-1779476280",
+  "who": { "actor": "carpenter", "feature_slug": "journal" },
   "where": {
     "files": [
-      "src/features/connections/HandshakeModal.tsx",
-      "src/features/connections/createHandshake.ts",
-      "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/manifest.ts",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features-registry.ts",
-      "vite.config.ts",
-      "scripts/bundle-budget.mjs"
+      "src/features/journal/JournalCard.tsx",
+      "src/features/journal/JournalDetail.tsx"
     ],
     "screen_path": "/"
   },
   "layer": "ui",
-  "action": "feature",
-  "summary": "Phase 5a shipped (commit 6e206aa) — the in-person handshake, the first buildable slice of Mycelium Layer 3, per MYCELIUM_NETWORK_SPEC.md. A new connections feature: HandshakeModal runs a three-QR co-signed ceremony between two wallets that are physically together — the initiator shows their identity, the responder builds and signs the handshake, the initiator co-signs, the responder takes the final copy. The result is one relationship-kind attestation carrying a verification=in-person leaf (Tier P), held by both wallets and anchored to Bitcoin. The home gains a live People tab — a fourth tab listing connections, with a New-handshake button. The build was grounded first: an Explore agent mapped the QR, co-sign, and relationship-attestation machinery, and the pattern files were read directly before any code was cut. The co-signed design is deliberate — a one-sided scan-and-record would let anyone forge a Tier P record from a copied QR, so both wallets must actively co-sign for the in-person tier to be honest.",
+  "action": "fix",
+  "summary": "Fixed the operator-reported bug where a diary entry shows Time-verified and then reverts to Time-verifying. Grounding found the cause: JournalCard and JournalDetail computed the verification badge ONLY from the transient anchor queue, which is device-local IndexedDB. When that queue does not have the entry's row — a re-unlock, a fresh browser session, a restore on a new device — the badge fell back to 'Time-verifying'. But the confirmed OpenTimestamps anchor is durably attached to the attestation itself (the WalletProvider effect attaches it and it rides the encrypted wallet backup). Both views now read attestation.anchor first and only fall back to the queue for entries not yet confirmed, so once an entry is verified the badge is sticky. Commit b2260f9.",
   "why": {
-    "text": "Operator approved the Mycelium spec and said to cut Phase 5a. The handshake choreography and the co-signed-not-scan-and-record decision were surfaced to the operator and blessed before the build. Grounded per the grounding-gate hook — the QR and co-sign machinery were read as they actually are.",
+    "text": "Operator: a file shows verified, then comes back not verified; wants verified to stay persisted, with the math re-checkable on demand but no needless re-trying. Investigation confirmed nothing was actually re-verifying — the anchor worker already skips confirmed rows — it was purely a display reading the wrong source. The fix honours the durable verified state already persisted on the attestation.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-PHASE-5A-HANDSHAKE-023"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-VERIFIED-STICKY-024"
   },
   "outcome": {
     "files_changed": [
-      "src/features/connections/{createHandshake.ts,HandshakeModal.tsx,ConnectionCard.tsx,manifest.ts} (new); src/features/wallet-core/HomeScreen.tsx, src/features-registry.ts, vite.config.ts, scripts/bundle-budget.mjs (modify) — one commit plus comms"
+      "src/features/journal/JournalCard.tsx (modify), src/features/journal/JournalDetail.tsx (modify) — one commit plus comms"
     ],
-    "tests_passing": "19/19 across 5 test files. The library-seam gate caught a local helper named leaf colliding with a tapit-attest export — renamed to leafValue. The features-registry gate confirms the new connections manifest is registered. tapit-attest unchanged 82/78/0/4.",
+    "tests_passing": "19/19 across 5 test files. tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "[P-001] connections feature + 3-QR handshake ceremony (commit 6e206aa). [P-002] People tab live in HomeScreen. [P-003] all four gates green. [P-004] bundle-budget caught a Rollup chunk rename — root-caused (the qrcode shared chunk gets renamed when its co-located modules change) and fixed properly by pinning qrcode to its own manualChunk in vite.config.ts; named budgets added for the qrcode and cosigning-helpers chunks. [FEEDBACK->Foreman]: no notes — grounding caught both the leaf collision class and the chunk-rename root cause before they could become silent debt.",
+    "notes": "[P-001] JournalCard + JournalDetail read attestation.anchor before the queue (commit b2260f9). [P-002] all four gates green. Display-only fix; no worker or data-model change — the verified state was always persisted, the views were not reading it. [FEEDBACK->Foreman]: no notes — the operator's bug report described the desired fix precisely and grounding confirmed it.",
     "tests_passing_detail": "typecheck clean, lint clean"
   },
-  "confidence": 83,
-  "uncertainty": "Build-verified only. A real handshake is a 3-QR ceremony between two physical devices and cannot be exercised by CI or by the operator on a single phone — the state machine, the QR round-trips, the co-sign and merge are sound in the markup but unproven in the field. The QR scanner needs iOS Safari 17+ (the operator's platform supports it). The operator can see the People tab and walk the modal solo, but a full connection needs a second wallet.",
-  "ripple": ["connections", "wallet-core", "qr", "cosigning"],
-  "next": "Operator field-tests the handshake with two devices / two people. Phase 5b is organizations and membership attestations (single-key organizations first). Then Phase 5c, Nostr transport, for remote links.",
+  "confidence": 92,
+  "uncertainty": "Build-verified. The real proof is the operator reloading the live deploy and confirming a previously-verified entry now stays verified. The fix is small and the cause well understood, so confidence is high.",
+  "ripple": ["journal"],
+  "next": "Operator confirms verified badges stay sticky on the live deploy after a reload / re-unlock. Phase 5b (organizations + membership) remains the next Layer 3 build.",
   "signals": ["pulse"]
 }
