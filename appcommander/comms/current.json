@@ -1,55 +1,51 @@
 {
   "v": 1,
-  "ts": "2026-05-22T22:59:00Z",
-  "session_id": "phase-5c-i-beta-transport-2026-05-22-1779485400",
+  "ts": "2026-05-22T23:14:30Z",
+  "session_id": "phase-5c-i-gamma-wire-2026-05-22-1779486900",
   "who": {
     "actor": "carpenter",
     "feature_slug": "transport"
   },
   "where": {
     "files": [
-      "tapit-attest/src/core/keys.ts",
-      "src/features/transport/transport.ts",
+      "tapit-attest/src/core/wallet.ts",
+      "tapit-attest/test/wallet-peer.test.mjs",
       "src/features/transport/nostrEvent.ts",
-      "src/features/transport/nostrTransport.ts",
       "src/features/transport/encryptedInbox.ts",
-      "src/features/transport/defaultRelays.ts",
-      "src/features/transport/manifest.ts",
+      "src/features/transport/connectWallet.ts",
       "src/features/transport/transport.test.ts",
-      "src/features-registry.ts"
+      "src/features/transport/manifest.ts"
     ],
     "screen_path": "library + feature internals (no UI this turn)"
   },
   "layer": "service",
   "action": "implement",
-  "summary": "Phase 5c-i-β — the Nostr wire client. Substrate-agnostic Transport interface; minimal Nostr WebSocket client with auto-reconnect and id-dedup; encrypted-inbox layer that wraps each tapit-attest envelope in NIP-44 ciphertext addressed to one recipient and unwraps incoming events back to typed Attestation objects (dropping tampered, wrong-recipient, and junk events silently). Default replaceable relay set ships with the wallet (D-11a). tapit-attest got a small signDigest export so the wallet does not re-implement Schnorr for Nostr event ids. 10 new tests; all eight gates green; pushed branch-only.",
+  "summary": "Phase 5c-i-γ — wire the transport into the wallet without leaking keys. Wallet gained signDigest + nip44EncryptTo + nip44DecryptFrom; private keypair converted to a true JS #private field (D-03 now mechanically enforced at runtime, not just TS-private at compile time). buildEvent takes a sign-callback; sendEnvelopeTo/subscribeInbox take a Wallet. New connectWallet helper is the one-call entry point a UI layer will use. 6 new tapit-attest tests + 2 new wallet tests; all eight gates green; pushed branch-only.",
   "why": {
-    "text": "Phase 5c needs the wallet to send and receive encrypted envelopes across Nostr relays. NIP-44 (5c-i-α) gave us the payload format; this cut gives us the wire. The interface is substrate-agnostic because D-06 says the substrate is swappable and never a hard dependency — Nostr is the default, not the only path. Tapit envelopes ride inside a custom event kind (9573, regular events that relays persist for async delivery) per D-11c. The wallet key doubles as the Nostr identity per D-11d.",
+    "text": "The transport feature shipped last cut with a raw-keys API, which the doctrine D-03 (keys never leave the wallet unencrypted) forbids in a wired-up system. This cut routes all peer-encryption + Nostr-event-signing through the Wallet so the private key stays inside the Wallet instance. The keypair-to-#private upgrade was triggered by the grounding gate: a test I wrote asserted that wallet.keypair was undefined, and it failed — TS-private is compile-time only, the keypair was accessible from outside. Converted to JS-#private so the rule is enforced by the runtime, not just documented.",
     "linked_pixel_id": null,
-    "linked_mission_id": "phase-5c-i-beta"
+    "linked_mission_id": "phase-5c-i-gamma"
   },
   "outcome": {
     "files_changed": [
-      "tapit-attest/src/core/keys.ts (signDigest added)",
-      "src/features/transport/transport.ts (new)",
-      "src/features/transport/nostrEvent.ts (new)",
-      "src/features/transport/nostrTransport.ts (new)",
-      "src/features/transport/encryptedInbox.ts (new)",
-      "src/features/transport/defaultRelays.ts (new)",
-      "src/features/transport/manifest.ts (new)",
-      "src/features/transport/transport.test.ts (new — 10 tests)",
-      "src/features-registry.ts (transport registered)",
-      "appcommander/comms/in-flight.jsonl (session events)"
+      "tapit-attest/src/core/wallet.ts (3 methods + #private keypair)",
+      "tapit-attest/test/wallet-peer.test.mjs (new — 6 tests)",
+      "src/features/transport/nostrEvent.ts (sign-callback API)",
+      "src/features/transport/encryptedInbox.ts (Wallet-based API)",
+      "src/features/transport/connectWallet.ts (new — entry point)",
+      "src/features/transport/transport.test.ts (updated; +2 tests)",
+      "src/features/transport/manifest.ts (touches + notes)",
+      "appcommander/comms/in-flight.jsonl"
     ],
-    "tests_passing": "tapit-attest 91/91 (4 skipped, network); wallet 29/29",
+    "tests_passing": "tapit-attest 97/97 (4 skipped, network); wallet 31/31",
     "build_green": true,
-    "notes": "Pushed to claude/compare-library-wallet-OW5FF as commit 5f65f3c. NOT pushed to main — operator has not said the word for this cut. Transport feature tree-shakes out of the bundle for now (no runtime importer); will appear once 5c-i-γ wires it to connections. Noted a pre-existing flake in tapit-attest's encryption tampered-byte test (1/256 chance the random ciphertext byte at position 0 is 0x00 and the corruption is a no-op) — unrelated to this cut, passed on retry, surfaced in opinions."
+    "notes": "Pushed to claude/compare-library-wallet-OW5FF as commit 25be3ba. NOT pushed to main — operator has not said the word for this cut. Branch is now three commits ahead of main: 5c-i-α (NIP-44 primitive), 5c-i-β (transport wire), 5c-i-γ (Wallet wire-up). No WalletProvider integration yet — that lands with 5c-i-δ alongside an operator opt-in toggle, since enabling the transport by default would expose the wallet's pubkey to public relays on every unlock. Pre-existing tapit-attest encryption tamper-byte flake (1/256) still relevant from previous sessions."
   },
-  "confidence": 90,
-  "uncertainty": "The NostrTransport is wire-protocol-correct per NIP-01 and verified via injected fake WebSocket, but it has not been pointed at a real public relay yet. Once 5c-i-γ wires the inbox up and the operator does a smoke test with two devices, the round-trip-against-real-relays evidence will arrive. The Nostr event kind 9573 was picked because it is in the regular-event range and not assigned to any major NIP — if a future NIP claims it, we swap the constant.",
+  "confidence": 92,
+  "uncertainty": "The transport-to-wallet seam is now correct and testable, but it has not been used by any real UI flow yet. The actual integration into WalletProvider (5c-i-δ) will need a settings opt-in, an inbox-state slot in the wallet context, and a routing component that surfaces incoming envelopes — none of which exists yet. NIP-44 interop against the upstream reference vectors still outstanding.",
   "ripple": [
-    "app-connections — will become the consumer of sendEnvelopeTo/subscribeInbox in 5c-i-γ (an in-person handshake gains an async path)",
-    "tapit-attest — new public surface (signDigest)"
+    "tapit-attest — new public surface (signDigest method, nip44EncryptTo, nip44DecryptFrom); private keypair is now JS-#private (no caller was reading it from outside, verified by grep before the change)",
+    "transport feature — public API changed (sendEnvelopeTo and subscribeInbox now take Wallet); no consumers outside the feature's own tests yet"
   ],
-  "next": "Cut Phase 5c-i-γ — wire the transport into the connections feature so an existing in-person flow (handshake or membership) can also travel async through Nostr. Likely: a hook that opens a NostrTransport for the wallet, a subscribeInbox subscription that routes incoming envelopes to the right cosign/absorb modal, and a 'send remotely' option on the handshake modal."
+  "next": "Cut Phase 5c-i-δ — wire connectWallet into WalletProvider behind a settings opt-in toggle, expose inbox envelopes via WalletContext, and surface them in the UI (e.g. a People-tab notification or an absorb-modal route). Also: NIP-44 reference-vector cross-check before any encrypted messages hit a real relay."
 }
