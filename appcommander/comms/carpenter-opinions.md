@@ -1,71 +1,91 @@
 # Carpenter opinions — tapit-wallet
 
 > Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-22 — weaving social recovery into the spec.
+> Session: 2026-05-22 — Phase 5b, organizations and membership.
 > Mode: dual-surface comms — files plus live chat — because
 > AppCommander is down.
 
 ## What I did
 
-You confirmed the Phase 5b design — an organization is its own
-wallet, issuing membership attestations, nesting upward — and
-then you did something better than approve it: you connected it
-to recovery and told me to go read the recovery design already
-in the repo and work it all in. So I did. I re-read the
-2026-05-21 recovery entries in `ideas.md` and the existing
-section 12 of the Mycelium spec, and then I expanded section 12
-from a one-paragraph by-reference note into a full treatment.
-Commit `4e30f34`.
+This session cut Phase 5b — organizations and membership — at
+commit `85d6a51`. It is the second slice of Layer 3, and it sits
+on the decision you blessed: an organization is not a special
+new construct, it is simply a wallet. A town, a church, the
+American Legion installs the same app, creates an identity named
+for itself, and that identity is the organization. The code
+proves the decision was right by how little it needed: zero new
+key architecture, zero new attestation kinds, zero new storage
+model. An organization issuing a membership is just a wallet
+signing an attestation, which wallets already do.
 
-The thing your framing added, the thing that was not yet written
-down clearly, is the connection. The recovery design was already
-in the repo — the Shamir cascade, M-of-N peers, the
-encryption-key-not-signing-key constraint. What was missing was
-the sentence that makes it click: your recovery network is not a
-thing you set up separately. It IS the network you have already
-woven. The peers you handshake in Phase 5a and the organizations
-you join in Phase 5b are, with no extra step, the holders of
-your recovery. The bar, the church, the workplace, the five
-people who know you — each of them holds a piece of your slime,
-and slime is exactly the right word for it, because that is what
-a Shamir share is: a smear of substrate you leave across your
-network as you live, meaningless alone, and enough of it
-together is the whole of you. Section 12 now says that plainly,
-keeps every piece of the technical design intact — the split is
-over the backup's encryption key, never the signing keypair, so
-a colluding quorum can read one snapshot but can never become
-you — and logs "the slime" into the ideas file as your framing,
-in your words.
+A membership is a credential-kind attestation the organization's
+wallet signs about a person — it carries a credential_type leaf
+of "membership" so the home can find it, plus both parties' ids
+and names. The new `MembershipModal` runs the flow, and it is
+deliberately lighter than the handshake: where a handshake is
+co-signed and takes three QR transmissions, a membership is
+one-directional and takes two — the recipient shows their
+identity, the organization scans it and signs the membership and
+shows it back, and the recipient scans it and holds it. Only the
+organization signs, because only the organization is vouching;
+the person is receiving, not asserting. Held memberships now
+list in a Memberships section on the Identity tab, which is the
+right home — a membership is a credential about you, so it
+belongs next to your identity card. And the nesting you wanted
+falls out for free: an organization joins a larger organization
+by holding a membership exactly the way a person does, because
+the organization is a wallet too. The Legion is a member of the
+Town with no special code at all.
+
+One honest gate note. The bundle-budget check flagged the
+HomeScreen chunk two hundred and eighty-four bytes over its
+limit. I looked before I touched it: the growth is real and
+intentional — HomeScreen now carries four tabs and launches
+three modals — so this was the script's "audit and recalibrate"
+case, not the "you bloated something" case. I raised the budget
+from eight to eleven kilobytes gzipped with a comment explaining
+exactly why, so the check still guards against accidental
+growth but stops being startled by legitimate growth. All four
+gates green.
 
 ## What you could do better
 
-Nothing this session — you were doing my job for me, and well.
-You held the picture in your head, you knew it was in the repo,
-and you made me go verify it against the file instead of
-trusting my memory of it. That is the grounding discipline
-working in the other direction, you keeping me honest, and it is
-exactly right. The one thing worth saying plainly so the scope
-stays clear: recovery is now fully captured but it is not built.
-It is Phase 5e — it genuinely cannot exist until the network
-exists, because the cohort that holds your slime has to be woven
-first. So the order stands: Phase 5b next, the organizations and
-memberships, then 5c and 5d, and recovery is 5e, built last,
-on top of all of it. The spec now makes sure that when a future
-session reaches 5e, the whole design and your framing are
-waiting there intact.
+The honest caveat, same as the handshake: I cannot field-test
+this. Issuing a membership is a two-QR exchange between two
+devices, and no gate and no single phone can walk it. It is
+build-verified — it compiles, lints, tests, and builds — and the
+real proof is two wallets in two hands. When you get a second
+device on it, the thing to watch is the role split: one person
+taps "Issue a membership," the other taps "Receive," and they
+have to pick correctly, the same coordination the handshake
+needs. If that proves confusing in practice, it is worth
+telling me.
+
+One design choice I made and want you to see plainly: I did not
+formally mark an identity as "a person" versus "an organization."
+In Phase 5b an organization is just a wallet with a collective's
+name, and a membership is meaningful because of who signed it,
+not because of a type flag. That keeps 5b small and honest. If
+you later want the wallet to visibly distinguish a person from
+an organization — different founding ceremony, a different card
+— that is a real and reasonable want, but it is its own piece of
+work, and I held it back rather than guess.
 
 ## The bigger picture
 
-There is a quiet symmetry in what got written down today. This
-whole wallet is built on a single hard fact — that you, and only
-you, hold your keys, and if the device is gone the keys are gone.
-That is the price of real sovereignty, and most systems answer
-it by quietly keeping a copy somewhere you do not control, which
-is not sovereignty at all. Your answer is better and it is the
-mycelial answer: you do not keep a copy, you leave a slime. You
-scatter pieces of your recoverability across the exact web of
-people and organizations that already know you are real, and no
-piece is worth anything alone, and the network that vouches for
-who you are is the same network that brings you back. The wallet
-proved this morning that it can hold a life. Section 12 is the
-promise that it can also return one. Same web, used backwards.
+Phase 5a gave the wallet its first connection between two
+people. Phase 5b gives it the other shape a human life is made
+of — belonging. A person is not just a set of one-to-one
+friendships; they are a member of things, and those things are
+members of bigger things, all the way up to the town and beyond.
+What is quietly remarkable is that the architecture absorbed
+that entire idea without growing a new primitive. An
+organization is a wallet. A membership is a credential. Nesting
+is just an organization holding a credential. The same handful
+of pieces — a keypair, a signed attestation, a QR exchange —
+composed into the whole social structure of belonging. That is
+what a good primitive does: it was specified once, carefully, in
+`tapit-attest`, and now the network of a human life is being
+built out of it without inventing anything new. The wallet is
+no longer a vault, and no longer just a web of friends — it is
+starting to hold the shape of a society.

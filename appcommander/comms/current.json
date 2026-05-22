@@ -1,35 +1,40 @@
 {
   "v": 1,
-  "ts": "2026-05-22T19:25:00Z",
-  "session_id": "recovery-woven-2026-05-22-1779477600",
-  "who": { "actor": "carpenter", "feature_slug": "backup-recovery" },
+  "ts": "2026-05-22T19:49:00Z",
+  "session_id": "phase-5b-membership-2026-05-22-1779478500",
+  "who": { "actor": "carpenter", "feature_slug": "connections" },
   "where": {
     "files": [
-      "MYCELIUM_NETWORK_SPEC.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/ideas.md"
+      "src/features/connections/createMembership.ts",
+      "src/features/connections/MembershipModal.tsx",
+      "src/features/connections/MembershipCard.tsx",
+      "src/features/connections/createHandshake.ts",
+      "src/features/connections/manifest.ts",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "scripts/bundle-budget.mjs"
     ],
     "screen_path": "/"
   },
-  "layer": "doctrine",
-  "action": "spec",
-  "summary": "Two things this session. First, the operator blessed the Phase 5b design (an organization IS a wallet — its own identity, issuing membership attestations; organizations nest; zero new key architecture). Second, and the focus of the session, the operator connected Phase 5b to social recovery and asked for the existing recovery design to be read from the repo and fully worked in. MYCELIUM_NETWORK_SPEC.md section 12 was expanded from a one-paragraph by-reference note into a full treatment that captures the operator's framing: your recovery cohort is not configured separately — it IS the network you have already woven, the Phase 5a handshake peers and the Phase 5b organizations you belong to. The 'slime' is the operator's mycelial name for the shares: the encryption key to the cloud-mirrored backup blob is Shamir-split, each share held by a trusted node (a peer or an organization), and gathering M of N shares back reconstructs the key and restores the whole verifiable life. Recovery is initiated with no pre-stashed key (M peers verify the operator's face, then encrypt their shares to the fresh keypair), and M peers co-sign a recovery-succession event. The load-bearing constraint is unchanged — the split is over the backup encryption key, never the signing keypair. The slime framing was logged to ideas.md.",
+  "layer": "ui",
+  "action": "feature",
+  "summary": "Phase 5b shipped (commit 85d6a51) — organizations and membership, the second slice of Mycelium Layer 3. The architecture decision the operator blessed: an organization is simply a wallet — its own keypair and identity, named for the collective — which needs zero new key architecture and keeps organizations genuinely sovereign. A membership is a credential-kind attestation (credential_type=membership) the organization's wallet signs about a person, carrying both parties' ids and names. The new MembershipModal runs a one-directional two-QR flow, lighter than the handshake: the recipient shows their identity, the organization scans it and signs the membership, shows it back, and the recipient scans it and holds + anchors it — only the organization signs, because only the organization is vouching. Held memberships list in a new Memberships section on the Identity tab. Nesting is free: an organization holds a membership in a larger organization exactly the way a person does, because an organization is also a wallet. No new tapit-attest kinds — it reuses credentialAttestation, QrShow/QrScanModal, and the cosigning parseEnvelope helper.",
   "why": {
-    "text": "Operator confirmed Phase 5b and said: read the existing recovery design in the repo and get it all worked in, because the organizations, the peers, and recovery all nest together. Grounded by re-reading the ideas.md 2026-05-21 recovery entries and the existing section 12 before editing — verify, don't trust memory.",
+    "text": "Operator: 'Cut away.' Phase 5b was operator-blessed: an organization is a wallet (forced by the architecture — createWallet/walletStore are one-wallet-per-login), and the operator connected it to the recovery vision the prior session wove into the spec. The build was grounded by re-reading createHandshake.ts and the connections manifest first.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-RECOVERY-WOVEN-025"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-PHASE-5B-MEMBERSHIP-026"
   },
   "outcome": {
     "files_changed": [
-      "MYCELIUM_NETWORK_SPEC.md (modify — section 12 expanded), project-memory/foreman-memory/projects/tapit-wallet/ideas.md (modify — slime idea logged) — one commit plus comms"
+      "src/features/connections/{createMembership.ts,MembershipModal.tsx,MembershipCard.tsx} (new); createHandshake.ts (export leafValue), manifest.ts, src/features/wallet-core/HomeScreen.tsx, scripts/bundle-budget.mjs (modify) — one commit plus comms"
     ],
-    "tests_passing": "Unchanged — no source code touched. Gates last green at b2260f9.",
+    "tests_passing": "19/19 across 5 test files. tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "[P-001] Section 12 of the spec now fully captures social recovery and its connection to the peer/organization network (commit 4e30f34). [P-002] The slime framing logged to ideas.md. Recovery remains a Phase 5e increment — captured, not yet built. [FEEDBACK->Foreman]: no notes — the operator's instinct (recovery cohort = the woven network) matched and sharpened what was already in ideas.md.",
-    "tests_passing_detail": "no gates run — documentation only"
+    "notes": "[P-001] connections feature gains memberships — createMembership + MembershipModal + MembershipCard (commit 85d6a51). [P-002] Identity tab Memberships section live. [P-003] all four gates green. [P-004] bundle-budget flagged HomeScreen 284 bytes over; audited as legitimate growth (four tabs, three modal launchers) and recalibrated 8KB->11KB gz with a comment. [FEEDBACK->Foreman]: no notes — a clean grounded pass.",
+    "tests_passing_detail": "typecheck clean, lint clean"
   },
-  "confidence": 93,
-  "uncertainty": "A spec section, not code — its real test is Phase 5e when recovery is built. The design is consistent with the 2026-05-21 ideas.md recovery entries and adds the operator's connective framing without contradicting the load-bearing constraint.",
-  "ripple": ["backup-recovery", "connections", "doctrine"],
-  "next": "Cut Phase 5b — organizations as wallets, membership credential attestations issued org-to-person via a two-QR flow, and a Memberships section on the Identity tab. Recovery itself stays Phase 5e.",
+  "confidence": 83,
+  "uncertainty": "Build-verified only. Issuing a membership is a two-QR exchange between two devices and cannot be exercised in CI or on a single phone. The org-as-a-wallet model is sound and minimal; the modal flow reads correctly but wants a two-device field test. A small open point for later: organization identities are not formally typed as person-vs-organization in 5b — an org is just a wallet with a collective's name; formal typing can come if needed.",
+  "ripple": ["connections", "wallet-core"],
+  "next": "Operator field-tests the handshake and membership flows with two devices. Phase 5c — Nostr transport (remote Tier R links and remote sync) — is the next Layer 3 increment. Recovery stays Phase 5e.",
   "signals": ["pulse"]
 }
