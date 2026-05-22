@@ -6,10 +6,13 @@ import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
 import { useSession } from '../auth/useSession.ts';
 import { PassphrasePrompt } from './PassphrasePrompt.tsx';
 import { UnlockPrompt } from './UnlockPrompt.tsx';
-import { DisplayNamePrompt } from './DisplayNamePrompt.tsx';
+import { IdentityCeremony } from './IdentityCeremony.tsx';
 import { createWallet } from './createWallet.ts';
 import { unlockWallet } from './unlockWallet.ts';
-import { createIdentityAttestation } from './createIdentityAttestation.ts';
+import {
+  createIdentityAttestation,
+  type IdentityInput,
+} from './createIdentityAttestation.ts';
 import { saveWallet } from './saveWallet.ts';
 import { WalletContext, type WalletContextValue } from './WalletContext.ts';
 import {
@@ -176,15 +179,15 @@ export function WalletProvider({ children }: Props) {
     [phase],
   );
 
-  const onDisplayName = useCallback(
-    async (displayName: string) => {
+  const onCreateIdentity = useCallback(
+    async (input: IdentityInput) => {
       if (phase.kind !== 'needs-identity') {
         throw new Error('not in needs-identity state');
       }
       if (!ownerId) throw new Error('no session');
       const passphrase = passphraseRef.current;
       if (!passphrase) throw new Error('passphrase not in memory; re-unlock');
-      await createIdentityAttestation(phase.wallet, displayName);
+      await createIdentityAttestation(phase.wallet, input);
       await saveWallet(phase.wallet, passphrase, ownerId);
       await landAfterUnlock(phase.wallet);
       setPrefs(await prefsStore.load(ownerId));
@@ -280,7 +283,7 @@ export function WalletProvider({ children }: Props) {
   }
 
   if (phase.kind === 'needs-identity') {
-    return <DisplayNamePrompt onSubmit={onDisplayName} />;
+    return <IdentityCeremony onComplete={onCreateIdentity} />;
   }
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
