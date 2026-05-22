@@ -21,6 +21,12 @@ import {
 } from '../anchoring/anchorWorker.ts';
 import type { StoredBlob } from '../storage/localStore.ts';
 import { useIdleLock } from './useIdleLock.ts';
+// connectWallet is dynamically imported below so the transport stack
+// (Nostr WebSocket client, NIP-44 encryption surface) only loads when
+// the operator opts into the Mycelium network. Type-only import here
+// is free.
+import type { WalletConnection } from '../transport/connectWallet.ts';
+import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -51,8 +57,10 @@ export function WalletProvider({ children }: Props) {
     cloudSync: true,
     lastRemoteSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
+    nostrTransportEnabled: false,
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
+  const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
   // Passphrase lives in state because it's exposed via context anyway
   // (callers need to encrypt photos, sign + persist on demand) — the
   // ref-with-tick pattern was a half-measure that did not survive the
@@ -91,6 +99,41 @@ export function WalletProvider({ children }: Props) {
       setAnchorWorker(null);
     };
   }, [ownerId, phase.kind]);
+
+  // Open the Nostr peer-transport when (a) the wallet is unlocked and
+  // (b) the operator has opted into the Mycelium network. Closes on
+  // lock, sign-out, or opt-out. Subscribing exposes the wallet's
+  // pubkey to the relay set, so this stays default-off until the
+  // operator turns it on in Settings. The transport module is
+  // dynamically imported so users who never opt in pay zero bytes
+  // for the WebSocket client.
+  useEffect(() => {
+    if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') return;
+    if (!prefs.nostrTransportEnabled) return;
+    const wallet = phase.wallet;
+    let conn: WalletConnection | null = null;
+    let cancelled = false;
+    setInboxEnvelopes([]);
+    void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
+      if (cancelled) return;
+      conn = connectWallet(wallet, {
+        onEnvelope: (item) => {
+          setInboxEnvelopes((prev) =>
+            prev.some((p) => p.eventId === item.eventId) ? prev : [item, ...prev],
+          );
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      if (conn) conn.close();
+      setInboxEnvelopes([]);
+    };
+  }, [phase, prefs.nostrTransportEnabled]);
+
+  const dismissInboxEnvelope = useCallback((eventId: string) => {
+    setInboxEnvelopes((prev) => prev.filter((p) => p.eventId !== eventId));
+  }, []);
 
   // Attach confirmed anchors back onto held attestations and persist
   // them, so backup/restore preserves the Bitcoin block height the
@@ -260,11 +303,25 @@ export function WalletProvider({ children }: Props) {
       identity: findIdentity(holdings, phase.wallet.identity),
       prefs,
       anchorWorker,
+      inboxEnvelopes,
+      dismissInboxEnvelope,
       save,
       updatePrefs,
       refresh,
     };
-  }, [phase, holdings, ownerId, prefs, save, updatePrefs, refresh, anchorWorker, passphrase]);
+  }, [
+    phase,
+    holdings,
+    ownerId,
+    prefs,
+    save,
+    updatePrefs,
+    refresh,
+    anchorWorker,
+    passphrase,
+    inboxEnvelopes,
+    dismissInboxEnvelope,
+  ]);
 
   if (!ownerId || phase.kind === 'checking') {
     return (

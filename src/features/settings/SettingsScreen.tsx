@@ -111,6 +111,39 @@ export function SettingsScreen() {
       </section>
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-medium">Mycelium network</div>
+            <p className="mt-1 text-sm text-muted">
+              Let peers reach your wallet over encrypted Nostr relays — so
+              a co-sign, a handshake, or a membership can travel when you
+              are not in the same room. Messages stay encrypted to you;
+              relays see ciphertext only.
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Privacy note: subscribing tells the relay set your public
+              key is online. Keep this off until you want to be reachable.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => updatePrefs({ nostrTransportEnabled: !prefs.nostrTransportEnabled })}
+            aria-pressed={prefs.nostrTransportEnabled}
+            aria-label="Toggle Mycelium network"
+            className={`shrink-0 w-12 h-7 rounded-full transition-colors ${
+              prefs.nostrTransportEnabled ? 'bg-accent' : 'bg-ink/15'
+            }`}
+          >
+            <span
+              className={`block h-6 w-6 bg-white rounded-full shadow transform transition-transform ${
+                prefs.nostrTransportEnabled ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="font-medium">Local backup</div>
         <p className="mt-1 text-sm text-muted">
           Download an encrypted copy of your wallet. Keep it somewhere safe —

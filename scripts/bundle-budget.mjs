@@ -81,6 +81,16 @@ const BUDGETS = [
   // a shared chunk once the connections feature began reusing them.
   // ~1.9KB gz today.
   { pattern: /^mergeSignatures-.*\.js$/, gz: 3_000, label: 'cosigning helpers' },
+  // Tiny envelope-parse helper. Hoisted by Rollup when shared
+  // between cosigning, connections, and transport. ~0.3KB gz today.
+  { pattern: /^parseEnvelope-.*\.js$/, gz: 800, label: 'parseEnvelope helper' },
+
+  // Phase 5c-i-δ peer-transport chunk, dynamically imported by
+  // WalletProvider only when the operator opts into the Mycelium
+  // network. Bundles the Nostr WebSocket client, NIP-44 encryption
+  // surface, default relays, and the connectWallet entry point.
+  // ~1.6KB gz today; budget carries headroom for 5c-ii/-iii growth.
+  { pattern: /^connectWallet-.*\.js$/, gz: 5_000, label: 'transport (Mycelium opt-in)' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },

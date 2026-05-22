@@ -12,11 +12,12 @@ export const manifest: FeatureManifest = {
     'src/features/transport/encryptedInbox.ts',
     'src/features/transport/connectWallet.ts',
     'src/features/transport/defaultRelays.ts',
+    'src/features/transport/InboxPanel.tsx',
   ],
-  depends_on: ['cosigning'],
+  depends_on: ['cosigning', 'wallet-core'],
   pause_safe: true,
-  removal_safe: true,
+  removal_safe: false,
   monetizable: false,
   notes:
-    'The wallet key is reused as the Nostr identity (D-11d) — same x-only BIP340 pubkey, same Schnorr signature. The Wallet class exposes signDigest, nip44EncryptTo, and nip44DecryptFrom so this feature never sees the raw private key (D-03). encryptedInbox is the helper layer; connectWallet is the one-call entry point that opens a NostrTransport (or accepts an injected one for tests), subscribes the inbox, and returns a handle whose close() tears everything down. The Nostr WebSocket client auto-reconnects with exponential backoff and dedupes events by id across relays; persistent offline outbox + sync resume are deferred to 5c-iii. depends_on lists cosigning because encryptedInbox imports its parseEnvelope helper.',
+    'The wallet key is reused as the Nostr identity (D-11d) — same x-only BIP340 pubkey, same Schnorr signature. The Wallet class exposes signDigest, nip44EncryptTo, and nip44DecryptFrom so this feature never sees the raw private key (D-03). encryptedInbox is the helper layer; connectWallet is the one-call entry point that opens a NostrTransport (or accepts an injected one for tests), subscribes the inbox, and returns a handle whose close() tears everything down. The Nostr WebSocket client auto-reconnects with exponential backoff and dedupes events by id across relays; persistent offline outbox + sync resume are deferred to 5c-iii. WalletProvider opens the transport on unlock when the operator has enabled the nostrTransportEnabled pref (default false — subscribing exposes the wallet pubkey to public relays), and InboxPanel renders incoming envelopes at the top of the People tab. depends_on lists cosigning (encryptedInbox uses its parseEnvelope helper) and wallet-core (InboxPanel reads inbox state from WalletContext); removal_safe is false because HomeScreen imports InboxPanel.',
 };

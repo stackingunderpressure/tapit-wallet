@@ -14,6 +14,7 @@ import { isHandshake } from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
 import { MembershipCard } from '../connections/MembershipCard.tsx';
 import { isMembership } from '../connections/createMembership.ts';
+import { InboxPanel } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -62,7 +63,7 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const { wallet, holdings, identity, prefs } = useWallet();
+  const { wallet, holdings, identity, prefs, inboxEnvelopes, dismissInboxEnvelope } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
@@ -223,6 +224,7 @@ export function HomeScreen() {
 
       {tab === 'people' && (
         <section className="mt-5">
+          <InboxPanel envelopes={inboxEnvelopes} onDismiss={dismissInboxEnvelope} />
           <button
             type="button"
             onClick={() => setHandshakeOpen(true)}
