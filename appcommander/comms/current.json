@@ -1,54 +1,60 @@
 {
   "v": 1,
-  "ts": "2026-05-22T23:33:00Z",
-  "session_id": "phase-5c-i-delta-ui-2026-05-22-1779487500",
+  "ts": "2026-05-23T00:35:00Z",
+  "session_id": "phase-5c-i-theta-peerpicker-2026-05-23-1779491400",
   "who": {
     "actor": "carpenter",
     "feature_slug": "transport"
   },
   "where": {
     "files": [
-      "src/features/storage/prefsStore.ts",
+      "src/features/cosigning/AbsorbCosignModal.tsx",
+      "src/features/cosigning/CosignAsWitnessModal.tsx",
+      "src/features/cosigning/CosignRequestModal.tsx",
+      "src/features/transport/InboxPanel.tsx",
+      "src/features/wallet-core/HomeScreen.tsx",
       "src/features/wallet-core/WalletContext.ts",
       "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/settings/SettingsScreen.tsx",
-      "src/features/transport/InboxPanel.tsx",
+      "src/features/connections/PeerPicker.tsx",
+      "src/features/connections/manifest.ts",
+      "src/features/transport/transport.test.ts",
       "src/features/transport/manifest.ts",
-      "src/features/wallet-core/HomeScreen.tsx",
+      "tapit-attest/test/fixtures/nip44-v2-vectors.json",
+      "tapit-attest/test/nip44-vectors.test.mjs",
       "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "/settings (toggle) and /#people (inbox surface)"
+    "screen_path": "/#people (inbox + auto-route) and /journal/:id (Send-via-Nostr) and /settings (toggle)"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "Phase 5c-i-δ — wired the wallet to the Nostr network on opt-in. Added nostrTransportEnabled pref (default false), a Mycelium-network Settings toggle with a privacy explainer, a WalletProvider transport lifecycle (dynamic import so non-opting users pay zero bytes), and an InboxPanel surface at the top of the People tab. All eight gates green; pushed branch only.",
+  "summary": "Closed the full remote co-sign loop end-to-end. Five sub-cuts in one session: ε (auto-route inbox to the matching cosign modal), NIP-44 reference-vector verification (10/10 vectors spec-conformant), ζ (Send-back-via-Nostr after the witness signs), η (Send-via-Nostr in CosignRequestModal), θ (peer picker driven from handshake holdings). The whole loop now runs without copy-paste — pick a peer, tap Send, the other side auto-routes and signs back, both wallets converge on the dual-signed envelope. All eight gates green; pushed branch only. Branch is 11 commits ahead of main with the complete 5c-i slice plus the spec interop proof.",
   "why": {
-    "text": "Phase 5c-i-α/-β/-γ shipped the cryptography, the wire client, and the Wallet-internal seam — but the wallet still never talked to a relay. This cut closes that loop on opt-in. Default-off because subscribing exposes the wallet pubkey to public relays (real metadata leak); the toggle gives the operator the choice with the trade-off named. Dynamic import keeps the WebSocket+NIP-44 stack out of the bundle for users who never opt in.",
+    "text": "The slice that started with NIP-44 four sessions ago has been threading toward a single goal: two people with a Tier P handshake should be able to co-sign anything later without being in the same room. This session connected the last pipes. The inbox now routes (5c-i-ε), the reply travels (5c-i-ζ), the initiator can pick up the conversation from any journal entry (5c-i-η), and the recipient is one tap from a known connection (5c-i-θ). The NIP-44 reference-vector test (10/10 spec vectors) closes the homework that was on the list since the very first cut.",
     "linked_pixel_id": null,
-    "linked_mission_id": "phase-5c-i-delta"
+    "linked_mission_id": "phase-5c-i-complete"
   },
   "outcome": {
     "files_changed": [
-      "src/features/storage/prefsStore.ts (Prefs.nostrTransportEnabled default false)",
-      "src/features/wallet-core/WalletContext.ts (inboxEnvelopes + dismissInboxEnvelope)",
-      "src/features/wallet-core/WalletProvider.tsx (transport lifecycle effect; dynamic import)",
-      "src/features/settings/SettingsScreen.tsx (Mycelium-network toggle + privacy note)",
-      "src/features/transport/InboxPanel.tsx (new — inbox UI)",
-      "src/features/transport/manifest.ts (InboxPanel + wallet-core dep)",
-      "src/features/wallet-core/HomeScreen.tsx (mount InboxPanel in People tab)",
-      "scripts/bundle-budget.mjs (named the transport chunk + parseEnvelope helper)",
-      "appcommander/comms/in-flight.jsonl"
+      "Inbox routing + sender propagation: InboxPanel + HomeScreen",
+      "Receive-and-respond: CosignAsWitnessModal (incoming + incomingSender + sendBack)",
+      "Absorb prefill: AbsorbCosignModal (incoming)",
+      "Outbound initiation: CosignRequestModal (Send-via-Mycelium UI)",
+      "Recipient picker: PeerPicker (new) + connections manifest",
+      "Wallet context: sendEnvelope + transportRef",
+      "Test stabilization: transport.test.ts flush() drains 4 macrotask cycles",
+      "Spec interop: nip44-v2-vectors.json (fixture) + nip44-vectors.test.mjs",
+      "Bundle budgets: named encryptedInbox + AbsorbCosignModal + createHandshake chunks; bumped WalletProvider 5.5 → 7 KB"
     ],
-    "tests_passing": "tapit-attest 97/97 (4 skipped, network); wallet 31/31",
+    "tests_passing": "tapit-attest 98/98 (4 skipped, network — includes new reference-vector test); wallet 31/31 (3-for-3 clean after flush stabilization)",
     "build_green": true,
-    "notes": "Pushed to claude/compare-library-wallet-OW5FF as commit 2679e13. NOT pushed to main. WalletProvider chunk landed at 5.33 KB gz of 5.5 KB budget — tight; further additions will probably need code-splitting too. transport opt-in chunk 1.6 KB gz of 5 KB budget. Pre-existing tapit-attest tamper-byte flake (1/256) still relevant. NIP-44 interop verification still outstanding — most urgent now because the next operator field test will actually hit real relays."
+    "notes": "Pushed branch-only across 5 commits this session (19e2e90 ε, a4c8f23 vectors, b4642a2 ζ, 88bc6f1 η, d18c317 θ). Total 11 commits ahead of main now: 5c-i α/β/γ/δ/ε/ζ/η/θ plus the NIP-44 interop test plus two comms close-out commits from earlier sessions. All cuts are pure additions, each independently safe."
   },
-  "confidence": 88,
-  "uncertainty": "Real-relay round-trip behavior has not been exercised yet. The WebSocket reconnect logic is unit-tested via injected fakes but not against a live relay. Two-device test with two real wallets opting in would close the loop; that is the natural smoke test the operator can run when ready. NIP-44 byte-for-byte interop with third-party Nostr clients is still untested against the upstream reference vectors.",
+  "confidence": 90,
+  "uncertainty": "The remote co-sign loop has been unit-tested end-to-end via fake transport but has not been smoke-tested against real public relays with two real devices. The next operator field test is the first cross-implementation evidence — NIP-44 interop is now verified against spec vectors, so the cryptographic floor is sound, but the wire-protocol behavior against unknown relays still arrives only with use.",
   "ripple": [
-    "wallet-core — WalletProvider now manages a third lifecycle (anchorWorker, transport)",
-    "connections — once routing arrives (next cut), incoming handshakes/memberships can complete remotely without the operator pasting JSON",
-    "settings — added a toggle the operator can now flip; the wallet visibly becomes network-active or not based on it"
+    "cosigning — three modals now accept incoming envelopes and one supports Send-via-Nostr; their original paste/QR paths are unchanged",
+    "connections — PeerPicker is reusable; the membership-issue and future remote-handshake flows can adopt it",
+    "wallet-core — WalletContext gained sendEnvelope; any future modal can call it without touching transport internals"
   ],
-  "next": "Cut Phase 5c-i-ε — auto-route incoming envelopes to the matching modal (cosign as witness for unsigned handshakes, absorb-cosign for counter-signed handshakes, membership receive for credential-kind envelopes). Also: run the NIP-44 reference vectors before any real-relay field test."
+  "next": "Several tractable paths queued: (a) Push the 11 pending commits to main as a coherent slice — needs operator authorization; (b) Cut 5c-i-ι membership auto-receive (parallel to handshake routing); (c) Cut 5c-i-κ Send-via-Nostr in MembershipModal's issue flow (using PeerPicker); (d) Cut 5c-ii — remote handshakes (Tier R) — the first genuinely new feature beyond 5c-i; (e) Settings UI for custom relay list. Recommend the operator pick (a) plus one of (b)-(e). NIP-44 reference-vector verification is DONE — was the most urgent open item from prior cuts."
 }

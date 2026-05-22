@@ -4,56 +4,65 @@
 
 ## WHAT-CHANGED-RECENTLY
 
-Phase 5c-i-δ landed on the working branch as commit `2679e13`. That cut closed the 5c-i slice — the wallet now talks to the Nostr network on operator opt-in.
+Five sub-cuts landed in one session this round, closing the full remote co-sign loop end-to-end and verifying NIP-44 interop.
 
-Concrete changes:
-- `src/features/storage/prefsStore.ts` — Prefs interface gained `nostrTransportEnabled: boolean`; DEFAULT_PREFS sets it to `false`. Default-off because subscribing exposes the wallet pubkey to public relays.
-- `src/features/wallet-core/WalletContext.ts` — `WalletContextValue` exposes `inboxEnvelopes: InboxEnvelope[]` and `dismissInboxEnvelope: (eventId) => void`.
-- `src/features/wallet-core/WalletProvider.tsx` — new `useEffect` that mirrors the anchorWorker lifecycle: opens `connectWallet` when (a) phase is unlocked/needs-identity AND (b) pref is true. Dedupes incoming envelopes by event id. Cleanup tears down on lock/disable. `connectWallet` is dynamically imported so users who never opt in pay zero bytes for the transport stack.
-- `src/features/settings/SettingsScreen.tsx` — new "Mycelium network" section above local-backup with a toggle and a privacy-explainer paragraph.
-- `src/features/transport/InboxPanel.tsx` (new) — renders a list of incoming envelopes at the top of the People tab; each row has Copy (puts envelope JSON on clipboard) and Dismiss (drops it from context). No auto-routing yet — that's the next cut.
-- `src/features/wallet-core/HomeScreen.tsx` — pulls `inboxEnvelopes` + `dismissInboxEnvelope` from context; mounts InboxPanel as the first child of the People tab section.
-- `src/features/transport/manifest.ts` — touches updated; `wallet-core` added to depends_on; `removal_safe` flipped to false (HomeScreen now imports InboxPanel).
-- `scripts/bundle-budget.mjs` — named two new code-split chunks: `transport (Mycelium opt-in)` at 5 KB gz cap (current ~1.6 KB) and `parseEnvelope helper` at 800 B gz cap (current ~0.3 KB).
+**5c-i-ε — auto-routing (`19e2e90`)**: Optional `incoming?: Attestation` prop added to `AbsorbCosignModal` and `CosignAsWitnessModal`. The inbox panel grew routing logic (1-sig handshake → cosign-witness; 2-sig handshake → absorb-cosign) and an Open button per row. `HomeScreen` tracks routing state and mounts a second instance of each modal that takes the incoming envelope.
 
-All eight gates green: tapit-attest typecheck/lint/test (97/97 with 4 skipped network-deps); wallet typecheck/lint/test (31/31)/build with bundle budgets clean. Pushed branch only.
+**NIP-44 reference vectors (`a4c8f23`)**: Snapshotted the upstream `paulmillr/nip44` v2 vectors to `tapit-attest/test/fixtures/nip44-v2-vectors.json` and added a test that runs every encrypt_decrypt vector through `decryptFrom`. 10/10 pass — tapit-attest's NIP-44 v2 implementation is spec-conformant for cross-implementation interop.
+
+**5c-i-ζ — Send-back-via-Nostr (`b4642a2`)**: `WalletContext` exposes `sendEnvelope(recipientPubkey, envelope)`. `WalletProvider` holds the live transport in a ref so `sendEnvelope` can reach it from outside the connect effect, and dynamically imports the inbox helper to keep code-split benefits. `InboxPanel` passes the `senderPubkey` through the routing chain; `CosignAsWitnessModal` takes an `incomingSender` prop and renders a Send-back-via-Nostr button on the signed step. Same session also tightened the round-trip-test `flush()` race (4 macrotask cycles instead of 1; 3/3 clean).
+
+**5c-i-η — Send-via-Nostr in CosignRequestModal (`88bc6f1`)**: Outbound initiation. Modal gains a Send-via-Mycelium section (hidden when toggle is off) with a recipient pubkey input + Send button calling `sendEnvelope`. The full Alice→Bob→Alice remote co-sign loop now runs without copy-paste.
+
+**5c-i-θ — peer picker (`d18c317`)**: New shared component `connections/PeerPicker` walks holdings, recovers peer pubkeys from handshake leaves, renders one-tap recipients with a manual-paste fallback. `CosignRequestModal`'s Send-via-Mycelium block swaps its raw input for `<PeerPicker>`. The picker is exported for the future membership-issue and remote-handshake flows.
+
+All eight gates green at every cut. tapit-attest 98/98 (4 skipped network-deps, now includes the new vector test). Wallet 31/31 (3/3 clean across consecutive runs). Bundle-budget grew named entries for `encryptedInbox helper`, `AbsorbCosignModal`, `createHandshake helpers`; `WalletProvider` budget bumped 5.5 → 7 KB gz for headroom.
 
 ## WHAT'S-PENDING
 
-Branch is now four commits ahead of main with the full 5c-i slice: α (NIP-44 primitive), β (wire client), γ (Wallet wire-up), δ (UI + opt-in). All four are pure additions, each gated, each independently safe. Ready to land on main together when the operator says the word.
+Branch is now **11 commits ahead of main** with the complete 5c-i slice plus the NIP-44 interop proof. All commits are pure additions, each independently safe and tested. Ready to land on main as one coherent slice when the operator says the word.
 
-5c-i-ε is the next sub-cut: auto-route incoming envelopes to the matching modal based on attestation kind / signature state (cosign-as-witness for an envelope needing a counter-signature, absorb-cosign for an envelope with new signatures to merge, membership-receive for a credential envelope). That removes the manual copy-and-paste step from today's InboxPanel.
+Next-cut candidates on the queue:
+- **5c-i-ι — membership auto-receive**: when an inbox envelope is a credential with `credential_type=membership`, hold + save + anchor without operator paste. Parallel to handshake auto-routing.
+- **5c-i-κ — Send-via-Nostr in MembershipModal**: organization issues a membership remotely instead of via QR. Can reuse `PeerPicker`.
+- **5c-ii — remote handshakes (Tier R)**: the first genuinely new feature beyond 5c-i; a handshake conducted entirely over the network, labelled Tier R per D-09.
+- **Settings UI for custom relay list**: replace the hard-coded `DEFAULT_RELAYS` with an operator-editable preference. Sovereign-user move per D-11a.
+- **Delivery confirmation layer (5c-iii adjacent)**: today the Send button flips to "Sent" once the local publish resolves; the Nostr OK frame is observed and discarded. Real delivery-ack arrives with 5c-iii.
 
-NIP-44 reference-vector verification — most urgent open item. Recommend before the operator runs a two-device field test, because that's the first cross-implementation interop check the toggle being on actually enables. Fifteen-minute job; the upstream vectors live in the NIP-44 spec repo.
-
-5c-ii (remote handshakes, Tier R), 5c-iii (connection sync), 5d, 5e, 5f all still queued behind the wiring above.
+Operator field test of the full remote loop with two real devices is the natural next smoke test — possible now that the toggle, the routing, the send/respond paths, and the spec interop are all in place.
 
 ## WHAT-TO-FLAG
 
-Two things.
+Two things to keep visible.
 
-The WalletProvider chunk is at 5.33 KB gz against a 5.5 KB budget. Tight, intentional — the transport effect added net code even with the dynamic import. Any further additions to WalletProvider almost certainly need their own dynamic import or the budget needs a documented bump.
+The Send-via-Nostr UI in `CosignRequestModal` sits below the textarea + QR-show; on phone screens operators might not scroll. A polish cut could promote it above the manual share/copy block when the toggle is on. Today it works; tomorrow it could be more discoverable.
 
-The pre-existing tapit-attest `encryption.test.mjs:22` flake (1/256 chance the corrupt byte equals the original) is still in the suite — unrelated to this cut, but it lives in shared territory and a future Carpenter passing through that file should fix it. One-line change.
+Today's sent-state UX flips to "Sent" once the local publish call resolves — that confirms dispatch to the WebSocket, not relay acceptance. The Nostr OK frame is currently observed and discarded. Real delivery ack is a 5c-iii concern.
 
-`current.json` at confidence 88. Uncertainty: WebSocket reconnect logic is unit-tested via injected fakes, not against live relays; real-relay behavior arrives with the first two-device field test the operator runs.
+`current.json` at confidence 90. Uncertainty: full remote loop unit-tested via fake transport + injected fake WebSocket, but not yet exercised against real public relays. Two-device field test is the first real-world evidence.
 
 ## RECOMMENDED-NEXT-MOVES
 
-Either: (1) operator says "push to main" and the full 5c-i slice (four commits) lands together; (2) operator dispatches 5c-i-ε and the next session adds auto-routing to InboxPanel; (3) operator runs a NIP-44 reference-vector check before any real-relay testing; (4) operator field-tests by enabling the toggle on two devices in different rooms and verifying envelopes flow.
+Two-step recommendation:
+1. **Operator authorizes push to main** — 11 commits is meaningful surface; one push closes the branch-divergence cleanly. The slice is self-contained and reversible via `git revert <range>` if anything surprises in field test.
+2. **Operator picks the next cut**: 5c-i-ι (membership auto-receive) and 5c-i-κ (membership send) round out the same routing template the cosign flow now uses. 5c-ii (remote handshakes) opens the next genuinely new feature. Settings UI for custom relays is the smallest of the three and sets up the privacy-conscious "swap-in your own relays" move D-11a promised.
 
-Natural sequence is (1) → (3) → (2) — land the slice on main so it stops being branch-divergent, run the interop check so the next field test has confidence, then add auto-routing so the UX stops requiring manual copy-paste. (4) becomes possible after (3); the toggle works today but the interop check is the prerequisite for trusting cross-implementation messages.
+The Carpenter's vote between (b)-(c)-(d): 5c-i-ι followed by 5c-ii. Reusing the routing template once more keeps the code surface coherent, and then 5c-ii becomes a feature cut that builds on a known pattern rather than inventing a new one.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Last operator message: "Yes, if you have a clear line of site continue on." Quietly authoritative. They are letting the rhythm run and pulling the brake only if I lose direction. The 5c-i slice landed four cuts in a row with no operator intervention required — each cut staying small enough that the grounding-gate hook does its job and the gate cycle catches what regression there is. The cadence is the thing the operator built when they asked for the grounding gate to exist; it is doing what it was designed to do.
+Last operator message: "Continue on and if you need anything for me, give me a couple of chips if not continue on re-grounding and until we run out of things to do or you need me to do something physically." Maximum-trust, momentum-protecting authorization. Has been paying off — five cuts in one session, no operator intervention required, every gate green, every commit a complete unit.
+
+The operator is at the moment when their wallet's network functionality is real but they have not yet flipped the switch in their own use. The next natural piece of physical-world feedback is a two-device field test. That requires them physically — both phones, both connected to relays, both with the toggle on, and one initiating a co-sign that the other receives. That smoke test is what unblocks operator confidence in the entire 5c-i slice.
 
 ## Ideas ready to revisit
 
-Sign-in-with-existing-Nostr-account — the natural surface for this is now visible: the Settings screen has a Mycelium-network section, and if a user is going to flip that toggle, they should also be able to import an existing Nostr identity instead of starting fresh. Worth surfacing when 5c-ii (remote handshakes) lands and identity-import becomes a more concrete UX question. Currently in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
+NIP-44 reference-vector verification — **DONE this session**. 10/10 vectors spec-conformant. Cross-the-implementation-boundary confidence is real now.
 
-NIP-44 reference-vector verification — still the most urgent open item.
+Sign-in-with-existing-Nostr-account — the natural moment to surface is 5c-ii's remote handshake, when "your Nostr identity" framing becomes user-visible UX. Still in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
 
-Wallet as a hardware-backed object (secure element / passkey-derived key) — the architecture is ready. The Wallet class now owns the keypair as a JS #private field, exposes only signing and encrypting methods, and the transport feature consumes those methods without ever touching the key. The day a hardware backend lands, it slots in behind the same Wallet interface and nothing above it changes. Not actionable today; worth keeping in mind because the door is already cut for it.
+Wallet as a hardware-backed object — the architecture is still ready. The Wallet class owns the keypair as JS `#private` and exposes signing methods rather than the key. A future hardware backend (secure element, passkey-derived) slots in behind the same interface. Not urgent; worth keeping on the long horizon.
 
-InboxPanel manual-paste UX — the panel currently relies on the operator copying envelope JSON and pasting into the matching modal. 5c-i-ε removes that step. If 5c-i-ε slips for any reason, consider adding an inline hint naming which modal each envelope kind belongs in.
+Connection-picker UI — **DONE this session** (PeerPicker). Reusable in future Send-via-Nostr flows.
+
+Delivery confirmation — NEW idea worth logging. Today's Sent state confirms WebSocket dispatch, not relay acceptance or recipient pull. A real delivery-ack layer arrives with 5c-iii but worth thinking about UI shape now (pending / dispatched / acknowledged / read).
