@@ -344,3 +344,48 @@ collection, peer recovery). Stage: matured — implemented in
 commit 6cee87b across JournalCard, JournalDetail, JournalComposer.
 Feature: doctrine
 ```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: The capture bridge — timestamp anything in daily digital
+life from where you already are. A Share Sheet target (iOS), a
+share-intent target (Android), a Web Share Target manifest entry
+(PWA-native, strong on Android), and/or a browser extension, so
+that from inside Facebook, Photos, Safari, Notes — any app — the
+user hits Share → Tapit Wallet and the content + URL + an
+optional screenshot become a signed, OTS-anchored attestation in
+one tap. This is the everyday on-ramp the Phase 3 deeplink bridge
+does NOT cover: Phase 3 is an app pulling the user to the wallet;
+the capture bridge is content pushed to the wallet from the app
+the user is already in. The bridge principle: easy-to-walk means
+it starts where the person already is.
+Context: Operator 2026-05-22 — "can we verify timestamp a
+Facebook post ... how do we put those bridges there so they're
+just as easy to walk across." Tradeoff: a native Share Sheet
+extension steps past the pure-PWA boundary the project has held;
+the Web Share Target API is the PWA-pure partial path (good on
+Android, limited on iOS), recommended as the first cut. Stage:
+raw — strongest near-term interop move once v1 ships.
+Feature: sign-request
+```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: Web-proof authenticity layer — turning witness-grade into
+platform-attested. Today a timestamped capture of a Facebook post
+proves "[your key] recorded that this content existed at Bitcoin
+block N and you witnessed it" — strong against deletion,
+backdating, and "you never said that" for the user's OWN speech;
+weak as proof that the platform truly served it or that someone
+ELSE said it. zkTLS / TLSNotary / Reclaim-Protocol-style web
+proofs cryptographically attest that an HTTPS response genuinely
+came from a named domain, which would upgrade a capture from
+witness-grade to platform-attested.
+Context: Operator 2026-05-22. Consistent with the existing
+honest-AI-defenses idea — the wallet gives the world a way to
+tell the difference, it does not stop fabrication. Stage: raw —
+research-grade, long horizon, not v1 or v2.
+Feature: sign-request
+```
