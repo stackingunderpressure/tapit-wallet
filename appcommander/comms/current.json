@@ -1,27 +1,30 @@
 {
   "v": 1,
-  "ts": "2026-05-22T01:36:00Z",
-  "session_id": "login-landing-copy-2026-05-22-1779413400",
+  "ts": "2026-05-22T02:14:00Z",
+  "session_id": "login-elegant-restyle-2026-05-22-1779417000",
   "who": { "actor": "carpenter", "feature_slug": "auth" },
-  "where": { "files": ["src/features/auth/LoginPage.tsx"], "screen_path": "/login" },
+  "where": {
+    "files": ["src/features/auth/LoginPage.tsx", "tailwind.config.ts"],
+    "screen_path": "/login"
+  },
   "layer": "ui",
-  "action": "feature",
-  "summary": "Landing copy built into the login screen (commit 083ee21). The operator wanted a landing surface that captures sovereignty — taking responsibility for your own identity, refusing to rent it from a company, and the circle of people who keep an identity correctly attributed and unfakeable — without leaning into government or identity-document framing. The decision: a wallet PWA has no separate marketing site, its front door IS the login screen, so the message goes into LoginPage's email step rather than a new route. The email step now opens with a small Tapit Wallet wordmark, the headline 'The record of your life belongs to you.', and a moving paragraph, then the email field below. This satisfies all three of the operator's placement instincts at once — it is persistent on every login, it is unintrusive because it simply frames the email field, and it vanishes the moment a person authenticates. A condensed one-line version was handed to the operator to paste into the Supabase sign-in email template (operator-side, not a repo file).",
+  "action": "polish",
+  "summary": "The operator saw the landing copy live and called the screen 'very very very plain', asking for elegance — shading, colour, life, 'like we're actually changing the world'. Commit ff5c37e restyles both the email and code steps. A new Frame component gives each step a frosted, elevated, rounded card sitting on the warm paper field, with two soft drifting colour glows behind it — an accent-green glow and a warm-amber glow, both heavily blurred and low-opacity, for organic colour without clutter. The headline is now a serif display face; the primary button is a green gradient with a colour-tinted shadow; inputs gained rounded corners and a soft focus ring; a gradient hairline divider separates the story from the action; a small accent-dot wordmark sits at the top; and the card rises in gently on mount. The Tailwind theme gained a serif family (system serif stack, zero network cost — New York on iOS, Georgia elsewhere) and rise/float keyframes. All motion respects prefers-reduced-motion.",
   "why": {
-    "text": "Operator: 'I want to have a landing page for the wallet ... capture the sovereignty ... the importance of taking responsibility for your own identity ... not requiring another company to keep up with your stuff ... a group of people around you who care about you and your identity being correctly attributed to you and not stolen or fabricated ... something simple but moving.' The operator explicitly did not want the government / ID route. The copy was drafted and approved by the operator before any code was touched, per the don't-implement-until-agreed discipline.",
+    "text": "Operator: 'It showed up but it's very very very plain looking. I want it all spruced up to look elegant. Add some shading add some color. Add some life and make it look like we're actually changing the world.' The restyle deliberately stayed inside the existing paper/ink/accent palette rather than introducing a new theme — depth and warmth come from glows, elevation, gradient, and a serif face, not from new brand colours, so the login screen still belongs to the same app as the wallet behind it. Tasteful over gaudy: the wallet's tone is serious and trustworthy.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-22-LOGIN-LANDING-COPY-017"
+    "linked_mission_id": "TAPITWALLET-2026-05-22-LOGIN-ELEGANT-RESTYLE-018"
   },
   "outcome": {
-    "files_changed": ["src/features/auth/LoginPage.tsx (modify) — one commit plus comms"],
-    "tests_passing": "19/19 across 5 test files (persona-contract, features-registry, library-seam, file-size, keys-never-leave). tapit-attest unchanged 82/78/0/4.",
+    "files_changed": ["src/features/auth/LoginPage.tsx (modify), tailwind.config.ts (modify) — one commit plus comms"],
+    "tests_passing": "19/19 across 5 test files. typecheck and lint clean. tapit-attest unchanged 82/78/0/4.",
     "build_green": true,
-    "notes": "[P-001] Landing copy shipped into LoginPage email step (commit 083ee21). [P-002] Form restructured so it wraps only the input and button; hero content sits outside the form. [P-003] all four gates green. Operator-side follow-up: paste the one-line email version into the Supabase template. [FEEDBACK->Foreman]: no notes — the operator gave full content direction and approved the draft before the cut, which made this a clean single-pass.",
+    "notes": "[P-001] Both login steps restyled into the elegant Frame shell (commit ff5c37e). [P-002] Tailwind theme gained a serif family and rise/float motion. [P-003] all four gates green. Build-verified; NOT Carpenter-pixel-verified — no headless browser used, the operator verifies visually on the live deploy. [FEEDBACK->Foreman]: a headless-screenshot capability in the Carpenter sandbox would let visual changes be self-verified instead of leaning on the operator's phone loop.",
     "tests_passing_detail": "typecheck clean, lint clean"
   },
-  "confidence": 92,
-  "uncertainty": "Gate-verified but not browser-verified — the moving paragraph is five sentences and on a narrow mobile login screen it adds real vertical height; it reads well in the markup but the operator should glance at it on a phone to confirm it does not feel heavy above the email field. Copy is a matter of taste and the operator may want it shorter or warmer after seeing it live.",
+  "confidence": 85,
+  "uncertainty": "This is a visual change verified only by typecheck/lint/test/build — none of which can see pixels. Tailwind silently drops unknown classes rather than erroring, and aesthetic judgement (glow strength, headline size, paragraph length on a narrow phone) cannot be gate-checked. The operator's eyes on the live deploy are the real verification, and taste may want the glows softer, the headline bigger, or the paragraph shorter.",
   "ripple": ["auth"],
-  "next": "Operator pastes the one-line landing message into the Supabase sign-in email template. Operator decides whether this commit also goes to main so the live Netlify deploy picks it up. Operator browser-verifies the login screen on a phone and redirects the copy if the voice or length wants adjusting.",
+  "next": "Operator looks at the restyled screen on the live deploy and redirects the visual direction if wanted. Operator decides whether ff5c37e goes to main so the live Netlify deploy picks it up. If the look lands, the same Frame treatment could be extended to the passphrase, unlock, and identity-ceremony screens for consistency.",
   "signals": ["pulse"]
 }
