@@ -68,23 +68,25 @@ stays the standard — Nostr carries it, it is not replaced.
 - **5c-iii — connection sync.** A wallet's web reaches its other
   devices and stays current.
 
-## Open questions for the operator
+## Decisions (resolved 2026-05-22 — see D-11)
 
-1. **Relays.** Ship a default relay set, or require the operator
-   to configure their own? A default set is easier; operator-run
-   relays are more sovereign. Probably: a default set the
-   operator can replace.
-2. **Event shapes.** D-06 names NIP-46 for the Layer 2 sign
-   pathway. For connection/membership exchange — reuse NIP-46
-   shapes, or define custom encrypted event kinds carrying
-   tapit-attest envelopes? Leaning custom kinds for the network
-   layer; NIP-46 stays for the app-to-wallet sign pathway.
-3. **Addressing.** A remote handshake needs the peer's address
-   (an npub / relay hint). How is that first shared — still QR
-   or out-of-band paste, then everything after is remote?
-4. **Identity-org reuse.** Because wallet keys are secp256k1 /
-   BIP340 (D-06), a wallet identity is already a Nostr identity.
-   Confirm we lean on that rather than minting anything new.
+1. **Relays — default set, replaceable.** The wallet ships with
+   a working relay set so it works out of the box; a sovereign
+   user can swap in their own. (Operator chip.)
+2. **Event shapes — custom encrypted kinds.** Each tapit-attest
+   envelope travels inside a custom encrypted Nostr event;
+   NIP-46 stays reserved for the separate app-to-wallet sign
+   pathway. The envelope is the standard, Nostr is only
+   transport (D-06). (Carpenter, from doctrine.)
+3. **Addressing — the in-person handshake bootstraps the remote
+   channel.** Meeting someone in person also exchanges relay
+   info, so the woven network is reachable remotely afterward —
+   which is what lets peers hold and return recovery shares.
+   Messages stay encrypted; a peer can send, never see.
+   (Operator chip.)
+4. **Identity — reuse the wallet key.** A wallet identity is
+   already a Nostr identity by construction (secp256k1 / BIP340,
+   D-06); nothing new is minted. (Carpenter, from doctrine.)
 
 ## Honest risks
 
