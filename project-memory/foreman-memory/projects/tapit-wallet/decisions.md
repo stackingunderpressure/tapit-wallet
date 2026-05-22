@@ -77,3 +77,40 @@ standard — Nostr is transport, not envelope. See
 TAPIT_WALLET_SPEC.md §6.
 Feature: app-connections
 ```
+
+```
+Date: 2026-05-22
+Section: decisions
+Entry: D-07 — The Capture Bridge ships PWA-first. Tier 1 (Web
+Share Target — pure-PWA, Android one-tap capture from any app)
+is built now. Tier 2 (native share extension + App Store, the
+only path to one-tap capture on iOS) and Tier 3 (desktop
+browser extension) are deferred to v1.5 — "coming soon". The
+native shell and the App Store listing are one effort: the
+native share extension both requires the shell and clears Apple
+guideline 4.2.
+Context: Operator 2026-05-22 — "Pwa now and all others coming
+soon." Sketch of record:
+briefs/2026-05-22-capture-bridge-phase-sketch.md. App Store
+assessment: no money, no exchange, no money transmission, so no
+high-risk rejection category applies; worth taking at v1.5 for
+the legitimacy signal and the iOS capture path.
+Feature: sign-request
+```
+
+```
+Date: 2026-05-22
+Section: decisions
+Entry: D-08 — Tabbed information architecture as a broad
+organizing principle — "different tabs for different things all
+around", not only the diary's life-layer category tabs. The home
+surface gains top-level tabs separating the kinds of things the
+wallet holds (e.g. Journal, Identity, People, Captured). The
+concrete tab structure is proposed and operator-approved before
+implementation.
+Context: Operator 2026-05-22 — "Maybe different tabs for
+different things all around." Builds on the life-layer category
+tabs idea (logged 2026-05-21). The Captured tab arrives with
+Capture Bridge Tier 1.
+Feature: wallet-core
+```

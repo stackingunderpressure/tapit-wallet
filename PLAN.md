@@ -134,6 +134,28 @@ wallet of their own. Library work: `disclosureProof` +
 `metaHash` exported from `envelope.ts` so the verifier uses the
 same canonical hashing the signer used.
 
+## Phase 4.5 — Tabbed home + capture bridge (PWA-first) [NEXT]
+
+Decided 2026-05-22 (D-07, D-08). Two post-v1 pieces, both
+independent of Phase 5 and buildable now.
+
+**Tabbed home:** a broader information architecture — top-level
+tabs separating the kinds of things the wallet holds (Journal,
+Identity, People, Captured), above the diary's existing
+life-layer category tabs. The concrete tab structure is proposed
+and operator-approved before the cut.
+
+**Capture bridge:** the "push" direction of Layer 2 — content
+sent TO the wallet from any app the user is already in, the
+everyday on-ramp the Phase 3 deeplink does not cover. Ships
+PWA-first. Tier 1 is the Web Share Target — a `share_target`
+entry in the manifest plus a `/capture` route that reuses the
+journal composer and the sign+anchor pipeline; Android one-tap,
+no `tapit-attest` change. Tier 2 (native share extension + App
+Store, the iOS path) and Tier 3 (desktop browser extension) are
+deferred to v1.5 — "coming soon". Sketch of record:
+`briefs/2026-05-22-capture-bridge-phase-sketch.md`.
+
 ## Phase 5 — Social recovery + Mycelium peer network
 
 Deferred to its own spec (`MYCELIUM_NETWORK_SPEC.md`). The brief
