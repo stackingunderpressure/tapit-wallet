@@ -117,6 +117,27 @@ export function VerifyProofScreen() {
           the fields they revealed really are part of a signed entry by the
           key you would expect.
         </p>
+        <details className="mt-3 rounded-md border border-ink/10 bg-ink/[0.02] px-3 py-2 text-xs text-muted">
+          <summary className="cursor-pointer font-medium text-ink">
+            How does this work?
+          </summary>
+          <p className="mt-2">
+            Every signed entry commits to a fingerprint of all its fields. A
+            proof carries one or more disclosed fields, plus the math needed
+            to re-derive that same fingerprint from them. If the
+            re-derivation matches what the signer's key actually signed, the
+            proof is valid — green panel. If even one character of any
+            disclosed field is changed, the fingerprint doesn't match, the
+            signature check fails, and the panel turns red. No trust in this
+            site or in the sharer is required; the math either lines up or
+            it doesn't.
+          </p>
+          <p className="mt-2">
+            Try it: verify a proof once to see green, then change a single
+            character of any value inside the JSON and verify again. The
+            panel will flip.
+          </p>
+        </details>
         <textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
@@ -166,11 +187,20 @@ export function VerifyProofScreen() {
           className={`mt-4 rounded-2xl border p-5 shadow-sm ${
             outcome.valid
               ? 'bg-emerald-50 border-emerald-200'
-              : 'bg-amber-50 border-amber-200'
+              : 'bg-red-50 border-red-200'
           }`}
         >
           <p className="text-sm font-medium">
             {outcome.valid ? 'Proof is valid.' : 'Proof did NOT verify.'}
+          </p>
+          <p
+            className={`mt-1 text-xs ${
+              outcome.valid ? 'text-emerald-800' : 'text-red-800'
+            }`}
+          >
+            {outcome.valid
+              ? "The math lines up — the fields below were committed to a signed root the signer's key actually signed. Nothing has been changed since signing."
+              : "The math does not line up. The signer's key did NOT sign this exact version of the fields below. Something has been changed somewhere — or this is not a real proof."}
           </p>
           <div className="mt-3 text-xs uppercase tracking-wide text-muted">
             {outcome.fields.length === 1 ? 'Disclosed field' : 'Disclosed fields'}
