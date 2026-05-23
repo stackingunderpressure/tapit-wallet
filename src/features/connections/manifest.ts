@@ -11,6 +11,7 @@ export const manifest: FeatureManifest = {
     'src/features/connections/createHandshake.ts',
     'src/features/connections/createMembership.ts',
     'src/features/connections/createOrganization.ts',
+    'src/features/connections/OfficialsEditorModal.tsx',
     'src/features/connections/ConnectionCard.tsx',
     'src/features/connections/MembershipCard.tsx',
     'src/features/connections/PeerPicker.tsx',
@@ -20,5 +21,5 @@ export const manifest: FeatureManifest = {
   removal_safe: false,
   monetizable: false,
   notes:
-    'A handshake is a relationship-kind attestation; a membership is a credential-kind attestation — no new tapit-attest kinds. The modals reuse QrShow / QrScanModal and the cosigning parseEnvelope + mergeSignatures helpers. wallet-core/HomeScreen.tsx imports both modals and both cards, so removal_safe is false. The handshake is co-signed (3 QR transmissions for Tier P); a membership is one-directional (2 QR transmissions — only the issuing organization signs). Tier R remote handshakes (5c-ii) reuse the same envelope shape with verification=remote and travel through the Mycelium transport; the responder side reuses 5c-i-ε auto-routing (1-sig → cosign-witness; 2-sig → absorb). 5b-org-i adds createOrganization — a self-signed credential-kind attestation lets a wallet declare itself an organization; Home flips to org-mode rendering on the Identity tab; Settings exposes the declaration form (one-way for now).',
+    'A handshake is a relationship-kind attestation; a membership is a credential-kind attestation — no new tapit-attest kinds. The modals reuse QrShow / QrScanModal and the cosigning parseEnvelope + mergeSignatures helpers. wallet-core/HomeScreen.tsx imports both modals and both cards, so removal_safe is false. The handshake is co-signed (3 QR transmissions for Tier P); a membership is one-directional (2 QR transmissions — only the issuing organization signs). Tier R remote handshakes (5c-ii) reuse the same envelope shape with verification=remote and travel through the Mycelium transport; the responder side reuses 5c-i-ε auto-routing (1-sig → cosign-witness; 2-sig → absorb). 5b-org-i adds createOrganization — a self-signed credential-kind attestation lets a wallet declare itself an organization; Home flips to org-mode rendering on the Identity tab; Settings exposes the declaration form (one-way for now). 5b-org-ii adds the officials roster — a second self-signed credential names the organization current officers, with publishOfficialsRoster snapping a new full roster envelope on every edit (history preserved; latest by issued_at wins). OfficialsEditorModal handles add / remove inline; readOfficials + findLatestOfficialsRoster are reusable by future cuts (ratifications view, verifier flows).',
 };
