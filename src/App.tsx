@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthGate } from './features/auth/AuthGate.tsx';
 import { LoginPage } from './features/auth/LoginPage.tsx';
 import { AuthCallback } from './features/auth/AuthCallback.tsx';
+import { WalletGuide } from './features/auth/WalletGuide.tsx';
 
 // wallet-core + settings are the largest chunks — keep them lazy so
 // the login surface ships without them. The shell painted in
@@ -54,6 +55,7 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/about" element={<WalletGuide initialTab="why" />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route
           path="/verify"

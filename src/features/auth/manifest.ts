@@ -10,6 +10,7 @@ export const manifest: FeatureManifest = {
     'src/features/auth/AuthCallback.tsx',
     'src/features/auth/AuthGate.tsx',
     'src/features/auth/useSession.ts',
+    'src/features/auth/WalletGuide.tsx',
   ],
   depends_on: [],
   pause_safe: false,

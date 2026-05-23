@@ -304,6 +304,13 @@ export function HomeScreen() {
         <div className="flex items-center gap-2">
           <NostrIndicator status={relayStatus} />
           <Link
+            to="/about"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="Guide"
+          >
+            Guide
+          </Link>
+          <Link
             to="/settings"
             className="text-sm text-muted hover:text-ink"
             aria-label="Settings"
