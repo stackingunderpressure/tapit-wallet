@@ -135,6 +135,9 @@ const BUDGETS = [
   // DistributeSharesModal and the HomeScreen receive-route handler
   // import isRecoveryShare / holdRecoveryShare.
   { pattern: /^createShares-.*\.js$/, gz: 3_000, label: 'createShares helpers' },
+  // 5e-vi RecoveryResponderModal — React.lazy from HomeScreen;
+  // loads when an incoming recovery-request envelope opens it.
+  { pattern: /^RecoveryResponderModal-.*\.js$/, gz: 5_000, label: 'RecoveryResponderModal' },
   // 5c-iii-a publishStatus helper — summarizePublish hoisted once
   // multiple modals depend on it (now includes DistributeSharesModal).
   { pattern: /^publishStatus-.*\.js$/, gz: 1_500, label: 'publishStatus helper' },

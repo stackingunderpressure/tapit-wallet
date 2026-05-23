@@ -4,6 +4,7 @@ import type { InboxEnvelope } from './encryptedInbox.ts';
 import { isHandshake } from '../connections/createHandshake.ts';
 import { isMembership } from '../connections/createMembership.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
+import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
 
 // Phase 5c-i-δ/-ε — inbox surface for the People tab. Lists encrypted
 // envelopes that arrived through the transport since unlock, and
@@ -20,7 +21,8 @@ export type InboxRouteAction =
   | 'cosign-witness'
   | 'absorb-cosign'
   | 'membership-receive'
-  | 'recovery-share-receive';
+  | 'recovery-share-receive'
+  | 'recovery-request-respond';
 
 interface Props {
   envelopes: readonly InboxEnvelope[];
@@ -80,6 +82,13 @@ function routeFor(att: Attestation): Route | null {
       action: 'recovery-share-receive',
       label: 'Hold share',
       hint: 'A recovery share — a peer is asking you to hold one piece of their backup.',
+    };
+  }
+  if (isRecoveryRequest(att)) {
+    return {
+      action: 'recovery-request-respond',
+      label: 'Help recover',
+      hint: 'A peer is recovering their wallet on a new device and asking for your share.',
     };
   }
   return null;

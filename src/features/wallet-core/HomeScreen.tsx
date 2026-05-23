@@ -21,6 +21,13 @@ import {
   receiveMembership,
 } from '../connections/createMembership.ts';
 import { holdRecoveryShare } from '../recovery/createShares.ts';
+// 5e-vi — recovery responder modal lazy-loaded so the share-decrypt +
+// re-encrypt code only ships when an inbox row triggers it.
+const RecoveryResponderModal = lazy(() =>
+  import('../recovery/RecoveryResponderModal.tsx').then((m) => ({
+    default: m.RecoveryResponderModal,
+  })),
+);
 import {
   findLatestOfficialsRoster,
   findOwnOrgDeclaration,
@@ -129,6 +136,11 @@ export function HomeScreen() {
   const [incomingEventIdForWitness, setIncomingEventIdForWitness] = useState<string | null>(null);
   const [incomingForAbsorb, setIncomingForAbsorb] = useState<Attestation | null>(null);
   const [incomingEventIdForAbsorb, setIncomingEventIdForAbsorb] = useState<string | null>(null);
+  // 5e-vi — recovery-request from a ceremony pubkey on a new device.
+  // When the operator opens the modal, the responder side walks
+  // strict out-of-band verification before releasing a share.
+  const [incomingForRecovery, setIncomingForRecovery] = useState<Attestation | null>(null);
+  const [incomingEventIdForRecovery, setIncomingEventIdForRecovery] = useState<string | null>(null);
 
   function routeInbox(
     envelope: Attestation,
@@ -148,6 +160,9 @@ export function HomeScreen() {
       void acceptMembership(envelope);
     } else if (action === 'recovery-share-receive') {
       void acceptRecoveryShare(envelope);
+    } else if (action === 'recovery-request-respond') {
+      setIncomingForRecovery(envelope);
+      setIncomingEventIdForRecovery(eventId);
     }
   }
 
@@ -658,6 +673,22 @@ export function HomeScreen() {
             setIncomingEventIdForAbsorb(null);
           }}
         />
+      )}
+
+      {incomingForRecovery && (
+        <Suspense fallback={null}>
+          <RecoveryResponderModal
+            request={incomingForRecovery}
+            onSuccess={() => {
+              if (incomingEventIdForRecovery)
+                dismissInboxEnvelope(incomingEventIdForRecovery);
+            }}
+            onClose={() => {
+              setIncomingForRecovery(null);
+              setIncomingEventIdForRecovery(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {handshakeOpen && (
