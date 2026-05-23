@@ -14,7 +14,16 @@ import { ConnectionCard } from '../connections/ConnectionCard.tsx';
 import { isHandshake } from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
 import { MembershipCard } from '../connections/MembershipCard.tsx';
-import { isMembership, receiveMembership } from '../connections/createMembership.ts';
+import {
+  isMembership,
+  isMembershipIssuedBy,
+  readMembership,
+  receiveMembership,
+} from '../connections/createMembership.ts';
+import {
+  findOwnOrgDeclaration,
+  readOrganizationName,
+} from '../connections/createOrganization.ts';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -164,12 +173,32 @@ export function HomeScreen() {
   const membershipEntries = useMemo(
     () =>
       holdings
-        .filter((a) => isMembership(a))
+        .filter((a) => isMembership(a) && a.subject === wallet.identity)
         .sort(
           (a, b) =>
             new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
         ),
-    [holdings],
+    [holdings, wallet.identity],
+  );
+  // 5b-org-i — org mode. When this wallet has self-declared as an
+  // organization, the Identity tab surfaces an Organization header
+  // and a Members view listing memberships THIS wallet has issued
+  // (the reverse of the existing "memberships I hold").
+  const orgDeclaration = useMemo(
+    () => findOwnOrgDeclaration(holdings, wallet.identity),
+    [holdings, wallet.identity],
+  );
+  const issuedMemberships = useMemo(
+    () =>
+      orgDeclaration
+        ? holdings
+            .filter((a) => isMembershipIssuedBy(a, wallet.identity))
+            .sort(
+              (a, b) =>
+                new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+            )
+        : [],
+    [holdings, wallet.identity, orgDeclaration],
   );
 
   return (
@@ -228,8 +257,70 @@ export function HomeScreen() {
 
       {tab === 'identity' && (
         <section className="mt-5 space-y-3">
+          {orgDeclaration && (
+            <div className="rounded-2xl border border-accent/40 bg-accent/5 p-4">
+              <div className="text-xs uppercase tracking-wide text-accent">
+                Organization
+              </div>
+              <h2 className="mt-1 text-base font-semibold">
+                {readOrganizationName(orgDeclaration) || 'Unnamed organization'}
+              </h2>
+              <p className="mt-1 text-xs text-muted">
+                This wallet is declared as an organization. Memberships you
+                issue render below; memberships you receive (when an
+                organization admits the org to itself) keep listing on
+                this tab too.
+              </p>
+            </div>
+          )}
           <IdentityCard publicKey={wallet.publicKey} />
           {identity && <AttestationCard attestation={identity} />}
+          {orgDeclaration && (
+            <div className="pt-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted">
+                  Members ({issuedMemberships.length})
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setMembershipOpen(true)}
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  + Admit member
+                </button>
+              </div>
+              {issuedMemberships.length === 0 ? (
+                <p className="mt-2 text-sm text-muted">
+                  No members yet. Tap Admit member to issue a membership —
+                  the recipient holds the signed envelope; they appear here
+                  on this wallet too.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2">
+                  {issuedMemberships.map((a, i) => {
+                    const m = readMembership(a);
+                    const parsed = new Date(m.issuedAt);
+                    const when = Number.isNaN(parsed.getTime())
+                      ? m.issuedAt
+                      : parsed.toLocaleDateString();
+                    return (
+                      <li
+                        key={i}
+                        className="rounded-2xl bg-white border border-ink/10 p-3"
+                      >
+                        <div className="font-medium truncate">
+                          {m.memberName || 'Unknown member'}
+                        </div>
+                        <div className="mt-1 text-xs text-muted">
+                          Admitted {when}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
           <div className="pt-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-muted">Memberships</h2>

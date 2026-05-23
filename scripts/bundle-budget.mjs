@@ -52,7 +52,12 @@ const BUDGETS = [
   // today; budget carries headroom for modest further growth.
   { pattern: /^HomeScreen-.*\.js$/, gz: 11_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 3_000, label: 'SettingsScreen' },
+  // SettingsScreen grew with the org-mode declaration form (5b-org-i)
+  // alongside the existing cloud-sync / idle-lock / Mycelium toggle /
+  // custom relays / local-backup / sign-out sections. ~3.4 KB gz today;
+  // 4.5 KB carries headroom for the upcoming officials-list editor
+  // before another structural rethink is needed.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 4_500, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.

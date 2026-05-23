@@ -18,6 +18,25 @@ export function isMembership(att: Attestation): boolean {
   );
 }
 
+/**
+ * True when the envelope is a membership, names this identity as the
+ * issuing org in its signed leaf, AND actually carries a signature
+ * from that identity. Both checks together: the signed leaf names
+ * who SHOULD have signed; the signatures list names who DID. The
+ * Members view on the org side uses this to filter holdings down to
+ * memberships THIS wallet has actually issued.
+ */
+export function isMembershipIssuedBy(
+  att: Attestation,
+  issuerIdentity: string,
+): boolean {
+  return (
+    isMembership(att) &&
+    leafValue(att, 'org_id') === issuerIdentity &&
+    att.signatures.some((s) => s.signer === issuerIdentity)
+  );
+}
+
 export interface MembershipView {
   orgId: string;
   orgName: string;

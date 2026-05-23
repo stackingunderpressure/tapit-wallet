@@ -4,6 +4,11 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { downloadEncryptedBackup } from './localExport.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
+import {
+  findOwnOrgDeclaration,
+  readOrganizationName,
+  selfDeclareOrganization,
+} from '../connections/createOrganization.ts';
 
 function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
   const ok: string[] = [];
@@ -18,7 +23,7 @@ function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
 }
 
 export function SettingsScreen() {
-  const { wallet, prefs, updatePrefs, save } = useWallet();
+  const { wallet, ownerId, holdings, prefs, anchorWorker, updatePrefs, save, refresh } = useWallet();
   const navigate = useNavigate();
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -30,6 +35,31 @@ export function SettingsScreen() {
   const relaysChanged =
     relayParse.ok.length !== prefs.nostrRelays.length ||
     relayParse.ok.some((url, i) => url !== prefs.nostrRelays[i]);
+
+  // Org-mode state. The declaration is one envelope held by this
+  // wallet about itself; once present, the wallet flips to org-mode.
+  const existingOrgDeclaration = findOwnOrgDeclaration(holdings, wallet.identity);
+  const [orgFormOpen, setOrgFormOpen] = useState(false);
+  const [orgName, setOrgName] = useState('');
+  const [orgBusy, setOrgBusy] = useState(false);
+  const [orgError, setOrgError] = useState<string | null>(null);
+
+  async function declareAsOrganization(e: React.FormEvent) {
+    e.preventDefault();
+    setOrgError(null);
+    setOrgBusy(true);
+    try {
+      await selfDeclareOrganization(wallet, ownerId, anchorWorker, orgName);
+      await save();
+      await refresh();
+      setOrgFormOpen(false);
+      setOrgName('');
+    } catch (err) {
+      setOrgError(err instanceof Error ? err.message : 'declaration failed');
+    } finally {
+      setOrgBusy(false);
+    }
+  }
 
   // Re-sync the editor when prefs.nostrRelays changes outside the form
   // (e.g. first load after a fresh sign-in).
@@ -230,6 +260,88 @@ export function SettingsScreen() {
             </p>
           )}
         </div>
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+        <div className="font-medium">Organization mode</div>
+        {existingOrgDeclaration ? (
+          <>
+            <p className="mt-1 text-sm text-muted">
+              This wallet is declared as an organization —{' '}
+              <span className="font-medium">
+                {readOrganizationName(existingOrgDeclaration) || 'unnamed'}
+              </span>
+              . The Identity tab on Home shows the people you have admitted as
+              members.
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Declaration is one-way in this version. If you need to undo it,
+              start a fresh wallet for the person-side identity.
+            </p>
+          </>
+        ) : !orgFormOpen ? (
+          <>
+            <p className="mt-1 text-sm text-muted">
+              Declare this wallet as an organization — a hunting club, a
+              church, a town. The wallet keeps its keypair; the declaration
+              just tells the UI (and any verifier) that this identity
+              represents a collective, so memberships you issue render
+              correctly on both sides.
+            </p>
+            <button
+              type="button"
+              onClick={() => setOrgFormOpen(true)}
+              className="mt-3 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
+            >
+              Declare this wallet as an organization
+            </button>
+          </>
+        ) : (
+          <form onSubmit={declareAsOrganization} className="mt-2">
+            <label className="block text-sm">
+              <span className="text-muted">Organization name</span>
+              <input
+                type="text"
+                required
+                autoFocus
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                placeholder="Acme Hunting Club"
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+            <p className="mt-2 text-xs text-muted">
+              You are about to sign one attestation that says "this wallet is{' '}
+              {orgName.trim() || 'this organization'}." It is permanent and
+              anchored to Bitcoin the same way your other entries are.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="submit"
+                disabled={orgBusy || orgName.trim().length === 0}
+                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              >
+                {orgBusy ? 'Declaring…' : 'Declare'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOrgFormOpen(false);
+                  setOrgName('');
+                  setOrgError(null);
+                }}
+                className="rounded-md border border-ink/15 px-4 py-2 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+            {orgError && (
+              <p className="mt-2 text-sm text-red-600" role="alert">
+                {orgError}
+              </p>
+            )}
+          </form>
+        )}
       </section>
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
