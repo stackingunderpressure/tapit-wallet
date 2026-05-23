@@ -97,6 +97,10 @@ const BUDGETS = [
   // PeerPicker (5c-i-θ) joins HandshakeModal as an importer.
   // ~3KB gz today.
   { pattern: /^createHandshake-.*\.js$/, gz: 4_000, label: 'createHandshake helpers' },
+  // PeerPicker hoisted into its own chunk once both CosignRequestModal
+  // and HandshakeModal import it (5c-ii — remote handshakes reuse the
+  // same picker). ~3.6KB gz today.
+  { pattern: /^PeerPicker-.*\.js$/, gz: 5_000, label: 'PeerPicker' },
 
   // Phase 5c-i-δ peer-transport chunk, dynamically imported by
   // WalletProvider only when the operator opts into the Mycelium

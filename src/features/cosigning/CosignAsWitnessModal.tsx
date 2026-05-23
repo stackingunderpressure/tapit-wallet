@@ -7,6 +7,7 @@ import { EnvelopePreview } from './EnvelopePreview.tsx';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
+import { holdAndAnchor, isHandshake } from '../connections/createHandshake.ts';
 
 interface Props {
   onClose: () => void;
@@ -44,7 +45,7 @@ type Step =
 // flow idempotent — pasting the same request twice produces the
 // same signed return.
 export function CosignAsWitnessModal({ onClose, incoming, incomingSender }: Props) {
-  const { wallet, sendEnvelope } = useWallet();
+  const { wallet, ownerId, anchorWorker, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>(() =>
     incoming ? { kind: 'preview', attestation: incoming } : { kind: 'paste' },
   );
@@ -66,7 +67,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender }: Prop
     }
   }
 
-  function sign() {
+  async function sign() {
     if (step.kind !== 'preview') return;
     setError(null);
     try {
@@ -74,6 +75,15 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender }: Prop
       // wallet's active key. The private key never leaves the Wallet
       // object; the returned envelope is public.
       const signed = wallet.sign(step.attestation);
+      // A handshake (relationship + verification leaf) names the
+      // viewing wallet as a party, so the wallet should hold its
+      // signed copy — same as the Tier P responder path in
+      // HandshakeModal. Journal-witness and other co-sign cases stay
+      // unsigned-and-not-held; they belong to the originator.
+      if (isHandshake(signed)) {
+        await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
+        await save();
+      }
       setStep({ kind: 'signed', signed });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'sign failed');

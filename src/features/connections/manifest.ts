@@ -4,7 +4,7 @@ export const manifest: FeatureManifest = {
   slug: 'connections',
   born: '2026-05-22',
   purpose:
-    'Phases 5a and 5b of the Mycelium peer network (MYCELIUM_NETWORK_SPEC.md). Phase 5a — the in-person handshake: two wallets physically together exchange identities by QR and co-sign one relationship-kind attestation carrying a verification=in-person leaf (Tier P); both hold it; the home People tab lists them. Phase 5b — organizations and membership: an organization is itself a wallet, and a membership is a credential-kind attestation the organization signs about a person; memberships nest (an organization joins a larger one the same way a person does) and list under the home Identity tab. Local only; no networking — Nostr transport is a later Phase 5 increment.',
+    'Phases 5a, 5b, and 5c-ii of the Mycelium peer network (MYCELIUM_NETWORK_SPEC.md). 5a — the in-person handshake (Tier P): two wallets physically together exchange identities by QR and co-sign one relationship attestation carrying verification=in-person; both hold it. 5b — organizations and membership: an organization is itself a wallet, and a membership is a credential the organization signs about a person; memberships nest. 5c-ii — the remote handshake (Tier R, per D-09): two wallets that have never been in the same room form the same relationship attestation but with verification=remote, sent via Nostr; the initiator builds + signs + ships, the responder cosigns via the existing inbox routing, both hold the dual-signed Tier R record. ConnectionCard renders the badge by tier — accent for Tier P, neutral for Tier R — so a verifier always sees which kind of link it is.',
   touches: [
     'src/features/connections/HandshakeModal.tsx',
     'src/features/connections/MembershipModal.tsx',
@@ -19,5 +19,5 @@ export const manifest: FeatureManifest = {
   removal_safe: false,
   monetizable: false,
   notes:
-    'A handshake is a relationship-kind attestation; a membership is a credential-kind attestation — no new tapit-attest kinds. The modals reuse QrShow / QrScanModal and the cosigning parseEnvelope + mergeSignatures helpers. wallet-core/HomeScreen.tsx imports both modals and both cards, so removal_safe is false. The handshake is co-signed (3 QR transmissions); a membership is one-directional (2 QR transmissions — only the issuing organization signs).',
+    'A handshake is a relationship-kind attestation; a membership is a credential-kind attestation — no new tapit-attest kinds. The modals reuse QrShow / QrScanModal and the cosigning parseEnvelope + mergeSignatures helpers. wallet-core/HomeScreen.tsx imports both modals and both cards, so removal_safe is false. The handshake is co-signed (3 QR transmissions for Tier P); a membership is one-directional (2 QR transmissions — only the issuing organization signs). Tier R remote handshakes (5c-ii) reuse the same envelope shape with verification=remote and travel through the Mycelium transport; the responder side reuses 5c-i-ε auto-routing (1-sig → cosign-witness; 2-sig → absorb).',
 };
