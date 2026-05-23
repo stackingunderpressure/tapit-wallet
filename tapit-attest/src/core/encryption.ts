@@ -72,3 +72,157 @@ export function decrypt(blob: EncryptedBlob, password: string): Uint8Array {
 export function decryptToString(blob: EncryptedBlob, password: string): string {
   return new TextDecoder().decode(decrypt(blob, password));
 }
+
+// ----- 5e-iii-b — recoverable backup format (v2) ------------------
+//
+// v1 derives the AES-GCM key directly from the passphrase. That
+// means recovery requires the passphrase, full stop — there is no
+// way for the operator to ever get back into the wallet without it.
+//
+// v2 separates the data-encryption key (K_data, a freshly random
+// 256-bit AES key) from the passphrase. K_data encrypts the
+// wallet snapshot. K_data is then WRAPPED two independent ways:
+//
+//   1. Passphrase wrap — AES-GCM(PBKDF2(passphrase, salt), K_data)
+//      stored inside the blob. Legacy-style unlock still works
+//      against just the blob + the operator's passphrase.
+//
+//   2. Shamir cascade — K_data is returned to the caller so it can
+//      be split via the shamir.ts primitives and distributed to
+//      cohort peers (Phase 5e-iii-b wallet-side cut). Each peer
+//      holds a share that is meaningless alone; M peers cooperating
+//      reconstruct K_data, which decrypts the data directly via
+//      decryptRecoverableWithKData — no passphrase needed.
+//
+// D-03 stays loud: the SIGNING keypair is never split. Only the
+// symmetric data-encryption key. M-of-N collusion at worst
+// decrypts one backup snapshot; signing authority transfers only
+// through peer-witnessed succession.
+
+/**
+ * Recoverable-backup blob shape. Two independent paths to K_data:
+ * the passphrase wrap (legacy-style unlock) and the Shamir
+ * distribution carried by cohort peers (out-of-band from the
+ * blob). The blob is self-describing for the passphrase path; the
+ * recovery path is gated on the operator holding M shares from
+ * peers, not on anything stored here.
+ */
+export interface RecoverableEncryptedBlob {
+  v: 2;
+  kdf: 'pbkdf2-sha256';
+  iterations: number;
+  /** Salt for the passphrase KDF. hex. */
+  salt: string;
+  /** IV for the AES-GCM passphrase-wrap of K_data. hex. */
+  wrapIv: string;
+  /** AES-GCM ciphertext of K_data, key = PBKDF2(passphrase, salt). hex. */
+  wrapCiphertext: string;
+  /** IV for the AES-GCM encryption of the data with K_data. hex. */
+  dataIv: string;
+  /** AES-GCM ciphertext of the data, key = K_data. hex. */
+  dataCiphertext: string;
+}
+
+export interface RecoverableEncryptionResult {
+  blob: RecoverableEncryptedBlob;
+  /**
+   * The randomly-generated data-encryption key. The caller is
+   * expected to either (a) Shamir-split this across cohort peers
+   * via shamir.splitSecret and distribute the shares, or (b)
+   * discard it — the blob is still decryptable with the passphrase.
+   * Once distributed it must not be retained on the producing
+   * device; the security of the recovery cascade relies on the
+   * device that minted K_data forgetting it after distribution.
+   */
+  kData: Uint8Array;
+}
+
+/**
+ * Encrypt the data with a freshly random K_data, then wrap K_data
+ * with the passphrase. Returns the v2 blob plus K_data so the
+ * caller can Shamir-split + distribute as the recovery cohort
+ * needs.
+ */
+export function encryptRecoverable(
+  plaintext: string | Uint8Array,
+  passphrase: string,
+  options: { iterations?: number } = {},
+): RecoverableEncryptionResult {
+  if (passphrase.length === 0) throw new Error('passphrase must not be empty');
+  const iterations = options.iterations ?? DEFAULT_ITERATIONS;
+  const salt = randomBytes(SALT_BYTES);
+  const kData = randomBytes(KEY_BYTES);
+  const dataIv = randomBytes(IV_BYTES);
+  const data = typeof plaintext === 'string' ? utf8ToBytes(plaintext) : plaintext;
+  const dataCiphertext = gcm(kData, dataIv).encrypt(data);
+  const wrapKey = deriveKey(passphrase, salt, iterations);
+  const wrapIv = randomBytes(IV_BYTES);
+  const wrapCiphertext = gcm(wrapKey, wrapIv).encrypt(kData);
+  return {
+    blob: {
+      v: 2,
+      kdf: 'pbkdf2-sha256',
+      iterations,
+      salt: bytesToHex(salt),
+      wrapIv: bytesToHex(wrapIv),
+      wrapCiphertext: bytesToHex(wrapCiphertext),
+      dataIv: bytesToHex(dataIv),
+      dataCiphertext: bytesToHex(dataCiphertext),
+    },
+    kData,
+  };
+}
+
+function assertV2(blob: RecoverableEncryptedBlob): void {
+  if (blob.v !== 2 || blob.kdf !== 'pbkdf2-sha256') {
+    throw new Error('unsupported recoverable-blob format');
+  }
+}
+
+/** Unwrap K_data with the passphrase, then decrypt the data. */
+export function decryptRecoverableWithPassphrase(
+  blob: RecoverableEncryptedBlob,
+  passphrase: string,
+): Uint8Array {
+  assertV2(blob);
+  const wrapKey = deriveKey(passphrase, hexToBytes(blob.salt), blob.iterations);
+  let kData: Uint8Array;
+  try {
+    kData = gcm(wrapKey, hexToBytes(blob.wrapIv)).decrypt(
+      hexToBytes(blob.wrapCiphertext),
+    );
+  } catch {
+    throw new Error('decryption failed — wrong passphrase or corrupt blob');
+  }
+  try {
+    return gcm(kData, hexToBytes(blob.dataIv)).decrypt(
+      hexToBytes(blob.dataCiphertext),
+    );
+  } catch {
+    throw new Error('data decryption failed — corrupt blob');
+  }
+}
+
+/**
+ * Decrypt the data directly with a recovered K_data. Used by the
+ * Phase 5e recovery ceremony after M cohort peers have returned
+ * their shares and the new device has combined them. The blob's
+ * passphrase wrap is ignored on this path — recovery does not need
+ * the operator's passphrase to land their attestation history back.
+ */
+export function decryptRecoverableWithKData(
+  blob: RecoverableEncryptedBlob,
+  kData: Uint8Array,
+): Uint8Array {
+  assertV2(blob);
+  if (kData.length !== KEY_BYTES) {
+    throw new Error(`K_data must be ${KEY_BYTES} bytes`);
+  }
+  try {
+    return gcm(kData, hexToBytes(blob.dataIv)).decrypt(
+      hexToBytes(blob.dataCiphertext),
+    );
+  } catch {
+    throw new Error('decryption failed — wrong K_data or corrupt blob');
+  }
+}
