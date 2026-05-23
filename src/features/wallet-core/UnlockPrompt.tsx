@@ -1,16 +1,36 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import type { Wallet } from 'tapit-attest';
+import type { AnyEncryptedBlob } from '../storage/localStore.ts';
+
+const RecoveryInitiatorModal = lazy(() =>
+  import('../recovery/RecoveryInitiatorModal.tsx').then((m) => ({
+    default: m.RecoveryInitiatorModal,
+  })),
+);
 
 interface Props {
   onSubmit: (passphrase: string) => Promise<void>;
+  ownerId: string;
+  storedBlob: AnyEncryptedBlob;
+  relays: readonly string[];
+  onRecovered: (wallet: Wallet, passphrase: string) => Promise<void>;
 }
 
 // Returning-user passphrase prompt. Single field. The unlock failure
 // message comes from unlockWallet so the user gets a stable retry
 // flow without leaking internal cipher errors.
-export function UnlockPrompt({ onSubmit }: Props) {
+//
+// Phase 5e-v adds the "Lost passphrase? Start recovery" entry point.
+// Opens the RecoveryInitiatorModal which owns the ceremony Wallet,
+// the ephemeral NostrTransport, and the combine + restore + save
+// choreography. The modal closes back to this prompt on cancel; on
+// successful recovery it calls onRecovered which transitions the
+// WalletProvider to the unlocked phase with the restored wallet.
+export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovered }: Props) {
   const [pass, setPass] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +76,26 @@ export function UnlockPrompt({ onSubmit }: Props) {
             {error}
           </p>
         )}
+        <button
+          type="button"
+          onClick={() => setShowRecovery(true)}
+          className="mt-6 w-full text-sm text-muted hover:text-ink underline-offset-2 hover:underline"
+        >
+          Lost your passphrase? Start recovery
+        </button>
       </form>
+
+      {showRecovery && (
+        <Suspense fallback={null}>
+          <RecoveryInitiatorModal
+            ownerId={ownerId}
+            storedBlob={storedBlob}
+            relays={relays}
+            onRecovered={onRecovered}
+            onClose={() => setShowRecovery(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -305,6 +305,21 @@ export function WalletProvider({ children }: Props) {
     [phase],
   );
 
+  // Phase 5e-v — the recovery ceremony returns here on success with a
+  // restored Wallet and the new passphrase the operator chose. The
+  // RecoveryInitiatorModal has already called walletStore.save under
+  // the new passphrase via exportRecoverableWithKData, so we just put
+  // the wallet into context and transition to unlocked. Holdings
+  // come from the restored wallet's internal store (rebuilt from the
+  // snapshot during restoreFromKData).
+  const onRecovered = useCallback(
+    async (wallet: Wallet, passphrase: string) => {
+      setPassphrase(passphrase);
+      await landAfterUnlock(wallet);
+    },
+    [],
+  );
+
   const onCreateIdentity = useCallback(
     async (input: IdentityInput) => {
       if (phase.kind !== 'needs-identity') {
@@ -423,7 +438,15 @@ export function WalletProvider({ children }: Props) {
   }
 
   if (phase.kind === 'locked') {
-    return <UnlockPrompt onSubmit={onUnlock} />;
+    return (
+      <UnlockPrompt
+        onSubmit={onUnlock}
+        ownerId={ownerId}
+        storedBlob={phase.stored.blob}
+        relays={prefs.nostrRelays}
+        onRecovered={onRecovered}
+      />
+    );
   }
 
   if (phase.kind === 'needs-identity') {

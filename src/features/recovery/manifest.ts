@@ -16,6 +16,7 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/createRecoveryRequest.ts',
     'src/features/recovery/createRecoveryRequest.test.ts',
     'src/features/recovery/RecoveryResponderModal.tsx',
+    'src/features/recovery/RecoveryInitiatorModal.tsx',
   ],
   depends_on: ['wallet-core', 'anchoring', 'connections'],
   pause_safe: true,

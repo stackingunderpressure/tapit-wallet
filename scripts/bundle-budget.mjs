@@ -138,6 +138,12 @@ const BUDGETS = [
   // 5e-vi RecoveryResponderModal — React.lazy from HomeScreen;
   // loads when an incoming recovery-request envelope opens it.
   { pattern: /^RecoveryResponderModal-.*\.js$/, gz: 5_000, label: 'RecoveryResponderModal' },
+  // 5e-v RecoveryInitiatorModal — React.lazy from UnlockPrompt;
+  // loads when the operator hits "Lost passphrase? Start recovery"
+  // on the locked screen. Heavier than the responder because it
+  // owns the form, the ceremony state machine, the per-peer
+  // progress surface, and the new-passphrase save flow.
+  { pattern: /^RecoveryInitiatorModal-.*\.js$/, gz: 6_000, label: 'RecoveryInitiatorModal' },
   // 5c-iii-a publishStatus helper — summarizePublish hoisted once
   // multiple modals depend on it (now includes DistributeSharesModal).
   { pattern: /^publishStatus-.*\.js$/, gz: 1_500, label: 'publishStatus helper' },
