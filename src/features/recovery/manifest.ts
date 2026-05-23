@@ -10,6 +10,8 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/CohortEditorModal.tsx',
     'src/features/recovery/lattice.ts',
     'src/features/recovery/LatticePanel.tsx',
+    'src/features/recovery/createShares.ts',
+    'src/features/recovery/createShares.test.ts',
   ],
   depends_on: ['wallet-core', 'anchoring', 'connections'],
   pause_safe: true,
