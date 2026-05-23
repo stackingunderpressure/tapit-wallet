@@ -120,6 +120,16 @@ const BUDGETS = [
   // SettingsScreen, OfficialsEditorModal, and MembershipChainSheet
   // all import from the same file. ~1.5KB gz today.
   { pattern: /^createOrganization-.*\.js$/, gz: 3_000, label: 'createOrganization helpers' },
+  // 5e-iii-a CohortEditorModal is React.lazy from SettingsScreen so
+  // the cohort-picker UI only loads when the operator opens it.
+  { pattern: /^CohortEditorModal-.*\.js$/, gz: 4_000, label: 'CohortEditorModal' },
+  // 5e-iii-a createCohort helpers get hoisted once both
+  // CohortEditorModal and LatticePanel import from the same file.
+  { pattern: /^createCohort-.*\.js$/, gz: 3_000, label: 'createCohort helpers' },
+  // 5e-iv LatticePanel — React.lazy from HomeScreen, only loads
+  // when the operator opens the Lattice tab. Aggregates handshakes,
+  // memberships, and recovery cohort into one read-only view.
+  { pattern: /^LatticePanel-.*\.js$/, gz: 4_000, label: 'LatticePanel' },
 
   // Phase 5c-i-δ peer-transport chunk, dynamically imported by
   // WalletProvider only when the operator opts into the Mycelium

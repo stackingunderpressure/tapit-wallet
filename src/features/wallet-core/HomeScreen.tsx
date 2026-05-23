@@ -37,6 +37,15 @@ const MarkPresenceModal = lazy(() =>
     default: m.MarkPresenceModal,
   })),
 );
+// 5e-iv — Lattice panel lazy-loaded the same way: only when the
+// operator opens the Lattice tab do we ship the aggregation logic +
+// rendering. Bulk of code lives in lattice.ts (pure functions) +
+// LatticePanel.tsx (the view).
+const LatticePanel = lazy(() =>
+  import('../recovery/LatticePanel.tsx').then((m) => ({
+    default: m.LatticePanel,
+  })),
+);
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
@@ -46,13 +55,14 @@ const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 // Journal is the diary, Identity the founding card plus memberships,
 // Captured the capture-bridge entries, People the Mycelium
 // handshakes (Phase 5a).
-type Tab = 'journal' | 'identity' | 'captured' | 'people';
+type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'lattice';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'identity', label: 'Identity' },
   { id: 'captured', label: 'Captured' },
   { id: 'people', label: 'People' },
+  { id: 'lattice', label: 'Lattice' },
 ];
 
 function backupBanner(prefs: {
@@ -549,6 +559,20 @@ export function HomeScreen() {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {tab === 'lattice' && (
+        <section className="mt-5">
+          <Suspense
+            fallback={
+              <div className="rounded-2xl border border-ink/10 bg-white px-4 py-6 text-center text-sm text-muted">
+                Loading lattice…
+              </div>
+            }
+          >
+            <LatticePanel />
+          </Suspense>
         </section>
       )}
 

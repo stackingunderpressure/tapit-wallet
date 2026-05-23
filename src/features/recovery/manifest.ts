@@ -8,6 +8,8 @@ export const manifest: FeatureManifest = {
   touches: [
     'src/features/recovery/createCohort.ts',
     'src/features/recovery/CohortEditorModal.tsx',
+    'src/features/recovery/lattice.ts',
+    'src/features/recovery/LatticePanel.tsx',
   ],
   depends_on: ['wallet-core', 'anchoring', 'connections'],
   pause_safe: true,
