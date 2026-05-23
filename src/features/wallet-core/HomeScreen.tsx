@@ -14,7 +14,7 @@ import { ConnectionCard } from '../connections/ConnectionCard.tsx';
 import { isHandshake } from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
 import { MembershipCard } from '../connections/MembershipCard.tsx';
-import { isMembership } from '../connections/createMembership.ts';
+import { isMembership, receiveMembership } from '../connections/createMembership.ts';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -64,7 +64,18 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const { wallet, holdings, identity, prefs, inboxEnvelopes, dismissInboxEnvelope } = useWallet();
+  const {
+    wallet,
+    ownerId,
+    holdings,
+    identity,
+    prefs,
+    anchorWorker,
+    inboxEnvelopes,
+    dismissInboxEnvelope,
+    save,
+    refresh,
+  } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
@@ -88,6 +99,28 @@ export function HomeScreen() {
       setIncomingSenderForWitness(senderPubkey);
     } else if (action === 'absorb-cosign') {
       setIncomingForAbsorb(envelope);
+    } else if (action === 'membership-receive') {
+      void acceptMembership(envelope);
+    }
+  }
+
+  async function acceptMembership(envelope: Attestation) {
+    if (!identity) return;
+    try {
+      await receiveMembership({
+        wallet,
+        ownerId,
+        anchorWorker,
+        attestation: envelope,
+        myIdentity: identity.subject,
+      });
+      await save();
+      await refresh();
+      // Find the inbox row by envelope content and drop it.
+      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
+      if (item) dismissInboxEnvelope(item.eventId);
+    } catch (err) {
+      console.warn('membership receive failed', err);
     }
   }
   const banner = backupBanner(prefs);

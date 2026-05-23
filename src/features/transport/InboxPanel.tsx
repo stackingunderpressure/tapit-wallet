@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import type { InboxEnvelope } from './encryptedInbox.ts';
 import { isHandshake } from '../connections/createHandshake.ts';
+import { isMembership } from '../connections/createMembership.ts';
 
 // Phase 5c-i-δ/-ε — inbox surface for the People tab. Lists encrypted
 // envelopes that arrived through the transport since unlock, and
@@ -14,7 +15,7 @@ import { isHandshake } from '../connections/createHandshake.ts';
 //   - anything else (memberships, journals, etc.) → manual Copy for now
 // Membership auto-receive is the next sub-cut.
 
-export type InboxRouteAction = 'cosign-witness' | 'absorb-cosign';
+export type InboxRouteAction = 'cosign-witness' | 'absorb-cosign' | 'membership-receive';
 
 interface Props {
   envelopes: readonly InboxEnvelope[];
@@ -60,6 +61,13 @@ function routeFor(att: Attestation): Route | null {
       action: 'absorb-cosign',
       label: 'Absorb signature',
       hint: 'A counter-signed handshake — merge it into your copy.',
+    };
+  }
+  if (isMembership(att)) {
+    return {
+      action: 'membership-receive',
+      label: 'Accept membership',
+      hint: 'A membership credential issued to you.',
     };
   }
   return null;
