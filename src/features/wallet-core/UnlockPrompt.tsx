@@ -7,6 +7,11 @@ const RecoveryInitiatorModal = lazy(() =>
     default: m.RecoveryInitiatorModal,
   })),
 );
+const RecoveryKeyImportModal = lazy(() =>
+  import('../recovery/RecoveryKeyImportModal.tsx').then((m) => ({
+    default: m.RecoveryKeyImportModal,
+  })),
+);
 
 interface Props {
   onSubmit: (passphrase: string) => Promise<void>;
@@ -31,6 +36,7 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showKeyImport, setShowKeyImport] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,13 +82,22 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
             {error}
           </p>
         )}
-        <button
-          type="button"
-          onClick={() => setShowRecovery(true)}
-          className="mt-6 w-full text-sm text-muted hover:text-ink underline-offset-2 hover:underline"
-        >
-          Lost your passphrase? Start recovery
-        </button>
+        <div className="mt-6 space-y-2 text-center">
+          <button
+            type="button"
+            onClick={() => setShowRecovery(true)}
+            className="block w-full text-sm text-muted hover:text-ink underline-offset-2 hover:underline"
+          >
+            Lost your passphrase? Start recovery with your cohort
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowKeyImport(true)}
+            className="block w-full text-xs text-muted hover:text-ink underline-offset-2 hover:underline"
+          >
+            Or use your written-down recovery key
+          </button>
+        </div>
       </form>
 
       {showRecovery && (
@@ -93,6 +108,17 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
             relays={relays}
             onRecovered={onRecovered}
             onClose={() => setShowRecovery(false)}
+          />
+        </Suspense>
+      )}
+
+      {showKeyImport && (
+        <Suspense fallback={null}>
+          <RecoveryKeyImportModal
+            ownerId={ownerId}
+            storedBlob={storedBlob}
+            onRecovered={onRecovered}
+            onClose={() => setShowKeyImport(false)}
           />
         </Suspense>
       )}

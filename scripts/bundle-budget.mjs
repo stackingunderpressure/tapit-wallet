@@ -69,7 +69,11 @@ const BUDGETS = [
   // only the section display + button is in the main chunk;
   // current ~4.8KB gz. Headroom raised to 6KB before another
   // structural rethink (split Settings into tabs?) is needed.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 6_000, label: 'SettingsScreen' },
+  // 2026-05-23: lifted from 6KB to 7KB after the Known Limitations
+  // section + Recovery key reveal form landed. Current ~6KB gz; next
+  // structural rethink (split out limitations / recovery into their
+  // own components) fires past 7KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 7_000, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
@@ -144,6 +148,11 @@ const BUDGETS = [
   // 5e-vi RecoveryResponderModal — React.lazy from HomeScreen;
   // loads when an incoming recovery-request envelope opens it.
   { pattern: /^RecoveryResponderModal-.*\.js$/, gz: 5_000, label: 'RecoveryResponderModal' },
+  // 2026-05-23 RecoveryKeyImportModal — React.lazy from UnlockPrompt
+  // alongside RecoveryInitiatorModal. Lazy because most operators
+  // never need it; small because it's just a hex input + new-pass
+  // form running restoreFromKData + exportRecoverableWithKData.
+  { pattern: /^RecoveryKeyImportModal-.*\.js$/, gz: 2_500, label: 'RecoveryKeyImportModal' },
   // 5e-v RecoveryInitiatorModal — React.lazy from UnlockPrompt;
   // loads when the operator hits "Lost passphrase? Start recovery"
   // on the locked screen. Heavier than the responder because it
