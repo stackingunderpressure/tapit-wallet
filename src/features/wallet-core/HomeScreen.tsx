@@ -21,9 +21,12 @@ import {
   receiveMembership,
 } from '../connections/createMembership.ts';
 import {
+  findLatestOfficialsRoster,
   findOwnOrgDeclaration,
+  readOfficials,
   readOrganizationName,
 } from '../connections/createOrganization.ts';
+import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -90,6 +93,7 @@ export function HomeScreen() {
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
+  const [officialsOpen, setOfficialsOpen] = useState(false);
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
   // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
@@ -200,6 +204,17 @@ export function HomeScreen() {
         : [],
     [holdings, wallet.identity, orgDeclaration],
   );
+  const officialsRoster = useMemo(
+    () =>
+      orgDeclaration
+        ? findLatestOfficialsRoster(holdings, wallet.identity)
+        : null,
+    [holdings, wallet.identity, orgDeclaration],
+  );
+  const officials = useMemo(
+    () => (officialsRoster ? readOfficials(officialsRoster) : []),
+    [officialsRoster],
+  );
 
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto pb-24">
@@ -275,6 +290,46 @@ export function HomeScreen() {
           )}
           <IdentityCard publicKey={wallet.publicKey} />
           {identity && <AttestationCard attestation={identity} />}
+          {orgDeclaration && (
+            <div className="pt-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-muted">
+                  Officials ({officials.length})
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setOfficialsOpen(true)}
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  {officials.length === 0 ? '+ Add officials' : 'Edit'}
+                </button>
+              </div>
+              {officials.length === 0 ? (
+                <p className="mt-2 text-sm text-muted">
+                  No officials published yet. Officials are the people
+                  whose signatures count as ratification of memberships
+                  the organization issues — add them and the rest of the
+                  governance UI starts surfacing ratification status.
+                </p>
+              ) : (
+                <ul className="mt-2 space-y-2">
+                  {officials.map((o) => (
+                    <li
+                      key={o.pubkey}
+                      className="rounded-2xl bg-white border border-ink/10 p-3"
+                    >
+                      <div className="font-medium truncate">
+                        {o.name || '(no name)'}
+                      </div>
+                      <div className="mt-1 text-xs text-muted font-mono">
+                        {o.pubkey.slice(0, 8)}…{o.pubkey.slice(-4)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           {orgDeclaration && (
             <div className="pt-2">
               <div className="flex items-center justify-between">
@@ -485,6 +540,10 @@ export function HomeScreen() {
 
       {membershipOpen && (
         <MembershipModal onClose={() => setMembershipOpen(false)} />
+      )}
+
+      {officialsOpen && (
+        <OfficialsEditorModal onClose={() => setOfficialsOpen(false)} />
       )}
     </div>
   );

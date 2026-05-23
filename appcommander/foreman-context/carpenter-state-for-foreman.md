@@ -6,7 +6,7 @@
 
 ## WHAT-CHANGED-RECENTLY
 
-Phase 5c is structurally complete on main (last code work at `11a262e` "Org-mode declaration + Members view (Phase 5b-org-i)"). This 2026-05-23 session added one piece of infrastructure on top:
+Phase 5c is structurally complete on main (last code work at `f406199` "Officials roster — Phase 5b-org-ii", which landed during this very session — the code-Carpenter shipped between this branch's first push and this branch's main push, which the new hook would have caught). This 2026-05-23 session added one piece of infrastructure on top:
 
 - **Cross-Carpenter drift hook** — `scripts/session-start-grounding.mjs` plus a `SessionStart` entry in `.claude/settings.json`. Fetches origin at every session start; if `origin/main` has moved past the current branch's merge-base, emits a structured drift report into the session's initial context (commit list, most-recent `current.json` summary, required reads). Catches the failure mode that surfaced this session: a theory-Carpenter on a stale branch confidently giving forward-looking advice that's wrong-relative-to-actual-state because main has shipped past where the branch was rooted.
 
@@ -20,6 +20,7 @@ Prior arc on main (from the code-Carpenter, branch `claude/compare-library-walle
 - **Auto-dismiss polish** (`93afbc4`).
 - **Multi-field disclosure proofs** (`c013ae1`) — library primitive + wallet UI.
 - **Phase 5b-org-i** org-mode declaration + Members view (`11a262e`).
+- **Phase 5b-org-ii** officials roster — editable list of org officers as a signed credential, history audit-friendly (`f406199`, landed during this session).
 
 ## Gates at session end
 

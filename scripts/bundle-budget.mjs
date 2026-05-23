@@ -47,10 +47,14 @@ const BUDGETS = [
   // remaining 5c-i / 5c-ii / 5c-iii additions before code-splitting
   // becomes the better option.
   { pattern: /^WalletProvider-.*\.js$/, gz: 7_000, label: 'WalletProvider' },
-  // HomeScreen is the post-auth main surface — four tabs (Journal,
-  // Identity, Captured, People) and three modal launchers. ~8.3KB gz
-  // today; budget carries headroom for modest further growth.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 11_000, label: 'HomeScreen' },
+  // HomeScreen is the post-auth main surface — four tabs plus a
+  // growing set of modal launchers. Org-mode (5b-org-i, 5b-org-ii)
+  // added the Organization header, the Officials section, the
+  // Members section, and the OfficialsEditorModal mount; current
+  // ~11.3KB gz. Headroom raised to 13KB for ratifications view and
+  // nested-chain view (cuts 3 + 4) before another structural rethink
+  // is needed.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 13_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew with the org-mode declaration form (5b-org-i)
   // alongside the existing cloud-sync / idle-lock / Mycelium toggle /
