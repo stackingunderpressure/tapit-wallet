@@ -13,6 +13,9 @@ import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 const QrScanModal = lazy(() =>
   import('../qr/QrScanModal.tsx').then((m) => ({ default: m.QrScanModal })),
 );
+const QrShow = lazy(() =>
+  import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
+);
 import type { Transport } from '../transport/transport.ts';
 import type { WalletConnection } from '../transport/connectWallet.ts';
 import { sendEnvelopeTo } from '../transport/encryptedInbox.ts';
@@ -178,6 +181,11 @@ export function RecoveryInitiatorModal({
   // so the operator can scan a QR a peer is showing them in person.
   const [scanOpen, setScanOpen] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  // The signed recovery-request envelope, stored once beginSending
+  // builds it so the operator can render it as a QR for peers they
+  // visit in person — same envelope the Mycelium publish path used.
+  const [requestEnvelope, setRequestEnvelope] = useState<Attestation | null>(null);
+  const [requestQrOpen, setRequestQrOpen] = useState(false);
 
   function handleScannedShareResponse(text: string) {
     setScanError(null);
@@ -335,6 +343,7 @@ export function RecoveryInitiatorModal({
       operatorName.trim(),
       message.trim(),
     );
+    setRequestEnvelope(envelope);
     const transport = transportRef.current;
     let dispatched = 0;
     for (const peer of cleaned) {
@@ -639,22 +648,57 @@ export function RecoveryInitiatorModal({
                     Visiting someone in person?
                   </div>
                   <p className="mt-1 text-xs text-muted">
-                    If a peer hands you a share QR off their phone, scan it
-                    here. The same threshold accumulates regardless of
-                    transport.
+                    Show your request QR to peers you visit; they scan it and
+                    release their share back to you in person. Scan their
+                    response when they show it. Same threshold either way.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setScanOpen(true)}
-                    className="mt-2 w-full rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium hover:bg-ink/5"
-                  >
-                    Scan a share-response
-                  </button>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRequestQrOpen(true)}
+                      disabled={!requestEnvelope}
+                      className="rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
+                    >
+                      Show request QR
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScanOpen(true)}
+                      className="rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium hover:bg-ink/5"
+                    >
+                      Scan a share-response
+                    </button>
+                  </div>
                   {scanError && (
                     <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-900">
                       {scanError}
                     </div>
                   )}
+                </div>
+              )}
+
+              {requestQrOpen && requestEnvelope && (
+                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/60 p-3">
+                  <div className="text-xs uppercase tracking-wide text-amber-900 font-semibold">
+                    Your recovery request
+                  </div>
+                  <p className="mt-1 text-xs">
+                    Hand the phone to a cohort member next to you. They open
+                    their wallet → People → Scan envelope. The request opens
+                    in their responder modal where they can release in person.
+                  </p>
+                  <Suspense
+                    fallback={<div className="mt-2 text-xs text-muted">Rendering QR…</div>}
+                  >
+                    <QrShow text={JSON.stringify(requestEnvelope)} />
+                  </Suspense>
+                  <button
+                    type="button"
+                    onClick={() => setRequestQrOpen(false)}
+                    className="mt-2 w-full rounded-md border border-ink/15 bg-white py-1.5 text-xs"
+                  >
+                    Hide QR
+                  </button>
                 </div>
               )}
               {phase.kind === 'combining' && (
