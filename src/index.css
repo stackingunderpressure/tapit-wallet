@@ -2,10 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Make text inputs use the system zoom-disable trick on iOS — 16px
-   minimum so a tap on the email/passphrase field doesn't zoom in. */
-input[type='email'],
-input[type='password'],
-input[type='text'] {
+/* iOS Safari zoom-prevention. iOS auto-zooms on tap whenever a form
+   field's font-size is below 16px, and once the page is zoomed a
+   position:fixed modal lands relative to the layout viewport while
+   the user sees the visual viewport — the result is a modal that
+   appears off-center or clipped at the screen edge. Forcing 16px on
+   every text-entry surface keeps the zoom from triggering in the
+   first place. Covers input + textarea + select uniformly; Tailwind
+   utility classes that set a smaller font-size on these elements
+   are overridden because this rule comes after Tailwind in source
+   order at equal specificity. */
+input,
+textarea,
+select {
   font-size: 16px;
+}
+
+/* Safety net against horizontal scroll. Any single child wider than
+   the viewport (long unwrapped pubkey, oversize QR, table) would
+   otherwise let the user swipe horizontally — and a fixed modal
+   anchored to inset-0 then appears shifted off-screen. Hiding body
+   overflow-x keeps the visible viewport and the layout viewport
+   aligned for fixed-position children. Per-component overflow is
+   still up to each component. */
+html,
+body {
+  overflow-x: hidden;
 }
