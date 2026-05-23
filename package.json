@@ -6,6 +6,7 @@
   "description": "Sovereign identity wallet — keypair holder + Merkle holder of signed attestations.",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm --prefix tapit-attest run build",
     "build": "tsc -p tsconfig.json && vite build && node scripts/bundle-budget.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
