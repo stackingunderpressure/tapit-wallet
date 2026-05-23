@@ -27,6 +27,7 @@ import {
   readOrganizationName,
 } from '../connections/createOrganization.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
+import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
 import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
@@ -95,6 +96,7 @@ export function HomeScreen() {
   const [handshakeOpen, setHandshakeOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [officialsOpen, setOfficialsOpen] = useState(false);
+  const [chainFor, setChainFor] = useState<Attestation | null>(null);
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
   // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
@@ -409,6 +411,7 @@ export function HomeScreen() {
                       key={i}
                       attestation={a}
                       officials={orgOfficials}
+                      onTap={setChainFor}
                     />
                   );
                 })}
@@ -558,6 +561,13 @@ export function HomeScreen() {
 
       {officialsOpen && (
         <OfficialsEditorModal onClose={() => setOfficialsOpen(false)} />
+      )}
+
+      {chainFor && (
+        <MembershipChainSheet
+          start={chainFor}
+          onClose={() => setChainFor(null)}
+        />
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { credentialAttestation, envelopeId } from 'tapit-attest';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import { leafValue } from './createHandshake.ts';
+import { isMembership, readMembership } from './createMembership.ts';
 
 // 5b-org-i — org-mode self-declaration. A wallet says "I am an
 // organization" by signing one credential-kind attestation about
@@ -284,4 +285,81 @@ export async function publishOfficialsRoster(
   });
   if (anchorWorker) void anchorWorker.kick();
   return signed;
+}
+
+// 5b-org-iv — nested-org chain walk. From any membership envelope,
+// walk upward: this is the membership in X; here is X's membership
+// in Y; here is Y's membership in Z — each link an ordinary
+// membership attestation signed by the parent. The walk only sees
+// what is in local holdings; when the parent chain is not locally
+// known the walker stops, and the UI labels that "may continue
+// further — the parent memberships are not in your wallet yet" so
+// the operator is honest about visibility. Future Nostr-fetch or
+// org-published-parents flows extend reach without changing this
+// function's contract.
+
+export interface ChainLink {
+  /** Membership envelope; subject is the member at this level, org_id is the parent. */
+  envelope: Attestation;
+  /** Member side of this link (whoever is being declared a member). */
+  memberId: string;
+  memberName: string;
+  /** Parent-org side (who is doing the declaring). */
+  orgId: string;
+  orgName: string;
+}
+
+export interface OrgChain {
+  /** Ordered from the starting membership upward; first link is the input. */
+  links: ChainLink[];
+  /**
+   * True when the walker ran out of locally-held data before
+   * reaching a root — the chain may continue higher than what the
+   * viewer can see locally.
+   */
+  truncated: boolean;
+}
+
+function toLink(att: Attestation): ChainLink {
+  const m = readMembership(att);
+  return {
+    envelope: att,
+    memberId: m.memberId,
+    memberName: m.memberName,
+    orgId: m.orgId,
+    orgName: m.orgName,
+  };
+}
+
+/**
+ * Walk the nesting chain upward from a membership envelope, using
+ * only the supplied holdings. At each step we look for a membership
+ * whose subject equals the parent org's identity — i.e. THIS
+ * organization's own membership in something larger. Stops on a cycle
+ * (defensive — should not occur in a well-formed chain), when no
+ * higher membership is locally held, or when the chain reaches a
+ * length cap.
+ */
+export function walkOrgChain(
+  holdings: readonly Attestation[],
+  start: Attestation,
+): OrgChain {
+  if (!isMembership(start)) return { links: [], truncated: false };
+  const links: ChainLink[] = [toLink(start)];
+  const seen = new Set<string>([start.subject]);
+  const MAX_DEPTH = 16; // honest soft cap; deeper than real federations
+  for (let i = 0; i < MAX_DEPTH; i++) {
+    const currentOrgId = links[links.length - 1]!.orgId;
+    if (!currentOrgId) break;
+    if (seen.has(currentOrgId)) break;
+    seen.add(currentOrgId);
+    const next = holdings.find(
+      (a) => isMembership(a) && a.subject === currentOrgId,
+    );
+    if (!next) {
+      return { links, truncated: true };
+    }
+    links.push(toLink(next));
+  }
+  return { links, truncated: false };
 }
