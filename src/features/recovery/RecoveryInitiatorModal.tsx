@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Wallet,
   combineShares,
@@ -8,6 +8,11 @@ import {
 } from 'tapit-attest';
 import type { AnyEncryptedBlob } from '../storage/localStore.ts';
 import { walletStore } from '../storage/walletStore.ts';
+import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
+
+const QrScanModal = lazy(() =>
+  import('../qr/QrScanModal.tsx').then((m) => ({ default: m.QrScanModal })),
+);
 import type { Transport } from '../transport/transport.ts';
 import type { WalletConnection } from '../transport/connectWallet.ts';
 import { sendEnvelopeTo } from '../transport/encryptedInbox.ts';
@@ -122,6 +127,79 @@ export function RecoveryInitiatorModal({
   const transportRef = useRef<Transport | null>(null);
   const connectionRef = useRef<WalletConnection | null>(null);
 
+  // Absorb one share-response envelope into the collected pool.
+  // Shared by the Mycelium inbox callback (live subscription) and the
+  // in-person QR scan path (scanShareResponse). Returns true if the
+  // share landed in the pool, false if it was filtered or already
+  // present, throws on decrypt failure. The blended-recovery
+  // 2026-05-23 split: same handling regardless of transport, only the
+  // arrival surface differs.
+  function absorbShareResponse(envelope: Attestation): { result: 'added' | 'skipped'; reason?: string } {
+    if (!isShareResponse(envelope)) {
+      return { result: 'skipped', reason: 'not a share-response envelope' };
+    }
+    const view = readShareResponse(envelope);
+    if (view.oldIdentity !== oldIdentityRef.current) {
+      return { result: 'skipped', reason: 'addressed to a different recovery subject' };
+    }
+    if (view.ceremonyPubkey !== ceremonyWallet.publicKey) {
+      return { result: 'skipped', reason: 'addressed to a different ceremony' };
+    }
+    const share = decryptShareResponse(ceremonyWallet, envelope);
+    if (collectedSharesRef.current.has(String(share.index))) {
+      return { result: 'skipped', reason: 'this share has already been received' };
+    }
+    collectedSharesRef.current.set(String(share.index), share);
+    setPeers((prev) => {
+      // If the responder is not yet on the peer list (a peer who responded
+      // in person without having been asked over Mycelium), add them as a
+      // new received-in-person row so the journey-board reflects the share.
+      if (!prev.some((p) => p.pubkey === view.responderPubkey)) {
+        return [
+          ...prev,
+          {
+            pubkey: view.responderPubkey,
+            name: 'In-person responder',
+            state: 'received',
+            detail: `Share #${share.index} received in person`,
+          },
+        ];
+      }
+      return prev.map((p) =>
+        p.pubkey === view.responderPubkey
+          ? { ...p, state: 'received', detail: `Share #${share.index} received` }
+          : p,
+      );
+    });
+    return { result: 'added' };
+  }
+
+  // Scan-share-response surface state. Visible in the awaiting phase
+  // so the operator can scan a QR a peer is showing them in person.
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  function handleScannedShareResponse(text: string) {
+    setScanError(null);
+    let envelope: Attestation;
+    try {
+      envelope = parseEnvelope(text);
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'could not parse scanned QR');
+      return;
+    }
+    try {
+      const outcome = absorbShareResponse(envelope);
+      if (outcome.result === 'skipped') {
+        setScanError(outcome.reason ?? 'share not added');
+        return;
+      }
+      setScanOpen(false);
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : 'failed to decrypt share-response');
+    }
+  }
+
   // Open the ephemeral transport for the ceremony pubkey. Dynamic
   // import keeps the Mycelium WebSocket client out of the main lock-
   // screen bundle — only loads when the operator actually starts a
@@ -135,26 +213,22 @@ export function RecoveryInitiatorModal({
       const conn = connectWallet(ceremonyWallet, {
         relays: relaySet,
         onEnvelope: (item) => {
-          if (!isShareResponse(item.envelope)) return;
-          const view = readShareResponse(item.envelope);
-          // Only count responses naming the requested old identity —
-          // a stray response for some other ceremony must be ignored.
-          if (view.oldIdentity !== oldIdentityRef.current) return;
-          if (view.ceremonyPubkey !== ceremonyWallet.publicKey) return;
           try {
-            const share = decryptShareResponse(ceremonyWallet, item.envelope);
-            // Dedupe by share index — a peer who resent should not
-            // double-count.
-            if (collectedSharesRef.current.has(String(share.index))) return;
-            collectedSharesRef.current.set(String(share.index), share);
-            setPeers((prev) =>
-              prev.map((p) =>
-                p.pubkey === view.responderPubkey
-                  ? { ...p, state: 'received', detail: `Share #${share.index} received` }
-                  : p,
-              ),
-            );
+            const outcome = absorbShareResponse(item.envelope);
+            if (outcome.result === 'skipped' && outcome.reason && outcome.reason !== 'not a share-response envelope') {
+              // skipped-but-known share — show as a per-peer error if we
+              // can identify the responder; otherwise drop silently.
+              const view = readShareResponse(item.envelope);
+              setPeers((prev) =>
+                prev.map((p) =>
+                  p.pubkey === view.responderPubkey
+                    ? { ...p, state: 'response-error', detail: outcome.reason ?? 'response error' }
+                    : p,
+                ),
+              );
+            }
           } catch (err) {
+            const view = readShareResponse(item.envelope);
             setPeers((prev) =>
               prev.map((p) =>
                 p.pubkey === view.responderPubkey
@@ -559,6 +633,30 @@ export function RecoveryInitiatorModal({
                   </div>
                 ))}
               </div>
+              {(phase.kind === 'sending' || phase.kind === 'awaiting') && (
+                <div className="mt-4 rounded-md border border-ink/15 bg-white p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted font-semibold">
+                    Visiting someone in person?
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    If a peer hands you a share QR off their phone, scan it
+                    here. The same threshold accumulates regardless of
+                    transport.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setScanOpen(true)}
+                    className="mt-2 w-full rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium hover:bg-ink/5"
+                  >
+                    Scan a share-response
+                  </button>
+                  {scanError && (
+                    <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-900">
+                      {scanError}
+                    </div>
+                  )}
+                </div>
+              )}
               {phase.kind === 'combining' && (
                 <p className="mt-4 text-sm text-muted">
                   Threshold reached. Combining shares back into your encryption key…
@@ -571,6 +669,18 @@ export function RecoveryInitiatorModal({
               )}
             </>
           )}
+
+        {scanOpen && (
+          <Suspense fallback={null}>
+            <QrScanModal
+              onScanned={handleScannedShareResponse}
+              onClose={() => {
+                setScanOpen(false);
+                setScanError(null);
+              }}
+            />
+          </Suspense>
+        )}
 
         {phase.kind === 'naming' && (
           <>

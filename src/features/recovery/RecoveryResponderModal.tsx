@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import {
@@ -10,6 +10,10 @@ import {
   readRecoveryRequest,
 } from './createRecoveryRequest.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
+
+const QrShow = lazy(() =>
+  import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
+);
 
 interface Props {
   /** The incoming recovery-request envelope from an initiator's ceremony keypair. */
@@ -60,6 +64,11 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // 2026-05-23 blended-recovery — in-person mode renders the
+  // share-response envelope as a QR for the recovering operator's
+  // new device to scan, instead of publishing through Mycelium.
+  // Useful when the operator is sitting right next to the peer.
+  const [inPersonResponse, setInPersonResponse] = useState<Attestation | null>(null);
 
   async function release() {
     if (!myShare) return;
@@ -85,6 +94,22 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
       setStatus(null);
     } finally {
       setBusy(false);
+    }
+  }
+
+  function releaseInPerson() {
+    if (!myShare) return;
+    setError(null);
+    try {
+      const response = buildShareResponseEnvelope(
+        wallet,
+        myShare,
+        requestView.newPubkey,
+      );
+      setInPersonResponse(response);
+      setStatus(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'failed to build share-response');
     }
   }
 
@@ -139,7 +164,7 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
           </div>
         )}
 
-        {myShare && !sent && (
+        {myShare && !sent && !inPersonResponse && (
           <>
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-3">
               <div className="text-xs uppercase tracking-wide text-amber-900 font-semibold">
@@ -166,15 +191,57 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
               </label>
             </div>
 
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void release()}
+                disabled={!verified || busy}
+                className="rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              >
+                {busy ? 'Releasing…' : 'Release via Nostr'}
+              </button>
+              <button
+                type="button"
+                onClick={releaseInPerson}
+                disabled={!verified || busy}
+                className="rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium disabled:opacity-40"
+              >
+                Release in person
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted">
+              In person means they are with you right now and will scan a QR
+              from your phone.
+            </p>
+          </>
+        )}
+
+        {inPersonResponse && (
+          <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50/60 p-3">
+            <div className="text-xs uppercase tracking-wide text-emerald-900 font-semibold">
+              Hand it over
+            </div>
+            <p className="mt-1 text-sm">
+              Show this QR to{' '}
+              <span className="font-medium">{requestView.operatorName || 'them'}</span>{' '}
+              and have them tap "Scan a share-response" in their recovery modal.
+            </p>
+            <Suspense
+              fallback={<div className="mt-2 text-xs text-muted">Rendering QR…</div>}
+            >
+              <QrShow text={JSON.stringify(inPersonResponse)} />
+            </Suspense>
             <button
               type="button"
-              onClick={() => void release()}
-              disabled={!verified || busy}
-              className="mt-4 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              onClick={() => {
+                onSuccess?.();
+                onClose();
+              }}
+              className="mt-3 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium"
             >
-              {busy ? 'Releasing…' : 'Release my share'}
+              They scanned it
             </button>
-          </>
+          </div>
         )}
 
         {sent && (
