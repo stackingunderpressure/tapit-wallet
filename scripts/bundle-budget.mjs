@@ -53,9 +53,10 @@ const BUDGETS = [
   // Modal itself is React.lazy so the WebAuthn + geolocation code
   // does not load until the operator opens the flow; the static
   // imports remaining are the presence list-section helpers
-  // (isPresenceEvent + readPresence). Current ~13.6KB gz. Headroom
-  // raised to 14.5KB before another structural rethink is needed.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 14_500, label: 'HomeScreen' },
+  // (isPresenceEvent + readPresence). 2026-05-23: NostrIndicator
+  // inlined into the header lifted current to ~14.5KB gz; headroom
+  // raised to 15KB. Next structural rethink fires past that.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 15_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

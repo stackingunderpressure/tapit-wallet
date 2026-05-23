@@ -1,5 +1,7 @@
 import type {
   PublishResult,
+  RelayStatus,
+  RelayStatusHandler,
   Subscription,
   Transport,
   TransportEventHandler,
@@ -62,6 +64,7 @@ export class NostrTransport implements Transport {
   private readonly subs = new Map<string, SubRecord>();
   private readonly seen = new Set<string>();
   private readonly pendingPublishes = new Map<string, PendingPublish>();
+  private readonly statusHandlers = new Set<RelayStatusHandler>();
   private readonly WS: typeof WebSocket;
   private nextSubId = 1;
   private closed = false;
@@ -148,6 +151,7 @@ export class NostrTransport implements Transport {
     }
     for (const conn of this.relays) {
       conn.closed = true;
+      conn.open = false;
       if (conn.reconnectTimer) clearTimeout(conn.reconnectTimer);
       conn.reconnectTimer = null;
       conn.outbox.length = 0;
@@ -157,6 +161,38 @@ export class NostrTransport implements Transport {
         } catch {
           // best-effort close
         }
+      }
+    }
+    this.notifyStatus();
+    this.statusHandlers.clear();
+  }
+
+  relayStatus(): readonly RelayStatus[] {
+    return this.relays.map((c) => ({ url: c.url, open: c.open }));
+  }
+
+  subscribeStatus(handler: RelayStatusHandler): () => void {
+    this.statusHandlers.add(handler);
+    // Fire once with the current snapshot so the caller can render
+    // initial state without an extra round-trip.
+    try {
+      handler(this.relayStatus());
+    } catch {
+      // best-effort — a handler that throws does not break others
+    }
+    return () => {
+      this.statusHandlers.delete(handler);
+    };
+  }
+
+  private notifyStatus(): void {
+    if (this.statusHandlers.size === 0) return;
+    const snapshot = this.relayStatus();
+    for (const handler of this.statusHandlers) {
+      try {
+        handler(snapshot);
+      } catch {
+        // ignore handler errors
       }
     }
   }
@@ -171,10 +207,16 @@ export class NostrTransport implements Transport {
       return;
     }
     conn.ws = ws;
+    // Initial open=false on (re)connect is a no-op transition unless
+    // the relay had previously been open — in either case a single
+    // notifyStatus at the end of this function covers it.
+    const wasOpen = conn.open;
     conn.open = false;
+    if (wasOpen) this.notifyStatus();
     ws.onopen = () => {
       conn.open = true;
       conn.reconnectMs = INITIAL_RECONNECT_MS;
+      this.notifyStatus();
       // Re-issue every active subscription and flush queued publishes
       // so a reconnect picks up where the prior session left off.
       for (const sub of this.subs.values()) {
@@ -198,8 +240,10 @@ export class NostrTransport implements Transport {
       this.handleFrame(msg.data, conn.url);
     };
     ws.onclose = () => {
+      const wasOpenAtClose = conn.open;
       conn.open = false;
       conn.ws = null;
+      if (wasOpenAtClose) this.notifyStatus();
       this.scheduleReconnect(conn);
     };
     ws.onerror = () => {

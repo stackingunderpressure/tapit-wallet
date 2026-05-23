@@ -13,6 +13,8 @@ export const manifest: FeatureManifest = {
     'src/features/transport/connectWallet.ts',
     'src/features/transport/defaultRelays.ts',
     'src/features/transport/InboxPanel.tsx',
+    'src/features/transport/envelopeRoute.ts',
+    'src/features/transport/NostrIndicator.tsx',
   ],
   depends_on: ['cosigning', 'connections', 'wallet-core'],
   pause_safe: true,

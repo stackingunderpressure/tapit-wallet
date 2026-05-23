@@ -4,7 +4,7 @@ import type { Prefs } from '../storage/prefsStore.ts';
 import type { SaveOutcome } from '../storage/walletStore.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
-import type { PublishResult } from '../transport/transport.ts';
+import type { PublishResult, RelayStatus } from '../transport/transport.ts';
 
 export interface WalletContextValue {
   wallet: Wallet;
@@ -31,6 +31,12 @@ export interface WalletContextValue {
   inboxEnvelopes: InboxEnvelope[];
   /** Drop one inbox envelope by event id (e.g. after the operator acts on it). */
   dismissInboxEnvelope: (eventId: string) => void;
+  /**
+   * Current Mycelium-transport relay status snapshot. Null when the
+   * operator has not opted into the network — UI uses this to render
+   * a live indicator that hides entirely when Mycelium is off.
+   */
+  relayStatus: readonly RelayStatus[] | null;
   /**
    * Encrypt an envelope to a peer's x-only pubkey, publish it through
    * the Mycelium transport, and wait for relay acks. Resolves with a

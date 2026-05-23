@@ -55,6 +55,15 @@ class FakeTransport implements Transport {
   close(): void {
     this.subs.clear();
   }
+
+  relayStatus() {
+    return [{ url: 'fake://local', open: true }];
+  }
+
+  subscribeStatus(handler: (s: readonly { url: string; open: boolean }[]) => void): () => void {
+    handler(this.relayStatus());
+    return () => {};
+  }
 }
 
 function matches(filter: TransportFilter, event: TransportEvent): boolean {

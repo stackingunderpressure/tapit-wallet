@@ -38,6 +38,18 @@ export interface PublishResult {
   pending: string[];
 }
 
+/**
+ * Per-relay connection status. `open` is true while the WebSocket is
+ * connected and ready to send/receive; false otherwise (connecting,
+ * disconnected, or reconnecting via backoff).
+ */
+export interface RelayStatus {
+  url: string;
+  open: boolean;
+}
+
+export type RelayStatusHandler = (statuses: readonly RelayStatus[]) => void;
+
 export interface Transport {
   /**
    * Broadcast one signed event to every relay and wait for OK acks
@@ -62,4 +74,20 @@ export interface Transport {
    * is unusable after this. Idempotent.
    */
   close(): void;
+
+  /**
+   * Snapshot of every configured relay's current open state. Cheap to
+   * call — implementations return a fresh array without doing I/O. The
+   * caller treats the array as immutable.
+   */
+  relayStatus(): readonly RelayStatus[];
+
+  /**
+   * Subscribe to relay-status changes. The handler fires every time
+   * any relay transitions between open and closed, with a fresh
+   * snapshot of all relays. Returns an unsubscribe function.
+   * Implementations call the handler on subscribe with the current
+   * snapshot so UI initializes correctly.
+   */
+  subscribeStatus(handler: RelayStatusHandler): () => void;
 }

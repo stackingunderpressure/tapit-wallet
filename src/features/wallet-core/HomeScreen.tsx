@@ -10,6 +10,7 @@ import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
+import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { ConnectionCard } from '../connections/ConnectionCard.tsx';
 import { isHandshake } from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
@@ -119,6 +120,7 @@ export function HomeScreen() {
     anchorWorker,
     inboxEnvelopes,
     dismissInboxEnvelope,
+    relayStatus,
     save,
     refresh,
   } = useWallet();
@@ -297,15 +299,18 @@ export function HomeScreen() {
 
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto pb-24">
-      <header className="flex items-center justify-between py-2">
+      <header className="flex items-center justify-between py-2 gap-2">
         <h1 className="text-lg font-semibold">Tapit Wallet</h1>
-        <Link
-          to="/settings"
-          className="text-sm text-muted hover:text-ink"
-          aria-label="Settings"
-        >
-          Settings
-        </Link>
+        <div className="flex items-center gap-2">
+          <NostrIndicator status={relayStatus} />
+          <Link
+            to="/settings"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="Settings"
+          >
+            Settings
+          </Link>
+        </div>
       </header>
 
       {/* Backup health sits above the tabs — a warning must never be

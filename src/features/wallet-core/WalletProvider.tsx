@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
-import type { Transport } from '../transport/transport.ts';
+import type { RelayStatus, Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
@@ -63,10 +63,18 @@ export function WalletProvider({ children }: Props) {
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
+  // Mycelium transport relay-status snapshot. Null when the operator
+  // has not opted into the network — UI uses this to hide the live
+  // indicator entirely for non-Mycelium users. Subscribed from the
+  // transport effect below; reset to null on tear-down.
+  const [relayStatus, setRelayStatus] = useState<readonly RelayStatus[] | null>(null);
   // Holds the live transport so sendEnvelope can reach it from outside
   // the effect. Cleared on lock/disable; never observable when the
   // Mycelium preference is off.
   const transportRef = useRef<Transport | null>(null);
+  // Holds the relay-status unsubscribe so the effect cleanup can call
+  // it before closing the transport.
+  const statusUnsubRef = useRef<(() => void) | null>(null);
   // Stable content-keyed string for the relay list so the transport
   // effect re-runs when the list content changes (not its reference).
   const relaysKey = useMemo(
@@ -163,12 +171,25 @@ export function WalletProvider({ children }: Props) {
         },
       });
       transportRef.current = conn.transport;
+      // Subscribe to relay-status changes so the header indicator
+      // tracks the live WebSocket state. Initial snapshot fires
+      // synchronously inside subscribeStatus per the Transport
+      // contract.
+      const unsubStatus = conn.transport.subscribeStatus((statuses) => {
+        setRelayStatus(statuses);
+      });
+      statusUnsubRef.current = unsubStatus;
     });
     return () => {
       cancelled = true;
+      if (statusUnsubRef.current) {
+        statusUnsubRef.current();
+        statusUnsubRef.current = null;
+      }
       if (conn) conn.close();
       transportRef.current = null;
       setInboxEnvelopes([]);
+      setRelayStatus(null);
     };
     // relaysKey is a stable string derived from prefs.nostrRelays;
     // re-runs only when the content changes (not the reference).
@@ -403,6 +424,7 @@ export function WalletProvider({ children }: Props) {
       anchorWorker,
       inboxEnvelopes,
       dismissInboxEnvelope,
+      relayStatus,
       sendEnvelope,
       syncEnvelope,
       save,
@@ -421,6 +443,7 @@ export function WalletProvider({ children }: Props) {
     passphrase,
     inboxEnvelopes,
     dismissInboxEnvelope,
+    relayStatus,
     sendEnvelope,
     syncEnvelope,
   ]);
