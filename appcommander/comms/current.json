@@ -1,62 +1,50 @@
 {
   "v": 1,
-  "ts": "2026-05-24T16:20:00Z",
-  "session_id": "phase-5e-substrate-and-responder-2026-05-24-1779634800",
+  "ts": "2026-05-23T16:55:00Z",
+  "session_id": "phase-5e-v-vii-ceremony-initiator-2026-05-23-1779553924",
   "who": { "actor": "carpenter", "feature_slug": "recovery" },
   "where": {
     "files": [
       "tapit-attest/src/core/encryption.ts",
       "tapit-attest/src/core/wallet.ts",
+      "tapit-attest/test/encryption-recoverable.test.mjs",
       "tapit-attest/test/wallet-recoverable.test.mjs",
-      "src/features/storage/localStore.ts",
-      "src/features/storage/walletStore.ts",
-      "src/features/storage/remoteStore.ts",
-      "src/features/wallet-core/createWallet.ts",
-      "src/features/wallet-core/unlockWallet.ts",
-      "src/features/wallet-core/saveWallet.ts",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/recovery/createShares.ts",
-      "src/features/recovery/createShares.test.ts",
-      "src/features/recovery/DistributeSharesModal.tsx",
-      "src/features/recovery/CohortEditorModal.tsx",
-      "src/features/recovery/createRecoveryRequest.ts",
-      "src/features/recovery/createRecoveryRequest.test.ts",
-      "src/features/recovery/RecoveryResponderModal.tsx",
+      "src/features/recovery/RecoveryInitiatorModal.tsx",
+      "src/features/recovery/createCohort.ts",
+      "src/features/recovery/createCohort.test.ts",
       "src/features/recovery/manifest.ts",
-      "src/features/transport/InboxPanel.tsx",
+      "src/features/wallet-core/UnlockPrompt.tsx",
+      "src/features/wallet-core/WalletProvider.tsx",
       "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "Settings → Recovery cohort → Distribute shares; HomeScreen People tab → inbox → Help recover (responder modal)"
+    "screen_path": "Locked screen → 'Lost passphrase? Start recovery' → RecoveryInitiatorModal → (configuring → sending → awaiting → combining → restoring → naming → saving → done) → unlocked"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "Five substantial cuts toward the Phase 5e recovery ceremony, stopping at a clean checkpoint before the initiator side (5e-v) + locked-screen wiring + combine + recovery-succession event (5e-vii). The math is proven end-to-end and the responder half of the ceremony is fully implemented. Cut 1 (8ea9393): storage migration to v2 with K_data reuse — the load-bearing K_data-stable property across saves. Cut 2 (806c45e): recovery-share builders — createShares.ts with NIP-44 wrap-to-peer. Cut 3 (71c9dc6): distribute + receive routing — DistributeSharesModal + inbox routing. Cut 4 (commit between 71c9dc6 and 1b089a5): envelope helpers for both ceremony directions plus an end-to-end round-trip test that walks the full ceremony in-process (operator encrypts blob, extracts K_data, builds shares, peers hold them, OPERATOR'S KEYPAIR IS FORGOTTEN, new ceremony Wallet builds recovery-request, three of five peers respond, ceremony combines and decryptRecoverableWithKData decrypts the original plaintext back). Cut 5 (1b089a5): RecoveryResponderModal — strict out-of-band verification gating per brief decision 5; finds held share matching subject + share_for; builds + sends share-response via existing transport. D-03 stays loud across all five cuts.",
+  "summary": "Three cuts shipping Phase 5e-v end-to-end through the initiator side. Cut 1 (57bd569): new tapit-attest library primitive encryptRecoverableWithKData (plus Wallet.exportRecoverableWithKData) for the post-recovery save seam where the operator has K_data from cohort shares and picks a new passphrase but has no old passphrase; 8 new tests including the cascade-survives-recovery invariant. Cut 2 (fa55c57): RecoveryInitiatorModal with the full new-device choreography — fresh ceremony Wallet on mount, ephemeral NostrTransport via connectWallet (dynamic import keeps WS client out of lock-screen bundle), 9-phase state machine from configuring through done, per-peer progress surface, decryptShareResponse, combineShares once threshold met, Wallet.restoreFromKData against the cloud blob, exportRecoverableWithKData + walletStore.save under new passphrase, onRecovered callback into WalletProvider's unlocked phase; UnlockPrompt + WalletProvider wired with the entry point and the prop drill. Cut 3 (8547175): latent threshold-leaf bug fix — publishCohort now writes threshold + total_shares as strings (matching createShares.ts), readCohort uses a new readNumberLeaf helper that handles both conventions for backwards-compat with already-anchored cohorts; 3 regression tests. The slime is real in code end-to-end through the initiator side; the peer-witnessed recovery-succession event (5e-vii) remains for a fresh session.",
   "why": {
-    "text": "Operator: 'Cont' — continue from the prior session's substrate cuts. Five cuts shipped this session total; the responder side is implemented end-to-end, the math is proven end-to-end via the round-trip test. Stopping before the initiator side because that work (ephemeral transport for the ceremony keypair, locked-screen wiring, multi-round state machine, combine + restore + succession event with M co-signatures) is genuinely heavy enough to warrant a clean dedicated session.",
+    "text": "Operator: 'fire up align and cut if it's clear' → 'the big ceremony signing of the slime, they saved it dedicated just for you' → (mid-session lag-correction redirect) → 'continue cutting last message was a lag'. The session was named for the recovery ceremony's heaviest single remaining piece — the new-device initiator side. Substrate plus the responder half shipped last session at 1b089a5; this session ships the initiator plus the locked-screen wiring plus the combine-and-restore choreography plus the save-under-new-passphrase transition, end-to-end. Phase 5e-v fully delivered.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5E-SUBSTRATE-AND-RESPONDER"
+    "linked_mission_id": "TAPITWALLET-2026-05-23-PHASE-5E-V-CEREMONY-INITIATOR"
   },
   "outcome": {
     "files_changed": [
-      "Cut 1 (8ea9393): tapit-attest encryption.ts/wallet.ts + storage layer + wallet-core unlock/save paths. 2 new tapit-attest tests.",
-      "Cut 2 (806c45e): src/features/recovery/createShares.ts + createShares.test.ts. 2 new wallet tests.",
-      "Cut 3 (71c9dc6): src/features/recovery/DistributeSharesModal.tsx + inbox routing + HomeScreen handler.",
-      "Cut 4: src/features/recovery/createRecoveryRequest.ts + createRecoveryRequest.test.ts. 2 new wallet tests including the full end-to-end ceremony round-trip.",
-      "Cut 5 (1b089a5): src/features/recovery/RecoveryResponderModal.tsx + InboxPanel route + HomeScreen handler + bundle budget."
+      "Cut 1 (57bd569): tapit-attest encryption.ts gains encryptRecoverableWithKData, wallet.ts gains exportRecoverableWithKData, both test files gain 8 tests (6 encryption + 2 wallet).",
+      "Cut 2 (fa55c57): new RecoveryInitiatorModal.tsx (522 lines), UnlockPrompt.tsx adds entry point + props, WalletProvider.tsx adds onRecovered, manifest.ts updated, bundle-budget.mjs gains RecoveryInitiatorModal-*.js budget.",
+      "Cut 3 (8547175): createCohort.ts publishes strings + reads via new readNumberLeaf helper, createCohort.test.ts gains 3 regression tests, manifest.ts updated."
     ],
-    "tests_passing": "tapit-attest 146 total (142 pass + 4 skipped network); wallet 40/40 (4 new tests this session including end-to-end ceremony round-trip). typecheck, lint, build all green at every commit.",
+    "tests_passing": "tapit-attest 154 total (150 pass + 4 skipped network; 8 new this session); wallet 43/43 (3 new this session). typecheck, lint, build all green at every commit.",
     "build_green": true,
-    "notes": "[P-001] Storage migration is backwards-compatible; K_data stays stable across saves so distributed shares stay valid forever. [P-002] The end-to-end round-trip test in createRecoveryRequest.test.ts walks the full ceremony in-process — proves the math half before any UI ships. [P-003] Responder modal is fully shipped with strict out-of-band verification gating. [P-004] Initiator side (5e-v), locked-screen wiring, combine + restore, and recovery-succession event (5e-vii) remain for the fresh session. [P-005] The latent threshold-leaf bug in createCohort.readCohort (numeric leaf read via leafValue returns 0; default-fallback masks it) is still flagged as a small follow-on cut. [FEEDBACK→Foreman]: the initiator side requires ephemeral NostrTransport for the ceremony keypair (which has no Supabase session) — the cleanest architecture is to instantiate NostrTransport with the ceremony Wallet's keypair and current relays from prefs, live for the duration of the modal. Worth pre-noting in the brief or as a doctrine decision before the next session cuts the locked-screen wiring."
+    "notes": "[P-001] encryptRecoverableWithKData fills the gap between encryptRecoverable (fresh K_data) and reencryptRecoverableReuseKData (needs old passphrase) — the new save-side seam for the post-recovery flow. [P-002] RecoveryInitiatorModal owns the ephemeral transport lifecycle and the ceremony keypair, neither persists across modal close. [P-003] Cohort threshold now survives editor reopen — was silently resetting to 3 on every read due to the numeric-leaf-via-leafValue trap. [P-004] Phase 5e-vii peer-witnessed recovery-succession event is the last remaining Phase 5e piece and is its own multi-modal flow — flagged in handoff for fresh session. [P-005] Wallet-side K_data-stable invariant test would require fake-indexeddb or vi.mock; library coverage is the practical floor for now. [FEEDBACK→Foreman]: the lag-correction roundtrip cost ~30 min of session time on a deferral-handoff that got rewritten back; tighter 'first message wins' on lag would protect momentum, though probably not doctrine-changeable since lag is lag."
   },
-  "confidence": 92,
-  "uncertainty": "All five cuts are tested via unit tests and the end-to-end ceremony round-trip is proven in-process. The UI choreography of the responder modal is browser-untested; the strict verification gating language deserves a real-device walk before the ceremony first runs in anger. The bigger uncertainty is the initiator side: the ephemeral transport question, the locked-screen entry point, the combine + restore + succession choreography — all multi-round protocol-state-machine work for the next session.",
+  "confidence": 90,
+  "uncertainty": "All three cuts are gate-green and tested at unit + library level. The biggest open uncertainty is the modal's UI choreography which has only been vitest-built, not browser-walked. The state machine handles errors with explicit transitions back to configuring, the form validation is in place, the new-passphrase prompt enforces 8-char minimum + match — but the real validation is a peer-pretending-to-respond walk on real Mycelium relays, and that's the wife-test still pending. Smaller uncertainty: the sequential publish loop in beginSending may feel slow with high-latency relays; honest design choice for cleaner per-peer status updates but worth revisiting after the real-device walk.",
   "ripple": [
-    "tapit-attest — encryption.ts + wallet.ts gained Phase 5e methods + 2 tests",
-    "storage — AnyEncryptedBlob union flows through three files",
-    "wallet-core — createWallet/unlockWallet/saveWallet dispatch on v; HomeScreen routes two new recovery actions",
-    "recovery — five new files this session (createShares.ts, createShares.test.ts, DistributeSharesModal.tsx, createRecoveryRequest.ts, createRecoveryRequest.test.ts, RecoveryResponderModal.tsx); CohortEditorModal grows Distribute button",
-    "transport — InboxPanel routes two new recovery actions"
+    "tapit-attest — encryption.ts + wallet.ts gained the new save-side primitive + method + 8 tests",
+    "wallet-core — UnlockPrompt accepts ownerId/storedBlob/relays/onRecovered props; WalletProvider drills them down + adds onRecovered callback that lands into the unlocked phase",
+    "recovery — new RecoveryInitiatorModal.tsx (the full ceremony state machine); createCohort.ts fixed for the threshold-leaf bug; createCohort.test.ts added",
+    "scripts/bundle-budget.mjs — named budget for the new modal chunk"
   ],
-  "next": "Initiator side. Phase 5e-v + locked-screen wiring + combine + 5e-vii recovery-succession event. The initiator generates a ceremony Wallet on the new device, instantiates an ephemeral NostrTransport tied to the ceremony pubkey, lets the operator enter their old identity pubkey plus cohort member pubkeys (because the new device has no local cohort credential), sends recovery-request envelopes to each, listens for share-response envelopes on the ceremony pubkey's subscription, combines M responses via combineShares once they arrive, decrypts the cloud blob via Wallet.restoreFromKData, builds a recovery-succession meta-kind attestation, and walks M peers through co-signing it. On success, the operator picks a new passphrase and the restored wallet saves under v2 with a fresh K_data. The lock-screen entry point in UnlockPrompt adds a 'Lost passphrase? Start recovery' link that opens RecoveryInitiatorModal.",
+  "next": "Phase 5e-vii — the peer-witnessed recovery-succession event. Two new envelope shapes parallel to recovery-request/share-response (cosign-request + cosign-response), a RecoverySuccessionModal that opens after onRecovered lands and walks M peers through co-signing a meta-kind attestation asserting the recovery happened. Recommendation in handoff: Mycelium-pushed via the ephemeral-transport pattern Cut 2 established, since the cohort's pubkeys are known to the restored wallet. Fresh session per the heaviest-remaining-piece convention.",
   "signals": ["pulse"]
 }

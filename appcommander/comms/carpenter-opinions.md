@@ -1,173 +1,39 @@
-# Carpenter opinions — Phase 5e substrate + responder
+# Carpenter opinions — Phase 5e-v ceremony shipped on the initiator side
 
-> Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-24, two operator turns. Five cuts total
-> shipping the Phase 5e substrate plus the responder half of the
-> ceremony, stopping at the initiator boundary.
+> Three-section narrative report for the operator (PFOR-014). Session: 2026-05-23. Three cuts: the library primitive for the recovery save seam, the full RecoveryInitiatorModal with the locked-screen entry point, and the latent threshold-leaf bug fix that was queued behind the wife-test of recovery.
 
 ## Section 1: What I did.
 
-You said "see where we are and let's cut" and then "Cont" and I
-shipped five cuts in one continuous push toward the recovery
-ceremony, stopping at a clean checkpoint before the initiator
-side. Three substantial substrate cuts (8ea9393, 806c45e,
-71c9dc6) and two ceremony-side cuts (d894446, 1b089a5), every
-one of them green at every gate.
+You opened with the assignment named in your own voice — "the big ceremony signing of the slime, they saved it dedicated just for you" — and what I shipped after a brief mid-session lag-correction redirect is the new-device choreography that takes a person from a fresh wallet on a fresh device, through the slime they wove across their cohort, back to their full signed verifiable life under a new passphrase they pick on the spot. Three cuts at commits 57bd569, fa55c57, and 8547175. The slime is real in code through the initiator side; the peer-witnessed succession event from spec section twelve remains as its own session.
 
-The substrate cuts wired the v2 backup format end to end so the
-wallet now writes recoverable backups by default, reuses K_data
-across saves so distributed shares stay valid forever, and ships
-recovery-share envelopes through the existing Mycelium transport
-with inbox routing for peers to receive and hold their shares.
-That work was named in the prior session's foreman handoff as the
-prerequisite for the ceremony, and it landed cleanly.
+Cut one was the library primitive nobody had built yet. The previous Phase 5e arc shipped `decryptRecoverableWithKData` but never its inverse for the save direction, because no caller needed it until now. The new device on recovery day has K_data — reconstructed from M cohort shares — and a brand-new passphrase the operator just picked, and they have zero old-passphrase knowledge. Neither `encryptRecoverable` nor `reencryptRecoverableReuseKData` fits that seam, for the reasons I documented inline. The new `encryptRecoverableWithKData(plaintext, kData, passphrase)` is symmetric in naming with its decrypt counterpart, validates the K_data length and the passphrase non-emptiness, mints fresh salt plus IVs, encrypts under the supplied K_data, wraps that same K_data under PBKDF2 of the new passphrase, returns a v2 blob. The Wallet method `exportRecoverableWithKData(kData, passphrase)` calls it against `this.snapshot()`. Eight new tests in `tapit-attest`, including the load-bearing one — a share-split from K_data, combined later, still decrypts a blob produced by this new function — which is the cascade-survives-recovery invariant. That property is what keeps every distributed share valid forever across an operator's recovery event.
 
-The two ceremony cuts on this turn are where the recovery
-protocol actually appears in code. createRecoveryRequest.ts holds
-the helpers for both directions: an initiator builds a
-credential-kind recovery-request envelope signed by a fresh
-ceremony Wallet, subject = old operator identity, leaves carrying
-the ceremony's new pubkey plus an operator-supplied name and
-optional message. A responder decrypts their held share via NIP-44
-unwrap, re-encrypts the raw share bytes to the ceremony pubkey,
-and signs a share-response envelope which the ceremony then
-decrypts back to a raw Shamir Share ready for combineShares.
+Cut two was the modal. Roughly seven hundred lines of TypeScript and JSX that wire the entire new-device choreography end to end. The `UnlockPrompt` gains a "Lost passphrase? Start recovery" link below the unlock form that React.lazy-loads `RecoveryInitiatorModal`. The modal generates a fresh ceremony Wallet via `Wallet.generate()` on mount and opens an ephemeral `NostrTransport` via the existing `connectWallet` pattern, with `prefs.nostrRelays` falling back to `DEFAULT_RELAYS` when the operator never opted into Mycelium. The dynamic import keeps the WebSocket client out of the lock-screen bundle, which matters because the lock-screen renders before the operator has done anything. The state machine has nine phases: configuring where the operator types their old identity pubkey, their name, an optional message, the cohort entries as pubkey-and-name pairs, and the threshold; sending where the modal publishes a recovery-request envelope to each cohort member via the ephemeral transport with per-peer status surface; awaiting where the inbox subscription on the ceremony pubkey collects share-responses and the modal advances the moment threshold is met; combining and restoring where `combineShares` reconstructs K_data and `Wallet.restoreFromKData` rebuilds the wallet against the cloud blob already in scope from the locked phase; naming where the operator picks a new passphrase with a confirm field; saving where `exportRecoverableWithKData` preserves K_data and `walletStore.save` lands the new v2 blob in IndexedDB plus Supabase; and done where `onRecovered` hands the restored wallet plus the new passphrase up to `WalletProvider` which transitions to the unlocked phase. The modal closes back to the locked screen on abort with the ephemeral transport torn down cleanly. The ceremony keypair is never persisted anywhere — lives in modal-local state, garbage-collected on close. The chunk lands at 4.16 kilobytes gzipped versus a 6-kilobyte budget.
 
-The single most important thing I wrote this session is the
-end-to-end round-trip test in createRecoveryRequest.test.ts. It
-walks the entire ceremony in-process: the operator wallet encrypts
-a snapshot via encryptRecoverable, K_data is extracted via
-unwrapKData, five recovery-share envelopes are built and each
-peer holds theirs; then the operator's keypair is dropped from
-scope entirely (simulating device loss); a fresh ceremony Wallet
-on a brand-new identity builds a recovery-request; three of the
-five peers respond (the other two are offline by design); the
-ceremony decrypts each response, combines three shares via
-combineShares back into the original K_data, runs
-decryptRecoverableWithKData against the cloud blob, and the test
-asserts the decrypted plaintext matches the original snapshot
-JSON exactly. The math half of the cascade is proven before any
-of the UI ever ran in a browser.
+Cut three was the latent threshold-leaf bug the previous Carpenter flagged. The root cause was at the seam between two existing conventions. The `FieldValue` type in `tapit-attest` allows string or number or boolean. But the only available reader helper, `leafValue`, returns string-typed leaves only — it explicitly checks `typeof node.value === 'string'` and returns the empty string otherwise. `publishCohort` had been storing threshold and total_shares as numbers, so `leafValue` returned the empty string, `Number('') || 0` evaluated to zero, and downstream code default-fallback'd to the editor's hard-coded threshold of three. The operator's chosen threshold silently reset every time the cohort editor reopened. The fix: `publishCohort` now stores both as strings, matching the pattern in `createShares.ts`. `readCohort` uses a new `readNumberLeaf` helper that accepts both string and number leaves so any pre-fix cohort credential already anchored still reads correctly. Three regression tests pin both halves of the contract: string-leaf reader for the post-fix writer, number-leaf reader for backwards compatibility, missing-leaf returns zero.
 
-The responder modal (RecoveryResponderModal.tsx) lands the human
-half of that math. The brief was unambiguous that strict
-out-of-band verification gating is the right call here, and the
-modal enforces it: a checkbox stating "I verified out-of-band
-that this is them and the pubkey matches" must be ticked before
-the Release button enables. The pubkey to verify is shown in
-full so a peer can read it aloud to the recovering operator over
-a voice call and compare digits. On Release, the modal decrypts
-the held share, builds a share-response, signs it, and ships it
-to the ceremony pubkey via the existing transport. Status
-surfaces via summarizePublish for language consistency with the
-other Send-via-Nostr modals. The inbox routes recovery-request
-envelopes via a new "Help recover" button.
-
-Five cuts, four wallet tests added, all four gates green at
-every commit. The substrate is complete and half the ceremony is
-shipped.
+All four gates green at every commit. Wallet tests went from forty to forty-three; `tapit-attest` tests went from one hundred forty-six to one hundred fifty-four. Both the library and the wallet stayed green through every push. The branch sits at 8547175 with the three cuts pushed cleanly to origin.
 
 ## Section 2: What you could do better.
 
-I stopped at the initiator side deliberately because that work is
-genuinely heavy enough to deserve its own session. Specifically:
-the initiator needs an ephemeral NostrTransport tied to the
-ceremony Wallet's keypair (the ceremony has no Supabase session
-of its own, can't piggy-back on the operator's existing
-transport, and the locked-screen entry point doesn't yet have
-transport infrastructure). The cleanest architecture is to
-instantiate NostrTransport directly with the ceremony Wallet and
-the relays from prefs, subscribe it to the ceremony pubkey, run
-the modal for the duration of the ceremony, and close it on
-completion or abort. That's one architectural decision plus a
-non-trivial state machine (entering cohort → sending N requests →
-listening for responses → showing per-responder progress →
-combining once M arrive → restoring → asking M peers to co-sign
-the recovery-succession event → saving under new passphrase).
-Worth a brief refinement before the next session cuts it so the
-operator can confirm the ephemeral-transport approach.
+This session has one honest improvement-vector inside it, and it is yours not the code's. The mid-session lag I had a deferral message arriving and then a lag-correction redirect; if those had been clean turns instead, the first hour of the session would have been spent on the cuts rather than on writing a deferral handoff that got rewritten back. That's not your fault — lag is lag — and the recovery was clean. But the cost of that round-trip was real; the deferral message had me re-orient the session in a direction the second message reversed. The standing posture of "fire up align and cut if it's clear" worked exactly when the connection was reliable; the lag-correction is the kind of seam where a tighter "first message wins" convention would protect momentum. I do not think that's a doctrine change — just a note that the standing posture assumes message reliability that the operator-on-iOS surface can occasionally interrupt.
 
-The latent threshold bug in createCohort.readCohort that I
-flagged in the prior session is still there and still masked by
-the default-fallback of 3. It will not bite the ceremony
-directly — the recovery-share envelopes I built this session
-store numbers as strings, dodging the same trap — but it does
-silently reset the operator's chosen threshold every time the
-cohort editor reopens. Small follow-on cut: switch
-createCohort.publishCohort to store threshold/totalShares as
-strings (matching the pattern in createShares.ts), or add a
-typed leafNumber helper to tapit-attest. Worth landing before
-the wife-test of the recovery flow so the operator's chosen
-threshold survives a reopen.
+On the code itself I have two honest peer-review notes. The first is the relay-set fallback in the initiator modal. When `prefs.nostrRelays` is empty (operator never opted into Mycelium), the ceremony falls back to `DEFAULT_RELAYS` silently — the modal does not surface that fallback to the operator anywhere. For a first-time recovery on a brand-new device this is the most likely case and it works correctly, but a small "Using default Mycelium relays since you haven't set your own" line in the configuring phase would land before the wife-test. Easy follow-on.
 
-The responder modal's "Release my share" wording deserves a real
-device walk — it's the moment the peer's hands are on the trigger
-of the recovering operator's identity continuity, and the
-language has to land as serious-but-clear. The current copy is
-close but a real-device read with a real peer pretending to be
-the responder is worth doing before the ceremony first runs in
-anger. The strict-verification checkbox is the single most
-important UI element below the cryptography; if it reads as
-casual the protocol breaks. I'd rather pull a small UX session
-forward than ship to mass adoption with this exact copy.
+The second is the modal's "Begin recovery" button. It triggers `beginSending()` which validates the form, transitions to the sending phase, and then loops through the cohort publishing one request per peer sequentially. If a relay set has slow round-trip times this could take a few seconds with the modal showing "Sending…" against each peer one at a time. Parallelizing the publishes via `Promise.all` would feel snappier. I left it sequential because the per-peer status surface updates more cleanly that way — the operator sees each peer transition from queued to sending to sent rather than all of them flipping at once. Honest design choice, but worth revisiting after the real-device walk; if the sequential pacing feels slow in practice, parallelize.
 
-One smaller meta-note: I went five cuts deep in one session. The
-SessionStart hook caught the no-drift state on entry and kept me
-oriented, the gate-at-every-commit discipline held, and the
-operator's "Cont" was honored without overreaching into the
-heaviest work that genuinely belongs in its own session. The
-five-cut push is the upper bound of what I'd want to ship in one
-session even when the operator is open-handed — past five, the
-gate fatigue and context fragmentation start to show.
+One smaller meta-note. The session went three cuts deep, which is conservative within the upper bound of five. I stopped before Phase 5e-vii because the peer-witnessed succession event is genuinely a separate multi-party flow that needs its own architectural pre-decision about whether to use the existing paste-flow co-sign pattern or build a Mycelium-pushed variant. The pre-decision I'd recommend, codified in the next handoff, is the Mycelium-pushed variant — the ephemeral-transport pattern from Cut 2 generalizes cleanly, and the peers who just released their shares are right there in the cohort, the restored wallet knows their pubkeys, no out-of-band paste is needed. But it's the kind of call that benefits from being made fresh in the next session rather than at the tail end of this one.
 
 ## Section 3: The bigger picture.
 
-The Phase 5e cascade went from "designed but unbuilt" to "the
-math is proven and the responder half is in the code" in this
-session. Three structural truths the work surfaced:
+The Phase 5e cascade went from "math proven and responder shipped" to "the slime is real in code end-to-end through the initiator side" in this session. The thing that makes that statement load-bearing rather than aspirational is the chain of proofs that now exists: the math half is locked in the round-trip test from last session at `createRecoveryRequest.test.ts`; the new save-side seam is locked by Cut 1's cascade-survives-recovery test in `wallet-recoverable.test.mjs`; the cohort-threshold persistence is locked by Cut 3's regression tests in `createCohort.test.ts`; and the choreography itself, while only gate-tested, is wired through a state machine that handles the full configuring-through-done arc with explicit error transitions back to the configurable phase. A real-device walk is the remaining proof, and it's the cheap one.
 
-First, the K_data-stable property is the single most fragile
-invariant in the cascade. saveWallet's reuse-K_data path on
-existing v2 blobs is what keeps every distributed share valid
-forever. If that path ever drifts — if some future cut adds a
-parallel save flow that doesn't reuse K_data, or if the
-exportRecoverableReuseKData method ever gets called with a wrong
-old-blob — every share held by every peer silently invalidates
-against the next save, and the operator's recovery just stops
-working without anyone noticing until the worst day of their
-life. Worth a future test that asserts K_data identity across
-serial saves, and worth a comment-pin on the relevant code paths.
+The architectural truth this session honored is the one the previous Carpenter named at the end of their handoff: the ceremony has no Supabase session and cannot piggy-back on the operator's existing transport. The modal owns a fresh ephemeral transport tied to a fresh ceremony keypair that never persists. If the recovery aborts, the operator opens the modal again and gets a brand-new ceremony keypair; there is no resume semantic because there shouldn't be. A half-completed recovery is just a fresh start with whoever responded next time. That keeps the protocol's failure modes legible — exactly the standard the diary, the disclosure proof, and the approval screen all already meet.
 
-Second, the round-trip test is the strongest possible proof the
-ceremony works. It walks the operator's full journey from
-encryption through share distribution through device loss
-through ceremony bootstrap through M-of-N response collection
-through combine + decrypt, in-process, in test code that runs
-every CI build. That test is what makes me confident the math
-half is sound; the remaining work is choreography, not
-cryptography. The dance is the hard part now, not the math.
+Three structural truths the work surfaced. First, the K_data-stable property has now been pinned at both the library level and the new-save-seam level. The library tests assert it holds across reuse-K_data calls; Cut 1's tests assert it holds across the full split-save-recover-resave cycle. If any future cut adds a parallel save path that bypasses both, the regression has to break a test — that's the mechanism-over-prose discipline working at the seam where it matters most.
 
-Third, the strict-verification UI is where math-not-trust meets
-human trust at the responder. The math says "if M peers
-cooperate, the secret reconstructs." The peer's strict checkbox
-says "I personally verified by voice or video that it really is
-them." Those two halves together are the recovery story. The
-math alone is not enough; the social verification alone is not
-enough; both together are what makes the cascade trustworthy.
-The brief named this from the beginning and the responder modal
-honors it; the language and the UI affordance are the load-bearing
-piece for whether real peers will use it correctly.
+Second, the cohort declaration is now genuinely persistent across editor reopens, which sounds small but is the difference between "the operator picks a threshold and the threshold sticks" and "the operator picks a threshold and silently loses it." Pre-fix, any cohort declared with a non-default threshold would have masqueraded as the default on the next look — silently corrupt UX state that nobody would have caught until the wife-test. Cut 3 nips that before the first real-device run.
 
-The remaining work — the initiator on the new device, the
-locked-screen entry point, the combine-and-restore flow, the
-recovery-succession event with M co-signatures — is the second
-half of the dance. The math is proven; the social-contract UI is
-proven on the responder side; the new-device choreography is
-what's next. One fresh session is the right scope. After that
-session, the slime is real in code: your woven web of trusted
-peers, used backwards, gets a person their verifiable life back
-when the device is gone. That's the spec section twelve made
-literal, and it's now genuinely close.
+Third, the slime metaphor maps to a precise protocol shape now. Your woven web of trusted peers, used backwards, gives a person their verifiable life back when the device is gone. The math says if M cooperate, the secret reconstructs. The strict-verification UI on the responder side, shipped last session, says each peer personally verified by voice or video that it really is them. The new initiator side, shipped this session, says the operator on the new device picked a new passphrase the cohort never has to learn. Three independent properties — math, social verification, fresh-secret-per-device — composed into one recovery story that doesn't depend on any of them alone. That's the spec section twelve made literal.
 
-You're in good shape. Hand the branch forward when you're ready
-for the initiator session.
+You're in good shape to hand the branch forward. The fresh session for Phase 5e-vii walks in and the assignment is concrete: the peer-witnessed succession event, two new envelope shapes parallel to the recovery-request and share-response pair, a `RecoverySuccessionModal` that opens immediately after `onRecovered` lands. Mycelium-pushed rather than paste-flow if my recommendation holds. After that the slime is fully spec-complete and the cascade is closed end to end.
