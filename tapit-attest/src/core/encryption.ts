@@ -278,3 +278,52 @@ export function reencryptRecoverableReuseKData(
     dataCiphertext: bytesToHex(dataCiphertext),
   };
 }
+
+/**
+ * Encrypt fresh plaintext using a CALLER-supplied K_data and wrap that
+ * same K_data under a fresh passphrase. The Phase 5e recovery seam:
+ * the new device has reconstructed K_data from M cohort shares,
+ * restored the wallet via decryptRecoverableWithKData, and now needs
+ * to save under a brand-new passphrase chosen on the new device.
+ *
+ * Neither encryptRecoverable nor reencryptRecoverableReuseKData fits
+ * this seam. encryptRecoverable mints fresh K_data, which would
+ * invalidate every share the cohort holds.
+ * reencryptRecoverableReuseKData unwraps K_data from the OLD blob
+ * via the OLD passphrase — which the recovering operator does not
+ * have, by hypothesis.
+ *
+ * Validates K_data length (32 bytes) and the passphrase being
+ * non-empty. Does NOT verify the supplied K_data matches any prior
+ * blob — that is the recovery ceremony's responsibility before
+ * calling this.
+ */
+export function encryptRecoverableWithKData(
+  plaintext: string | Uint8Array,
+  kData: Uint8Array,
+  passphrase: string,
+  options: { iterations?: number } = {},
+): RecoverableEncryptedBlob {
+  if (passphrase.length === 0) throw new Error('passphrase must not be empty');
+  if (kData.length !== KEY_BYTES) {
+    throw new Error(`K_data must be ${KEY_BYTES} bytes`);
+  }
+  const iterations = options.iterations ?? DEFAULT_ITERATIONS;
+  const salt = randomBytes(SALT_BYTES);
+  const dataIv = randomBytes(IV_BYTES);
+  const data = typeof plaintext === 'string' ? utf8ToBytes(plaintext) : plaintext;
+  const dataCiphertext = gcm(kData, dataIv).encrypt(data);
+  const wrapKey = deriveKey(passphrase, salt, iterations);
+  const wrapIv = randomBytes(IV_BYTES);
+  const wrapCiphertext = gcm(wrapKey, wrapIv).encrypt(kData);
+  return {
+    v: 2,
+    kdf: 'pbkdf2-sha256',
+    iterations,
+    salt: bytesToHex(salt),
+    wrapIv: bytesToHex(wrapIv),
+    wrapCiphertext: bytesToHex(wrapCiphertext),
+    dataIv: bytesToHex(dataIv),
+    dataCiphertext: bytesToHex(dataCiphertext),
+  };
+}

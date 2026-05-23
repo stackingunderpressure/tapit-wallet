@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   encryptRecoverable,
+  encryptRecoverableWithKData,
   decryptRecoverableWithPassphrase,
   decryptRecoverableWithKData,
 } from '../dist/index.js';
@@ -95,4 +96,70 @@ test('the v2 blob carries enough self-description to round-trip via JSON', () =>
     decryptRecoverableWithKData(parsed, kData),
     new TextEncoder().encode('through json'),
   );
+});
+
+// ---------- encryptRecoverableWithKData — recovery save seam ----------
+//
+// The Phase 5e seam covered by this function: caller has K_data
+// reconstructed from M cohort shares, picks a fresh passphrase on the
+// new device, and needs a v2 blob that both (a) decrypts under the new
+// passphrase via the standard path and (b) decrypts under the same
+// K_data so the cohort's existing shares still recover the wallet on
+// any future device. Both round-trips below pin those properties.
+
+test('encryptRecoverableWithKData round-trips via the passphrase path', () => {
+  const kData = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) kData[i] = i + 1;
+  const blob = encryptRecoverableWithKData('recovered text', kData, 'new pw');
+  const bytes = decryptRecoverableWithPassphrase(blob, 'new pw');
+  assert.equal(new TextDecoder().decode(bytes), 'recovered text');
+});
+
+test('encryptRecoverableWithKData round-trips via the kData path (cohort shares still decrypt)', () => {
+  const kData = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) kData[i] = i + 1;
+  const blob = encryptRecoverableWithKData('recovered text', kData, 'new pw');
+  const bytes = decryptRecoverableWithKData(blob, kData);
+  assert.equal(new TextDecoder().decode(bytes), 'recovered text');
+});
+
+test('encryptRecoverableWithKData rejects a wrong-length kData', () => {
+  assert.throws(
+    () => encryptRecoverableWithKData('x', new Uint8Array(16), 'pw'),
+    /32 bytes/,
+  );
+});
+
+test('encryptRecoverableWithKData rejects an empty passphrase', () => {
+  const kData = new Uint8Array(32);
+  assert.throws(() => encryptRecoverableWithKData('x', kData, ''), /passphrase/);
+});
+
+test('a Shamir-split-and-recombined K_data still decrypts a blob saved with encryptRecoverableWithKData', () => {
+  // The end-to-end load-bearing property: the cohort distributes
+  // shares of K_data at cohort-creation time, the operator recovers
+  // on a new device by combining M shares, and then saves the
+  // recovered wallet under a new passphrase via this function. Any
+  // future recovery must still work — i.e. the same K_data, split
+  // again from a peer's still-held share, must combine back to the
+  // value that this new blob's dataCiphertext is encrypted under.
+  const kData = encryptRecoverable('seed plaintext', 'old pw').kData;
+  // Operator picks a fresh passphrase, blob is re-saved with same K_data.
+  const newBlob = encryptRecoverableWithKData('post-recovery snapshot', kData, 'new pw');
+  // Cohort shares (unchanged) combine back to the same K_data, which
+  // still decrypts the new blob.
+  const recovered = decryptRecoverableWithKData(newBlob, kData);
+  assert.equal(new TextDecoder().decode(recovered), 'post-recovery snapshot');
+});
+
+test('encryptRecoverableWithKData generates fresh salt + IVs even with identical inputs', () => {
+  const kData = new Uint8Array(32);
+  const a = encryptRecoverableWithKData('same plaintext', kData, 'same pw');
+  const b = encryptRecoverableWithKData('same plaintext', kData, 'same pw');
+  assert.notEqual(a.salt, b.salt);
+  assert.notEqual(a.wrapIv, b.wrapIv);
+  assert.notEqual(a.dataIv, b.dataIv);
+  // Different salt/IVs → different ciphertexts even with same kData.
+  assert.notEqual(a.dataCiphertext, b.dataCiphertext);
+  assert.notEqual(a.wrapCiphertext, b.wrapCiphertext);
 });

@@ -96,6 +96,47 @@ test('exportRecoverableReuseKData rejects a wrong passphrase', async () => {
   );
 });
 
+test('exportRecoverableWithKData saves under a fresh passphrase while preserving K_data', async () => {
+  // The Phase 5e new-device save seam. After recovery, the operator
+  // knows K_data (from combined cohort shares) and picks a new
+  // passphrase on the new device. The save must (a) decrypt under
+  // the new passphrase via the standard path and (b) keep K_data
+  // identical so already-distributed cohort shares stay valid
+  // against future recoveries.
+  const w = Wallet.generate();
+  const a = w.attest({
+    kind: 'identity',
+    tier: 'routine',
+    subject: 'did:example:dana',
+    fields: { label: 'Dana' },
+  });
+  await w.hold(a);
+  // Simulate a recovery: produce K_data, then save under a NEW pass.
+  const { kData } = await w.exportRecoverable('old pw');
+  const newBlob = await w.exportRecoverableWithKData(kData, 'new pw');
+  // Passphrase path works against the new blob.
+  const fromPass = await Wallet.restoreRecoverable(newBlob, 'new pw');
+  assert.equal(fromPass.publicKey, w.publicKey);
+  const heldFromPass = await fromPass.holdings();
+  assert.equal(heldFromPass.length, 1);
+  // kData path still works — cohort shares stay valid.
+  const fromKData = await Wallet.restoreFromKData(newBlob, kData);
+  assert.equal(fromKData.publicKey, w.publicKey);
+  // Old passphrase no longer unlocks the new blob.
+  await assert.rejects(
+    () => Wallet.restoreRecoverable(newBlob, 'old pw'),
+    /wrong passphrase/,
+  );
+});
+
+test('exportRecoverableWithKData rejects a wrong-length kData', async () => {
+  const w = Wallet.generate();
+  await assert.rejects(
+    () => w.exportRecoverableWithKData(new Uint8Array(16), 'pw'),
+    /32 bytes/,
+  );
+});
+
 test('Shamir-split K_data round-trips through combineShares into restoreFromKData', async () => {
   // The end-to-end shape Phase 5e cascade recovery will use: split
   // K_data into N peer shares, throw enough away to simulate offline

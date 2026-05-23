@@ -16,6 +16,7 @@ import {
 import { decryptToString, encrypt, type EncryptedBlob } from './encryption.js';
 import {
   encryptRecoverable,
+  encryptRecoverableWithKData,
   decryptRecoverableWithPassphrase,
   decryptRecoverableWithKData,
   reencryptRecoverableReuseKData,
@@ -351,6 +352,27 @@ export class Wallet {
     const blob = reencryptRecoverableReuseKData(oldBlob, json, passphrase);
     const kData = unwrapKData(oldBlob, passphrase);
     return { blob, kData };
+  }
+
+  /**
+   * Re-encrypt the wallet snapshot using a CALLER-supplied K_data and
+   * wrap it under a fresh passphrase. The Phase 5e recovery seam: the
+   * new device has reconstructed K_data from M cohort shares and
+   * restored this wallet via restoreFromKData; the operator now picks
+   * a new passphrase on the new device and saves under it. K_data is
+   * preserved so the cohort's already-distributed shares stay valid
+   * against the new blob, and the new blob's passphrase-wrap is for
+   * the new passphrase the operator just chose.
+   */
+  async exportRecoverableWithKData(
+    kData: Uint8Array,
+    passphrase: string,
+  ): Promise<RecoverableEncryptedBlob> {
+    return encryptRecoverableWithKData(
+      JSON.stringify(await this.snapshot()),
+      kData,
+      passphrase,
+    );
   }
 
   // --- sync ---
