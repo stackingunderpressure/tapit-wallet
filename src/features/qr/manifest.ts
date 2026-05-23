@@ -10,6 +10,7 @@ export const manifest: FeatureManifest = {
     'src/features/qr/QrScanModal.tsx',
     'src/features/qr/encodeQr.ts',
     'src/features/qr/barcodeDetector.ts',
+    'src/features/qr/ScanEnvelopeModal.tsx',
   ],
   depends_on: [],
   pause_safe: false,

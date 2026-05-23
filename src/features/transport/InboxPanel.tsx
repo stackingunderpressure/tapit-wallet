@@ -1,28 +1,20 @@
 import { useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import type { InboxEnvelope } from './encryptedInbox.ts';
-import { isHandshake } from '../connections/createHandshake.ts';
-import { isMembership } from '../connections/createMembership.ts';
-import { isRecoveryShare } from '../recovery/createShares.ts';
-import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
+import { routeFor, type InboxRouteAction } from './envelopeRoute.ts';
 
 // Phase 5c-i-δ/-ε — inbox surface for the People tab. Lists encrypted
-// envelopes that arrived through the transport since unlock, and
-// routes them to the matching modal so the operator does not have to
-// copy-and-paste.
+// envelopes that arrived through the Mycelium transport since unlock,
+// and routes them to the matching modal via routeFor (envelopeRoute.ts)
+// so the operator does not have to copy-and-paste.
 //
-// Routing (5c-i-ε):
-//   - handshake with one signature  → cosign-as-witness (peer wants me to counter-sign)
-//   - handshake with two signatures → absorb-cosign (a counter-signed copy is coming back)
-//   - anything else (memberships, journals, etc.) → manual Copy for now
-// Membership auto-receive is the next sub-cut.
+// 2026-05-23 blended-recovery refactor: routing logic extracted to
+// envelopeRoute.ts so the in-person scan path (ScanEnvelopeModal)
+// hands envelopes to the same dispatcher this panel uses. The
+// transport an envelope arrived over (Nostr relay vs camera scan)
+// does not change which modal opens — only the kind does.
 
-export type InboxRouteAction =
-  | 'cosign-witness'
-  | 'absorb-cosign'
-  | 'membership-receive'
-  | 'recovery-share-receive'
-  | 'recovery-request-respond';
+export type { InboxRouteAction } from './envelopeRoute.ts';
 
 interface Props {
   envelopes: readonly InboxEnvelope[];
@@ -49,50 +41,6 @@ function attKindLabel(att: Attestation): string {
   return att.kind.charAt(0).toUpperCase() + att.kind.slice(1);
 }
 
-interface Route {
-  action: InboxRouteAction;
-  label: string;
-  hint: string;
-}
-
-function routeFor(att: Attestation): Route | null {
-  if (isHandshake(att)) {
-    if (att.signatures.length <= 1) {
-      return {
-        action: 'cosign-witness',
-        label: 'Review & sign',
-        hint: 'A handshake waiting for your signature.',
-      };
-    }
-    return {
-      action: 'absorb-cosign',
-      label: 'Absorb signature',
-      hint: 'A counter-signed handshake — merge it into your copy.',
-    };
-  }
-  if (isMembership(att)) {
-    return {
-      action: 'membership-receive',
-      label: 'Accept membership',
-      hint: 'A membership credential issued to you.',
-    };
-  }
-  if (isRecoveryShare(att)) {
-    return {
-      action: 'recovery-share-receive',
-      label: 'Hold share',
-      hint: 'A recovery share — a peer is asking you to hold one piece of their backup.',
-    };
-  }
-  if (isRecoveryRequest(att)) {
-    return {
-      action: 'recovery-request-respond',
-      label: 'Help recover',
-      hint: 'A peer is recovering their wallet on a new device and asking for your share.',
-    };
-  }
-  return null;
-}
 
 export function InboxPanel({ envelopes, onDismiss, onOpen }: Props) {
   if (envelopes.length === 0) return null;

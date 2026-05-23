@@ -28,6 +28,11 @@ const RecoveryResponderModal = lazy(() =>
     default: m.RecoveryResponderModal,
   })),
 );
+const ScanEnvelopeModal = lazy(() =>
+  import('../qr/ScanEnvelopeModal.tsx').then((m) => ({
+    default: m.ScanEnvelopeModal,
+  })),
+);
 import {
   findLatestOfficialsRoster,
   findOwnOrgDeclaration,
@@ -121,6 +126,7 @@ export function HomeScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
+  const [scanEnvelopeOpen, setScanEnvelopeOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
@@ -564,13 +570,22 @@ export function HomeScreen() {
             onDismiss={dismissInboxEnvelope}
             onOpen={routeInbox}
           />
-          <button
-            type="button"
-            onClick={() => setHandshakeOpen(true)}
-            className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium"
-          >
-            + New handshake
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setHandshakeOpen(true)}
+              className="rounded-md bg-ink py-3 text-paper text-sm font-medium"
+            >
+              + New handshake
+            </button>
+            <button
+              type="button"
+              onClick={() => setScanEnvelopeOpen(true)}
+              className="rounded-md border border-ink/20 bg-white py-3 text-ink text-sm font-medium"
+            >
+              Scan envelope
+            </button>
+          </div>
           {connectionEntries.length === 0 ? (
             <div className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-10 text-center">
               <div className="text-xs uppercase tracking-wide text-accent">
@@ -693,6 +708,18 @@ export function HomeScreen() {
 
       {handshakeOpen && (
         <HandshakeModal onClose={() => setHandshakeOpen(false)} />
+      )}
+
+      {scanEnvelopeOpen && (
+        <Suspense fallback={null}>
+          <ScanEnvelopeModal
+            onScannedRoute={(env, action, sender) => {
+              setScanEnvelopeOpen(false);
+              routeInbox(env, action, sender);
+            }}
+            onClose={() => setScanEnvelopeOpen(false)}
+          />
+        </Suspense>
       )}
 
       {membershipOpen && (

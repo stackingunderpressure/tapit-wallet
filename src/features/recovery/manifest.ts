@@ -19,7 +19,7 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/RecoveryResponderModal.tsx',
     'src/features/recovery/RecoveryInitiatorModal.tsx',
   ],
-  depends_on: ['wallet-core', 'anchoring', 'connections'],
+  depends_on: ['wallet-core', 'anchoring', 'connections', 'qr'],
   pause_safe: true,
   removal_safe: true,
   monetizable: false,

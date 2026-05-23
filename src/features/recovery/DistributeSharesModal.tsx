@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { unwrapKData, type RecoverableEncryptedBlob } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { walletStore } from '../storage/walletStore.ts';
@@ -6,11 +6,21 @@ import { buildRecoveryShares, type SharePackage } from './createShares.ts';
 import { findLatestCohort, readCohort } from './createCohort.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
 
+const QrShow = lazy(() =>
+  import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
+);
+
 interface Props {
   onClose: () => void;
 }
 
-type RowState = 'pending' | 'sending' | 'sent' | 'failed';
+type RowState =
+  | 'pending'
+  | 'sending'
+  | 'sent'
+  | 'failed'
+  | 'qr-showing'
+  | 'handed-off-in-person';
 
 interface DistributionRow {
   pkg: SharePackage;
@@ -128,10 +138,48 @@ export function DistributeSharesModal({ onClose }: Props) {
   async function sendAll() {
     if (!rows) return;
     for (let i = 0; i < rows.length; i++) {
-      if (rows[i]?.state === 'sent') continue;
+      const s = rows[i]?.state;
+      if (s === 'sent' || s === 'handed-off-in-person' || s === 'qr-showing') continue;
       await sendOne(i);
     }
     setAllDone(true);
+  }
+
+  function showQrFor(index: number) {
+    setRows((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const target = next[index];
+      if (!target) return prev;
+      next[index] = { ...target, state: 'qr-showing', detail: '' };
+      return next;
+    });
+  }
+
+  function markHandedOff(index: number) {
+    setRows((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const target = next[index];
+      if (!target) return prev;
+      next[index] = {
+        ...target,
+        state: 'handed-off-in-person',
+        detail: 'Peer scanned the QR.',
+      };
+      return next;
+    });
+  }
+
+  function backToPending(index: number) {
+    setRows((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      const target = next[index];
+      if (!target) return prev;
+      next[index] = { ...target, state: 'pending', detail: '' };
+      return next;
+    });
   }
 
   return (
@@ -177,29 +225,87 @@ export function DistributeSharesModal({ onClose }: Props) {
                     </div>
                     <span
                       className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${
-                        row.state === 'sent'
+                        row.state === 'sent' || row.state === 'handed-off-in-person'
                           ? 'bg-emerald-100 text-emerald-900'
                           : row.state === 'failed'
                             ? 'bg-red-100 text-red-900'
                             : row.state === 'sending'
                               ? 'bg-sky-100 text-sky-900'
-                              : 'bg-ink/10 text-muted'
+                              : row.state === 'qr-showing'
+                                ? 'bg-amber-100 text-amber-900'
+                                : 'bg-ink/10 text-muted'
                       }`}
                     >
-                      {row.state}
+                      {row.state === 'handed-off-in-person' ? 'in person' : row.state}
                     </span>
                   </div>
                   {row.detail && (
                     <div className="mt-1 text-[11px] text-muted">{row.detail}</div>
                   )}
+                  {row.state === 'pending' && (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void sendOne(i)}
+                        className="text-xs rounded-md bg-ink text-paper px-2 py-1.5 hover:bg-ink/90"
+                      >
+                        Send via Nostr
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => showQrFor(i)}
+                        className="text-xs rounded-md border border-ink/15 px-2 py-1.5 hover:bg-ink/5"
+                      >
+                        Show QR (in person)
+                      </button>
+                    </div>
+                  )}
                   {row.state === 'failed' && (
-                    <button
-                      type="button"
-                      onClick={() => void sendOne(i)}
-                      className="mt-2 text-xs rounded-md border border-ink/15 px-2 py-1 hover:bg-ink/5"
-                    >
-                      Retry
-                    </button>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void sendOne(i)}
+                        className="text-xs rounded-md border border-ink/15 px-2 py-1.5 hover:bg-ink/5"
+                      >
+                        Retry Nostr
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => showQrFor(i)}
+                        className="text-xs rounded-md border border-ink/15 px-2 py-1.5 hover:bg-ink/5"
+                      >
+                        Show QR instead
+                      </button>
+                    </div>
+                  )}
+                  {row.state === 'qr-showing' && (
+                    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50/60 p-3">
+                      <div className="text-xs text-amber-900">
+                        Hand the phone to <span className="font-medium">{row.pkg.recipient.name}</span> and
+                        have them open their wallet → People → Scan envelope.
+                      </div>
+                      <Suspense
+                        fallback={<div className="mt-2 text-xs text-muted">Rendering QR…</div>}
+                      >
+                        <QrShow text={JSON.stringify(row.pkg.envelope)} />
+                      </Suspense>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => markHandedOff(i)}
+                          className="text-xs rounded-md bg-ink text-paper px-2 py-1.5 hover:bg-ink/90"
+                        >
+                          They scanned it
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => backToPending(i)}
+                          className="text-xs rounded-md border border-ink/15 px-2 py-1.5 hover:bg-ink/5"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </li>
               ))}
@@ -208,12 +314,20 @@ export function DistributeSharesModal({ onClose }: Props) {
             <button
               type="button"
               onClick={() => void sendAll()}
-              disabled={allDone && rows.every((r) => r.state === 'sent')}
+              disabled={
+                allDone &&
+                rows.every(
+                  (r) => r.state === 'sent' || r.state === 'handed-off-in-person',
+                )
+              }
               className="mt-4 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
             >
-              {allDone && rows.every((r) => r.state === 'sent')
+              {allDone &&
+              rows.every(
+                (r) => r.state === 'sent' || r.state === 'handed-off-in-person',
+              )
                 ? 'All shares distributed'
-                : 'Send all'}
+                : 'Send remaining via Nostr'}
             </button>
           </>
         )}

@@ -144,6 +144,17 @@ const BUDGETS = [
   // owns the form, the ceremony state machine, the per-peer
   // progress surface, and the new-passphrase save flow.
   { pattern: /^RecoveryInitiatorModal-.*\.js$/, gz: 6_000, label: 'RecoveryInitiatorModal' },
+  // 5e-v/-vi envelope helpers hoisted once both the initiator and
+  // responder modals depend on createRecoveryRequest.ts (read +
+  // build for both directions).
+  { pattern: /^createRecoveryRequest-.*\.js$/, gz: 1_500, label: 'createRecoveryRequest helpers' },
+  // 2026-05-23 blended-recovery — generic scan-tapit-envelope
+  // surface. React.lazy from HomeScreen's People tab; opens the
+  // camera, parses the scanned QR via parseEnvelope, dispatches
+  // via the shared envelopeRoute so a scanned recovery-share,
+  // recovery-request, or handshake hits the same modal an arrival
+  // over Mycelium would.
+  { pattern: /^ScanEnvelopeModal-.*\.js$/, gz: 2_000, label: 'ScanEnvelopeModal' },
   // 5c-iii-a publishStatus helper — summarizePublish hoisted once
   // multiple modals depend on it (now includes DistributeSharesModal).
   { pattern: /^publishStatus-.*\.js$/, gz: 1_500, label: 'publishStatus helper' },
