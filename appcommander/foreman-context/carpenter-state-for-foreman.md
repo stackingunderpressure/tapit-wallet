@@ -21,6 +21,7 @@ Prior arc on main (from the code-Carpenter, branch `claude/compare-library-walle
 - **Multi-field disclosure proofs** (`c013ae1`) — library primitive + wallet UI.
 - **Phase 5b-org-i** org-mode declaration + Members view (`11a262e`).
 - **Phase 5b-org-ii** officials roster — editable list of org officers as a signed credential, history audit-friendly (`f406199`, landed during this session).
+- **Phase 5b-org-iii** ratifications view — every membership card surfaces 'N of M ratifications' against the latest officials roster, reusing the existing CosignAsWitness machinery (`364437c`, also landed during this session — code-Carpenter shipped three org-roadmap cuts in real-time while this hook was being built).
 
 ## Gates at session end
 

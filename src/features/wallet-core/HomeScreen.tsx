@@ -27,6 +27,7 @@ import {
   readOrganizationName,
 } from '../connections/createOrganization.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
+import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -369,6 +370,7 @@ export function HomeScreen() {
                         <div className="mt-1 text-xs text-muted">
                           Admitted {when}
                         </div>
+                        <RatificationsBadge envelope={a} officials={officials} />
                       </li>
                     );
                   })}
@@ -395,9 +397,21 @@ export function HomeScreen() {
               </p>
             ) : (
               <div className="mt-2 space-y-3">
-                {membershipEntries.map((a, i) => (
-                  <MembershipCard key={i} attestation={a} />
-                ))}
+                {membershipEntries.map((a, i) => {
+                  const m = readMembership(a);
+                  // Look up the issuing org's latest roster from our
+                  // own holdings (if we have it). When we do not, the
+                  // card silently omits the ratification badge.
+                  const orgRoster = findLatestOfficialsRoster(holdings, m.orgId);
+                  const orgOfficials = orgRoster ? readOfficials(orgRoster) : [];
+                  return (
+                    <MembershipCard
+                      key={i}
+                      attestation={a}
+                      officials={orgOfficials}
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
