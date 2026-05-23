@@ -108,6 +108,10 @@ const BUDGETS = [
   // WalletProvider's sendEnvelope dynamically imports it (5c-i-ζ).
   // Tiny — under 1KB gz today.
   { pattern: /^encryptedInbox-.*\.js$/, gz: 2_000, label: 'encryptedInbox helper' },
+  // DEFAULT_RELAYS constant hoisted once both prefsStore (default
+  // value) and SettingsScreen (restore-defaults button) import it.
+  // ~140 bytes gz — should stay tiny.
+  { pattern: /^defaultRelays-.*\.js$/, gz: 500, label: 'defaultRelays constant' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },

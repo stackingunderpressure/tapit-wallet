@@ -59,6 +59,7 @@ export function WalletProvider({ children }: Props) {
     lastRemoteSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
     nostrTransportEnabled: false,
+    nostrRelays: [],
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
@@ -66,6 +67,12 @@ export function WalletProvider({ children }: Props) {
   // the effect. Cleared on lock/disable; never observable when the
   // Mycelium preference is off.
   const transportRef = useRef<Transport | null>(null);
+  // Stable content-keyed string for the relay list so the transport
+  // effect re-runs when the list content changes (not its reference).
+  const relaysKey = useMemo(
+    () => prefs.nostrRelays.join('\n'),
+    [prefs.nostrRelays],
+  );
   // Passphrase lives in state because it's exposed via context anyway
   // (callers need to encrypt photos, sign + persist on demand) — the
   // ref-with-tick pattern was a half-measure that did not survive the
@@ -119,9 +126,14 @@ export function WalletProvider({ children }: Props) {
     let conn: WalletConnection | null = null;
     let cancelled = false;
     setInboxEnvelopes([]);
+    // Snapshot the relay list at effect-time so a later edit triggers
+    // a fresh effect run (via relaysKey below) instead of reconfiguring
+    // the live connection mid-flight.
+    const relays = prefs.nostrRelays;
     void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
       if (cancelled) return;
       conn = connectWallet(wallet, {
+        relays,
         onEnvelope: (item) => {
           setInboxEnvelopes((prev) =>
             prev.some((p) => p.eventId === item.eventId) ? prev : [item, ...prev],
@@ -136,7 +148,10 @@ export function WalletProvider({ children }: Props) {
       transportRef.current = null;
       setInboxEnvelopes([]);
     };
-  }, [phase, prefs.nostrTransportEnabled]);
+    // relaysKey is a stable string derived from prefs.nostrRelays;
+    // re-runs only when the content changes (not the reference).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, prefs.nostrTransportEnabled, relaysKey]);
 
   const dismissInboxEnvelope = useCallback((eventId: string) => {
     setInboxEnvelopes((prev) => prev.filter((p) => p.eventId !== eventId));
