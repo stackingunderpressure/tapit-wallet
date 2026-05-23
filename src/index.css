@@ -6,16 +6,19 @@
    field's font-size is below 16px, and once the page is zoomed a
    position:fixed modal lands relative to the layout viewport while
    the user sees the visual viewport — the result is a modal that
-   appears off-center or clipped at the screen edge. Forcing 16px on
-   every text-entry surface keeps the zoom from triggering in the
-   first place. Covers input + textarea + select uniformly; Tailwind
-   utility classes that set a smaller font-size on these elements
-   are overridden because this rule comes after Tailwind in source
-   order at equal specificity. */
+   appears off-center or clipped at the screen edge.
+
+   The !important is load-bearing: Tailwind's text-xs / text-sm
+   utilities are class selectors at specificity (0,0,1,0), which
+   beats a bare element selector at (0,0,0,1). Without !important
+   this rule loses to any text-xs on a textarea and the auto-zoom
+   trip stays armed. Preventing the entire page from zooming on
+   every form-field tap outranks any per-input font-size choice,
+   so !important is the right move here. */
 input,
 textarea,
 select {
-  font-size: 16px;
+  font-size: 16px !important;
 }
 
 /* Safety net against horizontal scroll. Any single child wider than
