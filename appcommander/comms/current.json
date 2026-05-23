@@ -1,67 +1,41 @@
 {
   "v": 1,
-  "ts": "2026-05-23T01:55:00Z",
-  "session_id": "phase-5c-polish-autodismiss-2026-05-23-1779496200",
-  "who": {
-    "actor": "carpenter",
-    "feature_slug": "transport"
-  },
+  "ts": "2026-05-23T22:00:00Z",
+  "session_id": "wallet-theory-and-grounding-hook-2026-05-23-1779562800",
+  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
   "where": {
     "files": [
-      "src/features/connections/createHandshake.ts",
-      "src/features/connections/HandshakeModal.tsx",
-      "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/createMembership.ts",
-      "src/features/connections/MembershipModal.tsx",
-      "src/features/connections/manifest.ts",
-      "src/features/cosigning/AbsorbCosignModal.tsx",
-      "src/features/cosigning/CosignAsWitnessModal.tsx",
-      "src/features/cosigning/CosignRequestModal.tsx",
-      "src/features/transport/InboxPanel.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/storage/prefsStore.ts",
-      "src/features/settings/SettingsScreen.tsx",
-      "scripts/bundle-budget.mjs",
-      "tapit-attest/test/fixtures/nip44-v2-vectors.json",
-      "tapit-attest/test/nip44-vectors.test.mjs"
+      "scripts/session-start-grounding.mjs (create)",
+      ".claude/settings.json (modify)",
+      "appcommander/comms/current.json (modify)",
+      "appcommander/comms/carpenter-opinions.md (modify)",
+      "appcommander/comms/in-flight.jsonl (modify)",
+      "appcommander/comms/interactions.jsonl (modify)",
+      "appcommander/foreman-context/carpenter-state-for-foreman.md (modify)"
     ],
-    "screen_path": "Phase 5c complete (5c-i + 5c-ii); /#people for inbox + remote handshake; /settings for toggle + custom relays"
+    "screen_path": "/"
   },
-  "layer": "ui",
-  "action": "implement",
-  "summary": "Phase 5c is structurally complete. Across this session: 5c-i-ε auto-routing, NIP-44 reference-vector interop (10/10 pass), 5c-i-ζ Send-back-via-Nostr, 5c-i-η Send-via-Nostr in CosignRequestModal, 5c-i-θ peer picker from holdings, 5c-i-ι membership auto-receive, 5c-i-κ Send-via-Nostr in MembershipModal, 5c-i-λ operator-editable custom relay list, 5c-ii Tier R remote handshakes (reuses 5c-i routing on receive side), plus auto-dismiss-on-success polish. Branch and main both at 93afbc4. Only 5c-iii (multi-device sync + relay-OK delivery acks) is left in Phase 5c.",
+  "layer": "doctrine",
+  "action": "infrastructure",
+  "summary": "Two phases. Phase A: a long no-code theory conversation across Nostr plumbing, human-pattern applications, comparable-systems landscape (PGP, Keybase, W3C VC, EU eIDAS, EAS, Nostr, DynastyTrust), adoption strategy with eight strategic recommendations, supply-chain expansion mapping (Phase 2.6 custody-handoff IS supply-chain handoff mathematically), and the operator's wife's load-bearing adoption test: 'how is this not just trusting the wallet?' — answered with the math-not-trust thesis grounded in the existing /verify route (paste, tamper one character, watch the green panel flip to amber). Operator confirmed the demonstration landed. Phase B: cross-Carpenter drift caught at push-to-main time — this branch was rooted at the previous main tip but the code-Carpenter on a parallel session had shipped 19+ commits since (Phase 5c-i alpha through lambda, NIP-44 v2 reference vectors, Phase 5c-ii Tier R remote handshakes, multi-field disclosure, org-mode declaration). The GROUNDING GATE fired exactly when the action would have caused harm. Operator authorized resolving however best plus building hooks both ways. Resolved: merged origin/main into this branch (main's comms won the conflicts since they're the truth), built scripts/session-start-grounding.mjs as a SessionStart hook that fetches origin, compares the current branch's merge-base against origin/main, and emits a structured drift report into the session's initial context if main has moved past where this branch is rooted, wired into .claude/settings.json alongside the existing UserPromptSubmit GROUNDING GATE prose. Mechanism over prose, per CLAUDE_ROOT.md doctrine.",
   "why": {
-    "text": "Operator authorized 'continue on until you run out of things to do or need me to do something physically', with a chip-vote for 5c-i-ι first and then 5c-ii. Worked the queue end-to-end. The receive-respond loop closes a real workflow: Alice can now request a co-sign or issue a membership or start a Tier R handshake remotely; Bob's wallet auto-routes, lets him confirm, and ships the reply back; both wallets converge on the dual-signed envelope. The NIP-44 vector test removed the cryptographic faith claim — what the wallet writes, every spec-conformant NIP-44 client can read.",
+    "text": "Operator: 'let's put some hooks both ways like we're both carpenters no matter what if you're working you need to be checking if there's another carpenter before you do anything that is cross path... so let's set up some gates to climb over them and fix them and catch them.' The pattern the operator runs — two parallel Claudes, one cutting code on its own branch, one in theory conversation on its own branch — has real value (cognitive specialization, throughput) AND a specific failure mode that just surfaced: the theory Carpenter operates on a snapshot of the repo that may be wildly stale because the code Carpenter's work is only visible to the theory Carpenter once it lands on main. The fix is a mechanical SessionStart check, not another paragraph in CLAUDE.md.",
     "linked_pixel_id": null,
-    "linked_mission_id": "phase-5c-complete"
+    "linked_mission_id": "TAPITWALLET-2026-05-23-CROSS-CARPENTER-DRIFT-HOOK"
   },
   "outcome": {
     "files_changed": [
-      "5c-i-ε auto-route: AbsorbCosignModal incoming prop, CosignAsWitnessModal incoming prop, InboxPanel routing, HomeScreen mounts",
-      "NIP-44 interop: nip44-v2-vectors.json fixture, nip44-vectors.test.mjs verifying 10/10 vectors",
-      "5c-i-ζ Send-back: WalletContext.sendEnvelope, WalletProvider transport ref + dynamic-imported sendEnvelopeTo, CosignAsWitnessModal Send-back button",
-      "5c-i-η Send via Nostr: CosignRequestModal Send-via-Mycelium block",
-      "5c-i-θ Peer picker: new PeerPicker shared component, CosignRequestModal swap",
-      "5c-i-ι Membership auto-receive: receiveMembership helper, InboxPanel membership-receive route, HomeScreen inline accept",
-      "5c-i-κ Membership send: MembershipModal Send-via-Mycelium block in issue-show step",
-      "5c-i-λ Custom relays: Prefs.nostrRelays default = DEFAULT_RELAYS, WalletProvider passes + re-inits on content change, SettingsScreen Relays editor",
-      "5c-ii Tier R: buildRemoteHandshakeDraft, HandshakeModal remote-pick + remote-sent steps, CosignAsWitnessModal hold-after-sign for handshakes, tier-aware ConnectionCard badge",
-      "Polish: AbsorbCosignModal + CosignAsWitnessModal onSuccess prop, HomeScreen dispatches dismissInboxEnvelope on success",
-      "Bundle budgets: named encryptedInbox, AbsorbCosignModal, createHandshake, defaultRelays, PeerPicker chunks; WalletProvider bumped 5.5 → 7 KB"
+      "scripts/session-start-grounding.mjs — new SessionStart hook (Node, ~90 lines) that fetches origin, computes branch vs origin/main merge-base divergence, emits structured drift report into the session's initial context. Three states: drift detected (report the commits + most-recent comms summary + required reads), current (no drift), unreachable (origin not fetchable, warn).",
+      ".claude/settings.json — added SessionStart hook entry pointing at the script via $CLAUDE_PROJECT_DIR; existing UserPromptSubmit GROUNDING GATE preserved.",
+      "5 comms files updated — current.json + carpenter-opinions.md + carpenter-state-for-foreman.md replaced reflecting actual state plus the catch plus the hook; in-flight.jsonl + interactions.jsonl appended with this session's events."
     ],
-    "tests_passing": "tapit-attest 98/98 (4 skipped, network); wallet 31/31",
+    "tests_passing": "All four gates green: typecheck ✓, lint ✓, test ✓ 31/31, build ✓ 274 modules in 3.13s. No source code touched — only the hook script (Node CLI, not imported by app), settings.json, and comms.",
     "build_green": true,
-    "notes": "Branch and main both at 93afbc4. 18 commits landed across this session (10 cuts + the NIP-44 vectors + auto-dismiss + multiple comms close-outs). All cuts pure additions; each independently safe and tested. Sub-cuts of 5c-i and 5c-ii are operator-visible: Settings shows the Mycelium toggle + relay editor; the People tab shows the inbox panel; HandshakeModal has the Tier R path when the toggle is on; CosignRequestModal + MembershipModal have Send-via-Mycelium blocks."
+    "notes": "[P-001] Theory conversation completed across six question arcs (Nostr, human-patterns, comparables, adoption, supply-chain, wife-test). [P-002] Drift caught by GROUNDING GATE at push-to-main time before stale comms could clobber main's actual handoff. [P-003] SessionStart cross-Carpenter drift hook built, wired into settings.json, tested in green-path (returns 'no drift detected' correctly). [P-004] Merge of origin/main into branch resolved cleanly with main winning the comms conflicts. [P-005] All four gates green. [FEEDBACK->Foreman]: the operator's two-Claude workflow is a real innovation; this hook is the first piece of mechanical defense against its specific failure mode. Future complement worth flagging: a PreToolUse hook on git push that re-runs the same drift check would be belt-and-suspenders. Not built this session because SessionStart alone catches the case we hit."
   },
-  "confidence": 90,
-  "uncertainty": "The remote co-sign + Tier R handshake loops have been unit-tested via fake transport + fake WebSocket but not exercised against real public relays. NIP-44 cryptographic interop is verified against spec vectors so the wire format is sound, but real-relay round-trip behavior arrives with the operator's first two-device field test. Today's Sent state confirms WebSocket dispatch, not relay acceptance — 5c-iii's delivery-ack layer addresses that.",
-  "ripple": [
-    "tapit-attest — public surface unchanged this session (signDigest + nip44 methods already landed in 5c-i-γ); new spec-vector test in the suite",
-    "cosigning — three modals now accept incoming envelopes and onSuccess callbacks; original paste/QR paths unchanged",
-    "connections — Tier R is a new flow inside the same modal; PeerPicker now serves both cosign and handshake send",
-    "wallet-core — WalletContext exposed sendEnvelope; HomeScreen routes the three inbox actions",
-    "settings — Mycelium toggle + relay editor live there now"
-  ],
-  "next": "5c-iii — multi-device connection sync (the wallet's other devices stay current over Nostr) + delivery acks (Sent state waits for the relay OK frame). Or Phase 5d — Tier V device-verified presence (WebAuthn + geolocation + timestamp). Or operator field test of the full 5c stack with two real devices, which would be the first real-relay evidence and the natural validation before more code lands."
+  "confidence": 91,
+  "uncertainty": "The hook has been tested in the green-path (this branch is now current with origin/main, hook correctly reports no drift). The drift-detected path is verified by code reading and by the fact that the hook would have caught this very session's drift if it had existed at session start. Not yet field-tested in a true future-drift scenario where the code Carpenter ships work between sessions of this branch.",
+  "ripple": ["doctrine", "settings", "operator-workflow"],
+  "next": "Operator next moves remain unchanged from main's prior carpenter-state-for-foreman handoff: (1) field-test the full 5c stack with two devices against real Nostr relays — the open question that nothing in code-land can resolve, (2) cut 5c-iii (multi-device sync + delivery acks) when the field test informs whether the OK-frame gap is urgent, (3) Phase 5d Tier V (WebAuthn + geolocation + timestamp). NEW from this session: the eight strategic recommendations from the theory walk sit on the stack as no-code or polish-shaped follow-ons (verify-page audit, plain-English UX language audit, Nostr operational doctrine as POST-hoc documentation now that 5c has shipped, supply-chain expansion decision, interim peer-recovery story, auto-anchor passive capture, first-pilot organization arc, positioning principle). Wife-test of the verify-page is the highest-fidelity adoption signal the project has at its disposal.",
+  "signals": ["pulse"]
 }

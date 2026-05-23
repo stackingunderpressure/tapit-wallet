@@ -2,70 +2,86 @@
 
 **Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS.
 
+**Two-Carpenter workflow note:** The operator runs two parallel Claude sessions — one cutting code, one in theory conversation — each on its own branch. Main is the canonical handshake point between the two streams. A new `SessionStart` hook in `.claude/settings.json` now mechanically detects drift between the branch and `origin/main` at every session start.
+
 ## WHAT-CHANGED-RECENTLY
 
-Phase 5c is structurally complete. Branch and main both at `93afbc4`. Across this session ten cuts + a polish landed:
+Phase 5c is structurally complete on main (last code work at `11a262e` "Org-mode declaration + Members view (Phase 5b-org-i)"). This 2026-05-23 session added one piece of infrastructure on top:
 
-- **5c-i-ε** auto-routing — inbox routes a 1-sig handshake to cosign-witness, a 2-sig to absorb-cosign
-- **NIP-44 reference vectors** — 10/10 upstream spec vectors round-trip through `decryptFrom`; cross-implementation interop proved
-- **5c-i-ζ** Send-back-via-Nostr — CosignAsWitnessModal signs and ships the counter-signed envelope back to the original sender
-- **5c-i-η** Send-via-Nostr in CosignRequestModal — outbound initiation of the co-sign loop
-- **5c-i-θ** PeerPicker — shared component that surfaces handshake peers from holdings with a manual-paste fallback
-- **5c-i-ι** Membership auto-receive — incoming membership credential addressed to the operator gets an Accept button that runs verify-and-hold inline
-- **5c-i-κ** Send-via-Nostr in MembershipModal's issue-show step — organization can issue a membership remotely (recipient pubkey lives in the signed memberId leaf)
-- **5c-i-λ** Custom relay list in Settings — operator-editable preference, takes effect immediately on the next reconnect (memoized stable dep key on the transport effect)
-- **5c-ii** Tier R remote handshakes — initiator builds + signs + sends via Nostr; responder's wallet auto-routes via 5c-i; both wallets converge on the dual-signed Tier R envelope; ConnectionCard renders the tier badge honestly
-- **Auto-dismiss polish** — successful absorb or Send-back dismisses the matching inbox row; cancellation paths don't
+- **Cross-Carpenter drift hook** — `scripts/session-start-grounding.mjs` plus a `SessionStart` entry in `.claude/settings.json`. Fetches origin at every session start; if `origin/main` has moved past the current branch's merge-base, emits a structured drift report into the session's initial context (commit list, most-recent `current.json` summary, required reads). Catches the failure mode that surfaced this session: a theory-Carpenter on a stale branch confidently giving forward-looking advice that's wrong-relative-to-actual-state because main has shipped past where the branch was rooted.
 
-The full remote co-sign loop (Alice initiates from CosignRequestModal → Bob's wallet auto-routes → Bob signs and Send-backs → Alice's wallet auto-routes to absorb) now runs end-to-end without copy-paste. Same for membership issue/receive. Same for Tier R handshake.
+Prior arc on main (from the code-Carpenter, branch `claude/compare-library-wallet-OW5FF` merged):
 
-All eight gates green at every checkpoint. tapit-attest 98/98 (4 skipped network-deps). Wallet 31/31. Bundle budgets named the new hoisted chunks: `encryptedInbox helper`, `AbsorbCosignModal`, `createHandshake helpers`, `defaultRelays constant`, `PeerPicker`; `WalletProvider` bumped 5.5 → 7 KB gz to carry the sendEnvelope plumbing with headroom.
+- **Phase 5a** in-person handshake (`6e206aa`).
+- **Phase 5b** organizations + membership (`85d6a51`).
+- **Phase 5c-i α through λ** — NIP-44 v2 primitive, Nostr wire client, wallet wire-up, inbox UI, auto-route, send-back, send-via-Nostr in CosignRequestModal + MembershipModal, peer picker, membership auto-receive, operator-editable custom relay list.
+- **NIP-44 reference-vector interop** (`a4c8f23`) — 10/10 upstream spec vectors round-trip.
+- **Phase 5c-ii** Tier R remote handshakes (`daabd3d`).
+- **Auto-dismiss polish** (`93afbc4`).
+- **Multi-field disclosure proofs** (`c013ae1`) — library primitive + wallet UI.
+- **Phase 5b-org-i** org-mode declaration + Members view (`11a262e`).
+
+## Gates at session end
+
+- typecheck ✓
+- lint ✓
+- test ✓ — 31/31 wallet tests; tapit-attest at 98/98 from prior sessions (4 skipped network-deps)
+- build ✓ — 274 modules transformed in 3.13s
 
 ## WHAT'S-PENDING
 
-Phase 5c has one piece left:
+1. **Operator runs the wife-test of the verify-page.** From the theory conversation: share a proof from a journal entry → wife opens `/verify` in her browser (outside `AuthGate`, no install) → pastes, sees green → tampers one character of the disclosed value, sees amber. The most valuable adoption-UX signal the project has at its disposal. Note: the verify page surface MAY have changed with the multi-field disclosure work — a quick walk before the wife-test would be smart.
+2. **Operator field-tests the full 5c stack** with two devices against real Nostr relays. The open question that nothing in code-land can resolve.
+3. **5c-iii** — multi-device connection sync + relay-OK delivery acks. Only piece of Phase 5c left.
+4. **Phase 5d** — Tier V device-verified presence (WebAuthn / passkey + geolocation + timestamp).
+5. **Phase 5e / 5f** — quorum org-key governance + recovery-share workflows.
 
-**5c-iii — multi-device connection sync + delivery acks.** Two things bundled: (a) the wallet's other devices stay current with each other over the Mycelium transport (today they only sync through Supabase's encrypted blob); (b) the Sent state stops flipping on local-dispatch and waits for the relay OK frame, so the operator knows their message actually landed.
+### Eight strategic recommendations from the 2026-05-23 theory walk (on the stack, no-code or polish-shaped):
 
-After 5c-iii, Phase 5 has the bigger pieces queued:
-
-- **Phase 5d** Tier V device-verified presence — biometric (WebAuthn / passkey) + geolocation + timestamp, signed
-- **Phase 5e/5f** quorum org-key governance (MAST / MuSig2 / FROST) and recovery-share workflows
+- **A. Verify-page polish audit** — short-form hex pubkeys humanized, amber→red severity question, QR-as-primary vs textarea-as-primary, "what just happened" inline explanation for first-time visitors. Promoted to highest-leverage by the wife-test framing.
+- **B. Plain-English UX language audit** — sweep user-facing surfaces, build a glossary mapping "attestation" / "envelope" / "merkle" / "tier" to human English, ship the rename pass.
+- **C. Nostr operational doctrine as POST-hoc documentation** — now that 5c has shipped, doc what the code actually does for relays, encryption defaults, metadata posture, NIP-65 publishing. (Was framed as pre-5c in the theory session, but 5c had already shipped.)
+- **D. Supply-chain expansion decision** — pursue, defer, or non-goal. The Phase 2.6 custody-handoff primitive IS supply-chain handoff mathematically; ten concrete applications walked in the conversation. Worth a deliberate call.
+- **E. Interim peer-recovery story** before the full Phase 5e Shamir cascade — design conversation.
+- **F. Auto-anchor passive capture** — biggest adoption lever named; real new feature, deferred design conversation.
+- **G. First-pilot organization arc** for institutional onramp — policy/sales work, operator's hands.
+- **H. Positioning principle: substrate underneath existing behavior** — meta, informs the others.
 
 ## WHAT-TO-FLAG
 
-Three things worth keeping visible.
+**The cross-Carpenter drift hook is the first of its kind in this repo.** Future PreToolUse hook on git push for belt-and-suspenders is a candidate but not built — SessionStart alone catches the case that surfaced. The CLAUDE_ROOT.md doctrine mentions "branch gate: no unfinished or dead branch before new work — run by the SessionStart hook" — that's a SEPARATE gap; no branch-unfinished check exists as a script. Worth either implementing or removing the doctrine claim in a future session.
 
-**Real-relay round-trip is the open question.** Every remote loop has been unit-tested through FakeTransport + injected fake WebSocket. The first two-device field test against `wss://relay.damus.io` (or any default relay) is the first real evidence. Likely surprises if any: a relay rejecting custom event-kind 9573, or iOS Safari blocking WebSocket connections in PWA mode. Both are recoverable; both inform the next cut.
+**The theory conversation from this session's Phase A produced real strategic value despite operating on stale state.** Most of it survives the correction (the math-not-trust thesis is timeless; the human-patterns walk is forward-looking; the supply-chain mapping is unaffected by what shipped this week; the comparable-systems landscape is unaffected by phase progression). The eight recommendations are now in front of the operator. The wife-test is the single most actionable item.
 
-**Tier R responder name is operator-supplied today.** PeerPicker covers the natural case (extending Tier R to someone you already handshook with in person). For pasting a stranger's pubkey, the operator types the name and that name lands in the signed envelope. Honest about the tier, but a future polish could fetch the responder's identity attestation over Nostr before signing.
+**Multi-field disclosure proofs shipped on main** (`c013ae1`). The original Phase 4 single-leaf primitive has been generalized. If the operator runs the wife-test, the verify-page experience MAY have changed surface-wise (multi-leaf reveals, etc.) — worth a five-minute walk before the demo.
 
-**Sent ≠ delivered today.** The current Sent state means "dispatched to the WebSocket." A delivery-ack layer arrives with 5c-iii (relay OK frame is currently observed and discarded by NostrTransport). The auto-dismiss polish is honest about this — the inbox row goes away because the operator finished their part, not because the recipient has accepted.
-
-`current.json` at confidence 90. Bundle budget on WalletProvider is now generous; further additions there should be fine without another bump until 5c-iii's delivery-ack layer adds state.
+**The two-Carpenter workflow is now structurally protected.** Each session starts with a fetch + drift check. If the OTHER Carpenter has shipped to main, this session knows immediately and grounds against main rather than the stale local PLAN.md. If they haven't, the hook says so explicitly. Bidirectional, mechanical.
 
 ## RECOMMENDED-NEXT-MOVES
 
-Three paths, in order of likely value:
-
-1. **Field test the full 5c stack with two devices.** Open Settings, flip the Mycelium toggle on both phones, do a Tier P handshake in person (so each has the other's pubkey + name in their People tab), then walk to different rooms and exercise: Alice tap Request-a-co-sign on a journal entry, pick Bob, Send via Nostr; Bob sees Accept in his inbox, reviews, signs, taps Send-back; Alice sees Absorb in her inbox, taps Absorb. Repeat for membership and Tier R handshake. The first such test produces real-relay evidence and informs whether 5c-iii is urgent.
-
-2. **Cut 5c-iii.** Multi-device sync + delivery acks. Smaller than it sounds — the Nostr OK frame is already observed and discarded, so wiring it into a delivery state takes one cut. Multi-device sync is the bigger half.
-
-3. **Cut Phase 5d Tier V.** Bigger new feature. Needs WebAuthn integration and Geolocation API; honest tier label, signed envelope per D-09.
-
-The Carpenter's vote: option 1 (operator runs the field test), then option 2 if the field test reveals delivery-ack gaps, then option 3 as the next major increment.
+1. **Operator runs the wife-test of the verify-page.** Highest-fidelity UX signal available right now.
+2. **Operator field-tests 5a/5b/5c stack with two devices** against real Nostr relays.
+3. **Cut 5c-iii** if the field test reveals delivery-ack or multi-device-sync urgency.
+4. **Cut Phase 5d Tier V** as the next major increment.
+5. **Pull verify-page polish audit forward** if the wife-test produces stumbling-point data.
+6. **Decide supply-chain expansion question** explicitly.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Last operator message: "Continue on and if you need anything for me, give me a couple of chips if not continue on re-grounding and until we run out of things to do or you need me to do something physically." Maximum-trust, momentum-protecting authorization. The chips check-in halfway through gave them control over the slice-to-main and the next-cut choice; they picked 5c-i-ι, then 5c-ii, and let everything else run on the momentum. Result: Phase 5c is essentially done in one session.
+Reflective, big-picture, decisive, and increasingly meta-aware about the workflow itself. This session ended with the operator naming the cross-Carpenter failure mode directly: "that's me cutting code on one Claude and write ideas and theory with the other Claude and then you just watched it divergent catch up in one instant." He authorized the hook addition with broad latitude — "you resolve that however you think is best you know where I stand" — and named the right design principle: "let's set up some gates to climb over them and fix them and catch them." Maximum trust in autonomy; expects mechanical defenses against the failure modes he names. The Carpenter delivered on that authorization this session.
 
-The wallet they wanted, the operator now has. The remaining honest unknown is what real relays do with our traffic — only physical-device testing answers that. That is genuinely the next thing the operator needs to do that the Carpenter cannot do remotely.
+The operator listens via TTS and copy-alls replies, so verbose theory replies are a real cost — that's a feedback note for future sessions.
 
 ## Ideas ready to revisit
 
-- **NIP-44 reference vectors** — DONE this session. 10/10 spec vectors round-trip clean. Cross-implementation interop proved.
-- **Sign-in-with-existing-Nostr-account** — natural moment is now or just after the first field test, since "your Nostr identity" framing is increasingly visible.
-- **Delivery confirmation UI** — flagged this session, becomes the 5c-iii cut.
+- **NIP-44 reference vectors** — DONE earlier on 2026-05-23.
+- **Sign-in-with-existing-Nostr-account** — entry logged earlier; natural moment is now or just after the first two-device field test.
+- **Delivery confirmation UI** — becomes the 5c-iii cut.
 - **Tier R responder identity fetch** — polish for after field test; today's name-as-typed is honest about the tier.
-- **Wallet as hardware-backed object** — architecture still ready (Wallet class owns `#keypair`; the day a secure-element / passkey backend lands, it slots in behind the same interface). Long horizon; not actionable today.
+- **Wallet as hardware-backed object** — long horizon; Wallet class owns `#keypair`, the day a secure-element / passkey backend lands it slots in behind the same interface.
+- **NEW 2026-05-23 — supply-chain expansion** — surfaced in theory walk; needs deliberate pursue/defer/non-goal decision. The same substrate that does personal sovereignty does food provenance, cold-chain integrity, fair-trade-with-workers-as-signers, smart-seal-on-container, counterfeit-proof pharmaceuticals. B2B revenue model exists; doesn't compromise the sovereignty constraint.
+- **NEW 2026-05-23 — wife-test framing for adoption** — the "paste, tamper, watch math reject" demonstration on /verify is the unit of conversion for non-cryptographers. Promoted from idea to immediate operator action.
+- **NEW 2026-05-23 — PreToolUse drift hook for git push** — belt-and-suspenders to this session's SessionStart hook.
+- **NEW 2026-05-23 — branch-gate implementation** — the doctrine claim in CLAUDE_ROOT.md mentions a SessionStart-driven branch-gate that doesn't actually exist as a script. Either implement or delete the claim.
+
+Full entries in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md` (note: this session did not write to ideas.md — the new entries above are flagged here for the next session to fold in).
