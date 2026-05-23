@@ -1,8 +1,29 @@
-import type { Attestation, Wallet } from 'tapit-attest';
+import type { Attestation, FieldBranch, Wallet } from 'tapit-attest';
 import { credentialAttestation, envelopeId } from 'tapit-attest';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import { leafValue } from '../connections/createHandshake.ts';
+
+// Numeric-leaf reader. leafValue (in createHandshake.ts) returns only
+// string-typed leaves; a leaf stored as the number 3 reads as the
+// empty string, and Number('') || 0 → 0, which masks as the cohort
+// threshold silently resetting to the default-fallback on every read.
+// This helper handles both string and number leaves so the cohort
+// editor survives a reopen regardless of which convention the writer
+// used. publishCohort now writes strings (matching the pattern in
+// createShares.ts) but the reader accepts both for backwards-
+// compatibility with any pre-fix cohort credential already anchored.
+function readNumberLeaf(att: Attestation, name: string): number {
+  const claim = att.claim as FieldBranch;
+  const node = claim.children.find((c) => c.name === name);
+  if (!node || node.node !== 'leaf') return 0;
+  if (typeof node.value === 'number') return node.value;
+  if (typeof node.value === 'string') {
+    const n = Number(node.value);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+}
 
 // 5e-iii-a — recovery-cohort declaration. The operator names which
 // peers they would trust to help them recover from a lost device,
@@ -86,8 +107,8 @@ export function readCohort(att: Attestation): CohortView {
       // malformed leaf — treat as empty cohort
     }
   }
-  const threshold = Number(leafValue(att, 'threshold')) || 0;
-  const totalShares = Number(leafValue(att, 'total_shares')) || 0;
+  const threshold = readNumberLeaf(att, 'threshold');
+  const totalShares = readNumberLeaf(att, 'total_shares');
   return {
     members,
     threshold,
@@ -165,8 +186,10 @@ export async function publishCohort(
     fields: {
       credential_type: 'recovery-cohort',
       members: normalized,
-      threshold,
-      total_shares: totalShares,
+      // Store numbers as strings so leafValue + readNumberLeaf round-
+      // trip cleanly. Matches the pattern in createShares.ts.
+      threshold: String(threshold),
+      total_shares: String(totalShares),
       declared_at: new Date().toISOString(),
     },
   });
