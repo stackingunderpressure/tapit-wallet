@@ -18,7 +18,7 @@ interface Props {
 type SubjectMode = 'me' | 'other';
 
 export function JournalComposer({ onCreated, onCancel }: Props) {
-  const { wallet, ownerId, passphrase, prefs, save } = useWallet();
+  const { wallet, ownerId, passphrase, prefs, save, syncEnvelope } = useWallet();
   const worker = useAnchorWorker();
   const [text, setText] = useState('');
   const [category, setCategory] = useState<string>(SUGGESTED_CATEGORIES[0]);
@@ -100,6 +100,15 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
       );
       // Persist wallet state so the held attestation survives reload.
       await save();
+      // 5c-iii-b — fire-and-forget multi-device sync. When Mycelium is
+      // on, this publishes a self-CC encrypted to our own pubkey so
+      // any other device of this wallet catches the entry in real time.
+      // When Mycelium is off, syncEnvelope returns null and we don't
+      // care; the existing cloud-sync via walletStore.save still
+      // delivers eventually.
+      void syncEnvelope(result.attestation).catch((err) => {
+        console.warn('multi-device sync publish failed', err);
+      });
       onCreated(result.digestHex);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save entry.');

@@ -135,6 +135,28 @@ export function WalletProvider({ children }: Props) {
       conn = connectWallet(wallet, {
         relays,
         onEnvelope: (item) => {
+          // 5c-iii-b multi-device sync — a self-CC envelope (sender
+          // is me, recipient was also me) skips the inbox UI and
+          // auto-holds. wallet.hold is idempotent for known envelopes,
+          // so the publishing device's echoed self-CC settles cleanly
+          // alongside whatever the receiving device's first-arrival
+          // is. After hold we save the wallet so the new attestation
+          // survives reload, then refresh holdings.
+          if (item.senderPubkey === wallet.publicKey) {
+            void (async () => {
+              try {
+                await wallet.hold(item.envelope);
+                const pass = passphraseRef.current;
+                if (pass && ownerId) {
+                  await saveWallet(wallet, pass, ownerId);
+                }
+                setHoldings(await wallet.holdings());
+              } catch (err) {
+                console.warn('self-CC auto-hold failed', err);
+              }
+            })();
+            return;
+          }
           setInboxEnvelopes((prev) =>
             prev.some((p) => p.eventId === item.eventId) ? prev : [item, ...prev],
           );
@@ -172,6 +194,25 @@ export function WalletProvider({ children }: Props) {
         '../transport/encryptedInbox.ts'
       );
       const result = await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
+      return result.publish;
+    },
+    [phase],
+  );
+
+  const syncEnvelope = useCallback(
+    async (envelope: Attestation) => {
+      // Opportunistic — when Mycelium is off, sync is a no-op and
+      // returns null. Callers do not need to gate on this; the cloud-
+      // sync via walletStore.save still delivers eventually.
+      const transport = transportRef.current;
+      if (!transport) return null;
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        return null;
+      }
+      const { sendEnvelopeToSelf } = await import(
+        '../transport/encryptedInbox.ts'
+      );
+      const result = await sendEnvelopeToSelf(transport, envelope, phase.wallet);
       return result.publish;
     },
     [phase],
@@ -348,6 +389,7 @@ export function WalletProvider({ children }: Props) {
       inboxEnvelopes,
       dismissInboxEnvelope,
       sendEnvelope,
+      syncEnvelope,
       save,
       updatePrefs,
       refresh,
@@ -365,6 +407,7 @@ export function WalletProvider({ children }: Props) {
     inboxEnvelopes,
     dismissInboxEnvelope,
     sendEnvelope,
+    syncEnvelope,
   ]);
 
   if (!ownerId || phase.kind === 'checking') {

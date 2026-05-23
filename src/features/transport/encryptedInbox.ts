@@ -67,6 +67,25 @@ export async function sendEnvelopeTo(
   return { event, publish };
 }
 
+/**
+ * Self-CC — publish an envelope encrypted to this wallet's own pubkey
+ * so other devices running the same wallet catch it through their
+ * live inbox subscription. NIP-44 encrypt-to-self is mathematically
+ * well-defined: the ECDH between (own privkey, own pubkey) yields a
+ * deterministic shared secret that any device holding the same key
+ * can recover. The other device's subscribeInbox sees senderPubkey ==
+ * recipientPubkey == own identity and the inbox handler auto-holds
+ * instead of routing to UI.
+ */
+export async function sendEnvelopeToSelf(
+  transport: Transport,
+  envelope: Attestation,
+  wallet: Wallet,
+  options: SendOptions = {},
+): Promise<SendResult> {
+  return sendEnvelopeTo(transport, envelope, wallet.publicKey, wallet, options);
+}
+
 export interface InboxEnvelope {
   envelope: Attestation;
   senderPubkey: string;

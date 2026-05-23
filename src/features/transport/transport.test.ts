@@ -10,7 +10,11 @@ import {
   type TransportFilter,
 } from './nostrEvent.ts';
 import { NostrTransport } from './nostrTransport.ts';
-import { sendEnvelopeTo, subscribeInbox } from './encryptedInbox.ts';
+import {
+  sendEnvelopeTo,
+  sendEnvelopeToSelf,
+  subscribeInbox,
+} from './encryptedInbox.ts';
 import { connectWallet } from './connectWallet.ts';
 import type {
   PublishResult,
@@ -210,6 +214,25 @@ describe('encrypted inbox round-trip', () => {
     await transport.publish(rerouted);
     await flush();
     expect(seen).toHaveLength(0);
+  });
+
+  it('self-CC round-trips — wallet encrypts to its own pubkey and decrypts on receive', async () => {
+    const alice = newWalletAs('Alice');
+    const transport = new FakeTransport();
+    const received: Attestation[] = [];
+    const senders: string[] = [];
+    subscribeInbox(transport, alice.wallet, (item) => {
+      received.push(item.envelope);
+      senders.push(item.senderPubkey);
+    });
+    await sendEnvelopeToSelf(transport, alice.identity, alice.wallet);
+    await flush();
+    expect(received).toHaveLength(1);
+    // The self-CC arrives with senderPubkey == recipient (own identity);
+    // the inbox handler at the application layer uses that signal to
+    // auto-hold instead of routing to UI.
+    expect(senders[0]).toBe(alice.wallet.publicKey);
+    expect(received[0]!.subject).toBe(alice.wallet.publicKey);
   });
 });
 

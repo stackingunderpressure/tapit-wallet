@@ -41,6 +41,15 @@ export interface WalletContextValue {
    * signing happen inside the Wallet instance.
    */
   sendEnvelope: (recipientPubkey: string, envelope: Attestation) => Promise<PublishResult>;
+  /**
+   * Multi-device sync (5c-iii-b). Publish an envelope encrypted to
+   * this wallet's own pubkey so other devices catch it through their
+   * inbox subscription. Returns null when the Mycelium network is
+   * not connected — sync is opportunistic; callers do not need to
+   * gate on it. The other devices' inbox handler auto-holds the
+   * envelope without UI surfacing.
+   */
+  syncEnvelope: (envelope: Attestation) => Promise<PublishResult | null>;
   /** Re-encrypt the wallet's current state and persist it. */
   save: () => Promise<SaveOutcome>;
   /** Update prefs (e.g., toggle cloud-sync). */
