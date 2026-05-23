@@ -13,6 +13,7 @@ import { NostrTransport } from './nostrTransport.ts';
 import { sendEnvelopeTo, subscribeInbox } from './encryptedInbox.ts';
 import { connectWallet } from './connectWallet.ts';
 import type {
+  PublishResult,
   Subscription,
   Transport,
   TransportEventHandler,
@@ -28,10 +29,17 @@ class FakeTransport implements Transport {
     onEvent: TransportEventHandler;
   }>();
 
-  async publish(event: TransportEvent): Promise<void> {
+  async publish(event: TransportEvent): Promise<PublishResult> {
     for (const sub of this.subs) {
       if (matches(sub.filter, event)) sub.onEvent(event);
     }
+    return {
+      eventId: event.id,
+      dispatched: 1,
+      accepted: ['fake://local'],
+      rejected: [],
+      pending: [],
+    };
   }
 
   subscribe(filter: TransportFilter, onEvent: TransportEventHandler): Subscription {
@@ -254,7 +262,10 @@ describe('NostrTransport wire-protocol shape', () => {
       kind: 1,
       content: 'wire test',
     });
-    await transport.publish(event);
+    const publishPromise = transport.publish(event);
+    // publish now waits for relay OK acks; deliver one so it settles.
+    fake.deliver(['OK', event.id, true, '']);
+    await publishPromise;
     const sent = fake.sent();
     expect(sent[0]![0]).toBe('REQ');
     expect(sent[1]![0]).toBe('EVENT');
@@ -283,6 +294,99 @@ describe('NostrTransport wire-protocol shape', () => {
     expect(seen).toHaveLength(1);
     expect(seen[0]!.id).toBe(event.id);
     transport.close();
+  });
+});
+
+describe('NostrTransport delivery acks (5c-iii-a)', () => {
+  it('resolves publish with accepted when the relay returns OK true', async () => {
+    const fake = makeFakeWS();
+    const transport = new NostrTransport({
+      relays: ['wss://relay.example'],
+      webSocketImpl: fake.WS,
+    });
+    fake.ready();
+    const wallet = Wallet.generate();
+    const event = await buildEvent({
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
+      kind: 1,
+      content: 'ack me',
+    });
+    const publishPromise = transport.publish(event);
+    fake.deliver(['OK', event.id, true, '']);
+    const result = await publishPromise;
+    expect(result.accepted).toEqual(['wss://relay.example']);
+    expect(result.rejected).toEqual([]);
+    expect(result.pending).toEqual([]);
+    transport.close();
+  });
+
+  it('records rejected with the relay reason when OK is false', async () => {
+    const fake = makeFakeWS();
+    const transport = new NostrTransport({
+      relays: ['wss://relay.example'],
+      webSocketImpl: fake.WS,
+    });
+    fake.ready();
+    const wallet = Wallet.generate();
+    const event = await buildEvent({
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
+      kind: 1,
+      content: 'rejected',
+    });
+    const publishPromise = transport.publish(event);
+    fake.deliver(['OK', event.id, false, 'rate-limited']);
+    const result = await publishPromise;
+    expect(result.accepted).toEqual([]);
+    expect(result.rejected).toEqual([
+      { url: 'wss://relay.example', reason: 'rate-limited' },
+    ]);
+    transport.close();
+  });
+
+  it('settles immediately when every dispatched relay has responded', async () => {
+    // Single-relay setup; one OK frame is "all responded" for our purposes.
+    const fake = makeFakeWS();
+    const transport = new NostrTransport({
+      relays: ['wss://relay.example'],
+      webSocketImpl: fake.WS,
+    });
+    fake.ready();
+    const wallet = Wallet.generate();
+    const event = await buildEvent({
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
+      kind: 1,
+      content: 'fast settle',
+    });
+    const start = Date.now();
+    const publishPromise = transport.publish(event);
+    fake.deliver(['OK', event.id, true, '']);
+    await publishPromise;
+    expect(Date.now() - start).toBeLessThan(1_000);
+    transport.close();
+  });
+
+  it('drains pending publishes on close — never leaves a promise hanging', async () => {
+    const fake = makeFakeWS();
+    const transport = new NostrTransport({
+      relays: ['wss://relay.example'],
+      webSocketImpl: fake.WS,
+    });
+    fake.ready();
+    const wallet = Wallet.generate();
+    const event = await buildEvent({
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
+      kind: 1,
+      content: 'never acked',
+    });
+    const publishPromise = transport.publish(event);
+    transport.close();
+    const result = await publishPromise;
+    expect(result.accepted).toEqual([]);
+    expect(result.pending).toEqual(['wss://relay.example']);
   });
 });
 

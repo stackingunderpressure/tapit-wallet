@@ -1,4 +1,5 @@
 import type {
+  PublishResult,
   Subscription,
   Transport,
   TransportEventHandler,
@@ -22,11 +23,22 @@ import type { TransportEvent, TransportFilter } from './nostrEvent.ts';
 
 const INITIAL_RECONNECT_MS = 1_000;
 const MAX_RECONNECT_MS = 30_000;
+const PUBLISH_ACK_TIMEOUT_MS = 5_000;
 
 interface SubRecord {
   id: string;
   filter: TransportFilter;
   onEvent: TransportEventHandler;
+}
+
+interface PendingPublish {
+  eventId: string;
+  dispatched: number;
+  accepted: string[];
+  rejected: { url: string; reason: string }[];
+  pending: Set<string>;
+  resolve: (result: PublishResult) => void;
+  timer: ReturnType<typeof setTimeout>;
 }
 
 interface RelayConn {
@@ -49,6 +61,7 @@ export class NostrTransport implements Transport {
   private readonly relays: RelayConn[] = [];
   private readonly subs = new Map<string, SubRecord>();
   private readonly seen = new Set<string>();
+  private readonly pendingPublishes = new Map<string, PendingPublish>();
   private readonly WS: typeof WebSocket;
   private nextSubId = 1;
   private closed = false;
@@ -70,10 +83,42 @@ export class NostrTransport implements Transport {
     }
   }
 
-  async publish(event: TransportEvent): Promise<void> {
+  async publish(event: TransportEvent): Promise<PublishResult> {
     if (this.closed) throw new Error('transport is closed');
     const frame = JSON.stringify(['EVENT', event]);
-    for (const conn of this.relays) this.send(conn, frame);
+    const dispatchedUrls: string[] = [];
+    for (const conn of this.relays) {
+      this.send(conn, frame);
+      dispatchedUrls.push(conn.url);
+    }
+    return new Promise<PublishResult>((resolve) => {
+      const pending: PendingPublish = {
+        eventId: event.id,
+        dispatched: dispatchedUrls.length,
+        accepted: [],
+        rejected: [],
+        pending: new Set(dispatchedUrls),
+        resolve,
+        timer: setTimeout(() => this.settlePublish(event.id, 'timeout'), PUBLISH_ACK_TIMEOUT_MS),
+      };
+      this.pendingPublishes.set(event.id, pending);
+      // Edge case: zero relays configured — settle immediately.
+      if (dispatchedUrls.length === 0) this.settlePublish(event.id, 'all-responded');
+    });
+  }
+
+  private settlePublish(eventId: string, _reason: 'all-responded' | 'timeout'): void {
+    const pending = this.pendingPublishes.get(eventId);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    this.pendingPublishes.delete(eventId);
+    pending.resolve({
+      eventId,
+      dispatched: pending.dispatched,
+      accepted: pending.accepted,
+      rejected: pending.rejected,
+      pending: [...pending.pending],
+    });
   }
 
   subscribe(filter: TransportFilter, onEvent: TransportEventHandler): Subscription {
@@ -96,6 +141,11 @@ export class NostrTransport implements Transport {
     if (this.closed) return;
     this.closed = true;
     this.subs.clear();
+    // Drain any in-flight publishes — settle each with whatever
+    // acks landed so far rather than leaving promises hanging.
+    for (const eventId of [...this.pendingPublishes.keys()]) {
+      this.settlePublish(eventId, 'timeout');
+    }
     for (const conn of this.relays) {
       conn.closed = true;
       if (conn.reconnectTimer) clearTimeout(conn.reconnectTimer);
@@ -145,7 +195,7 @@ export class NostrTransport implements Transport {
     };
     ws.onmessage = (msg: MessageEvent) => {
       if (typeof msg.data !== 'string') return;
-      this.handleFrame(msg.data);
+      this.handleFrame(msg.data, conn.url);
     };
     ws.onclose = () => {
       conn.open = false;
@@ -179,7 +229,7 @@ export class NostrTransport implements Transport {
     conn.outbox.push(frame);
   }
 
-  private handleFrame(raw: string): void {
+  private handleFrame(raw: string, relayUrl: string): void {
     let frame: unknown;
     try {
       frame = JSON.parse(raw);
@@ -188,6 +238,10 @@ export class NostrTransport implements Transport {
     }
     if (!Array.isArray(frame) || frame.length < 2) return;
     const [type] = frame;
+    if (type === 'OK') {
+      this.handleOkFrame(frame, relayUrl);
+      return;
+    }
     if (type !== 'EVENT') return;
     const subId = frame[1];
     const event = frame[2];
@@ -201,5 +255,23 @@ export class NostrTransport implements Transport {
     if (this.seen.has(ev.id)) return;
     this.seen.add(ev.id);
     sub.onEvent(ev);
+  }
+
+  // NIP-01: ['OK', <event_id>, <ok>, <reason>] — the relay's
+  // verdict on a publish. Route to the matching pending publish;
+  // if all dispatched relays have responded, settle the promise
+  // immediately rather than waiting for the timeout.
+  private handleOkFrame(frame: unknown[], relayUrl: string): void {
+    const eventId = frame[1];
+    const okFlag = frame[2];
+    const reason = typeof frame[3] === 'string' ? frame[3] : '';
+    if (typeof eventId !== 'string' || typeof okFlag !== 'boolean') return;
+    const pending = this.pendingPublishes.get(eventId);
+    if (!pending) return;
+    if (!pending.pending.has(relayUrl)) return;
+    pending.pending.delete(relayUrl);
+    if (okFlag) pending.accepted.push(relayUrl);
+    else pending.rejected.push({ url: relayUrl, reason });
+    if (pending.pending.size === 0) this.settlePublish(eventId, 'all-responded');
   }
 }

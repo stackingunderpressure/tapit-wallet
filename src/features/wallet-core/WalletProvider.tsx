@@ -171,7 +171,8 @@ export function WalletProvider({ children }: Props) {
       const { sendEnvelopeTo } = await import(
         '../transport/encryptedInbox.ts'
       );
-      await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
+      const result = await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
+      return result.publish;
     },
     [phase],
   );

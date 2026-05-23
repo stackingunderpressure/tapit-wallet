@@ -4,6 +4,7 @@ import type { Prefs } from '../storage/prefsStore.ts';
 import type { SaveOutcome } from '../storage/walletStore.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
+import type { PublishResult } from '../transport/transport.ts';
 
 export interface WalletContextValue {
   wallet: Wallet;
@@ -31,12 +32,15 @@ export interface WalletContextValue {
   /** Drop one inbox envelope by event id (e.g. after the operator acts on it). */
   dismissInboxEnvelope: (eventId: string) => void;
   /**
-   * Encrypt an envelope to a peer's x-only pubkey and publish it
-   * through the Mycelium transport. Throws if the network is not
-   * connected. The wallet's private key never crosses this seam —
-   * encryption + signing happen inside the Wallet instance.
+   * Encrypt an envelope to a peer's x-only pubkey, publish it through
+   * the Mycelium transport, and wait for relay acks. Resolves with a
+   * PublishResult naming how many relays accepted, rejected, or were
+   * still pending at the publish timeout — the caller decides how to
+   * surface that. Throws if the network is not connected. The
+   * wallet's private key never crosses this seam — encryption +
+   * signing happen inside the Wallet instance.
    */
-  sendEnvelope: (recipientPubkey: string, envelope: Attestation) => Promise<void>;
+  sendEnvelope: (recipientPubkey: string, envelope: Attestation) => Promise<PublishResult>;
   /** Re-encrypt the wallet's current state and persist it. */
   save: () => Promise<SaveOutcome>;
   /** Update prefs (e.g., toggle cloud-sync). */

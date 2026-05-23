@@ -15,6 +15,10 @@ import {
   readHandshake,
 } from './createHandshake.ts';
 import { PeerPicker } from './PeerPicker.tsx';
+import {
+  summarizePublish,
+  type PublishStatusSummary,
+} from '../transport/publishStatus.ts';
 
 interface Props {
   onClose: () => void;
@@ -62,6 +66,7 @@ export function HandshakeModal({ onClose }: Props) {
   // Remote-handshake-start (Tier R) state.
   const [remotePubkey, setRemotePubkey] = useState('');
   const [remoteName, setRemoteName] = useState('');
+  const [remoteSendStatus, setRemoteSendStatus] = useState<PublishStatusSummary | null>(null);
 
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
@@ -207,7 +212,8 @@ export function HandshakeModal({ onClose }: Props) {
       const signed = wallet.sign(draft);
       await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
       await save();
-      await sendEnvelope(pubkey, signed);
+      const result = await sendEnvelope(pubkey, signed);
+      setRemoteSendStatus(summarizePublish(result));
       setHandshake(signed);
       setPeerName(remoteName.trim());
       setStep('remote-sent');
@@ -316,6 +322,20 @@ export function HandshakeModal({ onClose }: Props) {
               and counter-sign, your wallet will absorb their signature
               from your inbox.
             </p>
+            {remoteSendStatus && (
+              <p
+                className={`mt-2 text-xs ${
+                  remoteSendStatus.tone === 'ok'
+                    ? 'text-emerald-800'
+                    : remoteSendStatus.tone === 'fail'
+                      ? 'text-red-700'
+                      : 'text-muted'
+                }`}
+                role="status"
+              >
+                {remoteSendStatus.detail}
+              </p>
+            )}
             <button
               type="button"
               onClick={onClose}

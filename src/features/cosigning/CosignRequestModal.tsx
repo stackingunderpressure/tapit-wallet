@@ -5,6 +5,10 @@ import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { PeerPicker } from '../connections/PeerPicker.tsx';
+import {
+  summarizePublish,
+  type PublishStatusSummary,
+} from '../transport/publishStatus.ts';
 
 interface Props {
   attestation: Attestation;
@@ -30,6 +34,7 @@ export function CosignRequestModal({ attestation, onClose }: Props) {
   const [recipient, setRecipient] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const json = canonicalEnvelope(attestation);
   const recipientTrim = recipient.trim().toLowerCase();
@@ -55,10 +60,16 @@ export function CosignRequestModal({ attestation, onClose }: Props) {
   async function sendViaNostr() {
     if (!recipientValid) return;
     setSendError(null);
+    setSendStatus(null);
     setSending(true);
     try {
-      await sendEnvelope(recipientTrim, attestation);
-      setSent(true);
+      const result = await sendEnvelope(recipientTrim, attestation);
+      const status = summarizePublish(result);
+      setSendStatus(status);
+      // 'pending' (no acks yet) still counts as "sent" for the
+      // disabled-state — operator can re-send if needed but the
+      // dispatch happened.
+      if (status.tone !== 'fail') setSent(true);
     } catch (err) {
       setSendError(err instanceof Error ? err.message : 'send failed');
     } finally {
@@ -122,11 +133,25 @@ export function CosignRequestModal({ attestation, onClose }: Props) {
               className="mt-2 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
             >
               {sent
-                ? 'Sent via Nostr'
+                ? sendStatus?.label ?? 'Sent via Nostr'
                 : sending
                   ? 'Sending…'
                   : 'Send via Nostr'}
             </button>
+            {sendStatus && (
+              <p
+                className={`mt-2 text-xs ${
+                  sendStatus.tone === 'ok'
+                    ? 'text-emerald-800'
+                    : sendStatus.tone === 'fail'
+                      ? 'text-red-700'
+                      : 'text-muted'
+                }`}
+                role="status"
+              >
+                {sendStatus.detail}
+              </p>
+            )}
             {sendError && (
               <p className="mt-2 text-xs text-red-600" role="alert">
                 {sendError}

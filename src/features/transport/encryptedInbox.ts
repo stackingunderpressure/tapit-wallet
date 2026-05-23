@@ -7,6 +7,7 @@ import {
   type TransportEvent,
 } from './nostrEvent.ts';
 import type {
+  PublishResult,
   Subscription,
   Transport,
   TransportEventHandler,
@@ -40,13 +41,18 @@ export interface SendOptions {
  * serialized as canonical JSON before encryption — the recipient
  * recovers it with parseEnvelope.
  */
+export interface SendResult {
+  event: TransportEvent;
+  publish: PublishResult;
+}
+
 export async function sendEnvelopeTo(
   transport: Transport,
   envelope: Attestation,
   recipientPubkey: string,
   sender: Wallet,
   options: SendOptions = {},
-): Promise<TransportEvent> {
+): Promise<SendResult> {
   const plaintext = JSON.stringify(envelope);
   const ciphertext = sender.nip44EncryptTo(plaintext, recipientPubkey);
   const event = await buildEvent({
@@ -57,8 +63,8 @@ export async function sendEnvelopeTo(
     tags: [['p', recipientPubkey]],
     created_at: options.created_at,
   });
-  await transport.publish(event);
-  return event;
+  const publish = await transport.publish(event);
+  return { event, publish };
 }
 
 export interface InboxEnvelope {

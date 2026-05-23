@@ -11,6 +11,10 @@ import {
   isMembership,
   readMembership,
 } from './createMembership.ts';
+import {
+  summarizePublish,
+  type PublishStatusSummary,
+} from '../transport/publishStatus.ts';
 
 const ACCENT_BLOCK =
   'mt-4 rounded-md bg-accent/5 border border-accent/30 p-3';
@@ -45,15 +49,19 @@ export function MembershipModal({ onClose }: Props) {
   const [peerName, setPeerName] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
 
   async function sendMembershipViaNostr() {
     if (!membership) return;
     const view = readMembership(membership);
     setError(null);
+    setSendStatus(null);
     setSending(true);
     try {
-      await sendEnvelope(view.memberId, membership);
-      setSent(true);
+      const result = await sendEnvelope(view.memberId, membership);
+      const status = summarizePublish(result);
+      setSendStatus(status);
+      if (status.tone !== 'fail') setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'send failed');
     } finally {
@@ -210,11 +218,25 @@ export function MembershipModal({ onClose }: Props) {
                   className="mt-2 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
                 >
                   {sent
-                    ? 'Sent via Nostr'
+                    ? sendStatus?.label ?? 'Sent via Nostr'
                     : sending
                       ? 'Sending…'
                       : `Send to ${peerName || 'them'} via Nostr`}
                 </button>
+                {sendStatus && (
+                  <p
+                    className={`mt-2 text-xs ${
+                      sendStatus.tone === 'ok'
+                        ? 'text-emerald-800'
+                        : sendStatus.tone === 'fail'
+                          ? 'text-red-700'
+                          : 'text-muted'
+                    }`}
+                    role="status"
+                  >
+                    {sendStatus.detail}
+                  </p>
+                )}
               </div>
             )}
             <button

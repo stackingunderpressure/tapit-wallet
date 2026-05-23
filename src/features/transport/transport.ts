@@ -20,14 +20,35 @@ export interface Subscription {
   close(): void;
 }
 
+/**
+ * Outcome of a publish call after waiting for relay acknowledgements
+ * (NIP-01 OK frames). Settled when either every relay has responded
+ * or the publish timeout has elapsed, whichever first.
+ */
+export interface PublishResult {
+  /** Event id we tried to publish. */
+  eventId: string;
+  /** Number of relays the frame was dispatched to. */
+  dispatched: number;
+  /** Relay URLs that returned OK with success=true. */
+  accepted: string[];
+  /** Relay URLs that returned OK with success=false plus the reason string. */
+  rejected: { url: string; reason: string }[];
+  /** Relay URLs we never heard back from before the publish timeout. */
+  pending: string[];
+}
+
 export interface Transport {
   /**
-   * Broadcast one signed event to every relay. Resolves once the
-   * implementation has dispatched the event — does not wait for
-   * relay acknowledgements. Acknowledgement-aware delivery is a
-   * later concern (5c-iii).
+   * Broadcast one signed event to every relay and wait for OK acks
+   * with a timeout. Resolves once every relay has responded or the
+   * timeout elapses, whichever first — the result records per-relay
+   * outcomes (accepted, rejected, pending). The promise does not
+   * reject on relay failure; the caller inspects PublishResult and
+   * decides what to surface. It DOES reject if the transport is
+   * closed.
    */
-  publish(event: TransportEvent): Promise<void>;
+  publish(event: TransportEvent): Promise<PublishResult>;
 
   /**
    * Subscribe to events matching the filter. The handler is called

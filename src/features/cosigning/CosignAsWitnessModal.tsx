@@ -8,6 +8,10 @@ import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
 import { holdAndAnchor, isHandshake } from '../connections/createHandshake.ts';
+import {
+  summarizePublish,
+  type PublishStatusSummary,
+} from '../transport/publishStatus.ts';
 
 interface Props {
   onClose: () => void;
@@ -62,6 +66,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
   const [scanning, setScanning] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
 
   function review() {
     setError(null);
@@ -118,11 +123,16 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
   async function sendBack() {
     if (step.kind !== 'signed' || !incomingSender) return;
     setError(null);
+    setSendStatus(null);
     setSending(true);
     try {
-      await sendEnvelope(incomingSender, step.signed);
-      setSent(true);
-      if (onSuccess) onSuccess();
+      const result = await sendEnvelope(incomingSender, step.signed);
+      const status = summarizePublish(result);
+      setSendStatus(status);
+      if (status.tone !== 'fail') {
+        setSent(true);
+        if (onSuccess) onSuccess();
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'send failed');
     } finally {
@@ -230,18 +240,34 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
               <QrShow text={canonicalEnvelope(step.signed)} label="Signed envelope" />
             )}
             {incomingSender && (
-              <button
-                type="button"
-                onClick={sendBack}
-                disabled={sending || sent}
-                className="mt-3 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
-              >
-                {sent
-                  ? 'Sent back via Nostr'
-                  : sending
-                    ? 'Sending…'
-                    : 'Send back via Nostr'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={sendBack}
+                  disabled={sending || sent}
+                  className="mt-3 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
+                >
+                  {sent
+                    ? sendStatus?.label ?? 'Sent back via Nostr'
+                    : sending
+                      ? 'Sending…'
+                      : 'Send back via Nostr'}
+                </button>
+                {sendStatus && (
+                  <p
+                    className={`mt-2 text-xs ${
+                      sendStatus.tone === 'ok'
+                        ? 'text-emerald-800'
+                        : sendStatus.tone === 'fail'
+                          ? 'text-red-700'
+                          : 'text-muted'
+                    }`}
+                    role="status"
+                  >
+                    {sendStatus.detail}
+                  </p>
+                )}
+              </>
             )}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
