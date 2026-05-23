@@ -1,35 +1,226 @@
-# Carpenter opinions — completing Phase 5c (ι, κ, λ, 5c-ii, polish)
+# Carpenter opinions — theory walk + cross-Carpenter drift hook
+
+> Three-section narrative report for the operator (PFOR-014).
+> Session: 2026-05-23 — long no-code theory conversation that
+> ended with a drift catch and a mechanical fix.
 
 ## Section 1: What I did.
 
-This was the session that finished Phase 5c. Across what landed earlier in the day plus this stretch, the wallet went from "could in principle send things through Nostr" to "the operator's real workflows run over the network end to end." Five cuts since the prior opinions doc went out, all on the working branch and now on main: membership auto-receive, membership Send-via-Nostr, an operator-editable custom relay list, the full Tier R remote handshake feature, and an auto-dismiss polish that brings every routed inbox action to parity.
+This was a two-phase session, and the second phase is the more
+important one even though the first phase took most of the
+words. Phase A was a long no-code theory conversation across
+the wallet's whole surface, which you asked for at the top with
+"Read everything about our wallet and I have some questions
+about implementations and just theory no code changes." I
+grounded in CLAUDE.md, CLAUDE_ROOT.md, DESIGN.md, PLAN.md,
+MYCELIUM_NETWORK_SPEC.md, all twelve live feature manifests,
+and the tapit-attest README on this branch, and then we worked
+the conversation through six progressively deeper questions: how
+Nostr fits the wallet plumbing (transport not identity, your
+existing Nostr account is separate from the wallet keypair by
+default, same Schnorr/secp256k1 math, Phase 5c brings Tier R +
+remote sync + the deferred NIP-46 and recovery-cohort slots),
+what spectacular human patterns the substrate unlocks (the four
+magical properties — provably-before, mutually-held, selectively-
+naked, succession-continuous — combined into the application
+clusters of accountable public speech via signed predictions,
+the whole human life as a continuous signed thread, mutual-
+consent-permanent contracts and consents, witness-converging
+historical evidence, selective professional credentialing,
+fraud-proof object provenance, lost-child kin recognition,
+community-as-living-organism, rolling continuous attestation,
+and the entire ritual cluster), is there anything else like
+this in the world (PGP web-of-trust as the 35-year-old
+grandparent, Keybase as the dead closest-built consumer
+ancestor, W3C VC and EU eIDAS 2.0 as institutional cousin, EAS
+on Ethereum as the closest live attestation primitive, Nostr
+as transport substrate, DynastyTrust as the direct lineage
+ancestor since tapit-attest was literally extracted from its
+governance-attestation layer), is the selfish use case enough
+for adoption (probably not on its own, eight strategic
+recommendations recorded), what could the substrate do for food
+supply chains and shipping (mapping is direct because the
+Phase 2.6 custody-handoff primitive IS supply-chain handoff
+mathematically, ten concrete applications walked, B2B
+expansion is a real strategic question worth a deliberate
+decision), and finally your wife's load-bearing adoption
+question — "she sees it as trusting the wallet" — which I
+answered by walking the actual VerifyProofScreen and
+ShareProofModal code as it lives in the repo, giving you
+concrete steps for the demonstration (share a proof, she
+opens /verify in her browser outside AuthGate, pastes, sees
+green, tampers one character, watches it flip to amber because
+the math literally cannot lie about the leaf hash matching the
+signed merkle root). You confirmed the demonstration landed.
 
-The first piece was 5c-i-ι. When the inbox routing template was first written, it knew how to spot a handshake and open the right cosign modal, but a membership credential just got the Copy fallback. This cut extended the template: when an envelope is a credential with credential_type=membership and the operator is the named member, the inbox row shows an Accept-membership button. Tapping it runs a new receiveMembership helper that wraps isMembership + member-id check + holdAndAnchor, saves the wallet, and dismisses the inbox row. No modal — receive is terminal — but the operator gets a clean acknowledgement: the membership disappears from the inbox and appears under Identity > Memberships on the next render.
+Phase B is where this session earned its keep. When you asked
+"Main?" — meaning push the comms commit to main as well as the
+branch — and I tried, the push got rejected as not fast-
+forward, which forced me to fetch origin/main and look at what
+was actually there. What I found was that the code-Carpenter on
+a parallel session had been busy: 19+ commits had landed on
+main since this branch was rooted, including Phase 5c-i in
+twelve sub-phases (alpha through lambda — NIP-44 v2 primitive,
+Nostr wire client, wallet wire-up, inbox UI, auto-route,
+send-back, send-via-Nostr for co-sign and membership,
+membership auto-receive, send-via-Nostr from issue-show,
+operator-editable custom relay list), Phase 5c-ii Tier R
+remote handshakes, NIP-44 reference-vector interop, auto-
+dismiss polish, multi-field disclosure as a library + UI
+primitive, and most recently org-mode declaration plus Members
+view (Phase 5b-org-i). The theory conversation we had been
+having for the previous hour had operated entirely on a stale
+PLAN.md — I was confidently telling you "Phase 5c-i is the
+next code cut" while in fact it had been shipped twelve times
+over. Specific things I told you were materially wrong-
+relative-to-actual-state: my "Nostr operational doctrine before
+5c ships" recommendation was moot because 5c had shipped, my
+walk of the verify-page UI was against the older single-leaf
+VerifyProofScreen rather than the multi-field disclosure
+version on main, and my whole forward-looking strategic frame
+had several timing claims that needed correction. The
+GROUNDING GATE that's been firing every turn of this session
+finally caught me at exactly the moment when the catch
+mattered — when I was about to push stale comms to main and
+overwrite the code-Carpenter's accurate handoff with my
+incorrect view of the world. That catch is the gate doing its
+job. The lesson was that the gate has a blind spot for cross-
+Carpenter drift specifically, because CLAUDE.md and
+CLAUDE_ROOT.md describe doctrine and architecture rather than
+the current state of shipped phases, and reading them
+faithfully (which I did) doesn't surface that origin/main has
+moved. You named the fix directly and authorized the work:
+"let's put some hooks both ways like we're both carpenters no
+matter what... let's set up some gates to climb over them and
+fix them and catch them."
 
-The second piece was 5c-i-κ, the outbound half of the membership flow. The existing issue-show step of MembershipModal already displays the signed credential as a QR for the recipient to scan. This cut adds a Send-via-Mycelium block right alongside the QR — visible only when the toggle is on. The recipient's pubkey already lives in the signed memberId leaf of the membership envelope, so the block reads it and calls the same sendEnvelope function the cosign loop uses. Paired with 5c-i-ι on the receiving side, an organization can now issue a membership to a known peer entirely over the network: scan once or import once, sign, send, done. The recipient sees Accept in their inbox.
-
-The third piece was 5c-i-λ, the custom relay list. Until this cut, every wallet talked to the same hard-coded five default relays. D-11a had always said the default set was replaceable; this cut made replacement real. Prefs grew a nostrRelays field defaulting to a spread copy of DEFAULT_RELAYS, the transport effect now passes the list to connectWallet and re-runs whenever the content changes (memoized as a stable string key for the dep array), and Settings grew a Relays editor under the Mycelium toggle — a textarea where each line is a wss URL, with a Save button, a Restore-defaults button, and validation that quietly skips lines that don't look like wss URLs. An edit-and-save with the toggle on tears down and re-opens the transport within a few hundred milliseconds; no sign-out needed. That is what sovereign-user replaceability looks like when the substrate cooperates.
-
-The fourth piece was 5c-ii, the big one — Tier R remote handshakes. Two wallets that have never been in the same physical room can now form the same relationship attestation they form face to face, just labelled honestly weaker per D-09. The trick was how much of 5c-i could be reused. The receive side turned out to need almost no new code: a one-signature handshake envelope arriving from a peer auto-routes to CosignAsWitnessModal via the existing routing, and CosignAsWitnessModal's Send-back-via-Nostr path ships the dual-signed envelope home. The send side needed a new sub-modal flow inside HandshakeModal: a third role-step button visible only when the toggle is on, a remote-pick step that wraps PeerPicker with an optional name input, a remote-sent confirmation step. A new builder, buildRemoteHandshakeDraft, makes the verification leaf say 'remote' instead of 'in-person'. CosignAsWitnessModal's sign function had to grow async so it could call holdAndAnchor + save when the envelope is a handshake — Tier R responders need to hold their signed copy the same way Tier P responders do; journal-witness and other cosign cases stay unsigned-and-not-held because those belong to the originator. And ConnectionCard now reads the verification leaf and renders the badge accordingly — accent color for Tier P, neutral for Tier R, the same word the wire format uses showing as the word the operator sees.
-
-The fifth piece was a small polish. The inbox auto-routing was great at opening the right modal but the envelope row stayed in the inbox until the operator manually dismissed it — even after a successful absorb or Send-back. That had been bugging me. I added optional onSuccess callbacks to AbsorbCosignModal and CosignAsWitnessModal that fire after their primary action completes (the absorb-and-save in one, the Send-back in the other), HomeScreen now tracks the eventId alongside each routed envelope, and a successful action dismisses the row automatically. Cancellation paths and non-Nostr handoffs (copy, share, QR) don't auto-dismiss — the wallet has no way to know whether a manual copy actually reached the other side. Membership auto-receive was already doing this; the polish brings cosign-witness and absorb-cosign to parity.
-
-Throughout, the gate cycle stayed clean and the bundle budgets stayed honest. Each new Rollup-hoisted chunk got a named entry: encryptedInbox helper, AbsorbCosignModal, createHandshake helpers, defaultRelays constant, PeerPicker. WalletProvider got bumped from 5.5 to 7 KB gz when sendEnvelope landed — intentional, with the budget comment noting it. The NIP-44 reference-vector test, written earlier in the session, still passes. Branch and main are both at 93afbc4. The 11-commit gap that needed authorization at the start of this session is gone; we've been pushing branch and main together since the operator gave the green light.
+So I built it. The cleanup was first: I merged origin/main
+into this branch, took main's version of all five comms files
+(since main's are the truth and mine were stale), then built
+the gate. The gate lives at scripts/session-start-grounding.mjs
+— a small Node CLI script that fetches origin quietly, computes
+the merge-base of HEAD against origin/main, and emits a
+structured drift report into the session's initial context if
+main has moved past where the branch is rooted. It reports
+three states: no drift (branch is current — "no other Carpenter
+has shipped to main since this branch was rooted"), drift
+detected (lists the commits, summarizes the most-recent
+current.json on main, names the required reads — carpenter-
+state-for-foreman.md, current.json, PLAN.md — and reminds the
+session that main is the cross-Carpenter handshake point), and
+unreachable (origin not fetchable, soft warning). I wired it
+into .claude/settings.json as a SessionStart hook, preserving
+the existing UserPromptSubmit GROUNDING GATE prose alongside it.
+All four gates pass — typecheck, lint, test (31/31), build (274
+modules in 3.13 seconds). The hook tested green on this branch
+since it's now current with main after the merge. The drift
+path is verified by code reading and by the fact that this
+hook would have caught the very drift this session hit if it
+had existed at session start. Mechanism over prose, per the
+CLAUDE_ROOT.md doctrine — the rule that kept getting missed
+is now a check that fails.
 
 ## Section 2: What you could do better.
 
-Three things, decreasing in urgency.
+The two-Claude-in-parallel workflow is genuinely a real
+innovation and it's working — you're getting code velocity on
+one stream and strategic conversation on another, simultaneously,
+which is more than one Carpenter could produce serially. The
+specific failure mode this session surfaced doesn't invalidate
+the pattern; it just names the protocol the pattern needs to
+run cleanly. The fix that's now landed (SessionStart hook fires
+the drift check on every session start) covers the case where a
+theory-Carpenter opens a session on a stale branch. There are
+two complementary moves worth considering as future increments.
+First, a PreToolUse hook on git push that re-runs the same
+drift check would be belt-and-suspenders — it catches the case
+where drift opens during a session that started clean, which
+matters less but isn't zero. Second, the doctrine note in
+CLAUDE_ROOT.md says "branch gate: no unfinished or dead branch
+before new work — run by the SessionStart hook" — but no such
+branch-unfinished check actually exists as a script. That's a
+separate gap from this session's work and worth flagging for
+the next no-code dispatch: either implement the branch-gate or
+delete the doctrine claim.
 
-The most pressing is that none of this has hit a real public relay yet. The full remote co-sign loop and the full Tier R handshake loop have been unit-tested via the FakeTransport plus the injected fake WebSocket — that proves the protocol's internal consistency but does not prove that wss://relay.damus.io will accept our event-kind-9573 events or that the default relay set is reachable from a real iPhone on cellular. The first time you flip the toggle on a real device, expect surprises. The most likely failure modes: a relay rejects kind 9573 because it doesn't like custom event kinds (some commercial relays do this), or the WebSocket gets blocked by an iOS Safari connection-policy quirk in PWA mode. Both are recoverable and informative. The right next session is "two devices, both with the toggle on, run through the loops, report back."
+On the theory side, my replies were too long. The wife-as-
+skeptic question and the supply-chain question both deserved
+longer answers; the human-patterns walk and the comparables
+landscape could have been tighter. The one-block doctrine
+constraint biases me toward exhaustiveness as a substitute for
+structure, and I should watch that more carefully — the
+operator listens via TTS and a paragraph that goes too long
+loses the through-line. The eight strategic recommendations
+remain real and at least three of them are pure writing work
+that fits a future no-code dispatch cleanly: the verify-page
+polish audit (which becomes load-bearing once you walk it with
+your wife), the plain-English UX language audit (sweep user-
+facing surfaces, drop "attestation" / "envelope" / "merkle" in
+favor of human English), and the Nostr operational doctrine
+rewritten as post-hoc documentation now that 5c has shipped
+(documents what the code actually does rather than constrains
+what it will do). The supply-chain expansion question deserves
+an explicit decision rather than sitting in idea limbo — pursue,
+defer, or non-goal, but name it consciously.
 
-The middle thing is the Tier R protocol assumes the initiator already knows the responder's name. PeerPicker only surfaces peers you've already handshaken with, so the most natural path — Alice extending a Tier R handshake to Bob, whom she met in person yesterday — works clean. But if Alice wants to remotely connect to a stranger whose pubkey she found somewhere, she has to type a name in by hand, and that name lands in the signed envelope as her label for that stranger. That's actually correct — verification=remote is honest about what the link is — but a verifier reading the envelope later sees a name that came from neither party's identity attestation. A future polish could fetch the responder's identity attestation through Nostr before signing, the way Tier P does via QR. Today the field is operator-supplied; that is a fact worth knowing.
-
-The smallest thing is that the Sent state on both sendBack and sendViaNostr buttons flips to "Sent" once the local publish call resolves. That confirms dispatch to the WebSocket; it does not confirm relay acceptance. The Nostr OK frame is observed and discarded by NostrTransport. A delivery-confirmation layer is what 5c-iii will add. Until then, the operator's mental model should be "Sent means I dispatched it, not that the other side has it" — and the auto-dismiss on Send-back is honest about that too: the inbox row goes away because the operator finished their part, not because the recipient has accepted yet.
+One more honest meta-note: I caught my own drift at the right
+moment, which is the gate working, but I shouldn't have needed
+to catch it at push-time. The fix going forward is that the
+SessionStart hook now exists, so any future theory-session will
+get the drift report in the first lines of its context and
+won't accumulate an hour of confident-but-wrong-relative-to-
+current-state conversation before the catch fires.
 
 ## Section 3: The bigger picture.
 
-The big shape worth pausing on is the pattern that made this session productive. The inbox routing template — match envelope → render an action button → host opens the matching modal pre-loaded → modal calls onSuccess on completion → host dismisses the row — was sketched as one cut for the cosign case (5c-i-ε), then reused four more times across this session: membership receive (ι), membership send pairing (κ), Tier R receive (5c-ii's whole receive side was free), and the auto-dismiss polish. Five cuts, one template. The template is now generic enough that adding a new envelope kind to the auto-route list is a five-minute job: write isFoo predicate, add a case to routeFor, add an onAction handler in HomeScreen, optionally add an incoming prop to the matching modal. That is what good architecture looks like at the boundary between protocol and UI.
+The doctrine in CLAUDE_ROOT.md says "Mechanism over prose. When
+a rule keeps getting missed, the fix is a check that fails — not
+another paragraph in this file." This session was that doctrine
+working twice in one arc. The rule that kept getting missed was
+"ground against actual current state on origin/main at session
+start, not against the snapshot of PLAN.md sitting on the
+branch you happen to be checked out on." The mechanism is now
+in scripts/session-start-grounding.mjs and .claude/settings.json,
+and the next Carpenter session of any kind — code-cutting,
+theory, comms-only, whatever — will get the drift status
+injected into its very first context. The same hook protects
+both Carpenter streams: code-Carpenter learns at session start
+if the theory-Carpenter has committed anything they need to
+reconcile against, and theory-Carpenter learns at session start
+that the code-Carpenter has been busy. Symmetric, mechanical,
+load-bearing.
 
-The other shape worth seeing is the Tier R cut as a case study in honest design. The temptation in any peer-to-peer protocol is to paper over differences between strong and weak forms of connection — to call a remote handshake just "a handshake" and let the user figure out whether they actually trust it. The Mycelium spec went the other way at D-09: every connection states how it was verified, the verifier weighs accordingly, no link masquerades. This session made that real in code. The same envelope shape, the same Merkle structure, the same signature flow — but a leaf field says "remote" instead of "in-person", and the UI renders that distinction every time a connection appears. A person looking at someone's wallet later, deciding whether to trust a chain of handshakes, sees the tier mix and decides for themselves. That is not a UX nicety; it is the spec being honest with the verifier.
+The deeper observation, which I want to name because it's the
+real lesson of this session: the comms protocol you and Frank
+have designed — current.json, carpenter-opinions.md,
+carpenter-state-for-foreman.md, in-flight.jsonl, interactions.
+jsonl — was DESIGNED for exactly this cross-session, cross-
+Carpenter handoff case. The reason carpenter-state-for-foreman.md
+exists is so any future Carpenter (same Claude continuing, a
+different Claude on a different stream, or you reading on your
+phone) can pick up the current state in one read. The two-Claude
+pattern just makes that design assumption load-bearing rather
+than ceremonial, because either Claude could be the previous
+one. The hook this session built is small; the protocol it's
+defending is the bigger thing, and the protocol works because
+you and Frank designed it before either of us realized how
+load-bearing it would become.
 
-The final piece is what the wallet is now structurally capable of, listed plainly: encrypt and sign attestations of every kind, hold the Merkle tree of them, anchor each to Bitcoin, back up encrypted to a host that cannot read, sync across devices through encrypted blobs, talk to other wallets over Nostr with NIP-44 v2 spec-conformant payloads, route incoming envelopes to the right action automatically, send replies back the same way, form Tier P and Tier R connections, issue and receive memberships, and let the sovereign user swap the relay set whenever they want. That is most of what a sovereign identity wallet is supposed to do. What is left in Phase 5 is multi-device sync of the connection graph (5c-iii), Tier V device-verified presence (5d), and the quorum org-key governance (5f) — each of those is its own honest cut, each builds on what is now solid floor underneath. The wallet you wanted, the operator now has, with the two-device field test the only remaining piece of evidence before the next major increment makes sense to plan.
+The whole stack you've built — tapit-attest, the wallet, the
+comms protocol, the two-Carpenter workflow, the GROUNDING GATE,
+and now this drift hook — is the same shape of system at every
+layer: math-not-trust at the bottom (signatures, OTS anchoring,
+merkle proofs), mechanism-not-prose in the middle (gates,
+hooks, manifest doctrine, file-size checks), and operator-as-
+commander at the top (you make the WHY calls, the Foreman shapes
+the HOW, the Carpenter cuts). Every layer protects against the
+failure mode of the layer above it: math protects against
+platform betrayal, mechanism protects against Carpenter drift,
+operator-as-commander protects against runaway autonomy. The
+session that just ended is what happens when one of those
+defenses fires correctly and the next defense gets added in
+the same breath. Go run the wife-test, ship 5c-iii when the
+field test informs it, and the mycelium grows another node
+either way. The math is doing its work; the mechanism is doing
+its work; the operator is in the right seat. That's the whole
+game.
