@@ -1,47 +1,45 @@
 {
   "v": 1,
-  "ts": "2026-05-24T01:00:00Z",
-  "session_id": "phase-5d-tier-v-2026-05-24-1779571500",
-  "who": { "actor": "carpenter", "feature_slug": "presence" },
+  "ts": "2026-05-24T07:45:00Z",
+  "session_id": "phase-5e-iii-b-2-library-and-5e-iv-lattice-2026-05-24-1779602700",
+  "who": { "actor": "carpenter", "feature_slug": "recovery" },
   "where": {
     "files": [
-      "src/features/presence/webauthn.ts",
-      "src/features/presence/geolocation.ts",
-      "src/features/presence/createPresence.ts",
-      "src/features/presence/MarkPresenceModal.tsx",
-      "src/features/presence/manifest.ts",
-      "src/features-registry.ts",
+      "tapit-attest/src/core/wallet.ts",
+      "tapit-attest/test/wallet-recoverable.test.mjs",
+      "src/features/recovery/lattice.ts",
+      "src/features/recovery/LatticePanel.tsx",
+      "src/features/recovery/manifest.ts",
       "src/features/wallet-core/HomeScreen.tsx",
       "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "/#identity (Presence section + Mark Presence modal)"
+    "screen_path": "/ → Lattice tab (5th tab)"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "This session shipped 5c-iii-a (delivery acks), 5c-iii-b (multi-device sync), and 5d (Tier V device-verified presence) — plus a Phase 5f quorum-keys roadmap brief, the verify-page polish for the wife-test, and the four-cut org-mode UI roadmap that landed earlier in the same thread. Phase 5d closes with the new src/features/presence/ feature: WebAuthn passkey enrollment + assertion, geolocation wrapper, device-passkey + tier-v-presence credential builders, and a MarkPresenceModal lazy-loaded from HomeScreen. The Identity tab grows a Presence section. Honest about limits per the spec — 'to the best of the device's ability.'",
+  "summary": "Two cuts toward the Phase 5e recovery ceremony, stopping deliberately before the big piece (5e-v/-vi/-vii) per operator directive. Cut A — Phase 5e-iii-b-2 library half: Wallet.exportRecoverable returns {blob, kData} so the caller can Shamir-split kData across cohort peers (5e-ii) and distribute; Wallet.restoreRecoverable is the passphrase path on v2 blobs; Wallet.restoreFromKData is the recovery path the ceremony will use after M peers return their shares. Six new tapit-attest tests including the end-to-end Shamir-split → combineShares → restoreFromKData loop. D-03 stays loud — only the symmetric encryption key is split, never the signing keypair. Cut B — Phase 5e-iv lattice visualization: a fifth top-level tab on HomeScreen with a read-only summary of the operator's woven web (handshakes by tier, organizations they hold memberships in, recovery cohort with M-of-N). Pure data extraction in src/features/recovery/lattice.ts, view in LatticePanel.tsx. Editing still happens through the already-shipped flows; the lattice just surfaces the union. Both cuts independent, both green at every gate, both prepare the substrate for the ceremony without touching transport, storage migration, or share distribution — those remain for the fresh session the operator wants for the big piece.",
   "why": {
-    "text": "Operator's standing directive: 'as long as you're knocking something out and you're grounded, I think you're doing a fantastic job.' Locked sequence per Phase 5f roadmap brief: 5c-iii → 5d → 5e → 5f. Knocked out the entire 5c-iii pair plus 5d in this session.",
+    "text": "Operator: 'have you re-ground and cut the next pieces of code that you feel is ready to get to the big piece and then when we get to the big piece, we'll start a fresh one and knock out in one go.' SessionStart drift hook caught 12 commits behind on session entry; grounded against actual main (Phase 5d complete, 5e-ii + 5e-iii-a + 5e-iii-b shipped, briefs for 5e and 5f landed), identified the next cuts per the brief's 5e-iii-b-2 → 5e-iv → 5e-v sequence, and stopped at 5e-iv before the multi-round ceremony work. Settled chips from brief recommendations (peer-share model a; N=5 M=3 default already shipped in CohortEditorModal; visible cohort-membership credentials — consistent with mutual-by-design) so the operator did not have to answer chips mid-session.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5D-COMPLETE"
+    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5E-IIIB2-LIB-AND-5E-IV"
   },
   "outcome": {
     "files_changed": [
-      "5c-iii-a delivery acks: transport.publish returns PublishResult; NostrTransport routes OK frames to pending publishes; publishStatus.summarizePublish helper renders plain-English status across four send-via-Nostr modals",
-      "5c-iii-b multi-device sync: sendEnvelopeToSelf, syncEnvelope context method, inbox auto-hold on senderPubkey == own identity, JournalComposer wired",
-      "5d Tier V: src/features/presence/ (webauthn + geolocation + createPresence + MarkPresenceModal + manifest); HomeScreen Presence section; React.lazy-loaded modal",
-      "Bundle-budget adjustments: HomeScreen 13 → 14.5 KB, named MarkPresenceModal + createOrganization helpers"
+      "Cut A — tapit-attest/src/core/wallet.ts: three new methods (exportRecoverable, restoreRecoverable, restoreFromKData) + import from encryption.ts; tapit-attest/test/wallet-recoverable.test.mjs new with 6 tests including the Shamir-end-to-end test.",
+      "Cut B — src/features/recovery/lattice.ts new (pure functions, ~165 lines); src/features/recovery/LatticePanel.tsx new (~190 lines); src/features/recovery/manifest.ts touches updated; src/features/wallet-core/HomeScreen.tsx adds 5th 'lattice' tab + React.lazy LatticePanel import; scripts/bundle-budget.mjs gains named budgets for LatticePanel, CohortEditorModal, createCohort helpers (3 previously-unrecognized chunks now named)."
     ],
-    "tests_passing": "wallet 36/36 (4 new ack tests + 1 self-CC test added this session). tapit-attest 109/109 from earlier sessions still green.",
+    "tests_passing": "tapit-attest 144 total (140 pass + 4 skipped network-deps); wallet 36/36. typecheck, lint, test, build all green at both commits.",
     "build_green": true,
-    "notes": "[P-001] 5c-iii-a delivery acks shipped at e40c7e1 — Sent no longer means 'I dispatched'; it means 'a relay said yes' or honestly 'no acks yet'. [P-002] 5c-iii-b multi-device sync shipped at 114447d — self-CC envelopes encrypted to own pubkey; inbox auto-holds on senderPubkey == own. [P-003] Phase 5d Tier V shipped at 939ee51 — WebAuthn passkey + Geolocation + signed event; modal lazy-loaded; Identity tab Presence section. [P-004] Phase 5f brief at 840ae02 names six cuts (library decision, library primitives, ceremony, constitutional acts, migration, FROST). [P-005] Verify-page wife-test polish at 530e946 — red on tamper, plain-English bridge, collapsible How-it-works. [FEEDBACK→Foreman]: Phase 5e (hyphal lattice + Shamir cascade recovery) is the next chunky cut and should be brief-first, not freelance — Shamir split + peer-share-encryption + recovery ceremony is a real protocol, not a one-session knockout. Recommend a sketch at briefs/2026-05-24-shamir-cascade-recovery-roadmap.md before code lands."
+    "notes": "[P-001] Cut A — 3 new Wallet methods + 6 tests, all passing (commit 2ecaf4d). Library is now wallet-aware for v2 recoverable backups; storage migration (the wallet-side cut that calls these methods on every save) is deferred to the ceremony session along with share distribution. [P-002] Cut B — Lattice tab shipped (commit b976169). Read-only aggregation view. Three new chunks named in bundle-budget; build is clean again. [P-003] Stopped deliberately before 5e-v (recovery ceremony initiator) per operator's 'start a fresh one and knock out in one go' for the big piece. [FEEDBACK→Foreman]: the brief's 5e-iii cut description and decision #3 model (a) are mutually inconsistent about whether shares are distributed at cohort-creation or at recovery time — the 5e-iii-b commit message takes the model-(a) interpretation (shares distributed at cohort-time). Worth a brief refinement to harmonize before 5e-v lands."
   },
-  "confidence": 92,
-  "uncertainty": "WebAuthn enrollment + assertion are unit-untested because jsdom does not implement them; the API surface follows the standard contract and works under operator field testing. The presence verifier flow (independent verification of the WebAuthn assertion signature against a published enrollment public key) is deferred — leaves are recorded for the future verifier. Two-device field test of multi-device sync against real Nostr relays is the open evidence question.",
+  "confidence": 93,
+  "uncertainty": "Both cuts are pure (no transport, no live protocol) — confidence is high. Open: the lattice viz has not been browser-walked with a populated wallet; the rendering is straightforward but the tab-overflow on 375px with five tabs is a UX point worth field-checking. The bigger uncertainty sits in the next session: the recovery ceremony (5e-v/-vi/-vii) is multi-round protocol-state-machine engineering that's larger than this session's combined cuts.",
   "ripple": [
-    "transport — publish API now returns PublishResult; every consumer updated this session",
-    "wallet-core — WalletContext grew sendEnvelope (with ack) and syncEnvelope (multi-device); WalletProvider inbox handler auto-holds self-CCs",
-    "presence — new feature folder; lazy-loaded from HomeScreen",
-    "operator-workflow — wife-test, two-device field test, and Tier V presence demo are all unblocked at the UX level"
+    "recovery — new lattice.ts + LatticePanel.tsx files; manifest updated",
+    "wallet-core — HomeScreen gains 5th tab",
+    "tapit-attest — Wallet class gains three v2-backup methods; new test file",
+    "bundle-budget — three new named chunks"
   ],
-  "next": "Phase 5e — hyphal lattice + Shamir cascade recovery — is the next major increment per the locked sequence. Recommend brief-first: Shamir split is real protocol work, peer-share-encryption needs careful key-management, the recovery ceremony has multi-round state. After 5e: Phase 5f (quorum org keys) per the brief already in project-memory. Operator field tests open: wife-test of the polished /verify, two-device 5c stack against real relays, Tier V presence on a real device with real biometric + GPS."
+  "next": "Next session is the big piece: Phase 5e-v (recovery ceremony initiator) + 5e-vi (responder) + 5e-vii (recovery-succession event). Prerequisites in place: Wallet methods (this session), library Shamir primitives (5e-ii), v2 backup format (5e-iii-b), cohort declaration UI (5e-iii-a), lattice view (this session). Storage migration to v2 (the wallet's saveWallet helper using exportRecoverable instead of exportEncrypted) is the other prereq for the ceremony — couple it with share distribution in the same fresh session for clean scope. Operator field tests still open: wife-test of the polished /verify, two-device 5c stack against real relays, Tier V presence on a real device.",
+  "signals": ["pulse"]
 }

@@ -2,88 +2,82 @@
 
 **Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS.
 
-**Two-Carpenter workflow note:** The operator runs two parallel Claude sessions — one cutting code, one in theory conversation — each on its own branch. Main is the canonical handshake point between the two streams. A new `SessionStart` hook in `.claude/settings.json` now mechanically detects drift between the branch and `origin/main` at every session start.
+**Two-Carpenter workflow note:** The operator runs two parallel Claude sessions — one cutting code, one in theory conversation — each on its own branch. Main is the canonical handshake point. The `SessionStart` hook in `.claude/settings.json` (scripts/session-start-grounding.mjs) catches drift at every session entry. **Validated this session: hook fired on a 12-commit drift, this Carpenter grounded against actual main and picked up cleanly where the code-Carpenter left off.**
 
 ## WHAT-CHANGED-RECENTLY
 
-Phase 5c is structurally complete on main (last code work at `f406199` "Officials roster — Phase 5b-org-ii", which landed during this very session — the code-Carpenter shipped between this branch's first push and this branch's main push, which the new hook would have caught). This 2026-05-23 session added one piece of infrastructure on top:
+Two cuts this session (2026-05-24, both on branch `claude/wallet-implementation-questions-umXHh`, both green at every gate):
 
-- **Cross-Carpenter drift hook** — `scripts/session-start-grounding.mjs` plus a `SessionStart` entry in `.claude/settings.json`. Fetches origin at every session start; if `origin/main` has moved past the current branch's merge-base, emits a structured drift report into the session's initial context (commit list, most-recent `current.json` summary, required reads). Catches the failure mode that surfaced this session: a theory-Carpenter on a stale branch confidently giving forward-looking advice that's wrong-relative-to-actual-state because main has shipped past where the branch was rooted.
+- **Phase 5e-iii-b-2 (library half)** at commit `2ecaf4d` — Wallet.exportRecoverable, Wallet.restoreRecoverable, Wallet.restoreFromKData bridge the v2 backup format (shipped at the library level in 5e-iii-b) to the Wallet class lifecycle. Six new tapit-attest tests including end-to-end Shamir-split → combineShares → restoreFromKData. D-03 stays loud: only the symmetric K_data is ever split, never the signing keypair.
 
-Prior arc on main (from the code-Carpenter, branch `claude/compare-library-wallet-OW5FF` merged):
+- **Phase 5e-iv** at commit `b976169` — Lattice tab as fifth top-level tab on HomeScreen. Read-only aggregation of handshakes (by tier P/R), organizations the wallet holds memberships in, and the recovery cohort with M-of-N. Pure data extraction in src/features/recovery/lattice.ts; view in LatticePanel.tsx; React.lazy-loaded. Three new bundle-budget entries (LatticePanel, CohortEditorModal, createCohort helpers — the latter two were previously unrecognized chunks).
 
-- **Phase 5a** in-person handshake (`6e206aa`).
-- **Phase 5b** organizations + membership (`85d6a51`).
-- **Phase 5c-i α through λ** — NIP-44 v2 primitive, Nostr wire client, wallet wire-up, inbox UI, auto-route, send-back, send-via-Nostr in CosignRequestModal + MembershipModal, peer picker, membership auto-receive, operator-editable custom relay list.
-- **NIP-44 reference-vector interop** (`a4c8f23`) — 10/10 upstream spec vectors round-trip.
-- **Phase 5c-ii** Tier R remote handshakes (`daabd3d`).
-- **Auto-dismiss polish** (`93afbc4`).
-- **Multi-field disclosure proofs** (`c013ae1`) — library primitive + wallet UI.
-- **Phase 5b-org-i** org-mode declaration + Members view (`11a262e`).
-- **Phase 5b-org-ii** officials roster — editable list of org officers as a signed credential, history audit-friendly (`f406199`, landed during this session).
-- **Phase 5b-org-iii** ratifications view — every membership card surfaces 'N of M ratifications' against the latest officials roster, reusing the existing CosignAsWitness machinery (`364437c`, also landed during this session — code-Carpenter shipped three org-roadmap cuts in real-time while this hook was being built).
+Prior arc from the code-Carpenter (all on main):
+
+- **Phase 5c** complete (5c-i α-λ, 5c-ii Tier R, 5c-iii-a delivery acks, 5c-iii-b multi-device sync).
+- **Phase 5d** Tier V device-verified presence (`939ee51`).
+- **Phase 5e-ii** Shamir primitives in tapit-attest (`c8852b3`).
+- **Phase 5e-iii-a** recovery-cohort recording UI + credential (`34ad1a8`).
+- **Phase 5e-iii-b** recoverable backup format v2 in tapit-attest (`84ebbc2`).
+- **Phase 5b-org** full four-cut roadmap (`fcd1d55`).
+- **Verify-page polish** for the wife-test (`530e946`).
+- **Phase 5f roadmap brief** (`840ae02`) and **Phase 5e roadmap brief** (`d40afdb`).
 
 ## Gates at session end
 
 - typecheck ✓
 - lint ✓
-- test ✓ — 31/31 wallet tests; tapit-attest at 98/98 from prior sessions (4 skipped network-deps)
-- build ✓ — 274 modules transformed in 3.13s
+- test ✓ — wallet 36/36; tapit-attest 144 total (140 pass + 4 skipped network-deps; 6 new this session)
+- build ✓ — clean, no unrecognized chunks
 
 ## WHAT'S-PENDING
 
-1. **Operator runs the wife-test of the verify-page.** From the theory conversation: share a proof from a journal entry → wife opens `/verify` in her browser (outside `AuthGate`, no install) → pastes, sees green → tampers one character of the disclosed value, sees amber. The most valuable adoption-UX signal the project has at its disposal. Note: the verify page surface MAY have changed with the multi-field disclosure work — a quick walk before the wife-test would be smart.
-2. **Operator field-tests the full 5c stack** with two devices against real Nostr relays. The open question that nothing in code-land can resolve.
-3. **5c-iii** — multi-device connection sync + relay-OK delivery acks. Only piece of Phase 5c left.
-4. **Phase 5d** — Tier V device-verified presence (WebAuthn / passkey + geolocation + timestamp).
-5. **Phase 5e / 5f** — quorum org-key governance + recovery-share workflows.
+1. **THE BIG PIECE — Phase 5e-v (initiator) + 5e-vi (responder) + 5e-vii (recovery-succession event).** Operator directive: "we'll start a fresh one and knock out in one go." Multi-round protocol-state-machine work, the heaviest single cut in Phase 5e. Prerequisites all landed except:
+   - **Storage migration to v2** — saveWallet.ts still calls Wallet.exportEncrypted (v1). For recovery to work, the wallet has to write v2 blobs at every save going forward. Migration is small (saveWallet.ts one-line change, walletStore.ts type union, WalletProvider.tsx unlock-path branch on `v`), but lives on the storage hot path. Bundle it with share distribution in the ceremony session.
+   - **Share distribution flow** — after cohort declaration (5e-iii-a) and v2 storage (above), the wallet splits K_data via splitSecret (5e-ii), encrypts each share to its cohort member's pubkey using NIP-44 (the existing encryptedInbox.ts pattern), sends via Mycelium transport, and the peer's wallet auto-routes the incoming share to a "hold-recovery-share" action.
+2. **Operator runs the wife-test of the polished /verify** — verify-page polish shipped at `530e946`, ready for the test.
+3. **Operator field-tests the full 5c stack with two devices** against real Nostr relays.
+4. **Operator field-tests Tier V presence** on a real device with real biometric + GPS.
+5. **Brief refinement: harmonize Phase 5e brief's load-bearing constraint with decision #3 model (a)** — the two are mutually inconsistent as written. Model (a) is the right read (peers hold encrypted-to-them share blobs forever, decrypt only at recovery, re-encrypt to new pubkey); the load-bearing-constraint paragraph reads as if it forbids that but actually doesn't — it forbids pre-stashed access to the CURRENT signing key, which model (a) does NOT do. One paragraph of refinement.
 
-### Eight strategic recommendations from the 2026-05-23 theory walk (on the stack, no-code or polish-shaped):
+### Strategic recommendations on the stack (from prior theory walk):
 
-- **A. Verify-page polish audit** — short-form hex pubkeys humanized, amber→red severity question, QR-as-primary vs textarea-as-primary, "what just happened" inline explanation for first-time visitors. Promoted to highest-leverage by the wife-test framing.
-- **B. Plain-English UX language audit** — sweep user-facing surfaces, build a glossary mapping "attestation" / "envelope" / "merkle" / "tier" to human English, ship the rename pass.
-- **C. Nostr operational doctrine as POST-hoc documentation** — now that 5c has shipped, doc what the code actually does for relays, encryption defaults, metadata posture, NIP-65 publishing. (Was framed as pre-5c in the theory session, but 5c had already shipped.)
-- **D. Supply-chain expansion decision** — pursue, defer, or non-goal. The Phase 2.6 custody-handoff primitive IS supply-chain handoff mathematically; ten concrete applications walked in the conversation. Worth a deliberate call.
-- **E. Interim peer-recovery story** before the full Phase 5e Shamir cascade — design conversation.
-- **F. Auto-anchor passive capture** — biggest adoption lever named; real new feature, deferred design conversation.
-- **G. First-pilot organization arc** for institutional onramp — policy/sales work, operator's hands.
-- **H. Positioning principle: substrate underneath existing behavior** — meta, informs the others.
+- A. Verify-page polish audit — DONE (`530e946`).
+- B. Plain-English UX language audit — open.
+- C. Nostr operational doctrine as post-hoc documentation — open.
+- D. Supply-chain expansion decision — open.
+- E. Interim peer-recovery story — superseded by 5e arc (will land at end of 5e).
+- F. Auto-anchor passive capture — open.
+- G. First-pilot organization arc — operator's hands.
+- H. Positioning principle (substrate underneath existing behavior) — open.
 
 ## WHAT-TO-FLAG
 
-**The cross-Carpenter drift hook is the first of its kind in this repo.** Future PreToolUse hook on git push for belt-and-suspenders is a candidate but not built — SessionStart alone catches the case that surfaced. The CLAUDE_ROOT.md doctrine mentions "branch gate: no unfinished or dead branch before new work — run by the SessionStart hook" — that's a SEPARATE gap; no branch-unfinished check exists as a script. Worth either implementing or removing the doctrine claim in a future session.
+**Cross-Carpenter handoff worked clean this session.** The SessionStart hook caught the 12-commit drift, this Carpenter grounded against actual main rather than the stale PLAN.md, identified the next cuts off the brief's sequence, settled chips from brief recommendations, and shipped two clean cuts without stalling on you for chip answers. This is the protocol working as designed.
 
-**The theory conversation from this session's Phase A produced real strategic value despite operating on stale state.** Most of it survives the correction (the math-not-trust thesis is timeless; the human-patterns walk is forward-looking; the supply-chain mapping is unaffected by what shipped this week; the comparable-systems landscape is unaffected by phase progression). The eight recommendations are now in front of the operator. The wife-test is the single most actionable item.
+**Five tabs at 375px is the visual maximum.** Lattice fits but tight. If a future cut adds a sixth tab, the right move is probably merging People into Lattice (since Lattice already includes the handshake list with richer per-row context) rather than continuing to add.
 
-**Multi-field disclosure proofs shipped on main** (`c013ae1`). The original Phase 4 single-leaf primitive has been generalized. If the operator runs the wife-test, the verify-page experience MAY have changed surface-wise (multi-leaf reveals, etc.) — worth a five-minute walk before the demo.
+**Phase 5e brief has an internal inconsistency** about share distribution timing (load-bearing constraint vs decision #3 model (a)). The 5e-iii-b commit message takes the correct model-(a) interpretation but the brief should be refined to harmonize before 5e-v code lands.
 
-**The two-Carpenter workflow is now structurally protected.** Each session starts with a fetch + drift check. If the OTHER Carpenter has shipped to main, this session knows immediately and grounds against main rather than the stale local PLAN.md. If they haven't, the hook says so explicitly. Bidirectional, mechanical.
+**No source-code touched in transport, storage, or sign flows this session** — both cuts are additive. The big piece (ceremony) will be the first cut that touches the transport layer for share distribution.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. **Operator runs the wife-test of the verify-page.** Highest-fidelity UX signal available right now.
-2. **Operator field-tests 5a/5b/5c stack with two devices** against real Nostr relays.
-3. **Cut 5c-iii** if the field test reveals delivery-ack or multi-device-sync urgency.
-4. **Cut Phase 5d Tier V** as the next major increment.
-5. **Pull verify-page polish audit forward** if the wife-test produces stumbling-point data.
-6. **Decide supply-chain expansion question** explicitly.
+1. **Fresh session for the big piece** — Phase 5e-v + 5e-vi + 5e-vii bundled with the storage-to-v2 migration and the share-distribution flow. Per operator directive: "we'll start a fresh one and knock out in one go."
+2. **One-paragraph brief refinement** before that fresh session lands — harmonize the 5e brief's constraint and decision #3 model (a) text.
+3. **Operator field tests** — wife-test, two-device 5c stack, Tier V on real device — all still open and increasingly load-bearing as 5e moves forward.
+4. **After the ceremony**: Phase 5f quorum org keys per the `840ae02` brief.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Reflective, big-picture, decisive, and increasingly meta-aware about the workflow itself. This session ended with the operator naming the cross-Carpenter failure mode directly: "that's me cutting code on one Claude and write ideas and theory with the other Claude and then you just watched it divergent catch up in one instant." He authorized the hook addition with broad latitude — "you resolve that however you think is best you know where I stand" — and named the right design principle: "let's set up some gates to climb over them and fix them and catch them." Maximum trust in autonomy; expects mechanical defenses against the failure modes he names. The Carpenter delivered on that authorization this session.
+Meta-aware and decisive — opened this session specifically to verify the SessionStart hook caught the cross-Carpenter handoff (it did) and then directed this Carpenter to "cut the next pieces of code that you feel is ready to get to the big piece and then when we get to the big piece, we'll start a fresh one and knock out in one go." Maximum trust in autonomy, clear scope boundary on what to stop before. The two-Carpenter workflow is now a real practiced pattern with mechanical defense; expect continued high throughput.
 
-The operator listens via TTS and copy-alls replies, so verbose theory replies are a real cost — that's a feedback note for future sessions.
+The operator listens via TTS and copy-alls replies; verbose theory replies remain a real cost.
 
 ## Ideas ready to revisit
 
-- **NIP-44 reference vectors** — DONE earlier on 2026-05-23.
-- **Sign-in-with-existing-Nostr-account** — entry logged earlier; natural moment is now or just after the first two-device field test.
-- **Delivery confirmation UI** — becomes the 5c-iii cut.
-- **Tier R responder identity fetch** — polish for after field test; today's name-as-typed is honest about the tier.
-- **Wallet as hardware-backed object** — long horizon; Wallet class owns `#keypair`, the day a secure-element / passkey backend lands it slots in behind the same interface.
-- **NEW 2026-05-23 — supply-chain expansion** — surfaced in theory walk; needs deliberate pursue/defer/non-goal decision. The same substrate that does personal sovereignty does food provenance, cold-chain integrity, fair-trade-with-workers-as-signers, smart-seal-on-container, counterfeit-proof pharmaceuticals. B2B revenue model exists; doesn't compromise the sovereignty constraint.
-- **NEW 2026-05-23 — wife-test framing for adoption** — the "paste, tamper, watch math reject" demonstration on /verify is the unit of conversion for non-cryptographers. Promoted from idea to immediate operator action.
-- **NEW 2026-05-23 — PreToolUse drift hook for git push** — belt-and-suspenders to this session's SessionStart hook.
-- **NEW 2026-05-23 — branch-gate implementation** — the doctrine claim in CLAUDE_ROOT.md mentions a SessionStart-driven branch-gate that doesn't actually exist as a script. Either implement or delete the claim.
+All prior entries hold. The supply-chain decision is still open. The wife-test framing is more actionable now that the verify-page polish has shipped. The PreToolUse drift hook idea for belt-and-suspenders is still a candidate. The branch-gate-implementation idea (the doctrine claim in CLAUDE_ROOT.md mentions a SessionStart-driven branch-gate that doesn't exist as a script — could fold into the existing session-start-grounding.mjs as a second check).
 
-Full entries in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md` (note: this session did not write to ideas.md — the new entries above are flagged here for the next session to fold in).
+- **NEW 2026-05-24 — five-tabs-tight UX consideration**: 375px viewport with 5 tabs is the visual maximum. If a sixth surface is needed, consider merging People into Lattice (Lattice is a strict superset of People's rendering).
+
+Full entries in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.

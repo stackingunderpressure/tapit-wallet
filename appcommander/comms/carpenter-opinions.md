@@ -1,226 +1,149 @@
-# Carpenter opinions — theory walk + cross-Carpenter drift hook
+# Carpenter opinions — Phase 5e prep cuts
 
 > Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-23 — long no-code theory conversation that
-> ended with a drift catch and a mechanical fix.
+> Session: 2026-05-24 — switched to this Carpenter after the
+> code-Carpenter handed off; SessionStart drift hook caught the
+> 12-commit gap; cut two Phase 5e prep pieces and stopped before
+> the recovery ceremony.
 
 ## Section 1: What I did.
 
-This was a two-phase session, and the second phase is the more
-important one even though the first phase took most of the
-words. Phase A was a long no-code theory conversation across
-the wallet's whole surface, which you asked for at the top with
-"Read everything about our wallet and I have some questions
-about implementations and just theory no code changes." I
-grounded in CLAUDE.md, CLAUDE_ROOT.md, DESIGN.md, PLAN.md,
-MYCELIUM_NETWORK_SPEC.md, all twelve live feature manifests,
-and the tapit-attest README on this branch, and then we worked
-the conversation through six progressively deeper questions: how
-Nostr fits the wallet plumbing (transport not identity, your
-existing Nostr account is separate from the wallet keypair by
-default, same Schnorr/secp256k1 math, Phase 5c brings Tier R +
-remote sync + the deferred NIP-46 and recovery-cohort slots),
-what spectacular human patterns the substrate unlocks (the four
-magical properties — provably-before, mutually-held, selectively-
-naked, succession-continuous — combined into the application
-clusters of accountable public speech via signed predictions,
-the whole human life as a continuous signed thread, mutual-
-consent-permanent contracts and consents, witness-converging
-historical evidence, selective professional credentialing,
-fraud-proof object provenance, lost-child kin recognition,
-community-as-living-organism, rolling continuous attestation,
-and the entire ritual cluster), is there anything else like
-this in the world (PGP web-of-trust as the 35-year-old
-grandparent, Keybase as the dead closest-built consumer
-ancestor, W3C VC and EU eIDAS 2.0 as institutional cousin, EAS
-on Ethereum as the closest live attestation primitive, Nostr
-as transport substrate, DynastyTrust as the direct lineage
-ancestor since tapit-attest was literally extracted from its
-governance-attestation layer), is the selfish use case enough
-for adoption (probably not on its own, eight strategic
-recommendations recorded), what could the substrate do for food
-supply chains and shipping (mapping is direct because the
-Phase 2.6 custody-handoff primitive IS supply-chain handoff
-mathematically, ten concrete applications walked, B2B
-expansion is a real strategic question worth a deliberate
-decision), and finally your wife's load-bearing adoption
-question — "she sees it as trusting the wallet" — which I
-answered by walking the actual VerifyProofScreen and
-ShareProofModal code as it lives in the repo, giving you
-concrete steps for the demonstration (share a proof, she
-opens /verify in her browser outside AuthGate, pastes, sees
-green, tampers one character, watches it flip to amber because
-the math literally cannot lie about the leaf hash matching the
-signed merkle root). You confirmed the demonstration landed.
+You switched to this Carpenter specifically to verify the hook
+would catch the handoff from the code-Carpenter, and it did —
+twelve commits behind on session entry, with the full Phase 5d
+Tier V plus 5c-iii-a and 5c-iii-b plus 5e-ii Shamir primitives
+plus 5e-iii-a cohort recording plus 5e-iii-b backup-format-v2
+plus the Phase 5e and Phase 5f roadmap briefs all landed on
+main while this branch sat stale. I read what actually shipped
+(rather than the stale PLAN.md on this branch), then picked the
+next two cuts off the brief's sequence that get TO the big
+piece without doing the big piece. The big piece is the
+recovery ceremony itself (5e-v initiator, 5e-vi responder, 5e-vii
+recovery-succession), which is multi-round protocol-state-
+machine work and lands cleaner in a fresh dedicated session.
 
-Phase B is where this session earned its keep. When you asked
-"Main?" — meaning push the comms commit to main as well as the
-branch — and I tried, the push got rejected as not fast-
-forward, which forced me to fetch origin/main and look at what
-was actually there. What I found was that the code-Carpenter on
-a parallel session had been busy: 19+ commits had landed on
-main since this branch was rooted, including Phase 5c-i in
-twelve sub-phases (alpha through lambda — NIP-44 v2 primitive,
-Nostr wire client, wallet wire-up, inbox UI, auto-route,
-send-back, send-via-Nostr for co-sign and membership,
-membership auto-receive, send-via-Nostr from issue-show,
-operator-editable custom relay list), Phase 5c-ii Tier R
-remote handshakes, NIP-44 reference-vector interop, auto-
-dismiss polish, multi-field disclosure as a library + UI
-primitive, and most recently org-mode declaration plus Members
-view (Phase 5b-org-i). The theory conversation we had been
-having for the previous hour had operated entirely on a stale
-PLAN.md — I was confidently telling you "Phase 5c-i is the
-next code cut" while in fact it had been shipped twelve times
-over. Specific things I told you were materially wrong-
-relative-to-actual-state: my "Nostr operational doctrine before
-5c ships" recommendation was moot because 5c had shipped, my
-walk of the verify-page UI was against the older single-leaf
-VerifyProofScreen rather than the multi-field disclosure
-version on main, and my whole forward-looking strategic frame
-had several timing claims that needed correction. The
-GROUNDING GATE that's been firing every turn of this session
-finally caught me at exactly the moment when the catch
-mattered — when I was about to push stale comms to main and
-overwrite the code-Carpenter's accurate handoff with my
-incorrect view of the world. That catch is the gate doing its
-job. The lesson was that the gate has a blind spot for cross-
-Carpenter drift specifically, because CLAUDE.md and
-CLAUDE_ROOT.md describe doctrine and architecture rather than
-the current state of shipped phases, and reading them
-faithfully (which I did) doesn't surface that origin/main has
-moved. You named the fix directly and authorized the work:
-"let's put some hooks both ways like we're both carpenters no
-matter what... let's set up some gates to climb over them and
-fix them and catch them."
+Cut A was the Wallet-layer methods bridging the v2 backup format
+shipped at the library level in 5e-iii-b to the wallet lifecycle.
+Three new methods on the Wallet class: exportRecoverable returns
+the v2 blob plus K_data so the caller can Shamir-split K_data
+via the splitSecret primitive from 5e-ii and distribute shares
+to cohort peers, then forget K_data on the producing device;
+restoreRecoverable is the passphrase path, equivalent to the v1
+restore() but reads the v2 blob shape; restoreFromKData is the
+recovery path the ceremony itself will use after M cohort peers
+have returned their shares and combineShares has reconstructed
+the original K_data on the new device. Six new tapit-attest
+tests cover the round-trips, wrong-passphrase failure mode,
+equivalence of the two paths, and most importantly the
+end-to-end Shamir-split → combineShares → restoreFromKData loop
+the ceremony will exercise. The non-negotiable D-03 stays loud
+in the code comments: only the symmetric data-encryption key is
+ever split; the signing keypair is never touched. M-of-N
+collusion at worst decrypts one backup snapshot; they cannot
+become you because signing authority only transfers through a
+peer-witnessed succession event the recovered wallet itself
+produces. All 144 tapit-attest tests green; commit 2ecaf4d.
 
-So I built it. The cleanup was first: I merged origin/main
-into this branch, took main's version of all five comms files
-(since main's are the truth and mine were stale), then built
-the gate. The gate lives at scripts/session-start-grounding.mjs
-— a small Node CLI script that fetches origin quietly, computes
-the merge-base of HEAD against origin/main, and emits a
-structured drift report into the session's initial context if
-main has moved past where the branch is rooted. It reports
-three states: no drift (branch is current — "no other Carpenter
-has shipped to main since this branch was rooted"), drift
-detected (lists the commits, summarizes the most-recent
-current.json on main, names the required reads — carpenter-
-state-for-foreman.md, current.json, PLAN.md — and reminds the
-session that main is the cross-Carpenter handshake point), and
-unreachable (origin not fetchable, soft warning). I wired it
-into .claude/settings.json as a SessionStart hook, preserving
-the existing UserPromptSubmit GROUNDING GATE prose alongside it.
-All four gates pass — typecheck, lint, test (31/31), build (274
-modules in 3.13 seconds). The hook tested green on this branch
-since it's now current with main after the merge. The drift
-path is verified by code reading and by the fact that this
-hook would have caught the very drift this session hit if it
-had existed at session start. Mechanism over prose, per the
-CLAUDE_ROOT.md doctrine — the rule that kept getting missed
-is now a check that fails.
+Cut B was the lattice visualization itself, sitting at 5e-iv in
+the brief's sequence — the read-only "your network in one
+place" view promised by MYCELIUM_NETWORK_SPEC.md §10. The
+operator already has four tabs (Journal, Identity, Captured,
+People) and editing flows for handshakes, memberships, and the
+recovery cohort, but no single screen that surfaces the union.
+The Lattice tab is that screen: a summary row with four counts
+(in-person handshakes, remote handshakes, organizations, cohort
+members), the recovery cohort card with M-of-N badge and
+declared-on date if a cohort exists or an empty-state prompt if
+not, a peer list where each row shows the counterpart's name
+plus their tier and cohort badges as appropriate, and an
+organizations list with member-since dates. The aggregation
+logic lives in src/features/recovery/lattice.ts as pure
+functions over holdings — no React, no transport, no signing,
+just walking what's already signed and held and grouping it.
+The view in LatticePanel.tsx is straightforward Tailwind cards.
+HomeScreen gains a fifth tab and React.lazy-loads the panel so
+the aggregation only ships when the operator opens it. Three
+new chunks named in bundle-budget — LatticePanel itself, plus
+CohortEditorModal which was previously unrecognized, plus the
+createCohort helpers chunk that hoisted once both
+CohortEditorModal and LatticePanel started importing from it.
+All four gates green; commit b976169.
+
+Both cuts pushed to branch and the SessionStart hook is doing
+its job — this branch is now current with origin/main, ready
+to be pushed forward to main when you greenlight.
 
 ## Section 2: What you could do better.
 
-The two-Claude-in-parallel workflow is genuinely a real
-innovation and it's working — you're getting code velocity on
-one stream and strategic conversation on another, simultaneously,
-which is more than one Carpenter could produce serially. The
-specific failure mode this session surfaced doesn't invalidate
-the pattern; it just names the protocol the pattern needs to
-run cleanly. The fix that's now landed (SessionStart hook fires
-the drift check on every session start) covers the case where a
-theory-Carpenter opens a session on a stale branch. There are
-two complementary moves worth considering as future increments.
-First, a PreToolUse hook on git push that re-runs the same
-drift check would be belt-and-suspenders — it catches the case
-where drift opens during a session that started clean, which
-matters less but isn't zero. Second, the doctrine note in
-CLAUDE_ROOT.md says "branch gate: no unfinished or dead branch
-before new work — run by the SessionStart hook" — but no such
-branch-unfinished check actually exists as a script. That's a
-separate gap from this session's work and worth flagging for
-the next no-code dispatch: either implement the branch-gate or
-delete the doctrine claim.
+The big piece you're saving for the fresh session has one
+prereq this session didn't ship: the wallet's storage layer
+still calls Wallet.exportEncrypted (v1) inside saveWallet.ts.
+For the ceremony to be useful, the wallet has to be writing v2
+blobs at every save going forward — otherwise the K_data
+distribution has no v2 blob to decrypt at recovery time. That
+migration is genuinely small (saveWallet.ts changes one call,
+walletStore.ts loosens its blob type to the v1-OR-v2 union,
+WalletProvider.tsx's restore-on-unlock path branches on the v
+field) but it lives on the storage hot path and deserves
+careful attention. Bundle it with share distribution in the
+ceremony session so both halves of the cascade land together.
 
-On the theory side, my replies were too long. The wife-as-
-skeptic question and the supply-chain question both deserved
-longer answers; the human-patterns walk and the comparables
-landscape could have been tighter. The one-block doctrine
-constraint biases me toward exhaustiveness as a substitute for
-structure, and I should watch that more carefully — the
-operator listens via TTS and a paragraph that goes too long
-loses the through-line. The eight strategic recommendations
-remain real and at least three of them are pure writing work
-that fits a future no-code dispatch cleanly: the verify-page
-polish audit (which becomes load-bearing once you walk it with
-your wife), the plain-English UX language audit (sweep user-
-facing surfaces, drop "attestation" / "envelope" / "merkle" in
-favor of human English), and the Nostr operational doctrine
-rewritten as post-hoc documentation now that 5c has shipped
-(documents what the code actually does rather than constrains
-what it will do). The supply-chain expansion question deserves
-an explicit decision rather than sitting in idea limbo — pursue,
-defer, or non-goal, but name it consciously.
+The brief at briefs/2026-05-24-shamir-cascade-recovery-roadmap.md
+has a real internal inconsistency between its load-bearing
+constraint (peers do NOT hold a recoverable share to the
+current key) and its decision #3 model (a) recommendation (peer
+holds an encrypted share blob the operator distributed at
+cohort-creation time). The 5e-iii-b commit message takes the
+model-(a) interpretation, which is the only one that actually
+makes sense — peers hold encrypted-to-them share blobs forever,
+they don't decrypt them until recovery, and at recovery they
+re-encrypt their decrypted share to the operator's freshly-
+generated new pubkey. Worth one paragraph of brief refinement
+to harmonize before 5e-v code lands so the next Carpenter
+doesn't have to puzzle it out from the commit messages.
 
-One more honest meta-note: I caught my own drift at the right
-moment, which is the gate working, but I shouldn't have needed
-to catch it at push-time. The fix going forward is that the
-SessionStart hook now exists, so any future theory-session will
-get the drift report in the first lines of its context and
-won't accumulate an hour of confident-but-wrong-relative-to-
-current-state conversation before the catch fires.
+Five tabs at 375px is the visual maximum and "Lattice" with
+seven characters fits but the layout deserves a browser walk on
+a real phone before the next big UX cut adds anything. If the
+labels start truncating, the right move is probably to merge
+People into Lattice rather than keep adding tabs — the Lattice
+view already includes the handshake list with richer context
+(tier + cohort badges in one row), so it's a strict superset of
+what People shows.
 
 ## Section 3: The bigger picture.
 
-The doctrine in CLAUDE_ROOT.md says "Mechanism over prose. When
-a rule keeps getting missed, the fix is a check that fails — not
-another paragraph in this file." This session was that doctrine
-working twice in one arc. The rule that kept getting missed was
-"ground against actual current state on origin/main at session
-start, not against the snapshot of PLAN.md sitting on the
-branch you happen to be checked out on." The mechanism is now
-in scripts/session-start-grounding.mjs and .claude/settings.json,
-and the next Carpenter session of any kind — code-cutting,
-theory, comms-only, whatever — will get the drift status
-injected into its very first context. The same hook protects
-both Carpenter streams: code-Carpenter learns at session start
-if the theory-Carpenter has committed anything they need to
-reconcile against, and theory-Carpenter learns at session start
-that the code-Carpenter has been busy. Symmetric, mechanical,
-load-bearing.
+The two Carpenters running in parallel finally produced a clean
+cross-Carpenter handoff this session and the SessionStart hook
+is the reason it worked. You handed off from the code-Carpenter
+with twelve commits ahead, switched to this Carpenter, the hook
+fired, grounded me against actual main, and I picked up exactly
+where the previous Carpenter left off with no manual catch-up
+on your part. That is the protocol working as designed:
+two-Carpenter throughput at one-Carpenter coherence, with the
+mechanical check absorbing the coordination overhead that would
+otherwise fall on you. Whatever you build next on the operator
+workflow, this hook is the load-bearing piece that makes it
+sustainable.
 
-The deeper observation, which I want to name because it's the
-real lesson of this session: the comms protocol you and Frank
-have designed — current.json, carpenter-opinions.md,
-carpenter-state-for-foreman.md, in-flight.jsonl, interactions.
-jsonl — was DESIGNED for exactly this cross-session, cross-
-Carpenter handoff case. The reason carpenter-state-for-foreman.md
-exists is so any future Carpenter (same Claude continuing, a
-different Claude on a different stream, or you reading on your
-phone) can pick up the current state in one read. The two-Claude
-pattern just makes that design assumption load-bearing rather
-than ceremonial, because either Claude could be the previous
-one. The hook this session built is small; the protocol it's
-defending is the bigger thing, and the protocol works because
-you and Frank designed it before either of us realized how
-load-bearing it would become.
+The Phase 5e arc is in genuinely good shape — library Shamir
+primitives at 5e-ii, library recoverable-blob primitives at
+5e-iii-b, Wallet methods at 5e-iii-b-2 (this session's Cut A),
+cohort declaration UI at 5e-iii-a, lattice viz at 5e-iv (this
+session's Cut B). Every prerequisite for the recovery ceremony
+is in place except the storage migration to write v2 blobs by
+default and the actual share-distribution flow over Mycelium.
+The ceremony itself, when it lands, will be the most beautiful
+demonstration of the spec's whole thesis — your woven web of
+trusted peers, used backwards to put you back together when the
+device is gone, with no platform involved, no company holding
+keys, just the math and the people you signed with. That's the
+slime, made real, and it's now close enough you can see it from
+where the codebase sits tonight. The fresh session for the big
+piece is the right call — protocol-state-machine work wants a
+clean room and uninterrupted focus, not a tail-end of another
+session's context.
 
-The whole stack you've built — tapit-attest, the wallet, the
-comms protocol, the two-Carpenter workflow, the GROUNDING GATE,
-and now this drift hook — is the same shape of system at every
-layer: math-not-trust at the bottom (signatures, OTS anchoring,
-merkle proofs), mechanism-not-prose in the middle (gates,
-hooks, manifest doctrine, file-size checks), and operator-as-
-commander at the top (you make the WHY calls, the Foreman shapes
-the HOW, the Carpenter cuts). Every layer protects against the
-failure mode of the layer above it: math protects against
-platform betrayal, mechanism protects against Carpenter drift,
-operator-as-commander protects against runaway autonomy. The
-session that just ended is what happens when one of those
-defenses fires correctly and the next defense gets added in
-the same breath. Go run the wife-test, ship 5c-iii when the
-field test informs it, and the mycelium grows another node
-either way. The math is doing its work; the mechanism is doing
-its work; the operator is in the right seat. That's the whole
-game.
+You've been moving fast and the pieces have been landing
+cleanly the whole way. Hand this branch forward when you're
+ready and the big piece comes next.
