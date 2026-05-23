@@ -4,6 +4,13 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { downloadEncryptedBackup } from './localExport.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
+import { lazy, Suspense } from 'react';
+import { findLatestCohort, readCohort } from '../recovery/createCohort.ts';
+const CohortEditorModal = lazy(() =>
+  import('../recovery/CohortEditorModal.tsx').then((m) => ({
+    default: m.CohortEditorModal,
+  })),
+);
 import {
   findOwnOrgDeclaration,
   readOrganizationName,
@@ -24,6 +31,9 @@ function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
 
 export function SettingsScreen() {
   const { wallet, ownerId, holdings, prefs, anchorWorker, updatePrefs, save, refresh } = useWallet();
+  const [cohortOpen, setCohortOpen] = useState(false);
+  const cohortAtt = findLatestCohort(holdings, wallet.identity);
+  const cohortView = cohortAtt ? readCohort(cohortAtt) : null;
   const navigate = useNavigate();
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -345,6 +355,45 @@ export function SettingsScreen() {
       </section>
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+        <div className="font-medium">Recovery cohort</div>
+        {cohortView && cohortView.members.length > 0 ? (
+          <>
+            <p className="mt-1 text-sm text-muted">
+              {cohortView.threshold} of {cohortView.totalShares} peers
+              declared to help if you ever need to recover this wallet on
+              a new device. No shares move yet — the ceremony that
+              actually distributes them and uses them lands in the next
+              recovery cuts.
+            </p>
+            <ul className="mt-3 space-y-1">
+              {cohortView.members.map((m) => (
+                <li key={m.pubkey} className="text-xs">
+                  <span className="font-medium">{m.name || '(no name)'}</span>{' '}
+                  <span className="text-muted font-mono">
+                    {m.pubkey.slice(0, 8)}…{m.pubkey.slice(-4)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-muted">
+            Declare which peers from your handshakes would help you
+            recover this wallet on a new device. Pick at least two; any M
+            of N of them together can put you back. Each individual peer
+            sees nothing of yours on their own — only combined.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => setCohortOpen(true)}
+          className="mt-3 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
+        >
+          {cohortView && cohortView.members.length > 0 ? 'Edit cohort' : 'Declare cohort'}
+        </button>
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="font-medium">Local backup</div>
         <p className="mt-1 text-sm text-muted">
           Download an encrypted copy of your wallet. Keep it somewhere safe —
@@ -410,6 +459,12 @@ export function SettingsScreen() {
           Sign out
         </button>
       </section>
+
+      {cohortOpen && (
+        <Suspense fallback={null}>
+          <CohortEditorModal onClose={() => setCohortOpen(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

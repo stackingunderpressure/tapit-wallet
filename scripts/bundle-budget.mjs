@@ -57,12 +57,13 @@ const BUDGETS = [
   // raised to 14.5KB before another structural rethink is needed.
   { pattern: /^HomeScreen-.*\.js$/, gz: 14_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
-  // SettingsScreen grew with the org-mode declaration form (5b-org-i)
-  // alongside the existing cloud-sync / idle-lock / Mycelium toggle /
-  // custom relays / local-backup / sign-out sections. ~3.4 KB gz today;
-  // 4.5 KB carries headroom for the upcoming officials-list editor
-  // before another structural rethink is needed.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 4_500, label: 'SettingsScreen' },
+  // SettingsScreen grew through org-mode declaration (5b-org-i),
+  // custom-relay editor (5c-i-λ), and now the recovery-cohort
+  // section (5e-iii-a). The cohort editor itself is React.lazy so
+  // only the section display + button is in the main chunk;
+  // current ~4.8KB gz. Headroom raised to 6KB before another
+  // structural rethink (split Settings into tabs?) is needed.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 6_000, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
