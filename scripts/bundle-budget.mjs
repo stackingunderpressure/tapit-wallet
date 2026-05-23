@@ -36,8 +36,13 @@ const ASSETS_DIR = join(here, '..', 'dist', 'assets');
 // the current measured size; tighter for small chunks where
 // surprises matter, looser for vendors with known bulk.
 const BUDGETS = [
-  // Login surface — must stay tiny. ~3.5KB today; cap at 5KB.
-  { pattern: /^index-.*\.js$/, gz: 5_000, label: 'login bundle (main)' },
+  // Login surface — must stay tiny. ~3.5KB at the original budget;
+  // 2026-05-23 lifted from 5KB to 5.5KB after the WalletContext +
+  // transport type surface (RelayStatus for the Nostr live indicator)
+  // pulled the entry chunk to ~5.0KB. Still well under the
+  // "everything that runs before auth is tiny" line; the next
+  // structural rethink fires past 5.5KB.
+  { pattern: /^index-.*\.js$/, gz: 5_500, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB today; cap at 6KB.
   { pattern: /^index-.*\.css$/, gz: 6_000, label: 'css' },
 
