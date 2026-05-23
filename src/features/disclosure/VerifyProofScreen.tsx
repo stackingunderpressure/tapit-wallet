@@ -1,13 +1,35 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { verifyDisclosureProof, type DisclosureProofBundle } from 'tapit-attest';
+import {
+  disclosedLeavesOf,
+  verifyDisclosureProof,
+  verifyMultiDisclosureProof,
+  type DisclosureMeta,
+  type FieldValue,
+  type Signature,
+} from 'tapit-attest';
 import { parseDisclosureProof } from './parseDisclosureProof.ts';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
+
+interface VerifiedField {
+  path: string;
+  name: string;
+  value: FieldValue;
+}
 
 type Outcome =
   | { kind: 'idle' }
   | { kind: 'error'; detail: string }
-  | { kind: 'result'; proof: DisclosureProofBundle; valid: boolean; digest: string; signers: { signer: string; valid: boolean }[]; errors: string[] };
+  | {
+      kind: 'result';
+      meta: DisclosureMeta;
+      signatures: Signature[];
+      fields: VerifiedField[];
+      valid: boolean;
+      digest: string;
+      signers: { signer: string; valid: boolean }[];
+      errors: string[];
+    };
 
 function shortKey(s: string): string {
   if (s.length <= 16) return s;
@@ -23,10 +45,10 @@ function asString(v: unknown): string {
 
 // Public verifier route. Lives outside AuthGate — the verifier may not
 // have a wallet of their own; they just need a copy of the wallet PWA
-// to run verifyDisclosureProof against the math. The proof is
-// self-contained; the verifier sees the disclosed field, the envelope
-// meta the signature was bound to, who signed, and whether the math
-// adds up.
+// to run the verifier against the math. Handles both bundle kinds:
+// legacy single-leaf bundles still in the wild, and the multi-leaf
+// bundles new wallets produce. The disclosed-fields list is rendered
+// uniformly regardless of which kind arrived.
 export function VerifyProofScreen() {
   const [raw, setRaw] = useState('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
@@ -34,16 +56,43 @@ export function VerifyProofScreen() {
 
   function verify() {
     try {
-      const proof = parseDisclosureProof(raw);
-      const result = verifyDisclosureProof(proof);
-      setOutcome({
-        kind: 'result',
-        proof,
-        valid: result.valid,
-        digest: result.digest,
-        signers: result.signers,
-        errors: result.errors,
-      });
+      const parsed = parseDisclosureProof(raw);
+      if (parsed.kind === 'multi') {
+        const result = verifyMultiDisclosureProof(parsed.bundle);
+        const fields = disclosedLeavesOf(parsed.bundle).map((d) => ({
+          path: d.path,
+          name: d.name,
+          value: d.value,
+        }));
+        setOutcome({
+          kind: 'result',
+          meta: parsed.bundle.meta,
+          signatures: parsed.bundle.signatures,
+          fields,
+          valid: result.valid,
+          digest: result.digest,
+          signers: result.signers,
+          errors: result.errors,
+        });
+      } else {
+        const result = verifyDisclosureProof(parsed.bundle);
+        setOutcome({
+          kind: 'result',
+          meta: parsed.bundle.meta,
+          signatures: parsed.bundle.signatures,
+          fields: [
+            {
+              path: parsed.bundle.leaf.name,
+              name: parsed.bundle.leaf.name,
+              value: parsed.bundle.leaf.value,
+            },
+          ],
+          valid: result.valid,
+          digest: result.digest,
+          signers: result.signers,
+          errors: result.errors,
+        });
+      }
     } catch (err) {
       setOutcome({
         kind: 'error',
@@ -65,8 +114,8 @@ export function VerifyProofScreen() {
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <p className="text-sm text-muted">
           Paste a proof someone shared with you. The math will check whether
-          the field they revealed really is part of a signed entry by the key
-          you would expect.
+          the fields they revealed really are part of a signed entry by the
+          key you would expect.
         </p>
         <textarea
           value={raw}
@@ -124,33 +173,37 @@ export function VerifyProofScreen() {
             {outcome.valid ? 'Proof is valid.' : 'Proof did NOT verify.'}
           </p>
           <div className="mt-3 text-xs uppercase tracking-wide text-muted">
-            Disclosed field
+            {outcome.fields.length === 1 ? 'Disclosed field' : 'Disclosed fields'}
           </div>
-          <div className="mt-1 text-sm">
-            <span className="text-muted">{outcome.proof.leaf.name}: </span>
-            <span className="font-medium break-words">
-              {asString(outcome.proof.leaf.value)}
-            </span>
-          </div>
+          <ul className="mt-1 space-y-1">
+            {outcome.fields.map((f) => (
+              <li key={f.path} className="text-sm">
+                <span className="text-muted">{f.name}: </span>
+                <span className="font-medium break-words">
+                  {asString(f.value)}
+                </span>
+              </li>
+            ))}
+          </ul>
           <div className="mt-3 text-xs uppercase tracking-wide text-muted">
             Signed envelope
           </div>
           <div className="mt-1 text-sm">
             <div>
               <span className="text-muted">Kind: </span>
-              {outcome.proof.meta.kind}
+              {outcome.meta.kind}
             </div>
             <div>
               <span className="text-muted">Tier: </span>
-              {outcome.proof.meta.tier}
+              {outcome.meta.tier}
             </div>
             <div>
               <span className="text-muted">Subject: </span>
-              <span className="font-mono break-words">{outcome.proof.meta.subject}</span>
+              <span className="font-mono break-words">{outcome.meta.subject}</span>
             </div>
             <div>
               <span className="text-muted">Issued at: </span>
-              {new Date(outcome.proof.meta.issuedAt).toLocaleString()}
+              {new Date(outcome.meta.issuedAt).toLocaleString()}
             </div>
           </div>
           <div className="mt-3 text-xs uppercase tracking-wide text-muted">
