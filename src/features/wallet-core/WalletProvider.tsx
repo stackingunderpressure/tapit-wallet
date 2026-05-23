@@ -85,6 +85,21 @@ export function WalletProvider({ children }: Props) {
     setPassphraseState(value);
   }
 
+  // 5e-iii-c-β — K_data preservation across saves. K_data is the
+  // symmetric data-encryption key of the v2 blob; on unlock we
+  // extract it (or get it minted by createWallet for first-login),
+  // and every save during the unlocked session re-encrypts with the
+  // SAME K_data so a recovery cohort's distributed Shamir shares
+  // stay valid against the latest blob. The ref mirrors state so
+  // back-to-back saves can read the current K_data synchronously
+  // without depending on React's batched state updates. Cleared on
+  // sign-out and idle-lock alongside the passphrase.
+  const kDataRef = useRef<Uint8Array | null>(null);
+
+  function setKData(value: Uint8Array | null) {
+    kDataRef.current = value;
+  }
+
   useEffect(() => {
     if (!ownerId) return;
     let alive = true;
@@ -148,7 +163,13 @@ export function WalletProvider({ children }: Props) {
                 await wallet.hold(item.envelope);
                 const pass = passphraseRef.current;
                 if (pass && ownerId) {
-                  await saveWallet(wallet, pass, ownerId);
+                  const { kData } = await saveWallet(
+                    wallet,
+                    pass,
+                    ownerId,
+                    kDataRef.current,
+                  );
+                  setKData(kData);
                 }
                 setHoldings(await wallet.holdings());
               } catch (err) {
@@ -260,7 +281,13 @@ export function WalletProvider({ children }: Props) {
         if (!pass || !anyAttached) return;
         anyAttached = false;
         try {
-          await saveWallet(wallet, pass, ownerId);
+          const { kData } = await saveWallet(
+            wallet,
+            pass,
+            ownerId,
+            kDataRef.current,
+          );
+          setKData(kData);
           setPrefs(await prefsStore.load(ownerId));
         } catch (err) {
           console.warn('post-anchor-attach save failed', err);
@@ -286,8 +313,9 @@ export function WalletProvider({ children }: Props) {
   const onCreate = useCallback(
     async (passphrase: string) => {
       if (!ownerId) throw new Error('no session');
-      const wallet = await createWallet(ownerId, passphrase);
+      const { wallet, kData } = await createWallet(ownerId, passphrase);
       setPassphrase(passphrase);
+      setKData(kData);
       setHoldings([]);
       setPhase({ kind: 'needs-identity', wallet });
       setPrefs(await prefsStore.load(ownerId));
@@ -298,8 +326,9 @@ export function WalletProvider({ children }: Props) {
   const onUnlock = useCallback(
     async (passphrase: string) => {
       if (phase.kind !== 'locked') throw new Error('not in locked state');
-      const wallet = await unlockWallet(phase.stored.blob, passphrase);
+      const { wallet, kData } = await unlockWallet(phase.stored.blob, passphrase);
       setPassphrase(passphrase);
+      setKData(kData);
       await landAfterUnlock(wallet);
     },
     [phase],
@@ -314,7 +343,13 @@ export function WalletProvider({ children }: Props) {
       const passphrase = passphraseRef.current;
       if (!passphrase) throw new Error('passphrase not in memory; re-unlock');
       await createIdentityAttestation(phase.wallet, input);
-      await saveWallet(phase.wallet, passphrase, ownerId);
+      const { kData } = await saveWallet(
+        phase.wallet,
+        passphrase,
+        ownerId,
+        kDataRef.current,
+      );
+      setKData(kData);
       await landAfterUnlock(phase.wallet);
       setPrefs(await prefsStore.load(ownerId));
     },
@@ -330,7 +365,13 @@ export function WalletProvider({ children }: Props) {
     if (!passphrase) throw new Error('passphrase not in memory; re-unlock');
     const wallet =
       phase.kind === 'unlocked' ? phase.wallet : phase.wallet;
-    const outcome = await saveWallet(wallet, passphrase, ownerId);
+    const { outcome, kData } = await saveWallet(
+      wallet,
+      passphrase,
+      ownerId,
+      kDataRef.current,
+    );
+    setKData(kData);
     setPrefs(await prefsStore.load(ownerId));
     setHoldings(await wallet.holdings());
     return outcome;
@@ -355,14 +396,19 @@ export function WalletProvider({ children }: Props) {
   );
 
   useEffect(() => {
-    if (!session.session) setPassphrase(null);
+    if (!session.session) {
+      setPassphrase(null);
+      setKData(null);
+    }
   }, [session.session]);
 
   // Idle-lock: when the operator has been inactive for prefs.idleTimeoutMs,
   // transition back to the locked phase and clear the in-memory passphrase.
   // The wallet's encrypted snapshot is reloaded so the unlock prompt has
   // the latest blob to decrypt against. Only active when phase is
-  // unlocked or needs-identity AND timeout is non-zero.
+  // unlocked or needs-identity AND timeout is non-zero. K_data is cleared
+  // alongside the passphrase — both are sensitive material that must not
+  // outlive an unlocked session.
   const idleEligible =
     (phase.kind === 'unlocked' || phase.kind === 'needs-identity') &&
     !!ownerId &&
@@ -371,6 +417,7 @@ export function WalletProvider({ children }: Props) {
     if (!ownerId) return;
     const stored = await walletStore.load(ownerId);
     setPassphrase(null);
+    setKData(null);
     setHoldings([]);
     setPhase(stored ? { kind: 'locked', stored } : { kind: 'first-login' });
   });

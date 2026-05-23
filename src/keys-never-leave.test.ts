@@ -42,8 +42,12 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 
 // Identifiers that name secret material the wallet must never log
-// or persist to plaintext web storage.
-const SECRET_NAMES = ['privateKey', 'passphrase', 'seed', 'mnemonic', 'secretKey'];
+// or persist to plaintext web storage. 5e-iii-c-β adds kData — the
+// symmetric data-encryption key of the v2 recoverable backup. K_data
+// is held in memory while a wallet is unlocked so saves can preserve
+// it for the cohort cascade; a stray console.log or web-storage
+// stash would defeat the whole recovery design.
+const SECRET_NAMES = ['privateKey', 'passphrase', 'seed', 'mnemonic', 'secretKey', 'kData'];
 const SECRET_GROUP = `(?:${SECRET_NAMES.join('|')})`;
 
 // console.<method>( ... <secret> ... ) — bounded by `;` so the

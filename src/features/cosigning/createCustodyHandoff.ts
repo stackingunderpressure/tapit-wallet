@@ -2,7 +2,6 @@ import type { Attestation, Wallet } from 'tapit-attest';
 import { metaAttestation, envelopeId } from 'tapit-attest';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
-import { saveWallet } from '../wallet-core/saveWallet.ts';
 
 // Custody-handoff meta-attestation. The current custodian declares
 // that a subject (a typed label like "Grandson Tom Jr") is now
@@ -33,10 +32,14 @@ export interface CustodyHandoffResult {
 export async function createCustodyHandoff(
   wallet: Wallet,
   ownerId: string,
-  passphrase: string,
   worker: WorkerHandle | null,
   input: CustodyHandoffInput,
 ): Promise<CustodyHandoffResult> {
+  // 5e-iii-c-β — this helper no longer calls saveWallet directly.
+  // The caller is expected to invoke save() from WalletContext after
+  // the handoff lands, which threads K_data through the v2 backup
+  // path. Matches the pattern publishCohort + selfDeclareOrganization
+  // already use; saveWallet's K_data plumbing stays in one place.
   const fields: Record<string, string> = {
     action: 'custody_handoff',
     from: wallet.publicKey,
@@ -54,7 +57,6 @@ export async function createCustodyHandoff(
   });
   const signed = wallet.sign(draft);
   await wallet.hold(signed);
-  await saveWallet(wallet, passphrase, ownerId);
 
   const digestHex = envelopeId(signed);
   await anchorQueue.upsert(ownerId, {

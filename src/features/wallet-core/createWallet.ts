@@ -3,25 +3,27 @@ import { walletStore } from '../storage/walletStore.ts';
 
 // First-login flow. Generates a fresh keypair, encrypts the snapshot
 // under the user's passphrase, and persists it to both stores.
-// Returns the unlocked Wallet so the caller can put it into context.
+// Returns the unlocked Wallet AND the K_data so the caller can hold
+// kData in memory for the duration of the unlocked session — every
+// subsequent save re-uses it via exportRecoverableWithKData.
 //
 // The keypair never leaves this function unencrypted. The passphrase
 // never crosses the network — encryption happens client-side, the
 // host receives ciphertext only.
-//
-// 5e-iii-b-2 — new wallets are created with the v2
-// RecoverableEncryptedBlob format from day one, so they are
-// cascade-ready the moment the operator declares a recovery cohort.
-// K_data is discarded (no cohort yet to distribute to); the
-// passphrase-unlock path is what carries the operator through every
-// save until shares actually move.
+
+export interface CreateWalletResult {
+  wallet: Wallet;
+  /** The freshly-minted K_data for the first v2 blob this wallet wrote. */
+  kData: Uint8Array;
+}
+
 export async function createWallet(
   ownerId: string,
   passphrase: string,
-): Promise<Wallet> {
+): Promise<CreateWalletResult> {
   if (passphrase.length === 0) throw new Error('passphrase must not be empty');
   const wallet = Wallet.generate();
-  const { blob } = await wallet.exportRecoverable(passphrase);
+  const { blob, kData } = await wallet.exportRecoverable(passphrase);
   await walletStore.save(ownerId, blob);
-  return wallet;
+  return { wallet, kData };
 }

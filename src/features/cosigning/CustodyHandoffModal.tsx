@@ -31,7 +31,7 @@ type Step =
 // from time T1; from time T2, X is custodied by B" is multi-
 // signed and OTS-anchored.
 export function CustodyHandoffModal({ subject, onClose }: Props) {
-  const { wallet, ownerId, passphrase } = useWallet();
+  const { wallet, ownerId, save } = useWallet();
   const worker = useAnchorWorker();
   const [toKey, setToKey] = useState('');
   const [note, setNote] = useState('');
@@ -58,10 +58,10 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
       const result = await createCustodyHandoff(
         wallet,
         ownerId,
-        passphrase,
         worker,
         { subject, toKey: trimmed, note },
       );
+      await save();
       setStep({ kind: 'signed', signed: result.attestation });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign the handoff.');
