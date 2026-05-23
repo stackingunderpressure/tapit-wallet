@@ -8,11 +8,13 @@ import { QrShow } from '../qr/QrShow.tsx';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
 import {
   buildHandshakeDraft,
+  buildRemoteHandshakeDraft,
   displayNameOf,
   holdAndAnchor,
   isHandshake,
   readHandshake,
 } from './createHandshake.ts';
+import { PeerPicker } from './PeerPicker.tsx';
 
 interface Props {
   onClose: () => void;
@@ -38,6 +40,8 @@ type Step =
   | 'r-ready'
   | 'r-preview'
   | 'r-show-handshake'
+  | 'remote-pick'
+  | 'remote-sent'
   | 'done';
 
 const eyebrow = 'text-xs uppercase tracking-wide text-accent';
@@ -45,7 +49,7 @@ const primaryBtn =
   'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40';
 
 export function HandshakeModal({ onClose }: Props) {
-  const { wallet, ownerId, identity, anchorWorker, save } = useWallet();
+  const { wallet, ownerId, holdings, identity, anchorWorker, prefs, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>('role');
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,6 +59,9 @@ export function HandshakeModal({ onClose }: Props) {
     null,
   );
   const [peerName, setPeerName] = useState('');
+  // Remote-handshake-start (Tier R) state.
+  const [remotePubkey, setRemotePubkey] = useState('');
+  const [remoteName, setRemoteName] = useState('');
 
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
@@ -169,6 +176,48 @@ export function HandshakeModal({ onClose }: Props) {
     else if (step === 'r-show-handshake') onScanCosigned(raw);
   }
 
+  // Tier R — initiator builds + signs a remote handshake draft and
+  // ships it to the responder via Nostr. The draft carries
+  // verification='remote' (D-09); the responder's wallet will see a
+  // 1-sig handshake in their inbox and auto-route it to
+  // cosign-witness, where the existing Send-back-via-Nostr path
+  // returns the dual-signed envelope. Both wallets end holding the
+  // same Tier R record — labelled honestly weaker than Tier P.
+  async function startRemoteHandshake() {
+    if (!identity) {
+      setError('Your identity is not ready yet.');
+      return;
+    }
+    const pubkey = remotePubkey.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/i.test(pubkey)) {
+      setError('Need a 64-character hex public key.');
+      return;
+    }
+    if (pubkey === identity.subject) {
+      setError('That is your own public key.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const draft = buildRemoteHandshakeDraft(identity, {
+        pubkey,
+        name: remoteName.trim(),
+      });
+      const signed = wallet.sign(draft);
+      await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
+      await save();
+      await sendEnvelope(pubkey, signed);
+      setHandshake(signed);
+      setPeerName(remoteName.trim());
+      setStep('remote-sent');
+    } catch (err) {
+      fail(err, 'Could not start the remote handshake.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
@@ -186,9 +235,9 @@ export function HandshakeModal({ onClose }: Props) {
         {step === 'role' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              A handshake connects two wallets that are physically
-              together. One of you starts, the other joins — decide
-              between you, then tap.
+              A handshake connects two wallets. In person is the strong
+              tier — two phones, two scans. Remote is the honest weaker
+              tier — same record, marked as such.
             </p>
             <div className="mt-4 space-y-2">
               <button
@@ -196,17 +245,85 @@ export function HandshakeModal({ onClose }: Props) {
                 onClick={() => setStep('i-show-identity')}
                 className={primaryBtn}
               >
-                I'll start
+                I'll start (in person)
               </button>
               <button
                 type="button"
                 onClick={() => setStep('r-ready')}
                 className="w-full rounded-md border border-ink/15 py-3 text-sm font-medium"
               >
-                I'll join
+                I'll join (in person)
               </button>
+              {prefs.nostrTransportEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setStep('remote-pick')}
+                  className="w-full rounded-md border border-accent/40 bg-accent/5 py-3 text-sm font-medium text-accent"
+                >
+                  Start a remote handshake (Tier R)
+                </button>
+              )}
             </div>
           </>
+        )}
+
+        {step === 'remote-pick' && (
+          <>
+            <div className={`mt-2 ${eyebrow}`}>Remote handshake · Tier R</div>
+            <p className="mt-1 text-sm text-muted">
+              Pick a connection or paste a public key. They will see a
+              handshake request in their inbox; once they sign, both of
+              you hold a Tier R record — labelled remote, weaker than
+              an in-person handshake.
+            </p>
+            <div className="mt-3">
+              <PeerPicker
+                holdings={holdings}
+                myIdentity={identity?.subject ?? ''}
+                value={remotePubkey}
+                onChange={setRemotePubkey}
+              />
+            </div>
+            <label className="mt-3 block text-sm">
+              <span className="text-muted">Their name (optional)</span>
+              <input
+                type="text"
+                value={remoteName}
+                onChange={(e) => setRemoteName(e.target.value)}
+                placeholder="What should the record say about them?"
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={startRemoteHandshake}
+              disabled={busy || remotePubkey.trim().length === 0}
+              className={`mt-4 ${primaryBtn}`}
+            >
+              {busy ? 'Sending…' : 'Send remote handshake'}
+            </button>
+          </>
+        )}
+
+        {step === 'remote-sent' && (
+          <div className="mt-3 text-center">
+            <div className={eyebrow}>Sent · Tier R</div>
+            <h3 className="mt-1 text-lg font-semibold">
+              Handshake sent to {peerName || 'them'}
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              Your signed copy is held and anchored. Once they accept
+              and counter-sign, your wallet will absorb their signature
+              from your inbox.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`mt-4 ${primaryBtn}`}
+            >
+              Done
+            </button>
+          </div>
         )}
 
         {step === 'i-show-identity' && (

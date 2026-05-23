@@ -73,6 +73,30 @@ export function buildHandshakeDraft(
   });
 }
 
+// Build the unsigned relationship attestation for a Tier R remote
+// handshake (5c-ii). The initiator drives — they know the responder's
+// pubkey and name (typically from a prior connection via PeerPicker,
+// or by manual paste) but the responder is not in the room to scan.
+// verification='remote' labels the link honestly per D-09; a verifier
+// always sees this is the weaker tier.
+export function buildRemoteHandshakeDraft(
+  initiatorIdentity: Attestation,
+  responder: { pubkey: string; name: string },
+): Attestation {
+  return relationshipAttestation({
+    subject: initiatorIdentity.subject,
+    tier: 'notable',
+    fields: {
+      verification: 'remote',
+      handshake_at: new Date().toISOString(),
+      initiator_id: initiatorIdentity.subject,
+      initiator_name: displayNameOf(initiatorIdentity),
+      responder_id: responder.pubkey,
+      responder_name: responder.name,
+    },
+  });
+}
+
 // Hold a handshake attestation and queue it for OpenTimestamps
 // anchoring — the same pipeline journal entries use. envelopeId is
 // stable across signature additions, so anchoring is idempotent

@@ -307,3 +307,231 @@ export function verifyDisclosureProof(
     errors,
   };
 }
+
+// ----- multi-field disclosure (pruned Merkle multi-proof) ---------------
+//
+// A multi-disclosure bundle carries N leaf values along with the minimum
+// Merkle structure needed to recompute the same claim root the signer
+// signed. Branches on the spanning subtree of the disclosed leaves keep
+// their disclosed children inline and replace non-disclosed siblings with
+// just their node hashes; branches entirely outside the spanning subtree
+// are never reached. The verifier recomputes the root top-down using the
+// same leafHash / branchHash functions the signer used, then runs the
+// existing signature check.
+//
+// Wire shape design:
+//   ProofChild = a leaf with full content
+//              | a branch with full child list (children are ProofChild)
+//              | a hashed-out subtree (just its node hash)
+// Bundle.root is always a 'branch' ProofChild matching the original
+// attestation.claim root. paths is informational — the verifier never
+// needs it, but the wallet UI can use it to label the disclosed leaves
+// without walking the pruned tree.
+
+export type ProofChild =
+  | { node: 'leaf'; name: string; value: FieldValue }
+  | { node: 'branch'; name: string; children: ProofChild[] }
+  | { node: 'hashed'; name: string; hash: string };
+
+export interface MultiDisclosureProofBundle {
+  v: 1;
+  meta: DisclosureMeta;
+  /** The paths disclosed by this bundle, slash-delimited. Convenience
+   *  for callers; verification does not depend on it. */
+  paths: string[];
+  /** The pruned claim tree. Always a 'branch' node corresponding to
+   *  attestation.claim. */
+  root: ProofChild;
+  signatures: Signature[];
+}
+
+function pruneNode(
+  node: FieldNode,
+  keep: Set<FieldNode>,
+): ProofChild {
+  if (node.node === 'leaf') {
+    if (!keep.has(node)) {
+      return { node: 'hashed', name: node.name, hash: bytesToHex(leafHash(node)) };
+    }
+    return { node: 'leaf', name: node.name, value: node.value };
+  }
+  // branch: include children in original order; recurse into kept
+  // children, hash the rest. If the branch itself is not kept, hash
+  // the whole subtree.
+  if (!keep.has(node)) {
+    return { node: 'hashed', name: node.name, hash: bytesToHex(branchHash(node)) };
+  }
+  const children: ProofChild[] = node.children.map((child) =>
+    pruneNode(child, keep),
+  );
+  return { node: 'branch', name: node.name, children };
+}
+
+function markSpanningTree(
+  root: FieldBranch,
+  segments: string[],
+  keep: Set<FieldNode>,
+): void {
+  let current: FieldNode = root;
+  keep.add(current);
+  for (const segment of segments) {
+    if (current.node !== 'branch') {
+      throw new Error(
+        `multiDisclosureProof: path segment "${segment}" continues past a leaf`,
+      );
+    }
+    const next: FieldNode | undefined = current.children.find(
+      (c) => c.name === segment,
+    );
+    if (!next) {
+      throw new Error(`multiDisclosureProof: path segment "${segment}" not found`);
+    }
+    keep.add(next);
+    current = next;
+  }
+  if (current.node !== 'leaf') {
+    throw new Error('multiDisclosureProof: each path must terminate at a leaf');
+  }
+}
+
+/**
+ * Produce a multi-leaf disclosure proof. Same security model as
+ * disclosureProof, just amortizing the Merkle path overhead across N
+ * leaves — non-disclosed siblings appear as a single hash, regardless
+ * of how big the subtree below them is. Paths are slash-delimited or
+ * arrays; each must terminate at a leaf. Duplicate paths are reduced
+ * to one disclosure.
+ */
+export function multiDisclosureProof(
+  attestation: Attestation,
+  leafPaths: ReadonlyArray<string | string[]>,
+): MultiDisclosureProofBundle {
+  if (leafPaths.length === 0) {
+    throw new Error('multiDisclosureProof: leafPaths must not be empty');
+  }
+  const keep = new Set<FieldNode>();
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of leafPaths) {
+    const segments = Array.isArray(raw) ? raw : raw.split('/').filter(Boolean);
+    if (segments.length === 0) {
+      throw new Error('multiDisclosureProof: each leafPath must have at least one segment');
+    }
+    const joined = segments.join('/');
+    if (seen.has(joined)) continue;
+    seen.add(joined);
+    markSpanningTree(attestation.claim, segments, keep);
+    normalized.push(joined);
+  }
+  const root = pruneNode(attestation.claim, keep);
+  return {
+    v: 1,
+    meta: {
+      v: attestation.v,
+      kind: attestation.kind,
+      tier: attestation.tier,
+      subject: attestation.subject,
+      issuedAt: attestation.issuedAt,
+    },
+    paths: normalized,
+    root,
+    signatures: [...attestation.signatures],
+  };
+}
+
+function recomputeProofChildHash(node: ProofChild): Uint8Array {
+  if (node.node === 'hashed') {
+    return hexToBytes(node.hash);
+  }
+  if (node.node === 'leaf') {
+    return leafHash({ node: 'leaf', name: node.name, value: node.value });
+  }
+  const childHashes = node.children.map(recomputeProofChildHash);
+  return taggedHash(
+    'tapit/branch',
+    utf8ToBytes(node.name),
+    concatBytes(...childHashes),
+  );
+}
+
+/**
+ * Walk the pruned proof tree to enumerate every disclosed leaf with
+ * its slash-delimited path. The bundle's `paths` field is informational;
+ * this is the authoritative read of what the proof actually discloses,
+ * recovered from the tree structure itself.
+ */
+export function disclosedLeavesOf(
+  bundle: MultiDisclosureProofBundle,
+): ReadonlyArray<{ path: string; name: string; value: FieldValue }> {
+  const out: { path: string; name: string; value: FieldValue }[] = [];
+  function walk(node: ProofChild, parentPath: string[]): void {
+    if (node.node === 'leaf') {
+      out.push({
+        path: parentPath.concat(node.name).join('/'),
+        name: node.name,
+        value: node.value,
+      });
+      return;
+    }
+    if (node.node === 'hashed') return;
+    for (const child of node.children) {
+      walk(child, parentPath.concat(node.name));
+    }
+  }
+  // The root branch's name appears in the parent path of its children
+  // but not as a path segment itself — paths in disclosureProof are
+  // root-relative (e.g. 'fields/label' not 'claim/fields/label').
+  if (bundle.root.node === 'branch') {
+    for (const child of bundle.root.children) walk(child, []);
+  }
+  return out;
+}
+
+/**
+ * Verify a multi-disclosure proof bundle. Recomputes the claim root
+ * from the pruned tree, recomputes the canonical attestation digest,
+ * and runs the carried signatures against it with the same
+ * quorum-of-good semantics as verifyDisclosureProof.
+ */
+export function verifyMultiDisclosureProof(
+  bundle: MultiDisclosureProofBundle,
+): DisclosureVerifyResult {
+  const errors: string[] = [];
+  let claimRoot: Uint8Array;
+  try {
+    if (bundle.root.node !== 'branch') {
+      throw new Error('verifyMultiDisclosureProof: root must be a branch');
+    }
+    claimRoot = recomputeProofChildHash(bundle.root);
+  } catch (err) {
+    return {
+      valid: false,
+      digest: '',
+      signers: [],
+      errors: [err instanceof Error ? err.message : 'malformed proof'],
+    };
+  }
+  const meta = metaHash(bundle.meta);
+  const digestBytes = taggedHash('tapit/root', concatBytes(meta, claimRoot));
+  const signers: SignerResult[] = bundle.signatures.map((s) => ({
+    signer: s.signer,
+    valid: verifySignature(digestBytes, s.sig, s.signer),
+  }));
+  const validSet = new Set(
+    signers.filter((s) => s.valid).map((s) => s.signer),
+  );
+  for (const s of signers) {
+    if (!s.valid && !validSet.has(s.signer)) {
+      errors.push(`invalid signature from ${s.signer}`);
+    }
+  }
+  if (bundle.signatures.length === 0) {
+    errors.push('proof has no signatures');
+  }
+  return {
+    valid: validSet.size > 0,
+    digest: bytesToHex(digestBytes),
+    signers,
+    errors,
+  };
+}

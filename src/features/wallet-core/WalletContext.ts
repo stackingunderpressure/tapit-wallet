@@ -3,6 +3,7 @@ import type { Attestation, Wallet } from 'tapit-attest';
 import type { Prefs } from '../storage/prefsStore.ts';
 import type { SaveOutcome } from '../storage/walletStore.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
+import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 export interface WalletContextValue {
   wallet: Wallet;
@@ -20,6 +21,22 @@ export interface WalletContextValue {
   prefs: Prefs;
   /** Anchor lifecycle worker for this session. Null while idle. */
   anchorWorker: WorkerHandle | null;
+  /**
+   * Encrypted envelopes received from peers through the Nostr
+   * transport since unlock. Empty while the Mycelium-network
+   * preference is off. Each item is verified + decrypted + parsed
+   * before it reaches this list.
+   */
+  inboxEnvelopes: InboxEnvelope[];
+  /** Drop one inbox envelope by event id (e.g. after the operator acts on it). */
+  dismissInboxEnvelope: (eventId: string) => void;
+  /**
+   * Encrypt an envelope to a peer's x-only pubkey and publish it
+   * through the Mycelium transport. Throws if the network is not
+   * connected. The wallet's private key never crosses this seam —
+   * encryption + signing happen inside the Wallet instance.
+   */
+  sendEnvelope: (recipientPubkey: string, envelope: Attestation) => Promise<void>;
   /** Re-encrypt the wallet's current state and persist it. */
   save: () => Promise<SaveOutcome>;
   /** Update prefs (e.g., toggle cloud-sync). */

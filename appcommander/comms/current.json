@@ -1,45 +1,67 @@
 {
   "v": 1,
-  "ts": "2026-05-23T21:00:00Z",
-  "session_id": "wallet-theory-conversation-2026-05-23-1779558600",
-  "who": { "actor": "carpenter", "feature_slug": "doctrine" },
+  "ts": "2026-05-23T01:55:00Z",
+  "session_id": "phase-5c-polish-autodismiss-2026-05-23-1779496200",
+  "who": {
+    "actor": "carpenter",
+    "feature_slug": "transport"
+  },
   "where": {
     "files": [
-      "CLAUDE.md (read)",
-      "CLAUDE_ROOT.md (read)",
-      "DESIGN.md (read)",
-      "PLAN.md (read)",
-      "MYCELIUM_NETWORK_SPEC.md (read)",
-      "src/App.tsx (read)",
-      "src/features/disclosure/VerifyProofScreen.tsx (read)",
-      "src/features/disclosure/ShareProofModal.tsx (read)",
-      "src/features/journal/JournalDetail.tsx (read)",
-      "src/features/*/manifest.ts (read)",
-      "appcommander/comms/* (write)",
-      "appcommander/foreman-context/carpenter-state-for-foreman.md (write)"
+      "src/features/connections/createHandshake.ts",
+      "src/features/connections/HandshakeModal.tsx",
+      "src/features/connections/ConnectionCard.tsx",
+      "src/features/connections/createMembership.ts",
+      "src/features/connections/MembershipModal.tsx",
+      "src/features/connections/manifest.ts",
+      "src/features/cosigning/AbsorbCosignModal.tsx",
+      "src/features/cosigning/CosignAsWitnessModal.tsx",
+      "src/features/cosigning/CosignRequestModal.tsx",
+      "src/features/transport/InboxPanel.tsx",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/storage/prefsStore.ts",
+      "src/features/settings/SettingsScreen.tsx",
+      "scripts/bundle-budget.mjs",
+      "tapit-attest/test/fixtures/nip44-v2-vectors.json",
+      "tapit-attest/test/nip44-vectors.test.mjs"
     ],
-    "screen_path": "/verify"
+    "screen_path": "Phase 5c complete (5c-i + 5c-ii); /#people for inbox + remote handshake; /settings for toggle + custom relays"
   },
-  "layer": "doctrine",
-  "action": "theory",
-  "summary": "No-code theory conversation across the wallet's whole surface. Walked the operator through Nostr plumbing as transport-not-identity (Phase 5c brings Tier R + remote sync; NIP-46 and recovery-cohort messaging deferred); the human-pattern application space (provably-before predictions, mutually-held contracts/consents, birth-to-death life threads, witness-converging historical evidence, selective professional credentialing, object provenance, kin recognition, community-as-living-organism, the entire ritual cluster); the honest comparable-systems landscape (PGP web-of-trust as the 35-year-old grandparent, Keybase as the abandoned closest consumer ancestor, W3C VC / EU eIDAS 2.0 as institutional cousin, EAS as closest live attestation substrate, Nostr as transport substrate, DynastyTrust as direct lineage); adoption strategy (selfish use case necessary but not sufficient; eight strategic recommendations recorded); the supply-chain expansion (Phase 2.6 custody-handoff IS supply-chain handoff mathematically; ten concrete applications walked, plus B2B revenue path that doesn't compromise sovereignty). Operator's wife surfaced the load-bearing adoption test: 'how is this not just trusting the wallet?' Answered with the math-not-trust thesis grounded in the existing /verify route — paste a proof, tamper one character of the disclosed value, watch the green Proof-is-valid panel flip to amber Proof-did-NOT-verify because the leaf hash no longer matches the signed merkle root. Operator confirmed the demonstration landed.",
+  "layer": "ui",
+  "action": "implement",
+  "summary": "Phase 5c is structurally complete. Across this session: 5c-i-ε auto-routing, NIP-44 reference-vector interop (10/10 pass), 5c-i-ζ Send-back-via-Nostr, 5c-i-η Send-via-Nostr in CosignRequestModal, 5c-i-θ peer picker from holdings, 5c-i-ι membership auto-receive, 5c-i-κ Send-via-Nostr in MembershipModal, 5c-i-λ operator-editable custom relay list, 5c-ii Tier R remote handshakes (reuses 5c-i routing on receive side), plus auto-dismiss-on-success polish. Branch and main both at 93afbc4. Only 5c-iii (multi-device sync + relay-OK delivery acks) is left in Phase 5c.",
   "why": {
-    "text": "Operator opening: 'Read everything about our wallet and I have some questions about implementations and just theory no code changes.' The session is a strategic-thinking session, not a build session — the operator is consolidating his own understanding of what's been built, what's possible, and what's next, with the wife-as-skeptic test as the most valuable adoption signal that came out of it.",
+    "text": "Operator authorized 'continue on until you run out of things to do or need me to do something physically', with a chip-vote for 5c-i-ι first and then 5c-ii. Worked the queue end-to-end. The receive-respond loop closes a real workflow: Alice can now request a co-sign or issue a membership or start a Tier R handshake remotely; Bob's wallet auto-routes, lets him confirm, and ships the reply back; both wallets converge on the dual-signed envelope. The NIP-44 vector test removed the cryptographic faith claim — what the wallet writes, every spec-conformant NIP-44 client can read.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-23-WALLET-THEORY-CONVERSATION"
+    "linked_mission_id": "phase-5c-complete"
   },
   "outcome": {
     "files_changed": [
-      "5 comms files only — appcommander/comms/{current.json, interactions.jsonl, in-flight.jsonl, carpenter-opinions.md} + appcommander/foreman-context/carpenter-state-for-foreman.md. No source code touched, no commits."
+      "5c-i-ε auto-route: AbsorbCosignModal incoming prop, CosignAsWitnessModal incoming prop, InboxPanel routing, HomeScreen mounts",
+      "NIP-44 interop: nip44-v2-vectors.json fixture, nip44-vectors.test.mjs verifying 10/10 vectors",
+      "5c-i-ζ Send-back: WalletContext.sendEnvelope, WalletProvider transport ref + dynamic-imported sendEnvelopeTo, CosignAsWitnessModal Send-back button",
+      "5c-i-η Send via Nostr: CosignRequestModal Send-via-Mycelium block",
+      "5c-i-θ Peer picker: new PeerPicker shared component, CosignRequestModal swap",
+      "5c-i-ι Membership auto-receive: receiveMembership helper, InboxPanel membership-receive route, HomeScreen inline accept",
+      "5c-i-κ Membership send: MembershipModal Send-via-Mycelium block in issue-show step",
+      "5c-i-λ Custom relays: Prefs.nostrRelays default = DEFAULT_RELAYS, WalletProvider passes + re-inits on content change, SettingsScreen Relays editor",
+      "5c-ii Tier R: buildRemoteHandshakeDraft, HandshakeModal remote-pick + remote-sent steps, CosignAsWitnessModal hold-after-sign for handshakes, tier-aware ConnectionCard badge",
+      "Polish: AbsorbCosignModal + CosignAsWitnessModal onSuccess prop, HomeScreen dispatches dismissInboxEnvelope on success",
+      "Bundle budgets: named encryptedInbox, AbsorbCosignModal, createHandshake, defaultRelays, PeerPicker chunks; WalletProvider bumped 5.5 → 7 KB"
     ],
-    "tests_passing": "Unchanged — no source code touched. Gates last green at 85d6a51 (Phase 5b).",
+    "tests_passing": "tapit-attest 98/98 (4 skipped, network); wallet 31/31",
     "build_green": true,
-    "notes": "[P-001] Theory walk complete across Nostr, human-patterns, comparables, adoption, supply-chain, wife's-question. [P-002] Verify-page tampering demo grounded in actual VerifyProofScreen + ShareProofModal code, with specific gotchas surfaced (short-form hex pubkeys, amber-vs-red severity, three failure modes — value-tamper, signature-tamper, parse-fail). [P-003] Eight strategic recommendations recorded — top three no-code pulls are Nostr operational doctrine before 5c ships, verify-page polish audit, plain-English UX language audit. [FEEDBACK->Foreman]: the wife-as-skeptic test the operator is now running may produce the most valuable UX feedback the project has received — if she's confused or unconvinced, her specific stumbling points are the verify-page polish backlog written by the median user.",
-    "tests_passing_detail": "no gates run — theory only"
+    "notes": "Branch and main both at 93afbc4. 18 commits landed across this session (10 cuts + the NIP-44 vectors + auto-dismiss + multiple comms close-outs). All cuts pure additions; each independently safe and tested. Sub-cuts of 5c-i and 5c-ii are operator-visible: Settings shows the Mycelium toggle + relay editor; the People tab shows the inbox panel; HandshakeModal has the Tier R path when the toggle is on; CosignRequestModal + MembershipModal have Send-via-Mycelium blocks."
   },
-  "confidence": 92,
-  "uncertainty": "Strategic conversation, not code. Highest uncertainty is whether the operator pulls any of the eight recommendations into a real session next, or whether the conversation lands as background and the next session goes back to Phase 5c-i implementation as previously planned.",
-  "ripple": ["disclosure", "doctrine", "connections", "app-connections"],
-  "next": "Operator runs the verify-page tampering test with his wife and watches her reactions. Eight strategic recommendations sit on the stack. Phase 5c-i remains the previously-named next code cut. Verify-page audit and Nostr operational doctrine are the highest-leverage no-code pulls available.",
-  "signals": ["pulse"]
+  "confidence": 90,
+  "uncertainty": "The remote co-sign + Tier R handshake loops have been unit-tested via fake transport + fake WebSocket but not exercised against real public relays. NIP-44 cryptographic interop is verified against spec vectors so the wire format is sound, but real-relay round-trip behavior arrives with the operator's first two-device field test. Today's Sent state confirms WebSocket dispatch, not relay acceptance — 5c-iii's delivery-ack layer addresses that.",
+  "ripple": [
+    "tapit-attest — public surface unchanged this session (signDigest + nip44 methods already landed in 5c-i-γ); new spec-vector test in the suite",
+    "cosigning — three modals now accept incoming envelopes and onSuccess callbacks; original paste/QR paths unchanged",
+    "connections — Tier R is a new flow inside the same modal; PeerPicker now serves both cosign and handshake send",
+    "wallet-core — WalletContext exposed sendEnvelope; HomeScreen routes the three inbox actions",
+    "settings — Mycelium toggle + relay editor live there now"
+  ],
+  "next": "5c-iii — multi-device connection sync (the wallet's other devices stay current over Nostr) + delivery acks (Sent state waits for the relay OK frame). Or Phase 5d — Tier V device-verified presence (WebAuthn + geolocation + timestamp). Or operator field test of the full 5c stack with two real devices, which would be the first real-relay evidence and the natural validation before more code lands."
 }

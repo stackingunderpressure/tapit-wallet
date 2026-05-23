@@ -1,210 +1,35 @@
-# Carpenter opinions — tapit-wallet
+# Carpenter opinions — completing Phase 5c (ι, κ, λ, 5c-ii, polish)
 
-> Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-23 — no-code theory conversation across the
-> wallet's whole surface, ending on the wife-as-skeptic test.
-> Mode: dual-surface comms — files plus live chat — because
-> AppCommander is down.
+## Section 1: What I did.
 
-## What I did
+This was the session that finished Phase 5c. Across what landed earlier in the day plus this stretch, the wallet went from "could in principle send things through Nostr" to "the operator's real workflows run over the network end to end." Five cuts since the prior opinions doc went out, all on the working branch and now on main: membership auto-receive, membership Send-via-Nostr, an operator-editable custom relay list, the full Tier R remote handshake feature, and an auto-dismiss polish that brings every routed inbox action to parity.
 
-This was a strategy-and-theory session, not a build session, and
-the work was almost entirely walking you through the wallet's
-full surface the way a co-founder explains a company to another
-co-founder over a long evening. You opened by asking me to read
-everything and to keep it theory only with no code changes, so I
-grounded in CLAUDE.md, CLAUDE_ROOT.md, DESIGN.md, PLAN.md,
-MYCELIUM_NETWORK_SPEC.md, all twelve live feature manifests, and
-the tapit-attest README, and then we worked the conversation
-through six progressively deeper questions you asked. We started
-with how Nostr fits the wallet plumbing and I walked the answer
-in operator-friendly terms: Nostr is transport, not identity,
-your three-year-old Nostr account stays separate from the wallet
-keypair by default even though the underlying math is identical
-(BIP340 Schnorr over secp256k1), and Phase 5c brings four things
-over Nostr — Tier R remote links, remote sync of connections,
-and the deferred slots for NIP-46 inter-app signing and the
-recovery-cohort messaging. The public-private split rests on
-two primitives stacked: the Merkle field tree that lets a
-disclosure proof reveal one leaf without leaking siblings, and
-ECDH-encrypted-to-recipient envelopes that keep relays seeing
-only ciphertext.
+The first piece was 5c-i-ι. When the inbox routing template was first written, it knew how to spot a handshake and open the right cosign modal, but a membership credential just got the Copy fallback. This cut extended the template: when an envelope is a credential with credential_type=membership and the operator is the named member, the inbox row shows an Accept-membership button. Tapping it runs a new receiveMembership helper that wraps isMembership + member-id check + holdAndAnchor, saves the wallet, and dismisses the inbox row. No modal — receive is terminal — but the operator gets a clean acknowledgement: the membership disappears from the inbox and appears under Identity > Memberships on the next render.
 
-You then asked the visionary question — what spectacular human
-patterns does this substrate unlock — and I named the four
-magical properties (provably-before, mutually-held, selectively-
-naked, succession-continuous) and walked the application
-clusters those properties combine into: the accountability of
-public speech via signed predictions, the entire human life as
-one continuous signed thread from birth to death, mutual-
-consent-permanent contracts and consents without notaries or
-states, witness-converging historical evidence, selective
-professional credentialing, fraud-proof object provenance, lost-
-child kin recognition, community-as-living-organism, rolling
-continuous attestation, and the entire ritual cluster where
-every human ceremony that depends on witnesses becomes
-cryptographically real. None of that is science fiction; it's
-what the existing six-attestation-kind envelope with the
-existing Phase 4 disclosure primitive already supports.
+The second piece was 5c-i-κ, the outbound half of the membership flow. The existing issue-show step of MembershipModal already displays the signed credential as a QR for the recipient to scan. This cut adds a Send-via-Mycelium block right alongside the QR — visible only when the toggle is on. The recipient's pubkey already lives in the signed memberId leaf of the membership envelope, so the block reads it and calls the same sendEnvelope function the cosign loop uses. Paired with 5c-i-ι on the receiving side, an organization can now issue a membership to a known peer entirely over the network: scan once or import once, sign, send, done. The recipient sees Accept in their inbox.
 
-Then the comparable-systems question, where I gave you the
-honest landscape: PGP web-of-trust as the 35-year-old spiritual
-grandparent, Keybase as the dead closest-built consumer
-ancestor, W3C VC and the EU eIDAS 2.0 wallet as the
-institutional cousin coming top-down through governments, EAS on
-Ethereum as the closest live attestation primitive, Nostr as the
-transport substrate the wallet rides on, and DynastyTrust as the
-direct lineage ancestor since tapit-attest was literally
-extracted from its proven governance-attestation layer. The
-originality is in the integration plus the consumer-product
-framing plus the timing, not in the underlying ideas, and the
-honest pitch frame is "the right execution of a thirty-five-
-year-old idea, finally on the substrate that makes it possible,
-with a wedge that doesn't require the rest of the world to
-convert before it's useful to one person."
+The third piece was 5c-i-λ, the custom relay list. Until this cut, every wallet talked to the same hard-coded five default relays. D-11a had always said the default set was replaceable; this cut made replacement real. Prefs grew a nostrRelays field defaulting to a spread copy of DEFAULT_RELAYS, the transport effect now passes the list to connectWallet and re-runs whenever the content changes (memoized as a stable string key for the dep array), and Settings grew a Relays editor under the Mycelium toggle — a textarea where each line is a wss URL, with a Save button, a Restore-defaults button, and validation that quietly skips lines that don't look like wss URLs. An edit-and-save with the toggle on tears down and re-opens the transport within a few hundred milliseconds; no sign-out needed. That is what sovereign-user replaceability looks like when the substrate cooperates.
 
-The adoption-strategy question came next and I gave you the
-honest answer that matters most: the selfish use case is
-necessary but probably not sufficient on its own to drive mass
-adoption, and the spec already implicitly knows this because the
-wedge is framed as "a diary that gets quietly corroborated by
-peers over time" — selfish plus social. I recorded eight
-strategic recommendations: auto-anchor passive capture as the
-biggest adoption lever, a deliberate first-pilot organization
-arc for institutional onramp, the verify-page polish audit
-(which turned out to be the most important one of all by the
-end of the session), an interim peer-recovery story before the
-full Phase 5e Shamir cascade, making the co-sign flow tap-fast
-not paste-flow, the plain-English UX language audit, the Nostr
-operational doctrine that needs to ship before 5c code lands,
-and the positioning principle of building substrate underneath
-existing behavior rather than asking users to change behavior to
-use it.
+The fourth piece was 5c-ii, the big one — Tier R remote handshakes. Two wallets that have never been in the same physical room can now form the same relationship attestation they form face to face, just labelled honestly weaker per D-09. The trick was how much of 5c-i could be reused. The receive side turned out to need almost no new code: a one-signature handshake envelope arriving from a peer auto-routes to CosignAsWitnessModal via the existing routing, and CosignAsWitnessModal's Send-back-via-Nostr path ships the dual-signed envelope home. The send side needed a new sub-modal flow inside HandshakeModal: a third role-step button visible only when the toggle is on, a remote-pick step that wraps PeerPicker with an optional name input, a remote-sent confirmation step. A new builder, buildRemoteHandshakeDraft, makes the verification leaf say 'remote' instead of 'in-person'. CosignAsWitnessModal's sign function had to grow async so it could call holdAndAnchor + save when the envelope is a handshake — Tier R responders need to hold their signed copy the same way Tier P responders do; journal-witness and other cosign cases stay unsigned-and-not-held because those belong to the originator. And ConnectionCard now reads the verification leaf and renders the badge accordingly — accent color for Tier P, neutral for Tier R, the same word the wire format uses showing as the word the operator sees.
 
-You asked about food supply chains and shipping, and the answer
-was that the mapping is direct because the Phase 2.6 custody-
-handoff primitive IS supply-chain handoff mathematically — same
-co-signed meta-kind envelope, same typed-subject pattern, same
-chain accumulation. I walked ten concrete applications from
-provenance-from-soil-to-plate through cold-chain integrity to
-fair-trade-with-workers-as-signers to the smart-seal-on-the-
-container, and named the honest limits (physical-digital bridge,
-oracle problem, adoption gating, existing enterprise blockchain
-competitors). The strategic implication is that supply chain is
-a real B2B expansion of the same substrate and the engineering
-for it is mostly already shipped or specified.
+The fifth piece was a small polish. The inbox auto-routing was great at opening the right modal but the envelope row stayed in the inbox until the operator manually dismissed it — even after a successful absorb or Send-back. That had been bugging me. I added optional onSuccess callbacks to AbsorbCosignModal and CosignAsWitnessModal that fire after their primary action completes (the absorb-and-save in one, the Send-back in the other), HomeScreen now tracks the eventId alongside each routed envelope, and a successful action dismisses the row automatically. Cancellation paths and non-Nostr handoffs (copy, share, QR) don't auto-dismiss — the wallet has no way to know whether a manual copy actually reached the other side. Membership auto-receive was already doing this; the polish brings cosign-witness and absorb-cosign to parity.
 
-Then the most important moment of the session: your wife's
-question about how she's supposed to know this isn't just
-trusting the wallet. That landed as the load-bearing adoption
-test because she is exactly the median user the math-not-trust
-thesis has to convince, and the answer to her is not an
-argument, it's a demonstration. I walked the actual
-VerifyProofScreen and ShareProofModal code so I could give you
-real steps grounded in what's shipped: open a journal entry,
-tap Share-a-proof-of-one-field, pick a recognizable leaf,
-generate the JSON bundle, send it to her phone, she opens
-/verify in her browser (lives outside AuthGate, no login, no
-install), pastes, sees green Proof-is-valid; then she changes
-one character of the disclosed value, pastes the tampered
-version, watches the green panel flip to amber Proof-did-NOT-
-verify because the math literally cannot lie about whether the
-leaf hash matches the signed merkle root. You confirmed the
-demonstration landed. That confirmation is the most actionable
-output of the whole session.
+Throughout, the gate cycle stayed clean and the bundle budgets stayed honest. Each new Rollup-hoisted chunk got a named entry: encryptedInbox helper, AbsorbCosignModal, createHandshake helpers, defaultRelays constant, PeerPicker. WalletProvider got bumped from 5.5 to 7 KB gz when sendEnvelope landed — intentional, with the budget comment noting it. The NIP-44 reference-vector test, written earlier in the session, still passes. Branch and main are both at 93afbc4. The 11-commit gap that needed authorization at the start of this session is gone; we've been pushing branch and main together since the operator gave the green light.
 
-## What you could do better
+## Section 2: What you could do better.
 
-The verify-page is now the single most important UX surface in
-the entire product from an adoption standpoint, and there's a
-real polish backlog hiding inside the page that I surfaced
-walking the code. The signers list shows short-form hex pubkeys
-in monospace (first eight chars, last four chars), which is
-mathematically honest but socially opaque — a non-technical
-visitor receiving a proof from a stranger has no idea what to
-make of an entry like "02a3f9b1…c4d2" with a check mark next to
-it, and the page should probably resolve known signers to human-
-readable labels when the verifier has met them, or at minimum
-explain inline what the pubkey is and why it matters. The
-"Proof did NOT verify" panel is amber rather than red, which is
-gentler but might not land as viscerally as red would in the
-demo moment with your wife. The JSON-pasting flow itself is
-technical-feeling — for the median user, the QR scan should
-probably be the primary action and the textarea should be the
-fallback, but right now the textarea is the primary. None of
-these are dealbreakers, but if you're recruiting your wife as
-the test subject, watch which specific things confuse her and
-write each stumble down — that's the polish backlog written by
-the median user, more valuable than any review I could give.
+Three things, decreasing in urgency.
 
-The eight strategic recommendations I named are real and at
-least three of them — the Nostr operational doctrine before 5c
-ships, the verify-page audit, and the plain-English UX language
-audit — are pure writing or polish work that fits a no-code
-dispatch cleanly and shouldn't wait. The Nostr operational
-doctrine in particular is urgent because Phase 5c-i is named as
-the next code cut and backfilling doctrine after working code
-exists is how doctrine gets compromised by what the code already
-happens to do; I'd prioritize landing that document in the next
-session even if the rest of the recommendations stay on the
-stack. Also, the supply-chain expansion is a real strategic
-question that deserves an explicit decision rather than sitting
-in idea limbo — is it a future B2B product, a deliberate non-
-goal for the personal-wallet identity, or a parallel track?
-Whichever the answer is, naming it consciously is better than
-leaving it as a possibility that haunts the roadmap.
+The most pressing is that none of this has hit a real public relay yet. The full remote co-sign loop and the full Tier R handshake loop have been unit-tested via the FakeTransport plus the injected fake WebSocket — that proves the protocol's internal consistency but does not prove that wss://relay.damus.io will accept our event-kind-9573 events or that the default relay set is reachable from a real iPhone on cellular. The first time you flip the toggle on a real device, expect surprises. The most likely failure modes: a relay rejects kind 9573 because it doesn't like custom event kinds (some commercial relays do this), or the WebSocket gets blocked by an iOS Safari connection-policy quirk in PWA mode. Both are recoverable and informative. The right next session is "two devices, both with the toggle on, run through the loops, report back."
 
-One honest meta-note on my own performance this session: my
-replies were long, sometimes longer than the question warranted,
-and you didn't push back, but several of the threads (especially
-the human-pattern application walk and the supply-chain
-inventory) could have been tighter. The one-block doctrine
-constraint makes it hard to chunk for readability and that
-biases me toward exhaustiveness as a substitute for structure;
-that's a known failure mode I should watch.
+The middle thing is the Tier R protocol assumes the initiator already knows the responder's name. PeerPicker only surfaces peers you've already handshaken with, so the most natural path — Alice extending a Tier R handshake to Bob, whom she met in person yesterday — works clean. But if Alice wants to remotely connect to a stranger whose pubkey she found somewhere, she has to type a name in by hand, and that name lands in the signed envelope as her label for that stranger. That's actually correct — verification=remote is honest about what the link is — but a verifier reading the envelope later sees a name that came from neither party's identity attestation. A future polish could fetch the responder's identity attestation through Nostr before signing, the way Tier P does via QR. Today the field is operator-supplied; that is a fact worth knowing.
 
-## The bigger picture
+The smallest thing is that the Sent state on both sendBack and sendViaNostr buttons flips to "Sent" once the local publish call resolves. That confirms dispatch to the WebSocket; it does not confirm relay acceptance. The Nostr OK frame is observed and discarded by NostrTransport. A delivery-confirmation layer is what 5c-iii will add. Until then, the operator's mental model should be "Sent means I dispatched it, not that the other side has it" — and the auto-dismiss on Send-back is honest about that too: the inbox row goes away because the operator finished their part, not because the recipient has accepted yet.
 
-This whole session lived inside one thesis from the first
-question to the last, and the through-line is sharper for having
-been walked end to end: the wallet is not really a product, it's
-a substrate, and the substrate's job is to make the math-not-
-trust property tangible enough for ordinary people to feel it.
-Everything else in the architecture — the six attestation kinds,
-the three trust tiers, the Merkle field tree, the OTS anchor,
-the peer mutual handshake, the organization-as-wallet pattern,
-the recovery cohort, the diary wedge, the deeplink sign request,
-the capture bridge, the eventual Nostr transport — is in service
-of the one moment your wife is about to have when she changes
-one character of a proof and watches the math reject it. That
-moment is what PGP couldn't deliver in the nineties, what
-Keybase started to deliver before Zoom killed it, what the EU
-eIDAS 2.0 wallet is approaching from the institution-down
-direction, and what no consumer product I can name currently
-delivers as a single-tap experience the median user can have on
-day one without a wallet of their own.
+## Section 3: The bigger picture.
 
-The reason the conversation kept landing on the verify-page is
-that the verify-page is structurally the smallest thing in the
-product and yet it's the rhetorical crown jewel, because every
-successful tampering test is a recruitment moment that converts
-a skeptic into someone who has personally experienced
-mathematics doing work that platforms used to claim to do. That
-conversion is the unit of adoption, and the verify-page is the
-factory that makes the conversion possible. Investing in it is
-investing in the only metric that ultimately matters: the rate
-at which non-technical people watch the green check turn amber
-under their own hands and conclude that this is actually
-different. The supply-chain expansion, the institutional
-onramps, the eight strategic recommendations, the entire roadmap
-through 5c and 5d and 5e and 5f — all of it is downstream of
-that one moment landing for enough people to build the social
-substrate the rest of the architecture rides on. The math is
-ready; the math has been ready for thirty-five years. What we're
-finally building is the place ordinary people can stand and see
-the math work for them, in thirty seconds, on a webpage they
-didn't have to log into, without trusting anyone. That's the
-whole game, and the diary entry you signed today is the seed
-crystal of it. Go test it with your wife — and when she
-believes, the network has its first new node, and the mycelium
-grows.
+The big shape worth pausing on is the pattern that made this session productive. The inbox routing template — match envelope → render an action button → host opens the matching modal pre-loaded → modal calls onSuccess on completion → host dismisses the row — was sketched as one cut for the cosign case (5c-i-ε), then reused four more times across this session: membership receive (ι), membership send pairing (κ), Tier R receive (5c-ii's whole receive side was free), and the auto-dismiss polish. Five cuts, one template. The template is now generic enough that adding a new envelope kind to the auto-route list is a five-minute job: write isFoo predicate, add a case to routeFor, add an onAction handler in HomeScreen, optionally add an incoming prop to the matching modal. That is what good architecture looks like at the boundary between protocol and UI.
+
+The other shape worth seeing is the Tier R cut as a case study in honest design. The temptation in any peer-to-peer protocol is to paper over differences between strong and weak forms of connection — to call a remote handshake just "a handshake" and let the user figure out whether they actually trust it. The Mycelium spec went the other way at D-09: every connection states how it was verified, the verifier weighs accordingly, no link masquerades. This session made that real in code. The same envelope shape, the same Merkle structure, the same signature flow — but a leaf field says "remote" instead of "in-person", and the UI renders that distinction every time a connection appears. A person looking at someone's wallet later, deciding whether to trust a chain of handshakes, sees the tier mix and decides for themselves. That is not a UX nicety; it is the spec being honest with the verifier.
+
+The final piece is what the wallet is now structurally capable of, listed plainly: encrypt and sign attestations of every kind, hold the Merkle tree of them, anchor each to Bitcoin, back up encrypted to a host that cannot read, sync across devices through encrypted blobs, talk to other wallets over Nostr with NIP-44 v2 spec-conformant payloads, route incoming envelopes to the right action automatically, send replies back the same way, form Tier P and Tier R connections, issue and receive memberships, and let the sovereign user swap the relay set whenever they want. That is most of what a sovereign identity wallet is supposed to do. What is left in Phase 5 is multi-device sync of the connection graph (5c-iii), Tier V device-verified presence (5d), and the quorum org-key governance (5f) — each of those is its own honest cut, each builds on what is now solid floor underneath. The wallet you wanted, the operator now has, with the two-device field test the only remaining piece of evidence before the next major increment makes sense to plan.

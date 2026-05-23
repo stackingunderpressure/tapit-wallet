@@ -42,13 +42,22 @@ const BUDGETS = [
   { pattern: /^index-.*\.css$/, gz: 6_000, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
-  { pattern: /^WalletProvider-.*\.js$/, gz: 5_500, label: 'WalletProvider' },
+  // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
+  // current is ~5.5KB gz, bumped to 7KB to carry headroom for the
+  // remaining 5c-i / 5c-ii / 5c-iii additions before code-splitting
+  // becomes the better option.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 7_000, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs (Journal,
   // Identity, Captured, People) and three modal launchers. ~8.3KB gz
   // today; budget carries headroom for modest further growth.
   { pattern: /^HomeScreen-.*\.js$/, gz: 11_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 3_000, label: 'SettingsScreen' },
+  // SettingsScreen grew with the org-mode declaration form (5b-org-i)
+  // alongside the existing cloud-sync / idle-lock / Mycelium toggle /
+  // custom relays / local-backup / sign-out sections. ~3.4 KB gz today;
+  // 4.5 KB carries headroom for the upcoming officials-list editor
+  // before another structural rethink is needed.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 4_500, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
@@ -81,6 +90,37 @@ const BUDGETS = [
   // a shared chunk once the connections feature began reusing them.
   // ~1.9KB gz today.
   { pattern: /^mergeSignatures-.*\.js$/, gz: 3_000, label: 'cosigning helpers' },
+  // Tiny envelope-parse helper. Hoisted by Rollup when shared
+  // between cosigning, connections, and transport. ~0.3KB gz today.
+  { pattern: /^parseEnvelope-.*\.js$/, gz: 800, label: 'parseEnvelope helper' },
+  // The absorb-cosign modal is hoisted into its own chunk once both
+  // JournalDetail and HomeScreen import it (5c-i-ε inbox routing).
+  // ~2.8KB gz today.
+  { pattern: /^AbsorbCosignModal-.*\.js$/, gz: 4_000, label: 'AbsorbCosignModal' },
+  // The handshake helpers (createHandshake + leafValue +
+  // displayNameOf + isHandshake + readHandshake) get hoisted once
+  // PeerPicker (5c-i-θ) joins HandshakeModal as an importer.
+  // ~3KB gz today.
+  { pattern: /^createHandshake-.*\.js$/, gz: 4_000, label: 'createHandshake helpers' },
+  // PeerPicker hoisted into its own chunk once both CosignRequestModal
+  // and HandshakeModal import it (5c-ii — remote handshakes reuse the
+  // same picker). ~3.6KB gz today.
+  { pattern: /^PeerPicker-.*\.js$/, gz: 5_000, label: 'PeerPicker' },
+
+  // Phase 5c-i-δ peer-transport chunk, dynamically imported by
+  // WalletProvider only when the operator opts into the Mycelium
+  // network. Bundles the Nostr WebSocket client, NIP-44 encryption
+  // surface, default relays, and the connectWallet entry point.
+  // ~1.6KB gz today; budget carries headroom for 5c-ii/-iii growth.
+  { pattern: /^connectWallet-.*\.js$/, gz: 5_000, label: 'transport (Mycelium opt-in)' },
+  // The encryptedInbox helper hoisted into its own chunk once
+  // WalletProvider's sendEnvelope dynamically imports it (5c-i-ζ).
+  // Tiny — under 1KB gz today.
+  { pattern: /^encryptedInbox-.*\.js$/, gz: 2_000, label: 'encryptedInbox helper' },
+  // DEFAULT_RELAYS constant hoisted once both prefsStore (default
+  // value) and SettingsScreen (restore-defaults button) import it.
+  // ~140 bytes gz — should stay tiny.
+  { pattern: /^defaultRelays-.*\.js$/, gz: 500, label: 'defaultRelays constant' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },

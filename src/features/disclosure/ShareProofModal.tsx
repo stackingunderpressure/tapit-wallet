@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
-import { disclosureProof } from 'tapit-attest';
+import { multiDisclosureProof } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
@@ -12,14 +12,19 @@ interface Props {
 
 type Step =
   | { kind: 'pick' }
-  | { kind: 'generated'; path: string; json: string };
+  | { kind: 'generated'; paths: string[]; json: string };
 
-// "Share a proof" flow. The operator picks one leaf out of the
-// attestation's claim tree and the wallet calls disclosureProof to
-// produce a bundle they can hand to any verifier — text, AirDrop,
-// posted on a website, scanned via QR (later polish). The bundle
-// is plain JSON. The verifier pastes it into /verify on their copy
-// of the wallet PWA and the math checks itself.
+// "Share a proof" flow. The operator picks one or more leaves out of
+// the attestation's claim tree and the wallet calls
+// multiDisclosureProof to produce a bundle they can hand to any
+// verifier — text, AirDrop, posted on a website, scanned via QR. The
+// bundle is plain JSON; the verifier pastes it into /verify on their
+// copy of the wallet PWA and the math checks itself.
+//
+// One leaf and many leaves go through the same multi-proof primitive —
+// the bundle shape is one tree with disclosed-or-hashed children, so
+// adding a second field to the selection just keeps an extra branch
+// inline instead of replacing it with a sibling hash.
 
 function asString(v: unknown): string {
   if (typeof v === 'string') return v;
@@ -30,22 +35,32 @@ function asString(v: unknown): string {
 
 export function ShareProofModal({ attestation, onClose }: Props) {
   const leaves = useMemo(() => leafIndex(attestation.claim), [attestation]);
-  const [path, setPath] = useState<string>(leaves[0]?.path ?? '');
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [step, setStep] = useState<Step>({ kind: 'pick' });
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
+  function toggle(path: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }
+
   function generate() {
-    if (!path) {
-      setError('pick a field to disclose');
+    if (selected.size === 0) {
+      setError('pick at least one field to disclose');
       return;
     }
     setError(null);
     try {
-      const bundle = disclosureProof(attestation, path);
+      const paths = [...selected];
+      const bundle = multiDisclosureProof(attestation, paths);
       const json = JSON.stringify(bundle, null, 2);
-      setStep({ kind: 'generated', path, json });
+      setStep({ kind: 'generated', paths, json });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'could not generate proof');
     }
@@ -87,9 +102,9 @@ export function ShareProofModal({ attestation, onClose }: Props) {
         {step.kind === 'pick' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              Pick one field to reveal. The verifier gets a proof that this
-              field belongs to this signed entry, without seeing any other
-              field on the entry.
+              Pick one or more fields to reveal. The verifier gets a proof
+              that these fields belong to this signed entry, without seeing
+              any other field on the entry.
             </p>
             {leaves.length === 0 ? (
               <p className="mt-3 text-sm">This entry has no disclosable fields.</p>
@@ -101,10 +116,9 @@ export function ShareProofModal({ attestation, onClose }: Props) {
                     className="flex items-start gap-3 rounded-md border border-ink/15 bg-white px-3 py-2 cursor-pointer"
                   >
                     <input
-                      type="radio"
-                      name="leaf"
-                      checked={path === l.path}
-                      onChange={() => setPath(l.path)}
+                      type="checkbox"
+                      checked={selected.has(l.path)}
+                      onChange={() => toggle(l.path)}
                       className="mt-1"
                     />
                     <div className="min-w-0 flex-1">
@@ -120,10 +134,12 @@ export function ShareProofModal({ attestation, onClose }: Props) {
             <button
               type="button"
               onClick={generate}
-              disabled={!path}
+              disabled={selected.size === 0}
               className="mt-4 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
             >
-              Generate proof
+              {selected.size > 1
+                ? `Generate proof for ${selected.size} fields`
+                : 'Generate proof'}
             </button>
             {error && (
               <p className="mt-3 text-sm text-red-600" role="alert">
@@ -136,10 +152,11 @@ export function ShareProofModal({ attestation, onClose }: Props) {
         {step.kind === 'generated' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              Copy this proof and send it to whoever needs to verify the field{' '}
-              <span className="font-medium">{step.path}</span>. They paste it
-              into <span className="font-mono">/verify</span> on this same
-              wallet site to check it.
+              Copy this proof and send it to whoever needs to verify the field
+              {step.paths.length === 1 ? ' ' : 's '}
+              <span className="font-medium">{step.paths.join(', ')}</span>.
+              They paste it into <span className="font-mono">/verify</span> on
+              this same wallet site to check it.
             </p>
             <textarea
               readOnly

@@ -1,6 +1,13 @@
 import type { Attestation } from '../types.js';
 import { createDraft, type DraftInput } from './envelope.js';
-import { generateKeypair, signEnvelope, verifyEnvelope, type Keypair } from './keys.js';
+import {
+  generateKeypair,
+  signDigest as signDigestPrimitive,
+  signEnvelope,
+  verifyEnvelope,
+  type Keypair,
+} from './keys.js';
+import { encryptTo, decryptFrom } from './nip44.js';
 import {
   createSuccessionLink,
   verifySuccessionChain,
@@ -54,7 +61,12 @@ export interface WalletSnapshot {
  * them feel like one thing a person owns.
  */
 export class Wallet {
-  private keypair: Keypair;
+  // Hard-private with the JS # field — not just TS-private. A Wallet's
+  // keypair must be unreachable from any code that holds a Wallet
+  // reference (a bug, a debug log, a third-party module evaluated in
+  // the same context). D-03: keys never leave the wallet unencrypted.
+  // The escape hatches are explicit: snapshot() / exportEncrypted().
+  #keypair: Keypair;
   private readonly _identity: string;
   private readonly succession: SuccessionLink[];
   private readonly store: AttestationStore;
@@ -66,7 +78,7 @@ export class Wallet {
     succession?: SuccessionLink[];
     store?: AttestationStore;
   }) {
-    this.keypair = config.keypair;
+    this.#keypair = config.keypair;
     this._identity = config.identity ?? config.keypair.publicKey;
     this.succession = config.succession ?? [];
     this.store = config.store ?? new MemoryStore();
@@ -84,7 +96,7 @@ export class Wallet {
 
   /** The current active signing key. */
   get publicKey(): string {
-    return this.keypair.publicKey;
+    return this.#keypair.publicKey;
   }
 
   /**
@@ -110,7 +122,7 @@ export class Wallet {
 
   /** Create an attestation and sign it with the active key, in one step. */
   attest(input: DraftInput): Attestation {
-    return signEnvelope(createDraft(input), this.keypair.privateKey);
+    return signEnvelope(createDraft(input), this.#keypair.privateKey);
   }
 
   /**
@@ -119,7 +131,39 @@ export class Wallet {
    * works both ways: claims this wallet makes, and claims made about it.
    */
   sign(attestation: Attestation): Attestation {
-    return signEnvelope(attestation, this.keypair.privateKey);
+    return signEnvelope(attestation, this.#keypair.privateKey);
+  }
+
+  // --- low-level signing for non-envelope payloads ---
+
+  /**
+   * Sign an arbitrary 32-byte digest with the active key. Used for
+   * signing Nostr event ids and other non-envelope payloads. The
+   * envelope path stays through sign / attest — this is the seam the
+   * peer-transport layer needs without leaking the private key.
+   */
+  signDigest(digest: Uint8Array): string {
+    return signDigestPrimitive(digest, this.#keypair.privateKey);
+  }
+
+  // --- peer encryption (NIP-44 v2) ---
+
+  /**
+   * Encrypt a string to a peer's x-only public key, with this wallet
+   * as the sender. Returns a base64 NIP-44 v2 payload. The wallet's
+   * private key never crosses the method boundary — only the result.
+   */
+  nip44EncryptTo(plaintext: string, recipientPubkey: string): string {
+    return encryptTo(plaintext, recipientPubkey, this.#keypair.privateKey);
+  }
+
+  /**
+   * Decrypt a NIP-44 v2 payload sent to this wallet from a peer's
+   * x-only public key. Throws on MAC failure — which catches a
+   * tampered payload, a wrong-sender claim, or a mis-routed message.
+   */
+  nip44DecryptFrom(payload: string, senderPubkey: string): string {
+    return decryptFrom(payload, senderPubkey, this.#keypair.privateKey);
   }
 
   // --- holding attestations (the Merkle holder) ---
@@ -165,12 +209,12 @@ export class Wallet {
   rotate(): SuccessionLink {
     const next = generateKeypair();
     const link = createSuccessionLink({
-      fromPrivateKey: this.keypair.privateKey,
+      fromPrivateKey: this.#keypair.privateKey,
       toKey: next.publicKey,
       previous: this.succession[this.succession.length - 1],
     });
     this.succession.push(link);
-    this.keypair = next;
+    this.#keypair = next;
     return link;
   }
 
@@ -192,7 +236,7 @@ export class Wallet {
     return {
       v: 1,
       identity: this._identity,
-      activeKeypair: this.keypair,
+      activeKeypair: this.#keypair,
       succession: [...this.succession],
       holdings: await this.holdings(),
     };
@@ -253,7 +297,7 @@ export class Wallet {
   recoveryRequest(): RecoveryRequest {
     return buildRecoveryRequest({
       subject: this._identity,
-      requesterPrivateKey: this.keypair.privateKey,
+      requesterPrivateKey: this.#keypair.privateKey,
     });
   }
 
@@ -267,7 +311,7 @@ export class Wallet {
     return buildRecoveryResponse({
       request,
       store: this.store,
-      responderPrivateKey: this.keypair.privateKey,
+      responderPrivateKey: this.#keypair.privateKey,
     });
   }
 

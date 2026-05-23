@@ -521,3 +521,23 @@ Feature: backup-recovery
 Stage: matured — the recovery design plus the operator's
 connective framing are both now in the spec; awaits Phase 5e.
 ```
+
+```
+Date: 2026-05-22
+Section: ideas
+Entry: Sign in with an existing Nostr account. A person who
+already has a Nostr identity (an nsec) could create their wallet
+by importing that key rather than generating a fresh one — their
+wallet identity then IS their existing Nostr identity, already
+linked to their Nostr history and contacts. Natural because the
+wallet's keys ARE Nostr keys by construction (secp256k1 / BIP340,
+D-06) and tapit-attest is designed to import/export nsec. An
+optional path at wallet creation: "generate a new identity" or
+"use my existing Nostr account." Rare today, but for the
+Nostr-native it means arriving already woven into the network.
+Context: Operator 2026-05-22, surfaced alongside the Phase 5c-i
+cut ("keep in mind ... continue on 5c-i"). An onboarding option,
+Phase 5c-adjacent; not part of the 5c-i transport cut itself.
+Feature: auth
+Stage: raw.
+```

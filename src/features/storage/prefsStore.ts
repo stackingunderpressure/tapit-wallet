@@ -1,4 +1,5 @@
 import { idb } from '../../shared/lib/idb.ts';
+import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 
 // User-level preferences. Local-only, not encrypted — these are
 // settings about how the wallet behaves, not the wallet itself.
@@ -17,6 +18,22 @@ export interface Prefs {
    * DESIGN.md §5. User-configurable from Settings.
    */
   idleTimeoutMs: number;
+  /**
+   * When true, the wallet opens encrypted Nostr-relay connections on
+   * unlock so peers can deliver attestations to it asynchronously
+   * (Phase 5c). Default false because subscribing exposes the
+   * wallet's pubkey to the relay set as "online" — that is a real
+   * metadata leak the operator must opt into knowing about.
+   */
+  nostrTransportEnabled: boolean;
+  /**
+   * The wss:// URLs the Mycelium transport opens connections to.
+   * Defaults to a small set of widely-used public relays (D-11a);
+   * sovereign users replace it with relays they trust. Changes take
+   * effect on the next transport reconnect (toggle off and on, or
+   * sign out and back in).
+   */
+  nostrRelays: string[];
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -25,6 +42,8 @@ const DEFAULT_PREFS: Prefs = {
   cloudSync: true,
   lastRemoteSync: null,
   idleTimeoutMs: 30 * 60 * 1000,
+  nostrTransportEnabled: false,
+  nostrRelays: [...DEFAULT_RELAYS],
 };
 
 export const prefsStore = {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
+import type { Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
@@ -21,6 +22,12 @@ import {
 } from '../anchoring/anchorWorker.ts';
 import type { StoredBlob } from '../storage/localStore.ts';
 import { useIdleLock } from './useIdleLock.ts';
+// connectWallet is dynamically imported below so the transport stack
+// (Nostr WebSocket client, NIP-44 encryption surface) only loads when
+// the operator opts into the Mycelium network. Type-only import here
+// is free.
+import type { WalletConnection } from '../transport/connectWallet.ts';
+import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -51,8 +58,21 @@ export function WalletProvider({ children }: Props) {
     cloudSync: true,
     lastRemoteSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
+    nostrTransportEnabled: false,
+    nostrRelays: [],
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
+  const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
+  // Holds the live transport so sendEnvelope can reach it from outside
+  // the effect. Cleared on lock/disable; never observable when the
+  // Mycelium preference is off.
+  const transportRef = useRef<Transport | null>(null);
+  // Stable content-keyed string for the relay list so the transport
+  // effect re-runs when the list content changes (not its reference).
+  const relaysKey = useMemo(
+    () => prefs.nostrRelays.join('\n'),
+    [prefs.nostrRelays],
+  );
   // Passphrase lives in state because it's exposed via context anyway
   // (callers need to encrypt photos, sign + persist on demand) — the
   // ref-with-tick pattern was a half-measure that did not survive the
@@ -91,6 +111,70 @@ export function WalletProvider({ children }: Props) {
       setAnchorWorker(null);
     };
   }, [ownerId, phase.kind]);
+
+  // Open the Nostr peer-transport when (a) the wallet is unlocked and
+  // (b) the operator has opted into the Mycelium network. Closes on
+  // lock, sign-out, or opt-out. Subscribing exposes the wallet's
+  // pubkey to the relay set, so this stays default-off until the
+  // operator turns it on in Settings. The transport module is
+  // dynamically imported so users who never opt in pay zero bytes
+  // for the WebSocket client.
+  useEffect(() => {
+    if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') return;
+    if (!prefs.nostrTransportEnabled) return;
+    const wallet = phase.wallet;
+    let conn: WalletConnection | null = null;
+    let cancelled = false;
+    setInboxEnvelopes([]);
+    // Snapshot the relay list at effect-time so a later edit triggers
+    // a fresh effect run (via relaysKey below) instead of reconfiguring
+    // the live connection mid-flight.
+    const relays = prefs.nostrRelays;
+    void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
+      if (cancelled) return;
+      conn = connectWallet(wallet, {
+        relays,
+        onEnvelope: (item) => {
+          setInboxEnvelopes((prev) =>
+            prev.some((p) => p.eventId === item.eventId) ? prev : [item, ...prev],
+          );
+        },
+      });
+      transportRef.current = conn.transport;
+    });
+    return () => {
+      cancelled = true;
+      if (conn) conn.close();
+      transportRef.current = null;
+      setInboxEnvelopes([]);
+    };
+    // relaysKey is a stable string derived from prefs.nostrRelays;
+    // re-runs only when the content changes (not the reference).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, prefs.nostrTransportEnabled, relaysKey]);
+
+  const dismissInboxEnvelope = useCallback((eventId: string) => {
+    setInboxEnvelopes((prev) => prev.filter((p) => p.eventId !== eventId));
+  }, []);
+
+  const sendEnvelope = useCallback(
+    async (recipientPubkey: string, envelope: Attestation) => {
+      const transport = transportRef.current;
+      if (!transport) {
+        throw new Error(
+          'Mycelium network is not connected — enable it in Settings.',
+        );
+      }
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        throw new Error('wallet must be unlocked');
+      }
+      const { sendEnvelopeTo } = await import(
+        '../transport/encryptedInbox.ts'
+      );
+      await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
+    },
+    [phase],
+  );
 
   // Attach confirmed anchors back onto held attestations and persist
   // them, so backup/restore preserves the Bitcoin block height the
@@ -260,11 +344,27 @@ export function WalletProvider({ children }: Props) {
       identity: findIdentity(holdings, phase.wallet.identity),
       prefs,
       anchorWorker,
+      inboxEnvelopes,
+      dismissInboxEnvelope,
+      sendEnvelope,
       save,
       updatePrefs,
       refresh,
     };
-  }, [phase, holdings, ownerId, prefs, save, updatePrefs, refresh, anchorWorker, passphrase]);
+  }, [
+    phase,
+    holdings,
+    ownerId,
+    prefs,
+    save,
+    updatePrefs,
+    refresh,
+    anchorWorker,
+    passphrase,
+    inboxEnvelopes,
+    dismissInboxEnvelope,
+    sendEnvelope,
+  ]);
 
   if (!ownerId || phase.kind === 'checking') {
     return (

@@ -1,168 +1,71 @@
 # Carpenter state — for Foreman's eyes
 
-**Operator-mode note:** AppCommander down. Operator running
-manual against live Netlify + Supabase deploy. Dual-surface
-comms active. v1 is shipped. Operator is on iOS.
-
----
+**Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS.
 
 ## WHAT-CHANGED-RECENTLY
 
-Branch `claude/wallet-implementation-questions-umXHh`; previous
-work on `claude/compare-library-wallet-OW5FF` (5a, 5b, 5c-design
-arc) ended at `dbd6ce6`. Recent arc:
+Phase 5c is structurally complete. Branch and main both at `93afbc4`. Across this session ten cuts + a polish landed:
 
-- **Phase 5a — in-person handshake** (`6e206aa`).
-- **Verified-badge fix** (`b2260f9`).
-- **Recovery woven into spec §12** (`4e30f34`).
-- **Phase 5b — organizations + membership** (`85d6a51`).
-- **Org-key governance + Phase 5f + Phase 5c sketch**
-  (`c655526`).
-- **Phase 5c design questions resolved — D-11** (`7d4bcaa`,
-  `dbd6ce6`).
-- **2026-05-23 — no-code theory conversation** (this session,
-  no commits). The operator opened a strategy-and-theory
-  session covering Nostr plumbing, human-pattern applications,
-  comparable systems in the world, adoption strategy, eight
-  strategic recommendations, supply-chain/shipping/production
-  expansion, and the operator's wife's "how is this not just
-  trusting the wallet" question. Closed on the verify-page
-  tampering test as the load-bearing adoption demonstration.
+- **5c-i-ε** auto-routing — inbox routes a 1-sig handshake to cosign-witness, a 2-sig to absorb-cosign
+- **NIP-44 reference vectors** — 10/10 upstream spec vectors round-trip through `decryptFrom`; cross-implementation interop proved
+- **5c-i-ζ** Send-back-via-Nostr — CosignAsWitnessModal signs and ships the counter-signed envelope back to the original sender
+- **5c-i-η** Send-via-Nostr in CosignRequestModal — outbound initiation of the co-sign loop
+- **5c-i-θ** PeerPicker — shared component that surfaces handshake peers from holdings with a manual-paste fallback
+- **5c-i-ι** Membership auto-receive — incoming membership credential addressed to the operator gets an Accept button that runs verify-and-hold inline
+- **5c-i-κ** Send-via-Nostr in MembershipModal's issue-show step — organization can issue a membership remotely (recipient pubkey lives in the signed memberId leaf)
+- **5c-i-λ** Custom relay list in Settings — operator-editable preference, takes effect immediately on the next reconnect (memoized stable dep key on the transport effect)
+- **5c-ii** Tier R remote handshakes — initiator builds + signs + sends via Nostr; responder's wallet auto-routes via 5c-i; both wallets converge on the dual-signed Tier R envelope; ConnectionCard renders the tier badge honestly
+- **Auto-dismiss polish** — successful absorb or Send-back dismisses the matching inbox row; cancellation paths don't
 
-## Gates at session end
+The full remote co-sign loop (Alice initiates from CosignRequestModal → Bob's wallet auto-routes → Bob signs and Send-backs → Alice's wallet auto-routes to absorb) now runs end-to-end without copy-paste. Same for membership issue/receive. Same for Tier R handshake.
 
-No gates run — theory only. Gates last green at `85d6a51`
-(Phase 5b). tapit-attest unchanged 82/78/0/4.
+All eight gates green at every checkpoint. tapit-attest 98/98 (4 skipped network-deps). Wallet 31/31. Bundle budgets named the new hoisted chunks: `encryptedInbox helper`, `AbsorbCosignModal`, `createHandshake helpers`, `defaultRelays constant`, `PeerPicker`; `WalletProvider` bumped 5.5 → 7 KB gz to carry the sendEnvelope plumbing with headroom.
 
 ## WHAT'S-PENDING
 
-1. **Operator runs the verify-page tampering test with his
-   wife.** Highest-value UX feedback signal the project has at
-   its disposal right now — write down each stumble, that's the
-   verify-page polish backlog written by the median user.
-2. **Cut Phase 5c-i — STILL THE NEXT CODE CUT.** The transport-
-   agnostic interface + a minimal Nostr client + encrypted async
-   peer delivery. Design fully locked (D-11; sketch
-   briefs/2026-05-22-phase-5c-nostr-transport-sketch.md). One
-   build-architecture choice to make when cutting: a minimal
-   hand-rolled Nostr transport reusing tapit-attest keys vs a
-   Nostr library — lean minimal, since the protocol is small
-   and the crypto is already owned. 5c-i is plumbing — no
-   immediate visible surface.
-3. **Eight strategic recommendations on the stack** (from this
-   session, all no-code or polish-shaped):
-   - **A. Nostr operational doctrine** — a new doc alongside
-     MYCELIUM_NETWORK_SPEC.md specifying relay-selection,
-     encryption-default, NIP-65 publishing, metadata-
-     minimization, default-private-opt-in-public posture per
-     envelope type. **URGENT** — must exist before 5c-i code
-     lands or it'll be backfilled badly.
-   - **B. Verify-page polish audit** — short-form hex pubkeys
-     humanized, amber→red severity question, QR-scan-as-primary
-     vs textarea-as-primary, "what just happened" inline
-     explanation for first-time visitors.
-   - **C. Plain-English UX language audit** — sweep user-facing
-     surfaces, build a glossary mapping "attestation" /
-     "envelope" / "merkle" / "tier" to human English, ship the
-     rename pass.
-   - **D. Auto-anchor passive capture** — biggest adoption
-     lever but real new feature; deferred design conversation.
-   - **E. Interim peer-recovery story** before full Phase 5e
-     Shamir cascade — design conversation.
-   - **F. First-pilot organization arc** for institutional
-     onramp — policy/sales work, operator's hands.
-   - **G. Tap-fast co-sign** riding Phase 5a QR primitives —
-     wants two-device field test first to ground what's hard.
-   - **H. Positioning principle: substrate underneath existing
-     behavior** — meta, informs the others.
-4. **Supply-chain expansion decision** — surfaced this session
-   as a real strategic question. Is the food/shipping/production
-   substrate a future B2B product, a deliberate non-goal for the
-   personal-wallet identity, or a parallel track? Decision
-   needed before it haunts the roadmap further.
-5. **Operator field-tests 5a + 5b** with two devices — build-
-   verified only.
-6. **Phase 5c-ii** (remote Tier R handshakes), **5c-iii**
-   (connection sync), then **5d** (device-verified presence),
-   **5e** (hyphal lattice + recovery), **5f** (quorum org keys).
-7. **Capture Bridge Tier 1b** — photo/file capture (Android).
-8. **v1.5:** native shell + App Store + iOS share extension.
+Phase 5c has one piece left:
+
+**5c-iii — multi-device connection sync + delivery acks.** Two things bundled: (a) the wallet's other devices stay current with each other over the Mycelium transport (today they only sync through Supabase's encrypted blob); (b) the Sent state stops flipping on local-dispatch and waits for the relay OK frame, so the operator knows their message actually landed.
+
+After 5c-iii, Phase 5 has the bigger pieces queued:
+
+- **Phase 5d** Tier V device-verified presence — biometric (WebAuthn / passkey) + geolocation + timestamp, signed
+- **Phase 5e/5f** quorum org-key governance (MAST / MuSig2 / FROST) and recovery-share workflows
 
 ## WHAT-TO-FLAG
 
-**The verify-page is now the most important UX surface in the
-product.** This session promoted recommendation B from "one of
-eight" to "load-bearing for adoption." The math-not-trust thesis
-is hollow until a non-cryptographer can paste a proof, tamper
-one character, and watch the math reject it on a webpage that
-required no install and no login. Every successful tampering
-test is a recruitment moment. The page lives at /verify outside
-AuthGate (App.tsx:58-65) and is shipped; what's needed is
-polish, not architecture.
+Three things worth keeping visible.
 
-**The operator is recruiting his wife as the test subject.**
-This is the highest-fidelity adoption signal the project has had
-yet. Treat anything she stumbles on as a P0 fix candidate.
+**Real-relay round-trip is the open question.** Every remote loop has been unit-tested through FakeTransport + injected fake WebSocket. The first two-device field test against `wss://relay.damus.io` (or any default relay) is the first real evidence. Likely surprises if any: a relay rejecting custom event-kind 9573, or iOS Safari blocking WebSocket connections in PWA mode. Both are recoverable; both inform the next cut.
 
-**Nostr operational doctrine is urgent.** The 5c-i code cut is
-next in line, and the operational defaults (relays, encryption,
-metadata minimization, publishing posture) must be specified
-before code lands or doctrine gets compromised by what the code
-already happens to do. Recommend pulling recommendation A
-forward as the next no-code dispatch.
+**Tier R responder name is operator-supplied today.** PeerPicker covers the natural case (extending Tier R to someone you already handshook with in person). For pasting a stranger's pubkey, the operator types the name and that name lands in the signed envelope. Honest about the tier, but a future polish could fetch the responder's identity attestation over Nostr before signing.
 
-**Supply-chain expansion needs a deliberate decision.** Walked
-the full B2B potential this session and the engineering is
-mostly already shipped (Phase 2.6 custody-handoff = supply-chain
-handoff mathematically). Whether to pursue it, defer it, or
-declare it non-goal should be named explicitly rather than left
-in idea limbo.
+**Sent ≠ delivered today.** The current Sent state means "dispatched to the WebSocket." A delivery-ack layer arrives with 5c-iii (relay OK frame is currently observed and discarded by NostrTransport). The auto-dismiss polish is honest about this — the inbox row goes away because the operator finished their part, not because the recipient has accepted.
 
-**5a/5b remain build-verified only** — two-device field test
-still pending before later increments lean hard on them.
+`current.json` at confidence 90. Bundle budget on WalletProvider is now generous; further additions there should be fine without another bump until 5c-iii's delivery-ack layer adds state.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. **Operator runs the verify-page tampering test with his
-   wife.** Write down every stumble.
-2. **Land the Nostr operational doctrine** (recommendation A)
-   in the next no-code dispatch, before 5c-i code is cut.
-3. **Decide the supply-chain expansion question** — pursue,
-   defer, or non-goal.
-4. **Cut Phase 5c-i** (transport interface + encrypted async
-   delivery) — design is locked.
-5. **Operator field-tests handshake + membership** (two
-   devices).
-6. **Verify-page polish audit** (recommendation B) — informed
-   by the wife-as-test-subject feedback.
-7. Then 5c-ii / 5c-iii, 5d, 5e, 5f in sequence.
+Three paths, in order of likely value:
+
+1. **Field test the full 5c stack with two devices.** Open Settings, flip the Mycelium toggle on both phones, do a Tier P handshake in person (so each has the other's pubkey + name in their People tab), then walk to different rooms and exercise: Alice tap Request-a-co-sign on a journal entry, pick Bob, Send via Nostr; Bob sees Accept in his inbox, reviews, signs, taps Send-back; Alice sees Absorb in her inbox, taps Absorb. Repeat for membership and Tier R handshake. The first such test produces real-relay evidence and informs whether 5c-iii is urgent.
+
+2. **Cut 5c-iii.** Multi-device sync + delivery acks. Smaller than it sounds — the Nostr OK frame is already observed and discarded, so wiring it into a delivery state takes one cut. Multi-device sync is the bigger half.
+
+3. **Cut Phase 5d Tier V.** Bigger new feature. Needs WebAuthn integration and Geolocation API; honest tier label, signed envelope per D-09.
+
+The Carpenter's vote: option 1 (operator runs the field test), then option 2 if the field test reveals delivery-ack gaps, then option 3 as the next major increment.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Reflective, big-picture, decisive. Spent this session
-consolidating his own understanding of what's been built and
-what's possible — the kind of session a founder runs when the
-build is real enough that the strategic questions can be sharper
-than the technical ones. His wife's skeptic question hit him as
-real adoption feedback and he sat with it cleanly rather than
-defending. Closed with "I may come back later, but at least
-we'll have it" — content with letting the conversation live as
-written record for now, low pressure to immediately execute,
-high trust that the right next moves are visible on the stack.
-Expect either (a) a return to Phase 5c-i implementation cleanly,
-or (b) a no-code dispatch on the Nostr operational doctrine or
-the verify-page audit, depending on which question feels most
-alive when he comes back.
+Last operator message: "Continue on and if you need anything for me, give me a couple of chips if not continue on re-grounding and until we run out of things to do or you need me to do something physically." Maximum-trust, momentum-protecting authorization. The chips check-in halfway through gave them control over the slice-to-main and the next-cut choice; they picked 5c-i-ι, then 5c-ii, and let everything else run on the momentum. Result: Phase 5c is essentially done in one session.
+
+The wallet they wanted, the operator now has. The remaining honest unknown is what real relays do with our traffic — only physical-device testing answers that. That is genuinely the next thing the operator needs to do that the Carpenter cannot do remotely.
 
 ## Ideas ready to revisit
 
-All earlier entries hold. Org-key governance is in spec §6
-(phased 5f); "the slime" recovery framing is in §12; Phase 5c
-is designed (D-11). Eight strategic recommendations from the
-2026-05-23 theory session are now formally on the stack (above).
-Supply-chain expansion is a fresh idea-entry candidate worth
-adding to ideas.md as a sprouting-stage entry pending the
-explicit decision. The Mycelium People-network vision continues
-to fruit — 5a and 5b built, 5c designed, 5c-i ready to cut.
-Full entries in
-`project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
+- **NIP-44 reference vectors** — DONE this session. 10/10 spec vectors round-trip clean. Cross-implementation interop proved.
+- **Sign-in-with-existing-Nostr-account** — natural moment is now or just after the first field test, since "your Nostr identity" framing is increasingly visible.
+- **Delivery confirmation UI** — flagged this session, becomes the 5c-iii cut.
+- **Tier R responder identity fetch** — polish for after field test; today's name-as-typed is honest about the tier.
+- **Wallet as hardware-backed object** — architecture still ready (Wallet class owns `#keypair`; the day a secure-element / passkey backend lands, it slots in behind the same interface). Long horizon; not actionable today.

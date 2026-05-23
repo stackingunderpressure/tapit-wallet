@@ -1,6 +1,7 @@
-import type { Attestation } from 'tapit-attest';
+import type { Attestation, Wallet } from 'tapit-attest';
 import { credentialAttestation } from 'tapit-attest';
-import { displayNameOf, leafValue } from './createHandshake.ts';
+import { displayNameOf, holdAndAnchor, leafValue } from './createHandshake.ts';
+import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 // Phase 5b — organizations and membership. An organization is a
 // wallet (its own identity, named for a collective). A membership is
@@ -14,6 +15,25 @@ export function isMembership(att: Attestation): boolean {
   return (
     att.kind === 'credential' &&
     leafValue(att, 'credential_type') === 'membership'
+  );
+}
+
+/**
+ * True when the envelope is a membership, names this identity as the
+ * issuing org in its signed leaf, AND actually carries a signature
+ * from that identity. Both checks together: the signed leaf names
+ * who SHOULD have signed; the signatures list names who DID. The
+ * Members view on the org side uses this to filter holdings down to
+ * memberships THIS wallet has actually issued.
+ */
+export function isMembershipIssuedBy(
+  att: Attestation,
+  issuerIdentity: string,
+): boolean {
+  return (
+    isMembership(att) &&
+    leafValue(att, 'org_id') === issuerIdentity &&
+    att.signatures.some((s) => s.signer === issuerIdentity)
   );
 }
 
@@ -34,6 +54,30 @@ export function readMembership(att: Attestation): MembershipView {
     memberName: leafValue(att, 'member_name'),
     issuedAt: leafValue(att, 'issued_at'),
   };
+}
+
+// Verify, hold, and anchor a membership credential that arrived
+// from a peer (Phase 5c-i-ι — inbox auto-receive). Throws if the
+// envelope is not a membership or is addressed to someone else.
+// wallet.hold internally verifies signatures, so the call is the
+// authoritative integrity check. After holding, the OpenTimestamps
+// queue picks up the digest the same way it does for handshakes.
+export async function receiveMembership(input: {
+  wallet: Wallet;
+  ownerId: string;
+  anchorWorker: WorkerHandle | null;
+  attestation: Attestation;
+  myIdentity: string;
+}): Promise<void> {
+  const { wallet, ownerId, anchorWorker, attestation, myIdentity } = input;
+  if (!isMembership(attestation)) {
+    throw new Error('not a membership credential');
+  }
+  const view = readMembership(attestation);
+  if (view.memberId !== myIdentity) {
+    throw new Error('this membership is addressed to someone else');
+  }
+  await holdAndAnchor(wallet, ownerId, anchorWorker, attestation);
 }
 
 // Build the unsigned membership credential. The organization's
