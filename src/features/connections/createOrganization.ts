@@ -197,6 +197,51 @@ export function findLatestOfficialsRoster(
   return latest;
 }
 
+// 5b-org-iii — ratifications view. The org's key signs each
+// issued membership at creation time (the clerk's act). Officials
+// then co-sign that membership later from their personal wallets
+// using the existing CosignAsWitness + Absorb + Send-back machinery
+// — no new flow needed; the multi-signature envelope just
+// accumulates ratifications. countRatifications cross-references
+// the carried signatures against the latest officials roster to
+// produce the "N of M ratifications" figure a verifier needs to
+// weigh the envelope. The org's own clerk-issuance signature
+// counts as one ratification when the org identity also appears
+// on the roster (which it does not have to — the org may keep
+// itself off the human roster and treat its key purely as the
+// issuance-clerk seat).
+
+export interface RatificationSummary {
+  /** Total officials on the latest roster. */
+  total: number;
+  /** Officials whose signatures appear on the envelope. */
+  ratified: number;
+  /** Names of officials who ratified, in roster order. */
+  byName: string[];
+}
+
+/**
+ * Cross-reference the envelope's signatures against the supplied
+ * officials list. Returns null when the roster is empty — there is
+ * nothing meaningful to render against an empty governance set.
+ */
+export function countRatifications(
+  envelope: Attestation,
+  officials: readonly Official[],
+): RatificationSummary | null {
+  if (officials.length === 0) return null;
+  const signers = new Set(envelope.signatures.map((s) => s.signer));
+  const byName: string[] = [];
+  let ratified = 0;
+  for (const o of officials) {
+    if (signers.has(o.pubkey)) {
+      ratified++;
+      byName.push(o.name || `${o.pubkey.slice(0, 8)}…${o.pubkey.slice(-4)}`);
+    }
+  }
+  return { total: officials.length, ratified, byName };
+}
+
 /**
  * Build, sign, hold, and anchor a new officials roster for the
  * organization. Officials are sorted by pubkey and de-duplicated
