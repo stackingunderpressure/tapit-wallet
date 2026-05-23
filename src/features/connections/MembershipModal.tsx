@@ -12,6 +12,9 @@ import {
   readMembership,
 } from './createMembership.ts';
 
+const ACCENT_BLOCK =
+  'mt-4 rounded-md bg-accent/5 border border-accent/30 p-3';
+
 interface Props {
   onClose: () => void;
 }
@@ -33,13 +36,30 @@ const primaryBtn =
   'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40';
 
 export function MembershipModal({ onClose }: Props) {
-  const { wallet, ownerId, identity, anchorWorker, save } = useWallet();
+  const { wallet, ownerId, identity, anchorWorker, prefs, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>('role');
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [membership, setMembership] = useState<Attestation | null>(null);
   const [peerName, setPeerName] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function sendMembershipViaNostr() {
+    if (!membership) return;
+    const view = readMembership(membership);
+    setError(null);
+    setSending(true);
+    try {
+      await sendEnvelope(view.memberId, membership);
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'send failed');
+    } finally {
+      setSending(false);
+    }
+  }
 
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
@@ -172,6 +192,30 @@ export function MembershipModal({ onClose }: Props) {
                 text={canonicalEnvelope(membership)}
                 label="Membership"
               />
+            )}
+            {prefs.nostrTransportEnabled && membership && (
+              <div className={ACCENT_BLOCK}>
+                <div className="text-xs font-medium text-accent">
+                  Or send via Mycelium
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  Encrypted to {peerName || 'them'} and delivered through
+                  your shared Nostr relays. They will see Accept in their
+                  inbox; no scan required.
+                </p>
+                <button
+                  type="button"
+                  onClick={sendMembershipViaNostr}
+                  disabled={sending || sent}
+                  className="mt-2 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
+                >
+                  {sent
+                    ? 'Sent via Nostr'
+                    : sending
+                      ? 'Sending…'
+                      : `Send to ${peerName || 'them'} via Nostr`}
+                </button>
+              </div>
             )}
             <button
               type="button"
