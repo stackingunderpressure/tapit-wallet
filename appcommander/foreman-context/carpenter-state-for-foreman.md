@@ -4,65 +4,68 @@
 
 ## WHAT-CHANGED-RECENTLY
 
-Five sub-cuts landed in one session this round, closing the full remote co-sign loop end-to-end and verifying NIP-44 interop.
+Phase 5c is structurally complete. Branch and main both at `93afbc4`. Across this session ten cuts + a polish landed:
 
-**5c-i-ε — auto-routing (`19e2e90`)**: Optional `incoming?: Attestation` prop added to `AbsorbCosignModal` and `CosignAsWitnessModal`. The inbox panel grew routing logic (1-sig handshake → cosign-witness; 2-sig handshake → absorb-cosign) and an Open button per row. `HomeScreen` tracks routing state and mounts a second instance of each modal that takes the incoming envelope.
+- **5c-i-ε** auto-routing — inbox routes a 1-sig handshake to cosign-witness, a 2-sig to absorb-cosign
+- **NIP-44 reference vectors** — 10/10 upstream spec vectors round-trip through `decryptFrom`; cross-implementation interop proved
+- **5c-i-ζ** Send-back-via-Nostr — CosignAsWitnessModal signs and ships the counter-signed envelope back to the original sender
+- **5c-i-η** Send-via-Nostr in CosignRequestModal — outbound initiation of the co-sign loop
+- **5c-i-θ** PeerPicker — shared component that surfaces handshake peers from holdings with a manual-paste fallback
+- **5c-i-ι** Membership auto-receive — incoming membership credential addressed to the operator gets an Accept button that runs verify-and-hold inline
+- **5c-i-κ** Send-via-Nostr in MembershipModal's issue-show step — organization can issue a membership remotely (recipient pubkey lives in the signed memberId leaf)
+- **5c-i-λ** Custom relay list in Settings — operator-editable preference, takes effect immediately on the next reconnect (memoized stable dep key on the transport effect)
+- **5c-ii** Tier R remote handshakes — initiator builds + signs + sends via Nostr; responder's wallet auto-routes via 5c-i; both wallets converge on the dual-signed Tier R envelope; ConnectionCard renders the tier badge honestly
+- **Auto-dismiss polish** — successful absorb or Send-back dismisses the matching inbox row; cancellation paths don't
 
-**NIP-44 reference vectors (`a4c8f23`)**: Snapshotted the upstream `paulmillr/nip44` v2 vectors to `tapit-attest/test/fixtures/nip44-v2-vectors.json` and added a test that runs every encrypt_decrypt vector through `decryptFrom`. 10/10 pass — tapit-attest's NIP-44 v2 implementation is spec-conformant for cross-implementation interop.
+The full remote co-sign loop (Alice initiates from CosignRequestModal → Bob's wallet auto-routes → Bob signs and Send-backs → Alice's wallet auto-routes to absorb) now runs end-to-end without copy-paste. Same for membership issue/receive. Same for Tier R handshake.
 
-**5c-i-ζ — Send-back-via-Nostr (`b4642a2`)**: `WalletContext` exposes `sendEnvelope(recipientPubkey, envelope)`. `WalletProvider` holds the live transport in a ref so `sendEnvelope` can reach it from outside the connect effect, and dynamically imports the inbox helper to keep code-split benefits. `InboxPanel` passes the `senderPubkey` through the routing chain; `CosignAsWitnessModal` takes an `incomingSender` prop and renders a Send-back-via-Nostr button on the signed step. Same session also tightened the round-trip-test `flush()` race (4 macrotask cycles instead of 1; 3/3 clean).
-
-**5c-i-η — Send-via-Nostr in CosignRequestModal (`88bc6f1`)**: Outbound initiation. Modal gains a Send-via-Mycelium section (hidden when toggle is off) with a recipient pubkey input + Send button calling `sendEnvelope`. The full Alice→Bob→Alice remote co-sign loop now runs without copy-paste.
-
-**5c-i-θ — peer picker (`d18c317`)**: New shared component `connections/PeerPicker` walks holdings, recovers peer pubkeys from handshake leaves, renders one-tap recipients with a manual-paste fallback. `CosignRequestModal`'s Send-via-Mycelium block swaps its raw input for `<PeerPicker>`. The picker is exported for the future membership-issue and remote-handshake flows.
-
-All eight gates green at every cut. tapit-attest 98/98 (4 skipped network-deps, now includes the new vector test). Wallet 31/31 (3/3 clean across consecutive runs). Bundle-budget grew named entries for `encryptedInbox helper`, `AbsorbCosignModal`, `createHandshake helpers`; `WalletProvider` budget bumped 5.5 → 7 KB gz for headroom.
+All eight gates green at every checkpoint. tapit-attest 98/98 (4 skipped network-deps). Wallet 31/31. Bundle budgets named the new hoisted chunks: `encryptedInbox helper`, `AbsorbCosignModal`, `createHandshake helpers`, `defaultRelays constant`, `PeerPicker`; `WalletProvider` bumped 5.5 → 7 KB gz to carry the sendEnvelope plumbing with headroom.
 
 ## WHAT'S-PENDING
 
-Branch is now **11 commits ahead of main** with the complete 5c-i slice plus the NIP-44 interop proof. All commits are pure additions, each independently safe and tested. Ready to land on main as one coherent slice when the operator says the word.
+Phase 5c has one piece left:
 
-Next-cut candidates on the queue:
-- **5c-i-ι — membership auto-receive**: when an inbox envelope is a credential with `credential_type=membership`, hold + save + anchor without operator paste. Parallel to handshake auto-routing.
-- **5c-i-κ — Send-via-Nostr in MembershipModal**: organization issues a membership remotely instead of via QR. Can reuse `PeerPicker`.
-- **5c-ii — remote handshakes (Tier R)**: the first genuinely new feature beyond 5c-i; a handshake conducted entirely over the network, labelled Tier R per D-09.
-- **Settings UI for custom relay list**: replace the hard-coded `DEFAULT_RELAYS` with an operator-editable preference. Sovereign-user move per D-11a.
-- **Delivery confirmation layer (5c-iii adjacent)**: today the Send button flips to "Sent" once the local publish resolves; the Nostr OK frame is observed and discarded. Real delivery-ack arrives with 5c-iii.
+**5c-iii — multi-device connection sync + delivery acks.** Two things bundled: (a) the wallet's other devices stay current with each other over the Mycelium transport (today they only sync through Supabase's encrypted blob); (b) the Sent state stops flipping on local-dispatch and waits for the relay OK frame, so the operator knows their message actually landed.
 
-Operator field test of the full remote loop with two real devices is the natural next smoke test — possible now that the toggle, the routing, the send/respond paths, and the spec interop are all in place.
+After 5c-iii, Phase 5 has the bigger pieces queued:
+
+- **Phase 5d** Tier V device-verified presence — biometric (WebAuthn / passkey) + geolocation + timestamp, signed
+- **Phase 5e/5f** quorum org-key governance (MAST / MuSig2 / FROST) and recovery-share workflows
 
 ## WHAT-TO-FLAG
 
-Two things to keep visible.
+Three things worth keeping visible.
 
-The Send-via-Nostr UI in `CosignRequestModal` sits below the textarea + QR-show; on phone screens operators might not scroll. A polish cut could promote it above the manual share/copy block when the toggle is on. Today it works; tomorrow it could be more discoverable.
+**Real-relay round-trip is the open question.** Every remote loop has been unit-tested through FakeTransport + injected fake WebSocket. The first two-device field test against `wss://relay.damus.io` (or any default relay) is the first real evidence. Likely surprises if any: a relay rejecting custom event-kind 9573, or iOS Safari blocking WebSocket connections in PWA mode. Both are recoverable; both inform the next cut.
 
-Today's sent-state UX flips to "Sent" once the local publish call resolves — that confirms dispatch to the WebSocket, not relay acceptance. The Nostr OK frame is currently observed and discarded. Real delivery ack is a 5c-iii concern.
+**Tier R responder name is operator-supplied today.** PeerPicker covers the natural case (extending Tier R to someone you already handshook with in person). For pasting a stranger's pubkey, the operator types the name and that name lands in the signed envelope. Honest about the tier, but a future polish could fetch the responder's identity attestation over Nostr before signing.
 
-`current.json` at confidence 90. Uncertainty: full remote loop unit-tested via fake transport + injected fake WebSocket, but not yet exercised against real public relays. Two-device field test is the first real-world evidence.
+**Sent ≠ delivered today.** The current Sent state means "dispatched to the WebSocket." A delivery-ack layer arrives with 5c-iii (relay OK frame is currently observed and discarded by NostrTransport). The auto-dismiss polish is honest about this — the inbox row goes away because the operator finished their part, not because the recipient has accepted.
+
+`current.json` at confidence 90. Bundle budget on WalletProvider is now generous; further additions there should be fine without another bump until 5c-iii's delivery-ack layer adds state.
 
 ## RECOMMENDED-NEXT-MOVES
 
-Two-step recommendation:
-1. **Operator authorizes push to main** — 11 commits is meaningful surface; one push closes the branch-divergence cleanly. The slice is self-contained and reversible via `git revert <range>` if anything surprises in field test.
-2. **Operator picks the next cut**: 5c-i-ι (membership auto-receive) and 5c-i-κ (membership send) round out the same routing template the cosign flow now uses. 5c-ii (remote handshakes) opens the next genuinely new feature. Settings UI for custom relays is the smallest of the three and sets up the privacy-conscious "swap-in your own relays" move D-11a promised.
+Three paths, in order of likely value:
 
-The Carpenter's vote between (b)-(c)-(d): 5c-i-ι followed by 5c-ii. Reusing the routing template once more keeps the code surface coherent, and then 5c-ii becomes a feature cut that builds on a known pattern rather than inventing a new one.
+1. **Field test the full 5c stack with two devices.** Open Settings, flip the Mycelium toggle on both phones, do a Tier P handshake in person (so each has the other's pubkey + name in their People tab), then walk to different rooms and exercise: Alice tap Request-a-co-sign on a journal entry, pick Bob, Send via Nostr; Bob sees Accept in his inbox, reviews, signs, taps Send-back; Alice sees Absorb in her inbox, taps Absorb. Repeat for membership and Tier R handshake. The first such test produces real-relay evidence and informs whether 5c-iii is urgent.
+
+2. **Cut 5c-iii.** Multi-device sync + delivery acks. Smaller than it sounds — the Nostr OK frame is already observed and discarded, so wiring it into a delivery state takes one cut. Multi-device sync is the bigger half.
+
+3. **Cut Phase 5d Tier V.** Bigger new feature. Needs WebAuthn integration and Geolocation API; honest tier label, signed envelope per D-09.
+
+The Carpenter's vote: option 1 (operator runs the field test), then option 2 if the field test reveals delivery-ack gaps, then option 3 as the next major increment.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Last operator message: "Continue on and if you need anything for me, give me a couple of chips if not continue on re-grounding and until we run out of things to do or you need me to do something physically." Maximum-trust, momentum-protecting authorization. Has been paying off — five cuts in one session, no operator intervention required, every gate green, every commit a complete unit.
+Last operator message: "Continue on and if you need anything for me, give me a couple of chips if not continue on re-grounding and until we run out of things to do or you need me to do something physically." Maximum-trust, momentum-protecting authorization. The chips check-in halfway through gave them control over the slice-to-main and the next-cut choice; they picked 5c-i-ι, then 5c-ii, and let everything else run on the momentum. Result: Phase 5c is essentially done in one session.
 
-The operator is at the moment when their wallet's network functionality is real but they have not yet flipped the switch in their own use. The next natural piece of physical-world feedback is a two-device field test. That requires them physically — both phones, both connected to relays, both with the toggle on, and one initiating a co-sign that the other receives. That smoke test is what unblocks operator confidence in the entire 5c-i slice.
+The wallet they wanted, the operator now has. The remaining honest unknown is what real relays do with our traffic — only physical-device testing answers that. That is genuinely the next thing the operator needs to do that the Carpenter cannot do remotely.
 
 ## Ideas ready to revisit
 
-NIP-44 reference-vector verification — **DONE this session**. 10/10 vectors spec-conformant. Cross-the-implementation-boundary confidence is real now.
-
-Sign-in-with-existing-Nostr-account — the natural moment to surface is 5c-ii's remote handshake, when "your Nostr identity" framing becomes user-visible UX. Still in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
-
-Wallet as a hardware-backed object — the architecture is still ready. The Wallet class owns the keypair as JS `#private` and exposes signing methods rather than the key. A future hardware backend (secure element, passkey-derived) slots in behind the same interface. Not urgent; worth keeping on the long horizon.
-
-Connection-picker UI — **DONE this session** (PeerPicker). Reusable in future Send-via-Nostr flows.
-
-Delivery confirmation — NEW idea worth logging. Today's Sent state confirms WebSocket dispatch, not relay acceptance or recipient pull. A real delivery-ack layer arrives with 5c-iii but worth thinking about UI shape now (pending / dispatched / acknowledged / read).
+- **NIP-44 reference vectors** — DONE this session. 10/10 spec vectors round-trip clean. Cross-implementation interop proved.
+- **Sign-in-with-existing-Nostr-account** — natural moment is now or just after the first field test, since "your Nostr identity" framing is increasingly visible.
+- **Delivery confirmation UI** — flagged this session, becomes the 5c-iii cut.
+- **Tier R responder identity fetch** — polish for after field test; today's name-as-typed is honest about the tier.
+- **Wallet as hardware-backed object** — architecture still ready (Wallet class owns `#keypair`; the day a secure-element / passkey backend lands, it slots in behind the same interface). Long horizon; not actionable today.

@@ -1,60 +1,67 @@
 {
   "v": 1,
-  "ts": "2026-05-23T00:35:00Z",
-  "session_id": "phase-5c-i-theta-peerpicker-2026-05-23-1779491400",
+  "ts": "2026-05-23T01:55:00Z",
+  "session_id": "phase-5c-polish-autodismiss-2026-05-23-1779496200",
   "who": {
     "actor": "carpenter",
     "feature_slug": "transport"
   },
   "where": {
     "files": [
+      "src/features/connections/createHandshake.ts",
+      "src/features/connections/HandshakeModal.tsx",
+      "src/features/connections/ConnectionCard.tsx",
+      "src/features/connections/createMembership.ts",
+      "src/features/connections/MembershipModal.tsx",
+      "src/features/connections/manifest.ts",
       "src/features/cosigning/AbsorbCosignModal.tsx",
       "src/features/cosigning/CosignAsWitnessModal.tsx",
       "src/features/cosigning/CosignRequestModal.tsx",
       "src/features/transport/InboxPanel.tsx",
       "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/WalletContext.ts",
       "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/connections/PeerPicker.tsx",
-      "src/features/connections/manifest.ts",
-      "src/features/transport/transport.test.ts",
-      "src/features/transport/manifest.ts",
+      "src/features/storage/prefsStore.ts",
+      "src/features/settings/SettingsScreen.tsx",
+      "scripts/bundle-budget.mjs",
       "tapit-attest/test/fixtures/nip44-v2-vectors.json",
-      "tapit-attest/test/nip44-vectors.test.mjs",
-      "scripts/bundle-budget.mjs"
+      "tapit-attest/test/nip44-vectors.test.mjs"
     ],
-    "screen_path": "/#people (inbox + auto-route) and /journal/:id (Send-via-Nostr) and /settings (toggle)"
+    "screen_path": "Phase 5c complete (5c-i + 5c-ii); /#people for inbox + remote handshake; /settings for toggle + custom relays"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "Closed the full remote co-sign loop end-to-end. Five sub-cuts in one session: ε (auto-route inbox to the matching cosign modal), NIP-44 reference-vector verification (10/10 vectors spec-conformant), ζ (Send-back-via-Nostr after the witness signs), η (Send-via-Nostr in CosignRequestModal), θ (peer picker driven from handshake holdings). The whole loop now runs without copy-paste — pick a peer, tap Send, the other side auto-routes and signs back, both wallets converge on the dual-signed envelope. All eight gates green; pushed branch only. Branch is 11 commits ahead of main with the complete 5c-i slice plus the spec interop proof.",
+  "summary": "Phase 5c is structurally complete. Across this session: 5c-i-ε auto-routing, NIP-44 reference-vector interop (10/10 pass), 5c-i-ζ Send-back-via-Nostr, 5c-i-η Send-via-Nostr in CosignRequestModal, 5c-i-θ peer picker from holdings, 5c-i-ι membership auto-receive, 5c-i-κ Send-via-Nostr in MembershipModal, 5c-i-λ operator-editable custom relay list, 5c-ii Tier R remote handshakes (reuses 5c-i routing on receive side), plus auto-dismiss-on-success polish. Branch and main both at 93afbc4. Only 5c-iii (multi-device sync + relay-OK delivery acks) is left in Phase 5c.",
   "why": {
-    "text": "The slice that started with NIP-44 four sessions ago has been threading toward a single goal: two people with a Tier P handshake should be able to co-sign anything later without being in the same room. This session connected the last pipes. The inbox now routes (5c-i-ε), the reply travels (5c-i-ζ), the initiator can pick up the conversation from any journal entry (5c-i-η), and the recipient is one tap from a known connection (5c-i-θ). The NIP-44 reference-vector test (10/10 spec vectors) closes the homework that was on the list since the very first cut.",
+    "text": "Operator authorized 'continue on until you run out of things to do or need me to do something physically', with a chip-vote for 5c-i-ι first and then 5c-ii. Worked the queue end-to-end. The receive-respond loop closes a real workflow: Alice can now request a co-sign or issue a membership or start a Tier R handshake remotely; Bob's wallet auto-routes, lets him confirm, and ships the reply back; both wallets converge on the dual-signed envelope. The NIP-44 vector test removed the cryptographic faith claim — what the wallet writes, every spec-conformant NIP-44 client can read.",
     "linked_pixel_id": null,
-    "linked_mission_id": "phase-5c-i-complete"
+    "linked_mission_id": "phase-5c-complete"
   },
   "outcome": {
     "files_changed": [
-      "Inbox routing + sender propagation: InboxPanel + HomeScreen",
-      "Receive-and-respond: CosignAsWitnessModal (incoming + incomingSender + sendBack)",
-      "Absorb prefill: AbsorbCosignModal (incoming)",
-      "Outbound initiation: CosignRequestModal (Send-via-Mycelium UI)",
-      "Recipient picker: PeerPicker (new) + connections manifest",
-      "Wallet context: sendEnvelope + transportRef",
-      "Test stabilization: transport.test.ts flush() drains 4 macrotask cycles",
-      "Spec interop: nip44-v2-vectors.json (fixture) + nip44-vectors.test.mjs",
-      "Bundle budgets: named encryptedInbox + AbsorbCosignModal + createHandshake chunks; bumped WalletProvider 5.5 → 7 KB"
+      "5c-i-ε auto-route: AbsorbCosignModal incoming prop, CosignAsWitnessModal incoming prop, InboxPanel routing, HomeScreen mounts",
+      "NIP-44 interop: nip44-v2-vectors.json fixture, nip44-vectors.test.mjs verifying 10/10 vectors",
+      "5c-i-ζ Send-back: WalletContext.sendEnvelope, WalletProvider transport ref + dynamic-imported sendEnvelopeTo, CosignAsWitnessModal Send-back button",
+      "5c-i-η Send via Nostr: CosignRequestModal Send-via-Mycelium block",
+      "5c-i-θ Peer picker: new PeerPicker shared component, CosignRequestModal swap",
+      "5c-i-ι Membership auto-receive: receiveMembership helper, InboxPanel membership-receive route, HomeScreen inline accept",
+      "5c-i-κ Membership send: MembershipModal Send-via-Mycelium block in issue-show step",
+      "5c-i-λ Custom relays: Prefs.nostrRelays default = DEFAULT_RELAYS, WalletProvider passes + re-inits on content change, SettingsScreen Relays editor",
+      "5c-ii Tier R: buildRemoteHandshakeDraft, HandshakeModal remote-pick + remote-sent steps, CosignAsWitnessModal hold-after-sign for handshakes, tier-aware ConnectionCard badge",
+      "Polish: AbsorbCosignModal + CosignAsWitnessModal onSuccess prop, HomeScreen dispatches dismissInboxEnvelope on success",
+      "Bundle budgets: named encryptedInbox, AbsorbCosignModal, createHandshake, defaultRelays, PeerPicker chunks; WalletProvider bumped 5.5 → 7 KB"
     ],
-    "tests_passing": "tapit-attest 98/98 (4 skipped, network — includes new reference-vector test); wallet 31/31 (3-for-3 clean after flush stabilization)",
+    "tests_passing": "tapit-attest 98/98 (4 skipped, network); wallet 31/31",
     "build_green": true,
-    "notes": "Pushed branch-only across 5 commits this session (19e2e90 ε, a4c8f23 vectors, b4642a2 ζ, 88bc6f1 η, d18c317 θ). Total 11 commits ahead of main now: 5c-i α/β/γ/δ/ε/ζ/η/θ plus the NIP-44 interop test plus two comms close-out commits from earlier sessions. All cuts are pure additions, each independently safe."
+    "notes": "Branch and main both at 93afbc4. 18 commits landed across this session (10 cuts + the NIP-44 vectors + auto-dismiss + multiple comms close-outs). All cuts pure additions; each independently safe and tested. Sub-cuts of 5c-i and 5c-ii are operator-visible: Settings shows the Mycelium toggle + relay editor; the People tab shows the inbox panel; HandshakeModal has the Tier R path when the toggle is on; CosignRequestModal + MembershipModal have Send-via-Mycelium blocks."
   },
   "confidence": 90,
-  "uncertainty": "The remote co-sign loop has been unit-tested end-to-end via fake transport but has not been smoke-tested against real public relays with two real devices. The next operator field test is the first cross-implementation evidence — NIP-44 interop is now verified against spec vectors, so the cryptographic floor is sound, but the wire-protocol behavior against unknown relays still arrives only with use.",
+  "uncertainty": "The remote co-sign + Tier R handshake loops have been unit-tested via fake transport + fake WebSocket but not exercised against real public relays. NIP-44 cryptographic interop is verified against spec vectors so the wire format is sound, but real-relay round-trip behavior arrives with the operator's first two-device field test. Today's Sent state confirms WebSocket dispatch, not relay acceptance — 5c-iii's delivery-ack layer addresses that.",
   "ripple": [
-    "cosigning — three modals now accept incoming envelopes and one supports Send-via-Nostr; their original paste/QR paths are unchanged",
-    "connections — PeerPicker is reusable; the membership-issue and future remote-handshake flows can adopt it",
-    "wallet-core — WalletContext gained sendEnvelope; any future modal can call it without touching transport internals"
+    "tapit-attest — public surface unchanged this session (signDigest + nip44 methods already landed in 5c-i-γ); new spec-vector test in the suite",
+    "cosigning — three modals now accept incoming envelopes and onSuccess callbacks; original paste/QR paths unchanged",
+    "connections — Tier R is a new flow inside the same modal; PeerPicker now serves both cosign and handshake send",
+    "wallet-core — WalletContext exposed sendEnvelope; HomeScreen routes the three inbox actions",
+    "settings — Mycelium toggle + relay editor live there now"
   ],
-  "next": "Several tractable paths queued: (a) Push the 11 pending commits to main as a coherent slice — needs operator authorization; (b) Cut 5c-i-ι membership auto-receive (parallel to handshake routing); (c) Cut 5c-i-κ Send-via-Nostr in MembershipModal's issue flow (using PeerPicker); (d) Cut 5c-ii — remote handshakes (Tier R) — the first genuinely new feature beyond 5c-i; (e) Settings UI for custom relay list. Recommend the operator pick (a) plus one of (b)-(e). NIP-44 reference-vector verification is DONE — was the most urgent open item from prior cuts."
+  "next": "5c-iii — multi-device connection sync (the wallet's other devices stay current over Nostr) + delivery acks (Sent state waits for the relay OK frame). Or Phase 5d — Tier V device-verified presence (WebAuthn + geolocation + timestamp). Or operator field test of the full 5c stack with two real devices, which would be the first real-relay evidence and the natural validation before more code lands."
 }
