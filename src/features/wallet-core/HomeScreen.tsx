@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
@@ -29,6 +29,15 @@ import {
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
 import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
+// 5d Tier V — MarkPresenceModal is lazy-loaded so the webauthn +
+// geolocation + presence code only ships when the operator actually
+// opens the flow. Keeps HomeScreen bundle within budget.
+const MarkPresenceModal = lazy(() =>
+  import('../presence/MarkPresenceModal.tsx').then((m) => ({
+    default: m.MarkPresenceModal,
+  })),
+);
+import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
 import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -97,6 +106,7 @@ export function HomeScreen() {
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
+  const [presenceOpen, setPresenceOpen] = useState(false);
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
   // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
@@ -217,6 +227,19 @@ export function HomeScreen() {
   const officials = useMemo(
     () => (officialsRoster ? readOfficials(officialsRoster) : []),
     [officialsRoster],
+  );
+  // 5d Tier V — held presence events, newest first. The Identity
+  // tab gets a small section listing them by date + accuracy so the
+  // operator can see what presence record they have for what time.
+  const presenceEvents = useMemo(
+    () =>
+      holdings
+        .filter((a) => isPresenceEvent(a) && a.subject === wallet.identity)
+        .sort(
+          (a, b) =>
+            new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+        ),
+    [holdings, wallet.identity],
   );
 
   return (
@@ -418,6 +441,46 @@ export function HomeScreen() {
               </div>
             )}
           </div>
+          <div className="pt-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-muted">
+                Presence ({presenceEvents.length})
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPresenceOpen(true)}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                + Mark presence
+              </button>
+            </div>
+            {presenceEvents.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                No Tier V presence events yet. Mark one to bind a passkey
+                authentication, a fresh location reading, and the moment
+                in time into one signed event — to the best of the device's
+                ability.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-2">
+                {presenceEvents.slice(0, 5).map((a, i) => {
+                  const p = readPresence(a);
+                  const when = new Date(p.signedAt).toLocaleString();
+                  return (
+                    <li
+                      key={i}
+                      className="rounded-2xl bg-white border border-ink/10 p-3"
+                    >
+                      <div className="text-sm font-medium">{when}</div>
+                      <div className="mt-1 text-xs text-muted font-mono">
+                        {p.latitude}, {p.longitude} (±{Math.round(Number(p.accuracyMeters))}m)
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </section>
       )}
 
@@ -568,6 +631,12 @@ export function HomeScreen() {
           start={chainFor}
           onClose={() => setChainFor(null)}
         />
+      )}
+
+      {presenceOpen && (
+        <Suspense fallback={null}>
+          <MarkPresenceModal onClose={() => setPresenceOpen(false)} />
+        </Suspense>
       )}
     </div>
   );

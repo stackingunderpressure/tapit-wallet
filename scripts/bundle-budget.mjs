@@ -48,13 +48,14 @@ const BUDGETS = [
   // becomes the better option.
   { pattern: /^WalletProvider-.*\.js$/, gz: 7_000, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
-  // growing set of modal launchers. Org-mode (5b-org-i, 5b-org-ii)
-  // added the Organization header, the Officials section, the
-  // Members section, and the OfficialsEditorModal mount; current
-  // ~11.3KB gz. Headroom raised to 13KB for ratifications view and
-  // nested-chain view (cuts 3 + 4) before another structural rethink
-  // is needed.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 13_000, label: 'HomeScreen' },
+  // growing set of modal launchers. Each phase adds a section here:
+  // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
+  // Modal itself is React.lazy so the WebAuthn + geolocation code
+  // does not load until the operator opens the flow; the static
+  // imports remaining are the presence list-section helpers
+  // (isPresenceEvent + readPresence). Current ~13.6KB gz. Headroom
+  // raised to 14.5KB before another structural rethink is needed.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 14_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew with the org-mode declaration form (5b-org-i)
   // alongside the existing cloud-sync / idle-lock / Mycelium toggle /
@@ -110,6 +111,14 @@ const BUDGETS = [
   // and HandshakeModal import it (5c-ii — remote handshakes reuse the
   // same picker). ~3.6KB gz today.
   { pattern: /^PeerPicker-.*\.js$/, gz: 5_000, label: 'PeerPicker' },
+  // 5d Tier V — MarkPresenceModal is React.lazy from HomeScreen so
+  // the WebAuthn + geolocation surface only loads when the operator
+  // opens the flow. ~3KB gz today.
+  { pattern: /^MarkPresenceModal-.*\.js$/, gz: 5_000, label: 'MarkPresenceModal' },
+  // 5b-org-i createOrganization helpers get hoisted once HomeScreen,
+  // SettingsScreen, OfficialsEditorModal, and MembershipChainSheet
+  // all import from the same file. ~1.5KB gz today.
+  { pattern: /^createOrganization-.*\.js$/, gz: 3_000, label: 'createOrganization helpers' },
 
   // Phase 5c-i-δ peer-transport chunk, dynamically imported by
   // WalletProvider only when the operator opts into the Mycelium
