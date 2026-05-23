@@ -1,163 +1,168 @@
-# Carpenter opinions — Phase 5e-iv lattice screen (2026-05-24)
+# Carpenter opinions — Phase 5e foundations landed (2026-05-24 continuation)
 
 ## Section 1: What I did
 
-This session shipped Phase 5e-iv, the read-only Lattice screen at the new
-`/lattice` route. The Phase 5e brief — the hyphal lattice plus Shamir
-cascade recovery roadmap drafted by the prior session — names seven
-sequenced cuts, and the first three have already landed on this branch:
-the Shamir GF(256) primitives in `tapit-attest` at commit `c8852b3`, the
-recovery-cohort UI plus the self-signed credential at `34ad1a8`, and the
-recoverable backup format v2 with two independent paths to the data key
-at `84ebbc2`. Cut four was the next thing in the locked sequence, and
-the brief sized it at three to five days of mostly rendering, no
-protocol. The locked sequence said cut, so I cut.
+This session continuation shipped four sequenced cuts that move the
+Phase 5e arc from "the cryptographic primitives exist in the library"
+to "the wallet save loop is cascade-ready." Each cut was the next
+thing in the locked sequence; each landed with all four gates green
+on the first try; each one's commit message states the why and the
+what plainly. The four are 1429faa Lattice screen, 52e317f wallet v2
+backup migration, 367e909 K_data preservation library primitives,
+6b52e3c K_data preservation through the wallet save loop.
 
-The Lattice screen pulls the operator's entire direct web into one
-view, in three sections, in the order the operator actually cares
-about when they open it. Recovery cohort first — the people who would
-put you back together if you ever lost a device — rendered as a
-card with the threshold, the total share count, the declared-at date,
-and the member list. Each member gets a small Cohort badge so the
-visual vocabulary stays consistent everywhere the cohort appears.
-Empty state routes the operator to Settings where the cohort editor
-actually lives. People second — every handshake on the wallet, sorted
-newest first, with a counts line showing how many are Tier P in-person
-versus Tier R remote so the operator can see the tier mix at a glance.
-The existing ConnectionCard renders the row, and on top of that I
-overlaid a second Cohort badge for any peer who is also in the
-recovery cohort — the single most useful cross-section in the view,
-because it lets the operator see at one glance which of their
-handshake contacts they have actually entrusted with putting them
-back together. Organizations third — memberships the operator holds,
-rendered through the existing MembershipCard with onTap wired to the
-existing MembershipChainSheet so the nested-org chain-walk from
-5b-org-iv works here too without writing a single line of new chain
-logic.
+The Lattice screen at slash-lattice is the one with visible payoff
+for the operator. It surfaces the entire direct web in three sections
+in the order someone cares about when they open it. Recovery cohort
+first, because the question that brings you to a "see my whole web"
+screen is usually some variant of who would help me back. People
+second with a Tier P versus Tier R count line and a Cohort badge
+overlaid on whichever ConnectionCard belongs to a peer who is also in
+the cohort, because that cross-section is the single most useful
+piece of information the operator could pull out of all this data.
+Organizations third, with the existing chain-walk sheet wired in for
+nesting, no new chain logic written. Read-only by design and every
+empty state routes to where the action lives.
 
-The screen is read-only by design. The Phase 5e brief is explicit:
-the editing happens through the already-shipped flows. So every
-empty state links back to where the action lives — the cohort empty
-state points to Settings, the handshakes empty state points to the
-People tab, the memberships empty state is a quiet note because
-memberships arrive from elsewhere and there is no edit action on
-the operator's side anyway. A short closing paragraph at the bottom
-of the screen names friend-of-friend transitive paths as a deferred
-increment per the spec's "direct list first, transitive scoring
-later" phrasing so the operator understands the v1 lattice is the
-direct radius, not the woven map of everyone they know through
-someone they know.
+The v2 backup migration is the foundational move that everything
+after it depends on. The library half of v2 was already shipped at
+84ebbc2 by the prior session; this cut wired it in. New Wallet
+methods on the library side, exportRecoverable and
+restoreFromRecoverable and restoreFromKData. A WalletBlob union type
+that threads v1 EncryptedBlob and v2 RecoverableEncryptedBlob through
+the entire storage layer. createWallet, saveWallet, and
+downloadEncryptedBackup all mint v2 from this branch forward;
+unlockWallet dispatches on the v field of the on-disk blob, v1 blobs
+unlock via the existing path and the first save migrates them
+automatically. The migration is irreversible going forward, which is
+the operator-visible risk worth flagging loudly.
 
-Wiring was three small touches outside the new file. The App router
-gains a lazy-loaded `/lattice` route inside the AuthGate plus
-WalletProvider tree, matching the pattern every other post-auth
-screen already uses. HomeScreen's header gains a Lattice link next
-to Settings, both wrapped in a flex container with a gap so the
-two links stay clean on a 375px width. The recovery feature's
-manifest gets the new touches entry and an updated purpose line
-recording the 5e-iv scope. And the bundle-budget script gains a
-named LatticeScreen budget at five kilobytes gzipped — the actual
-emit ships at just over two kilobytes gzipped today, so the budget
-carries real headroom for future polish if and when friend-of-friend
-rendering lands. All four gates ran green in the order the doctrine
-requires — typecheck, lint, all thirty-six tests, build with bundle
-budgets all satisfied — and the Lattice chunk emitted under its
-budget on the first try.
+Then the K_data preservation problem surfaced during re-grounding
+for the next cut. Without preservation, every normal save mints a
+fresh K_data, and the moment a recovery cohort distributes Shamir
+shares of K_data, those shares become useless on the very next
+save. Recovery would only restore the snapshot from cohort-publish
+time, not the latest one. The fix is two new library functions
+that expose K_data as a stable value across saves, unwrapKData to
+extract it from a v2 blob using the passphrase and
+encryptRecoverableWithKData to re-encrypt with a caller-supplied
+K_data. Cut alpha shipped the library primitives plus nine tests
+covering round-trip, length enforcement, salt and IV refresh per
+call, and the end-to-end save loop proving K_data survives. Cut
+beta wired them through. unlockWallet now returns wallet and kData,
+createWallet does too, saveWallet takes kData as input and returns
+the kData the blob was actually keyed on, and WalletProvider holds
+K_data in a ref alongside the passphrase, threaded through all four
+save call sites and cleared with the passphrase on sign-out and
+idle-lock. The keys-never-leave audit gained kData in its
+SECRET_NAMES list so a stray console log will fail the gate.
+
+One small refactor fell out along the way. createCustodyHandoff was
+the only helper in the codebase that bundled saveWallet inside
+itself. Every other helper in the same family — publishCohort,
+selfDeclareOrganization, the membership and officials and ratifies
+flows — signs and holds and queues the anchor and lets the modal
+call save via WalletContext. I matched the pattern so the K_data
+plumbing stays in one place and a future read of the code finds
+saveWallet invoked from exactly the spots it should be.
 
 ## Section 2: What you could do better
 
-One real risk surfaced during the build that I did not fix and you
-should know about. The Cohort badge I painted onto each
-ConnectionCard uses absolute positioning with a fixed right-side
-offset of sixteen, because the existing Tier P or Tier R badge
-already lives at the top-right of the card and I wanted the Cohort
-badge to sit beside it rather than on top of it. On a 375px screen
-with a short peer name that layout is fine; on a long peer name
-that wraps, or on a very narrow screen, the absolute positioning
-may overlap the name text awkwardly. The honest fix is to either
-restructure ConnectionCard to accept an optional badges array prop
-and have it lay them out itself, or to render the Cohort badge
-inline below the row instead of in the top-right corner. Neither
-is hard; both are out of scope for a single read-only rendering
-session. Worth a five-second DevTools look at 320px width with a
-long name before you ship to anyone who would see it.
+The v1 to v2 migration on the operator's deployed wallet is the
+single risk in this session that you should weigh before merging.
+The first save under this branch will overwrite your cloud-blob row
+from v1 EncryptedBlob to v2 RecoverableEncryptedBlob. The unlock
+path stays bidirectional in source code — v1 blobs still unlock and
+v2 blobs unlock — but I have not exercised the path with your real
+on-disk blob, and I have not run the wallet against the live
+Supabase row. The safest path is to back up your current
+wallet_blobs row before the next save under this branch lands, or
+test the migration on a fresh Supabase identity first. Once a v2
+blob is on disk, reverting to a pre-5e-iii-b-2 branch means a
+manual rollback of both IndexedDB and the cloud row. The migration
+itself is small and the code is straightforward, but the asymmetry
+between code review and live-data behavior means a backup before
+the cutover is worth doing.
 
-Second observation, smaller. The Lattice screen reads cohort data
-through findLatestCohort plus readCohort, exactly the way Settings
-reads it, and renders it in a slightly different visual layout
-than Settings does. The brief explicitly noted that the cohort UI
-and the lattice view share most of their rendering logic and
-suggested building them together would amortize the code. I did
-not extract a shared cohort-summary component because the two
-contexts genuinely want slightly different shapes — Settings is a
-compact summary inside a section card with an Edit button, the
-Lattice is a full-width card with the threshold prominent and
-member rows that show more breathing room. Premature extraction
-would force both sites into one shape and the resulting component
-would carry conditional props for what is really a small amount
-of duplicated markup. If a third site ever needs to render the
-cohort summary — the recovery ceremony screens in 5e-v will
-almost certainly want their own variant — the extraction pressure
-goes up and the right move is a CohortSummaryCard with a variant
-prop. Not today.
+The Lattice screen visual hasn't been walked in a browser this
+session either — same flag from last session, repeated because the
+Cohort badge absolute-positioning concern on ConnectionCard is still
+unresolved. Fixed right offset of sixteen pixels puts it beside the
+existing Tier P or Tier R badge, which reads fine at 375 with short
+peer names and may overlap at 320 with long names. The clean fix is
+restructuring ConnectionCard to accept an optional badges array
+prop and laying them out itself; that's a single-session refactor
+when the operator walks the screen and flags the problem in person,
+or doesn't, in which case the absolute positioning was always going
+to be fine.
 
-Third, a process note rather than a code note. I did not exercise
-the screen in a browser this session — type checks and unit tests
-verify code correctness but not UX correctness, and there are no
-unit tests for the new screen because its data layer was already
-tested and its rendering primitives were already tested in the
-sections it composes. The honest read on the work is the code
-should render the right thing on first load; the visual polish
-needs a human's eyes before declaring it shipped. When you next
-open the wallet on a device you actually use, walk to the
-Lattice link and check the four cases — no cohort no handshakes,
-no cohort with handshakes, cohort declared with overlapping
-handshakes, cohort declared with no overlap.
+WalletProvider crossed the four-hundred-line soft warning this
+session, sitting at 482 lines after the K_data plumbing. Still well
+under the 800-line hard limit. The growth came from threading kData
+through four save call sites with state and refs; the call sites
+themselves are not bad but they are repetitive. The two effects
+worth pulling into dedicated hook files are the transport effect at
+roughly lines 115 through 180 and the post-anchor-attach effect at
+roughly 225 through 295. Both are self-contained, both have stable
+inputs and outputs, both would slim WalletProvider back into the
+sub-400-line range and make the K_data flow easier to follow at the
+top of the file. Not done this session because the K_data plumbing
+was load-bearing and changing structure mid-cut would have made the
+diff harder to review.
+
+The cohort-rotation semantics question is the open architectural
+choice I'm leaving for the next session's brief. When the operator
+adds a cohort member, removes one, or changes the threshold, the
+right behavior is almost certainly to mint a fresh K_data and
+redistribute shares to every current member, which leaves the old
+shares useless. The cost is one extra re-encrypt per cohort change;
+the benefit is that the cohort change is a clean event with no
+half-rotated state. I documented this in the foreman handoff and
+the current.json so the next session can settle it explicitly in
+the brief refresh rather than discovering it mid-implementation.
 
 ## Section 3: The bigger picture
 
-The Lattice screen is a small UI surface but it makes a real
-architectural point. Phase 5 has been a long climb up the layer
-stack — handshakes in 5a turn into memberships in 5b, both turn
-into the Mycelium transport in 5c, the transport carries Tier V
-presence in 5d, and the recovery work in 5e turns all of it into
-the substrate that puts the operator back together when a device
-is lost. Each phase has produced more attestation kinds, more
-modal flows, more inbox routes, more pieces of the woven web —
-but the woven web has not had a single place to look at itself
-until now. The Lattice screen is the first place in the wallet
-where the operator can see the whole web at once, and notice for
-example that three of their seven handshake contacts are also
-the recovery cohort, and that one of those three is also a
-member of the same organization they belong to. That kind of
-cross-section is what makes a hyphal lattice an actual lattice
-rather than a list of disconnected lists, and it is what the
-spec's section ten was pointing at when it called the eventual
-transitive-trust geometry the longer-term Sybil-resistance
-mitigation. V1 ships the direct radius; the radius itself becomes
-visible the moment a screen exists to show it.
+Four cuts in one session is a lot of plumbing for the operator to
+see as a single ship. The visible piece is the Lattice screen; the
+other three are foundational work that pays off in the next cut,
+which is the one where shares actually move across Mycelium and the
+cohort becomes a real recovery surface rather than a declared one.
+That asymmetry between visible value and foundational value is the
+shape of Phase 5e by design. The recovery ceremony at the end of
+the arc — initiator, responder, recovery-succession event — looks
+visually small to the operator but rests on every piece of
+machinery shipped here. The v2 backup format, the K_data
+preservation, the share distribution that comes next, the inbox
+auto-routing, every one of them is load-bearing. The cascade is a
+real cryptographic protocol with multi-round multi-party state, and
+it only works because the floor was laid this carefully.
 
-The cohort cross-reference badge is the smallest possible
-foreshadowing of what friend-of-friend will look like. Today the
-question the badge answers is which of these handshakes is also
-a cohort member. A year from now the question the same screen
-will answer is which of these handshakes is also a cohort member
-of someone you are connected to through two hops — same UX
-vocabulary, deeper data behind it. The screen you shipped today
-is the prototype of a screen that will become much more
-information-dense without changing its shape. That is what
-modular rendering pays off — the data model expands and the
-surface absorbs it.
+The K_data preservation problem is the one that's worth carrying
+forward as a teaching moment. The brief named the cryptographic
+floor and the protocol shape but did not surface the architectural
+crux that fell out of trying to actually implement it: when does the
+data-encryption key rotate, and when does it stay stable. The answer
+that fell out is the right one — preservation across normal saves,
+explicit rotation only when the cohort changes — but it was not
+obvious from the brief, and getting it wrong would have meant cohort
+shares decay invisibly with use. This is the kind of design surface
+that surfaces during implementation, not during sketching, and the
+discipline of re-grounding before changing code is what caught it.
+The grounding gate paid for itself this session in exactly the way
+the doctrine claims it will.
 
-The locked sequence holds. Cut 5e-iv is now off the board; cut
-5e-v, the recovery ceremony initiator side, is what comes next,
-and the brief recommends a brief-refresh before code lands
-because the state machine is real protocol work with explicit
-out-of-band verification gating. That is the right call. The
-single most valuable thing you could do between now and the next
-cut is open the wallet on a real device and walk through the
-Lattice screen with the eye of someone who is going to try to
-explain it to your wife — same wife-test framing that has guided
-the verify-page polish, applied to the place where the operator
-sees their entire web. If the layout reads, ship it. If it does
-not, the fix is one ConnectionCard refactor and a single session.
+The locked sequence continues to hold. Cut 5e-iii-c-gamma is next on
+the road map, and the foreman handoff sketches it concretely enough
+that the next session has a clear plan: createShare.ts primitive,
+cohort-publish wires share distribution through Mycelium, peer
+inbox auto-routes recovery-share envelopes to hold. The brief should
+land first, settling the cohort re-publish question I named in
+section two, and then the cut itself is one focused session. After
+that the recovery-request envelope shape is a small follow-on, and
+then the recovery ceremony itself becomes a multi-session arc per
+the brief's sizing. The operator's directive to keep cutting was the
+right call this session — every cut sized well, every gate held, and
+the next session opens onto a sharper road map than it would have if
+we'd stopped two cuts ago. End of the line for this thread; the next
+one starts at the cohort re-publish brief.
