@@ -1,149 +1,180 @@
-# Carpenter opinions — Phase 5e prep cuts
+# Carpenter opinions — Phase 5e substrate + distribution
 
 > Three-section narrative report for the operator (PFOR-014).
-> Session: 2026-05-24 — switched to this Carpenter after the
-> code-Carpenter handed off; SessionStart drift hook caught the
-> 12-commit gap; cut two Phase 5e prep pieces and stopped before
-> the recovery ceremony.
+> Session: 2026-05-24 — "see where we are and let's cut." Three
+> substantial cuts shipping the Phase 5e substrate, stopping at the
+> ceremony boundary.
 
 ## Section 1: What I did.
 
-You switched to this Carpenter specifically to verify the hook
-would catch the handoff from the code-Carpenter, and it did —
-twelve commits behind on session entry, with the full Phase 5d
-Tier V plus 5c-iii-a and 5c-iii-b plus 5e-ii Shamir primitives
-plus 5e-iii-a cohort recording plus 5e-iii-b backup-format-v2
-plus the Phase 5e and Phase 5f roadmap briefs all landed on
-main while this branch sat stale. I read what actually shipped
-(rather than the stale PLAN.md on this branch), then picked the
-next two cuts off the brief's sequence that get TO the big
-piece without doing the big piece. The big piece is the
-recovery ceremony itself (5e-v initiator, 5e-vi responder, 5e-vii
-recovery-succession), which is multi-round protocol-state-
-machine work and lands cleaner in a fresh dedicated session.
+This was the cut-the-substrate session. The SessionStart hook
+confirmed no drift on entry; the prior session's foreman handoff
+named the big piece as the recovery ceremony bundled with the
+storage migration and share distribution; the operator said "let's
+cut" and I shipped three layered cuts that get every prerequisite
+in place without doing the ceremony state machine itself.
 
-Cut A was the Wallet-layer methods bridging the v2 backup format
-shipped at the library level in 5e-iii-b to the wallet lifecycle.
-Three new methods on the Wallet class: exportRecoverable returns
-the v2 blob plus K_data so the caller can Shamir-split K_data
-via the splitSecret primitive from 5e-ii and distribute shares
-to cohort peers, then forget K_data on the producing device;
-restoreRecoverable is the passphrase path, equivalent to the v1
-restore() but reads the v2 blob shape; restoreFromKData is the
-recovery path the ceremony itself will use after M cohort peers
-have returned their shares and combineShares has reconstructed
-the original K_data on the new device. Six new tapit-attest
-tests cover the round-trips, wrong-passphrase failure mode,
-equivalence of the two paths, and most importantly the
-end-to-end Shamir-split → combineShares → restoreFromKData loop
-the ceremony will exercise. The non-negotiable D-03 stays loud
-in the code comments: only the symmetric data-encryption key is
-ever split; the signing keypair is never touched. M-of-N
-collusion at worst decrypts one backup snapshot; they cannot
-become you because signing authority only transfers through a
-peer-witnessed succession event the recovered wallet itself
-produces. All 144 tapit-attest tests green; commit 2ecaf4d.
+Cut 1 (commit 8ea9393) was the storage migration to v2 with K_data
+reuse, which is more subtle than it sounds. The v2 backup format
+shipped at the library level in 5e-iii-b separates the symmetric
+data-encryption key K_data from the passphrase — K_data is freshly
+random per encryption, wraps the data, and is itself wrapped two
+ways (PBKDF2-of-passphrase for normal unlock, plus optional
+Shamir-split to peers for recovery). The naïve migration would
+have generated a fresh K_data per save, which would silently
+invalidate every share the cohort holds the moment the operator
+saves anything. So the cut adds a load-bearing primitive
+reencryptRecoverableReuseKData that unwraps K_data from an
+existing blob and re-encrypts the new data with the SAME K_data,
+keeping the wrap (salt, wrapIv, wrapCiphertext) identical. Wallet
+gains exportRecoverableReuseKData on top of that. saveWallet now
+has three paths: first save (no existing blob — fresh v2), legacy
+v1 upgrade (one-time K_data generation), and v2 reuse (the steady
+state, K_data stays stable forever). AnyEncryptedBlob union flows
+through localStore + walletStore + remoteStore; createWallet
+writes v2 from day one so new wallets are recovery-ready
+immediately; unlockWallet dispatches on the v field. Backwards-
+compatible — existing users' v1 blobs read fine and upgrade
+transparently. Two new tapit-attest tests pin the K_data-stable
+property.
 
-Cut B was the lattice visualization itself, sitting at 5e-iv in
-the brief's sequence — the read-only "your network in one
-place" view promised by MYCELIUM_NETWORK_SPEC.md §10. The
-operator already has four tabs (Journal, Identity, Captured,
-People) and editing flows for handshakes, memberships, and the
-recovery cohort, but no single screen that surfaces the union.
-The Lattice tab is that screen: a summary row with four counts
-(in-person handshakes, remote handshakes, organizations, cohort
-members), the recovery cohort card with M-of-N badge and
-declared-on date if a cohort exists or an empty-state prompt if
-not, a peer list where each row shows the counterpart's name
-plus their tier and cohort badges as appropriate, and an
-organizations list with member-since dates. The aggregation
-logic lives in src/features/recovery/lattice.ts as pure
-functions over holdings — no React, no transport, no signing,
-just walking what's already signed and held and grouping it.
-The view in LatticePanel.tsx is straightforward Tailwind cards.
-HomeScreen gains a fifth tab and React.lazy-loads the panel so
-the aggregation only ships when the operator opens it. Three
-new chunks named in bundle-budget — LatticePanel itself, plus
-CohortEditorModal which was previously unrecognized, plus the
-createCohort helpers chunk that hoisted once both
-CohortEditorModal and LatticePanel started importing from it.
-All four gates green; commit b976169.
+Cut 2 (commit 806c45e) was the share-envelope builders. A recovery
+share envelope is a signed credential, subject = operator identity,
+leaves = share_index plus share_M plus share_N plus share_for
+(recipient pubkey) plus share_ciphertext (NIP-44 encrypted hex-
+encoded share bytes, only that peer can decrypt) plus declared_at.
+The whole envelope is signed by the operator so peers can verify
+authorization. createShares.ts exports isRecoveryShare,
+readRecoveryShare, buildRecoveryShareEnvelope (one peer),
+buildRecoveryShares (splits K_data + builds N envelopes),
+decryptHeldShare (responder-side helper that unwraps the
+ciphertext back to raw Share bytes), and holdRecoveryShare
+(verify + hold + queue for OTS anchor on receive). Two new
+round-trip tests cover the full Shamir-split → encrypt-to-peer →
+peer-decrypts → combine loop, including the negative case where a
+wrong peer attempting to decrypt gets caught by NIP-44's MAC
+verification. Numbers stored as strings in leaves because the
+existing leafValue helper only returns strings — pinned this as a
+pattern for the share envelopes and flagged a latent inconsistency
+in the existing cohort code in the foreman handoff.
 
-Both cuts pushed to branch and the SessionStart hook is doing
-its job — this branch is now current with origin/main, ready
-to be pushed forward to main when you greenlight.
+Cut 3 (commit 71c9dc6) wired distribute + receive end to end.
+DistributeSharesModal launches from CohortEditorModal once a
+cohort exists — a "Distribute shares to cohort…" button appears
+after publish. On open the modal loads the current v2 blob from
+walletStore, unwraps K_data via the operator's passphrase, builds
+the N share envelopes, and walks each through the existing
+WalletContext.sendEnvelope. Per-peer status is live: pending →
+sending → sent / failed, using summarizePublish for language
+consistency with the four existing Send-via-Nostr modals. Failed
+rows expose a Retry button. Receive side is wired in InboxPanel
+(new 'recovery-share-receive' route action when isRecoveryShare
+matches) and HomeScreen (acceptRecoveryShare handler calls
+holdRecoveryShare, saves, refreshes, dismisses the inbox row).
+Three new bundle-budget entries: createShares helpers,
+publishStatus helper (now shared by five modals), walletStore
+helper. All four gates green at every commit.
+
+The substrate is now complete. An operator can declare a cohort,
+distribute shares to it, peers auto-receive and hold their shares,
+and every subsequent wallet save keeps K_data stable so those held
+shares stay valid forever. What remains is the actual ceremony —
+when the operator loses their device, types in a fresh wallet on a
+new device, the cohort signs back, combines, restores, succession-
+witnesses the new key. That's cuts 4 through 6, and it's a real
+state machine.
 
 ## Section 2: What you could do better.
 
-The big piece you're saving for the fresh session has one
-prereq this session didn't ship: the wallet's storage layer
-still calls Wallet.exportEncrypted (v1) inside saveWallet.ts.
-For the ceremony to be useful, the wallet has to be writing v2
-blobs at every save going forward — otherwise the K_data
-distribution has no v2 blob to decrypt at recovery time. That
-migration is genuinely small (saveWallet.ts changes one call,
-walletStore.ts loosens its blob type to the v1-OR-v2 union,
-WalletProvider.tsx's restore-on-unlock path branches on the v
-field) but it lives on the storage hot path and deserves
-careful attention. Bundle it with share distribution in the
-ceremony session so both halves of the cascade land together.
+I caught a latent bug in the existing createCohort.readCohort that
+nobody's stumbled on yet because the failure mode is silent.
+`Number(leafValue(att, 'threshold'))` reads the threshold leaf and
+coerces; but the leaf was stored as a number, leafValue only
+returns strings (treats non-string leaves as ''), so Number('')
+returns 0, and the threshold default-fallback in CohortEditorModal
+masks it as 3. Net effect: open the cohort editor after a publish
+and the threshold silently resets to 3 from whatever the operator
+chose. The share envelope code I shipped this session avoids this
+by storing numbers as strings. The right fix in createCohort is
+either to switch its number leaves to strings (matching what
+recovery-share does) or to add a typed leafNumber helper to
+tapit-attest that the field tree code already supports. Small
+follow-on cut; not blocking the ceremony but should land before
+the wife-test of the recovery flow.
 
-The brief at briefs/2026-05-24-shamir-cascade-recovery-roadmap.md
-has a real internal inconsistency between its load-bearing
-constraint (peers do NOT hold a recoverable share to the
-current key) and its decision #3 model (a) recommendation (peer
-holds an encrypted share blob the operator distributed at
-cohort-creation time). The 5e-iii-b commit message takes the
-model-(a) interpretation, which is the only one that actually
-makes sense — peers hold encrypted-to-them share blobs forever,
-they don't decrypt them until recovery, and at recovery they
-re-encrypt their decrypted share to the operator's freshly-
-generated new pubkey. Worth one paragraph of brief refinement
-to harmonize before 5e-v code lands so the next Carpenter
-doesn't have to puzzle it out from the commit messages.
+The DistributeSharesModal calls sendEnvelope per peer in a serial
+loop — fine for cohorts of 5 to 11, would matter at 50+ but the
+spec says cohorts that big are rare. The current implementation
+does NOT distribute shares automatically on cohort-publish; the
+operator has to click Distribute deliberately. That's intentional
+because publish is offline-friendly while distribute requires
+Mycelium, and an operator might publish offline and distribute
+later. But it's a UX detail worth confirming with the operator
+once they walk it on a real device.
 
-Five tabs at 375px is the visual maximum and "Lattice" with
-seven characters fits but the layout deserves a browser walk on
-a real phone before the next big UX cut adds anything. If the
-labels start truncating, the right move is probably to merge
-People into Lattice rather than keep adding tabs — the Lattice
-view already includes the handshake list with richer context
-(tier + cohort badges in one row), so it's a strict superset of
-what People shows.
+I deliberately stopped before the ceremony state machine because
+the operator originally said "we'll start a fresh one and knock
+out in one go" for the big piece. The remaining work — initiator
+on a new device detecting the cloud blob, fresh keypair
+generation, recovery-request envelope construction, responder
+modal with strict out-of-band verification gating, share return
+loop, combine plus Wallet.restoreFromKData, recovery-succession
+event with M co-signatures — is genuinely a session's worth on
+its own. It involves a new first-run state in WalletProvider, two
+new modal flows that talk to each other across Mycelium, the
+multi-round protocol that the brief is explicit about, plus the
+recovery-succession primitive that touches the existing
+tapit-attest succession chain. Saving it for fresh focus is the
+right call.
+
+One small honest meta-note: I noticed myself wanting to keep
+cutting after Cut 3 because the substrate felt incomplete without
+the ceremony. The discipline that stopped me was the prior
+session's foreman handoff and the operator's own directive — both
+explicit that the ceremony belongs in its own session. The
+SessionStart hook plus the comms records made that boundary
+visible at the right moment, which is the protocol working.
 
 ## Section 3: The bigger picture.
 
-The two Carpenters running in parallel finally produced a clean
-cross-Carpenter handoff this session and the SessionStart hook
-is the reason it worked. You handed off from the code-Carpenter
-with twelve commits ahead, switched to this Carpenter, the hook
-fired, grounded me against actual main, and I picked up exactly
-where the previous Carpenter left off with no manual catch-up
-on your part. That is the protocol working as designed:
-two-Carpenter throughput at one-Carpenter coherence, with the
-mechanical check absorbing the coordination overhead that would
-otherwise fall on you. Whatever you build next on the operator
-workflow, this hook is the load-bearing piece that makes it
-sustainable.
+The Phase 5e cascade is now structurally ready and the math is
+proven end-to-end. A wallet generates a fresh K_data on day one,
+declares a cohort when the operator chooses, distributes Shamir
+shares to that cohort with each share NIP-44-encrypted so only the
+named peer can decrypt it, holds K_data stable across every
+subsequent save so the cohort's shares never silently age out, and
+sits ready for the ceremony to land on top. The non-negotiable
+D-03 holds across every cut: only the symmetric data-encryption
+key is ever split, the signing keypair is never touched, M-of-N
+collusion at worst decrypts one backup snapshot but cannot become
+the operator because signing authority only transfers through a
+peer-witnessed succession event the recovered wallet itself
+produces. That separation is what makes the whole design honest —
+the spec section 12 has been calling it out from the start, and
+the code now actually enforces it.
 
-The Phase 5e arc is in genuinely good shape — library Shamir
-primitives at 5e-ii, library recoverable-blob primitives at
-5e-iii-b, Wallet methods at 5e-iii-b-2 (this session's Cut A),
-cohort declaration UI at 5e-iii-a, lattice viz at 5e-iv (this
-session's Cut B). Every prerequisite for the recovery ceremony
-is in place except the storage migration to write v2 blobs by
-default and the actual share-distribution flow over Mycelium.
-The ceremony itself, when it lands, will be the most beautiful
-demonstration of the spec's whole thesis — your woven web of
-trusted peers, used backwards to put you back together when the
-device is gone, with no platform involved, no company holding
-keys, just the math and the people you signed with. That's the
-slime, made real, and it's now close enough you can see it from
-where the codebase sits tonight. The fresh session for the big
-piece is the right call — protocol-state-machine work wants a
-clean room and uninterrupted focus, not a tail-end of another
-session's context.
+The piece that's worth pausing on: cohort plus distribution is the
+first feature in the wallet where the OPERATOR explicitly enrolls
+their PEERS into a long-term commitment. Every other primitive so
+far has been about the operator signing their own life or
+mutually-signing with one other party in the moment. The recovery
+cohort is the first time a peer holds something on the operator's
+behalf for years, until and unless the worst day of their life
+arrives. That's a different social contract than handshakes or
+memberships, and the UX in the next sessions has to honor that —
+the strict out-of-band verification gating in the responder modal
+(brief decision 5, the only chip the brief explicitly recommends
+strict for), the visible cohort-membership credentials so peers
+know they have a responsibility (chip 4 from the prior session,
+settled visible), the per-row Retry on distribution so the
+operator can see exactly who has and hasn't received their share.
+The math is the easy part; the social-contract UX is the hard
+part, and the ceremony session is where it lands.
 
-You've been moving fast and the pieces have been landing
-cleanly the whole way. Hand this branch forward when you're
-ready and the big piece comes next.
+You're now one session away from the slime made real — your woven
+web of trusted peers, used backwards to put you back together when
+the device is gone. Three cuts today, three more cuts for the
+ceremony itself, and the operator's "bump with five of your
+closest friends and get your identity back" recovery becomes a
+running flow you can demo with two real devices and three real
+peers. Go ahead and start the fresh session whenever you're ready.

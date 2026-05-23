@@ -1,45 +1,58 @@
 {
   "v": 1,
-  "ts": "2026-05-24T07:45:00Z",
-  "session_id": "phase-5e-iii-b-2-library-and-5e-iv-lattice-2026-05-24-1779602700",
+  "ts": "2026-05-24T16:10:00Z",
+  "session_id": "phase-5e-substrate-distribution-2026-05-24-1779634200",
   "who": { "actor": "carpenter", "feature_slug": "recovery" },
   "where": {
     "files": [
+      "tapit-attest/src/core/encryption.ts",
       "tapit-attest/src/core/wallet.ts",
       "tapit-attest/test/wallet-recoverable.test.mjs",
-      "src/features/recovery/lattice.ts",
-      "src/features/recovery/LatticePanel.tsx",
-      "src/features/recovery/manifest.ts",
+      "src/features/storage/localStore.ts",
+      "src/features/storage/walletStore.ts",
+      "src/features/storage/remoteStore.ts",
+      "src/features/wallet-core/createWallet.ts",
+      "src/features/wallet-core/unlockWallet.ts",
+      "src/features/wallet-core/saveWallet.ts",
       "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/recovery/createShares.ts",
+      "src/features/recovery/createShares.test.ts",
+      "src/features/recovery/DistributeSharesModal.tsx",
+      "src/features/recovery/CohortEditorModal.tsx",
+      "src/features/recovery/manifest.ts",
+      "src/features/transport/InboxPanel.tsx",
       "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "/ → Lattice tab (5th tab)"
+    "screen_path": "Settings → Recovery cohort → Distribute shares to cohort…; HomeScreen People tab → inbox → Hold share"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "Two cuts toward the Phase 5e recovery ceremony, stopping deliberately before the big piece (5e-v/-vi/-vii) per operator directive. Cut A — Phase 5e-iii-b-2 library half: Wallet.exportRecoverable returns {blob, kData} so the caller can Shamir-split kData across cohort peers (5e-ii) and distribute; Wallet.restoreRecoverable is the passphrase path on v2 blobs; Wallet.restoreFromKData is the recovery path the ceremony will use after M peers return their shares. Six new tapit-attest tests including the end-to-end Shamir-split → combineShares → restoreFromKData loop. D-03 stays loud — only the symmetric encryption key is split, never the signing keypair. Cut B — Phase 5e-iv lattice visualization: a fifth top-level tab on HomeScreen with a read-only summary of the operator's woven web (handshakes by tier, organizations they hold memberships in, recovery cohort with M-of-N). Pure data extraction in src/features/recovery/lattice.ts, view in LatticePanel.tsx. Editing still happens through the already-shipped flows; the lattice just surfaces the union. Both cuts independent, both green at every gate, both prepare the substrate for the ceremony without touching transport, storage migration, or share distribution — those remain for the fresh session the operator wants for the big piece.",
+  "summary": "Three substantial cuts toward the Phase 5e recovery ceremony, stopping at the substrate boundary before the ceremony state machine itself. Cut 1 (commit 8ea9393) — storage migration to v2 with K_data reuse: new tapit-attest primitives unwrapKData + reencryptRecoverableReuseKData + Wallet.exportRecoverableReuseKData; AnyEncryptedBlob union flows through localStore + walletStore + remoteStore; createWallet writes v2 from day one; unlockWallet dispatches on `v`; saveWallet has three paths (no blob → fresh v2, legacy v1 → upgrade to v2, existing v2 → REUSE K_data — load-bearing for the cascade because rotating K_data per save would silently invalidate every distributed share). Cut 2 (commit 71c9dc6's predecessor, no wait, actually commit between 8ea9393 and 71c9dc6) — recovery-share builders: createShares.ts exports isRecoveryShare, readRecoveryShare, buildRecoveryShareEnvelope (NIP-44 wraps each share to its recipient's pubkey), buildRecoveryShares (splits K_data + builds N envelopes), decryptHeldShare (responder side), holdRecoveryShare (verify+hold+anchor). 2 new round-trip tests covering the full Shamir-encrypted-decrypted-combined loop. Cut 3 (commit 71c9dc6) — DistributeSharesModal launched from CohortEditorModal once a cohort exists; walks N peers with live per-row status (pending → sending → sent / failed) using summarizePublish for uniform language; InboxPanel + HomeScreen routing for incoming recovery-share envelopes (new 'recovery-share-receive' action). D-03 stays loud across all three cuts: only K_data (32-byte symmetric data-encryption key) is ever split; the signing keypair is never touched. All four gates green at every commit.",
   "why": {
-    "text": "Operator: 'have you re-ground and cut the next pieces of code that you feel is ready to get to the big piece and then when we get to the big piece, we'll start a fresh one and knock out in one go.' SessionStart drift hook caught 12 commits behind on session entry; grounded against actual main (Phase 5d complete, 5e-ii + 5e-iii-a + 5e-iii-b shipped, briefs for 5e and 5f landed), identified the next cuts per the brief's 5e-iii-b-2 → 5e-iv → 5e-v sequence, and stopped at 5e-iv before the multi-round ceremony work. Settled chips from brief recommendations (peer-share model a; N=5 M=3 default already shipped in CohortEditorModal; visible cohort-membership credentials — consistent with mutual-by-design) so the operator did not have to answer chips mid-session.",
+    "text": "Operator: 'see where we are and let's cut'. SessionStart hook confirmed no drift; branch was current with main at 28f3238 after the prior session's foreman handoff named the big piece as Phase 5e-v/-vi/-vii bundled with storage migration + share distribution. This session shipped the substrate (storage migration + share distribution), stopping at the boundary before the ceremony state machine itself per the original directive 'we'll start a fresh one and knock out in one go' for the big piece.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5E-IIIB2-LIB-AND-5E-IV"
+    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5E-SUBSTRATE-DISTRIBUTION"
   },
   "outcome": {
     "files_changed": [
-      "Cut A — tapit-attest/src/core/wallet.ts: three new methods (exportRecoverable, restoreRecoverable, restoreFromKData) + import from encryption.ts; tapit-attest/test/wallet-recoverable.test.mjs new with 6 tests including the Shamir-end-to-end test.",
-      "Cut B — src/features/recovery/lattice.ts new (pure functions, ~165 lines); src/features/recovery/LatticePanel.tsx new (~190 lines); src/features/recovery/manifest.ts touches updated; src/features/wallet-core/HomeScreen.tsx adds 5th 'lattice' tab + React.lazy LatticePanel import; scripts/bundle-budget.mjs gains named budgets for LatticePanel, CohortEditorModal, createCohort helpers (3 previously-unrecognized chunks now named)."
+      "Cut 1 (8ea9393): tapit-attest encryption.ts + wallet.ts + wallet-recoverable.test.mjs; wallet-side localStore.ts + walletStore.ts + remoteStore.ts + createWallet.ts + unlockWallet.ts + saveWallet.ts. 2 new tapit-attest tests.",
+      "Cut 2: src/features/recovery/createShares.ts + createShares.test.ts new; manifest.ts updated. 2 new wallet tests.",
+      "Cut 3 (71c9dc6): src/features/recovery/DistributeSharesModal.tsx new; CohortEditorModal.tsx adds Distribute button; InboxPanel.tsx routes recovery-share-receive; HomeScreen.tsx acceptRecoveryShare handler; manifest.ts + bundle-budget.mjs updated."
     ],
-    "tests_passing": "tapit-attest 144 total (140 pass + 4 skipped network-deps); wallet 36/36. typecheck, lint, test, build all green at both commits.",
+    "tests_passing": "tapit-attest 146 total (142 pass + 4 skipped network-deps; 2 new this session). Wallet 38/38 (2 new round-trip tests). typecheck, lint, build all green at every commit.",
     "build_green": true,
-    "notes": "[P-001] Cut A — 3 new Wallet methods + 6 tests, all passing (commit 2ecaf4d). Library is now wallet-aware for v2 recoverable backups; storage migration (the wallet-side cut that calls these methods on every save) is deferred to the ceremony session along with share distribution. [P-002] Cut B — Lattice tab shipped (commit b976169). Read-only aggregation view. Three new chunks named in bundle-budget; build is clean again. [P-003] Stopped deliberately before 5e-v (recovery ceremony initiator) per operator's 'start a fresh one and knock out in one go' for the big piece. [FEEDBACK→Foreman]: the brief's 5e-iii cut description and decision #3 model (a) are mutually inconsistent about whether shares are distributed at cohort-creation or at recovery time — the 5e-iii-b commit message takes the model-(a) interpretation (shares distributed at cohort-time). Worth a brief refinement to harmonize before 5e-v lands."
+    "notes": "[P-001] Storage migration is backwards-compatible: legacy v1 blobs read fine; next save upgrades to v2 transparently. [P-002] K_data reuse across saves is the load-bearing property: shares distributed once stay valid across every subsequent save. [P-003] Numbers stored as strings in recovery-share leaves because leafValue only returns strings — same pattern existing cohort code uses (though that code has a subtle latent bug reading threshold from numeric leaves; flagged below). [P-004] DistributeSharesModal requires the Mycelium transport to be enabled (existing sendEnvelope throws otherwise) — modal handles this gracefully. [P-005] Three new chunks named in bundle-budget. [FEEDBACK→Foreman]: existing createCohort.readCohort has a latent bug — `Number(leafValue(att, 'threshold'))` returns 0 because leafValue only returns strings; threshold leaves are stored as numbers by treeFromObject. The default-fallback of 3 in CohortEditorModal masks the bug. Worth a small follow-on cut to either (a) change CohortEditorModal to store threshold/totalShares as strings (matching what 5e-iii-b-2 does for share envelopes) or (b) add a typed leafNumber helper to tapit-attest. Until fixed, opening the cohort editor after a publish silently resets threshold to 3 from whatever the operator chose."
   },
-  "confidence": 93,
-  "uncertainty": "Both cuts are pure (no transport, no live protocol) — confidence is high. Open: the lattice viz has not been browser-walked with a populated wallet; the rendering is straightforward but the tab-overflow on 375px with five tabs is a UX point worth field-checking. The bigger uncertainty sits in the next session: the recovery ceremony (5e-v/-vi/-vii) is multi-round protocol-state-machine engineering that's larger than this session's combined cuts.",
+  "confidence": 92,
+  "uncertainty": "All three cuts are tested via unit tests but the END-TO-END distribute → receive → hold loop is browser-untested. The DistributeSharesModal sends real envelopes via sendEnvelope which requires the Mycelium transport to be enabled in Settings — the operator's first two-device field test will be the first real evidence the loop holds against actual relays. The ceremony itself (cuts 4-6) is the bigger uncertainty: multi-round protocol-state-machine work that's larger than this whole session.",
   "ripple": [
-    "recovery — new lattice.ts + LatticePanel.tsx files; manifest updated",
-    "wallet-core — HomeScreen gains 5th tab",
-    "tapit-attest — Wallet class gains three v2-backup methods; new test file",
-    "bundle-budget — three new named chunks"
+    "tapit-attest — encryption.ts gains unwrapKData + reencryptRecoverableReuseKData; wallet.ts gains exportRecoverableReuseKData",
+    "storage — AnyEncryptedBlob union flows through three files",
+    "wallet-core — createWallet/unlockWallet/saveWallet all dispatch on v",
+    "recovery — createShares + DistributeSharesModal new; CohortEditorModal grows distribute button",
+    "transport — InboxPanel gains recovery-share-receive route",
+    "wallet-core HomeScreen — acceptRecoveryShare handler"
   ],
-  "next": "Next session is the big piece: Phase 5e-v (recovery ceremony initiator) + 5e-vi (responder) + 5e-vii (recovery-succession event). Prerequisites in place: Wallet methods (this session), library Shamir primitives (5e-ii), v2 backup format (5e-iii-b), cohort declaration UI (5e-iii-a), lattice view (this session). Storage migration to v2 (the wallet's saveWallet helper using exportRecoverable instead of exportEncrypted) is the other prereq for the ceremony — couple it with share distribution in the same fresh session for clean scope. Operator field tests still open: wife-test of the polished /verify, two-device 5c stack against real relays, Tier V presence on a real device.",
+  "next": "The big piece — Phase 5e-v (initiator) + 5e-vi (responder) + 5e-vii (recovery-succession event). All prerequisites now landed: library Shamir primitives (5e-ii), v2 backup format (5e-iii-b), Wallet methods (5e-iii-b-2 library half), storage migration (this session Cut 1), share builders + distribute UI + receive routing (this session Cuts 2-3). The recovery ceremony itself involves: new-device first-run detection of cloud-blob-exists-but-no-local-wallet, fresh keypair generation, recovery-request envelope construction, responder modal with strict out-of-band verification gating, share return loop, combine + Wallet.restoreFromKData, recovery-succession credential built via tapit-attest's succession primitive co-signed by M peers. Substantial multi-round state-machine work; one fresh session per operator directive.",
   "signals": ["pulse"]
 }
