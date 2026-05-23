@@ -1,5 +1,4 @@
-import type { EncryptedBlob } from 'tapit-attest';
-import { localStore, type StoredBlob } from './localStore.ts';
+import { localStore, type StoredBlob, type WalletBlob } from './localStore.ts';
 import { remoteStore } from './remoteStore.ts';
 import { prefsStore } from './prefsStore.ts';
 
@@ -44,7 +43,7 @@ export const walletStore = {
    * updates prefs.lastRemoteSync. On remote failure the local save
    * still stands and the caller can decide how to surface it.
    */
-  async save(ownerId: string, blob: EncryptedBlob): Promise<SaveOutcome> {
+  async save(ownerId: string, blob: WalletBlob): Promise<SaveOutcome> {
     const now = new Date().toISOString();
     const value: StoredBlob = { blob, updated_at: now };
     await localStore.put(ownerId, value);

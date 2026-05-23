@@ -6,12 +6,21 @@ import type { Wallet } from 'tapit-attest';
 // passphrase. PBKDF2-SHA256 at 210k iterations protects the blob
 // at rest (tapit-attest/src/core/encryption.ts).
 //
+// 5e-iii-b-2 — the downloaded blob is now the v2
+// RecoverableEncryptedBlob format. The passphrase-unlock path stays
+// identical in effect (PBKDF2 → unwrap K_data → decrypt), so a
+// user's saved-to-disk backup is still openable with just the
+// blob + their passphrase. K_data is discarded here — the local-
+// backup download is an offline copy, NOT a cohort-distribution
+// channel; if the operator wants cascade recovery they declare a
+// cohort in Settings and the publish flow distributes shares.
+//
 // Filename embeds the date so multiple exports do not collide.
 export async function downloadEncryptedBackup(
   wallet: Wallet,
   passphrase: string,
 ): Promise<void> {
-  const blob = await wallet.exportEncrypted(passphrase);
+  const { blob } = await wallet.exportRecoverable(passphrase);
   const json = JSON.stringify(blob, null, 2);
   const file = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(file);

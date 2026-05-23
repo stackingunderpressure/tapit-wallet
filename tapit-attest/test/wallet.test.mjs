@@ -109,6 +109,82 @@ test('a wallet round-trips through an encrypted backup', async () => {
   await assert.rejects(() => Wallet.restore(blob, 'wrong'), /decryption failed/);
 });
 
+test('a wallet round-trips through a v2 recoverable backup via passphrase', async () => {
+  const w = Wallet.generate();
+  const a = w.attest({
+    kind: 'identity',
+    tier: 'routine',
+    subject: w.identity,
+    fields: { label: 'Ada' },
+  });
+  await w.hold(a);
+  w.rotate();
+
+  const { blob, kData } = await w.exportRecoverable('correct horse battery staple');
+  assert.equal(blob.v, 2);
+  assert.equal(kData.length, 32);
+
+  const restored = await Wallet.restoreFromRecoverable(
+    blob,
+    'correct horse battery staple',
+  );
+  assert.equal(restored.identity, w.identity);
+  assert.equal(restored.publicKey, w.publicKey);
+  assert.equal(restored.verifyKeyHistory(), true);
+  assert.equal((await restored.holdings()).length, 1);
+  await assert.rejects(
+    () => Wallet.restoreFromRecoverable(blob, 'wrong'),
+    /decryption failed/,
+  );
+});
+
+test('a wallet restores from a v2 blob using a recovered K_data', async () => {
+  // The Phase 5e recovery ceremony path: M cohort peers return their
+  // Shamir shares, the new device combines them to recover K_data,
+  // and the cloud blob decrypts WITHOUT the passphrase.
+  const w = Wallet.generate();
+  const a = w.attest({
+    kind: 'credential',
+    tier: 'notable',
+    subject: w.identity,
+    fields: { credential_type: 'identity', label: 'Ada' },
+  });
+  await w.hold(a);
+
+  const { blob, kData } = await w.exportRecoverable('any passphrase');
+
+  const restored = await Wallet.restoreFromKData(blob, kData);
+  assert.equal(restored.identity, w.identity);
+  assert.equal(restored.publicKey, w.publicKey);
+  assert.equal((await restored.holdings()).length, 1);
+
+  // Wrong-length K_data fails fast; wrong-bytes K_data fails on decrypt.
+  await assert.rejects(
+    () => Wallet.restoreFromKData(blob, new Uint8Array(16)),
+    /K_data must be 32 bytes/,
+  );
+  const garbage = new Uint8Array(32);
+  garbage.fill(0xab);
+  await assert.rejects(
+    () => Wallet.restoreFromKData(blob, garbage),
+    /decryption failed/,
+  );
+});
+
+test('v2 exportRecoverable mints a fresh K_data per call', async () => {
+  const w = Wallet.generate();
+  const a = await w.exportRecoverable('same passphrase');
+  const b = await w.exportRecoverable('same passphrase');
+  // Two back-to-back exports must NOT produce identical K_data —
+  // the cascade's security rests on the randomness of each mint.
+  assert.notDeepEqual(a.kData, b.kData);
+  // Both still decrypt to a wallet with the same identity.
+  const ra = await Wallet.restoreFromKData(a.blob, a.kData);
+  const rb = await Wallet.restoreFromKData(b.blob, b.kData);
+  assert.equal(ra.identity, w.identity);
+  assert.equal(rb.identity, w.identity);
+});
+
 test('sync reconciles a wallet with a remote store both ways', async () => {
   const w = Wallet.generate();
   const a = w.attest({

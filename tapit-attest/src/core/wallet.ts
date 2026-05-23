@@ -13,7 +13,15 @@ import {
   verifySuccessionChain,
   type SuccessionLink,
 } from './succession.js';
-import { decryptToString, encrypt, type EncryptedBlob } from './encryption.js';
+import {
+  decryptToString,
+  encrypt,
+  encryptRecoverable,
+  decryptRecoverableWithPassphrase,
+  decryptRecoverableWithKData,
+  type EncryptedBlob,
+  type RecoverableEncryptedBlob,
+} from './encryption.js';
 import {
   MemoryStore,
   SyncEngine,
@@ -277,6 +285,65 @@ export class Wallet {
     store?: AttestationStore,
   ): Promise<Wallet> {
     const snapshot = JSON.parse(decryptToString(blob, password)) as WalletSnapshot;
+    return Wallet.fromSnapshot(snapshot, store);
+  }
+
+  // --- recoverable (v2) backup — Phase 5e cascade-ready ----------
+  //
+  // The v2 format separates the data-encryption key (K_data) from
+  // the passphrase: the snapshot is encrypted under K_data, then
+  // K_data is wrapped TWO independent ways inside the blob —
+  // PBKDF2(passphrase) wraps it for the legacy unlock path, and
+  // K_data itself is returned to the caller so the Phase 5e
+  // cohort can Shamir-split it across peers (5e-iii-b-2 onward).
+  // The signing keypair is NEVER split — only K_data. M-of-N
+  // collusion at worst decrypts ONE backup snapshot.
+
+  /**
+   * Encrypt the wallet under a freshly random K_data and wrap K_data
+   * under the passphrase. Returns the v2 blob AND K_data so the
+   * caller can Shamir-split + distribute to a recovery cohort. The
+   * producing device must DISCARD K_data after distribution — the
+   * security of the recovery cascade rests on the producing device
+   * forgetting it.
+   */
+  async exportRecoverable(passphrase: string): Promise<{
+    blob: RecoverableEncryptedBlob;
+    kData: Uint8Array;
+  }> {
+    return encryptRecoverable(JSON.stringify(await this.snapshot()), passphrase);
+  }
+
+  /**
+   * Restore from a v2 blob using the passphrase (legacy-style
+   * unlock). The passphrase path is identical in effect to v1
+   * unlock; the v2 blob just stores K_data wrapped instead of
+   * deriving the AES key directly from the passphrase.
+   */
+  static async restoreFromRecoverable(
+    blob: RecoverableEncryptedBlob,
+    passphrase: string,
+    store?: AttestationStore,
+  ): Promise<Wallet> {
+    const bytes = decryptRecoverableWithPassphrase(blob, passphrase);
+    const snapshot = JSON.parse(new TextDecoder().decode(bytes)) as WalletSnapshot;
+    return Wallet.fromSnapshot(snapshot, store);
+  }
+
+  /**
+   * Restore from a v2 blob using a recovered K_data (the Shamir
+   * cascade output). The passphrase is not needed — this is the
+   * path the Phase 5e recovery ceremony lands on after M cohort
+   * peers have returned their shares and the new device has
+   * combined them.
+   */
+  static async restoreFromKData(
+    blob: RecoverableEncryptedBlob,
+    kData: Uint8Array,
+    store?: AttestationStore,
+  ): Promise<Wallet> {
+    const bytes = decryptRecoverableWithKData(blob, kData);
+    const snapshot = JSON.parse(new TextDecoder().decode(bytes)) as WalletSnapshot;
     return Wallet.fromSnapshot(snapshot, store);
   }
 
