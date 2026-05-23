@@ -24,6 +24,12 @@ interface Props {
    * the counter-signed return goes back to the same pubkey.
    */
   incomingSender?: string;
+  /**
+   * Fires once the Send-back-via-Nostr step completes. The Nostr
+   * inbox uses this to drop the matching envelope row so the operator
+   * does not have to dismiss it manually.
+   */
+  onSuccess?: () => void;
 }
 
 type Step =
@@ -44,7 +50,7 @@ type Step =
 // the result has at most one signature per pubkey). That makes the
 // flow idempotent — pasting the same request twice produces the
 // same signed return.
-export function CosignAsWitnessModal({ onClose, incoming, incomingSender }: Props) {
+export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSuccess }: Props) {
   const { wallet, ownerId, anchorWorker, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>(() =>
     incoming ? { kind: 'preview', attestation: incoming } : { kind: 'paste' },
@@ -116,6 +122,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender }: Prop
     try {
       await sendEnvelope(incomingSender, step.signed);
       setSent(true);
+      if (onSuccess) onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'send failed');
     } finally {

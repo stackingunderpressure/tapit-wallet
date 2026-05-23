@@ -15,6 +15,12 @@ interface Props {
    * counter-signed handshake straight here.
    */
   incoming?: Attestation;
+  /**
+   * Fires once the absorb-and-save succeeds. The Nostr inbox uses
+   * this to drop the matching envelope row so the operator does not
+   * have to dismiss it manually.
+   */
+  onSuccess?: () => void;
 }
 
 // Step 3 of the co-sign flow. Originator pastes the signed envelope
@@ -30,7 +36,7 @@ interface Props {
 // different entry entirely), envelope-not-in-holdings (we don't
 // hold this entry — maybe the operator absorbed it on a different
 // device and not synced yet).
-export function AbsorbCosignModal({ onClose, incoming }: Props) {
+export function AbsorbCosignModal({ onClose, incoming, onSuccess }: Props) {
   const { wallet, holdings, save } = useWallet();
   const [raw, setRaw] = useState(() =>
     incoming ? canonicalEnvelope(incoming) : '',
@@ -56,6 +62,7 @@ export function AbsorbCosignModal({ onClose, incoming }: Props) {
       await wallet.hold(merged);
       await save();
       setDone({ added: newSignatures.length });
+      if (onSuccess) onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'absorb failed');
     } finally {

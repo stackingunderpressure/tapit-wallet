@@ -84,21 +84,29 @@ export function HomeScreen() {
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
   // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
-  // offer "Send back via Nostr" after the operator signs.
+  // offer "Send back via Nostr" after the operator signs. The event-id
+  // pair lets the modal's onSuccess dismiss the inbox row automatically
+  // once the absorb / Send-back completes.
   const [incomingForWitness, setIncomingForWitness] = useState<Attestation | null>(null);
   const [incomingSenderForWitness, setIncomingSenderForWitness] = useState<string | null>(null);
+  const [incomingEventIdForWitness, setIncomingEventIdForWitness] = useState<string | null>(null);
   const [incomingForAbsorb, setIncomingForAbsorb] = useState<Attestation | null>(null);
+  const [incomingEventIdForAbsorb, setIncomingEventIdForAbsorb] = useState<string | null>(null);
 
   function routeInbox(
     envelope: Attestation,
     action: InboxRouteAction,
     senderPubkey: string,
   ) {
+    const item = inboxEnvelopes.find((x) => x.envelope === envelope);
+    const eventId = item?.eventId ?? null;
     if (action === 'cosign-witness') {
       setIncomingForWitness(envelope);
       setIncomingSenderForWitness(senderPubkey);
+      setIncomingEventIdForWitness(eventId);
     } else if (action === 'absorb-cosign') {
       setIncomingForAbsorb(envelope);
+      setIncomingEventIdForAbsorb(eventId);
     } else if (action === 'membership-receive') {
       void acceptMembership(envelope);
     }
@@ -356,9 +364,13 @@ export function HomeScreen() {
         <CosignAsWitnessModal
           incoming={incomingForWitness}
           incomingSender={incomingSenderForWitness ?? undefined}
+          onSuccess={() => {
+            if (incomingEventIdForWitness) dismissInboxEnvelope(incomingEventIdForWitness);
+          }}
           onClose={() => {
             setIncomingForWitness(null);
             setIncomingSenderForWitness(null);
+            setIncomingEventIdForWitness(null);
           }}
         />
       )}
@@ -366,7 +378,13 @@ export function HomeScreen() {
       {incomingForAbsorb && (
         <AbsorbCosignModal
           incoming={incomingForAbsorb}
-          onClose={() => setIncomingForAbsorb(null)}
+          onSuccess={() => {
+            if (incomingEventIdForAbsorb) dismissInboxEnvelope(incomingEventIdForAbsorb);
+          }}
+          onClose={() => {
+            setIncomingForAbsorb(null);
+            setIncomingEventIdForAbsorb(null);
+          }}
         />
       )}
 
