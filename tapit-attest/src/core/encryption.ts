@@ -226,3 +226,55 @@ export function decryptRecoverableWithKData(
     throw new Error('decryption failed — wrong K_data or corrupt blob');
   }
 }
+
+/**
+ * Unwrap K_data from a v2 blob using the passphrase. Useful when the
+ * caller needs K_data itself (to Shamir-split for the cohort) rather
+ * than the decrypted plaintext.
+ */
+export function unwrapKData(
+  blob: RecoverableEncryptedBlob,
+  passphrase: string,
+): Uint8Array {
+  assertV2(blob);
+  const wrapKey = deriveKey(passphrase, hexToBytes(blob.salt), blob.iterations);
+  try {
+    return gcm(wrapKey, hexToBytes(blob.wrapIv)).decrypt(
+      hexToBytes(blob.wrapCiphertext),
+    );
+  } catch {
+    throw new Error('decryption failed — wrong passphrase or corrupt blob');
+  }
+}
+
+/**
+ * Re-encrypt fresh plaintext under the SAME K_data already wrapped in
+ * an existing v2 blob. Load-bearing for the Phase 5e cascade once
+ * shares have been distributed: subsequent wallet saves MUST keep
+ * K_data stable so the cohort's held shares remain valid against
+ * future blobs. Without this, every save would rotate K_data and
+ * silently invalidate every previously-distributed share.
+ *
+ * Returns a fresh blob with the same passphrase-wrap (salt, wrapIv,
+ * wrapCiphertext, iterations) and a fresh dataIv + dataCiphertext.
+ */
+export function reencryptRecoverableReuseKData(
+  oldBlob: RecoverableEncryptedBlob,
+  newPlaintext: string | Uint8Array,
+  passphrase: string,
+): RecoverableEncryptedBlob {
+  const kData = unwrapKData(oldBlob, passphrase);
+  const data = typeof newPlaintext === 'string' ? utf8ToBytes(newPlaintext) : newPlaintext;
+  const dataIv = randomBytes(IV_BYTES);
+  const dataCiphertext = gcm(kData, dataIv).encrypt(data);
+  return {
+    v: 2,
+    kdf: 'pbkdf2-sha256',
+    iterations: oldBlob.iterations,
+    salt: oldBlob.salt,
+    wrapIv: oldBlob.wrapIv,
+    wrapCiphertext: oldBlob.wrapCiphertext,
+    dataIv: bytesToHex(dataIv),
+    dataCiphertext: bytesToHex(dataCiphertext),
+  };
+}

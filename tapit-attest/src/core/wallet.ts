@@ -18,6 +18,8 @@ import {
   encryptRecoverable,
   decryptRecoverableWithPassphrase,
   decryptRecoverableWithKData,
+  reencryptRecoverableReuseKData,
+  unwrapKData,
   type RecoverableEncryptedBlob,
   type RecoverableEncryptionResult,
 } from './encryption.js';
@@ -330,6 +332,25 @@ export class Wallet {
     const bytes = decryptRecoverableWithKData(blob, kData);
     const snapshot = JSON.parse(new TextDecoder().decode(bytes)) as WalletSnapshot;
     return Wallet.fromSnapshot(snapshot, store);
+  }
+
+  /**
+   * Re-encrypt the wallet under the SAME K_data already wrapped in an
+   * existing v2 blob. Subsequent saves after shares have been
+   * distributed MUST use this path — generating a fresh K_data per
+   * save would silently invalidate every share the cohort holds. The
+   * returned result carries kData (the same one unwrapped from the
+   * old blob) so the share-distribution flow can verify it hasn't
+   * drifted from a previously-cached value.
+   */
+  async exportRecoverableReuseKData(
+    oldBlob: RecoverableEncryptedBlob,
+    passphrase: string,
+  ): Promise<RecoverableEncryptionResult> {
+    const json = JSON.stringify(await this.snapshot());
+    const blob = reencryptRecoverableReuseKData(oldBlob, json, passphrase);
+    const kData = unwrapKData(oldBlob, passphrase);
+    return { blob, kData };
   }
 
   // --- sync ---

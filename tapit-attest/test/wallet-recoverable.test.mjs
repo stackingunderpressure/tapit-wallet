@@ -66,6 +66,36 @@ test('the wrong passphrase on restoreRecoverable throws', async () => {
   );
 });
 
+test('exportRecoverableReuseKData keeps K_data stable across saves', async () => {
+  // Load-bearing for Phase 5e cascade: once shares are distributed
+  // to the cohort, future saves must NOT rotate K_data — otherwise
+  // the held shares silently invalidate against the next blob. This
+  // test pins that property.
+  const w = Wallet.generate();
+  const { blob: firstBlob, kData: firstK } = await w.exportRecoverable('pw');
+  w.attest({ kind: 'identity', tier: 'routine', subject: 'x', fields: { v: '1' } });
+  const { blob: secondBlob, kData: secondK } = await w.exportRecoverableReuseKData(firstBlob, 'pw');
+  assert.deepEqual(secondK, firstK);
+  // The wrap fields stay identical; only dataIv + dataCiphertext rotate.
+  assert.equal(secondBlob.salt, firstBlob.salt);
+  assert.equal(secondBlob.wrapIv, firstBlob.wrapIv);
+  assert.equal(secondBlob.wrapCiphertext, firstBlob.wrapCiphertext);
+  assert.notEqual(secondBlob.dataIv, firstBlob.dataIv);
+  assert.notEqual(secondBlob.dataCiphertext, firstBlob.dataCiphertext);
+  // The reused K_data still decrypts the new blob.
+  const restored = await Wallet.restoreFromKData(secondBlob, secondK);
+  assert.equal(restored.publicKey, w.publicKey);
+});
+
+test('exportRecoverableReuseKData rejects a wrong passphrase', async () => {
+  const w = Wallet.generate();
+  const { blob } = await w.exportRecoverable('right');
+  await assert.rejects(
+    () => w.exportRecoverableReuseKData(blob, 'wrong'),
+    /wrong passphrase/,
+  );
+});
+
 test('Shamir-split K_data round-trips through combineShares into restoreFromKData', async () => {
   // The end-to-end shape Phase 5e cascade recovery will use: split
   // K_data into N peer shares, throw enough away to simulate offline

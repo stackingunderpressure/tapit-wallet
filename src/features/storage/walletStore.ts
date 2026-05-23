@@ -1,5 +1,4 @@
-import type { EncryptedBlob } from 'tapit-attest';
-import { localStore, type StoredBlob } from './localStore.ts';
+import { localStore, type AnyEncryptedBlob, type StoredBlob } from './localStore.ts';
 import { remoteStore } from './remoteStore.ts';
 import { prefsStore } from './prefsStore.ts';
 
@@ -10,6 +9,10 @@ import { prefsStore } from './prefsStore.ts';
 // working offline and the next save will reconcile. Successful
 // remote writes update prefs.lastRemoteSync for the home-screen
 // backup-stale banner.
+//
+// Phase 5e-iii-b-2: blob is now AnyEncryptedBlob (v1 or v2). The
+// storage layer is format-agnostic; the wallet-core unlock + save
+// paths handle the version dispatch.
 
 export interface SaveOutcome {
   /** ISO timestamp of the local save (always set). */
@@ -44,7 +47,7 @@ export const walletStore = {
    * updates prefs.lastRemoteSync. On remote failure the local save
    * still stands and the caller can decide how to surface it.
    */
-  async save(ownerId: string, blob: EncryptedBlob): Promise<SaveOutcome> {
+  async save(ownerId: string, blob: AnyEncryptedBlob): Promise<SaveOutcome> {
     const now = new Date().toISOString();
     const value: StoredBlob = { blob, updated_at: now };
     await localStore.put(ownerId, value);
