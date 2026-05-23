@@ -12,6 +12,7 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/LatticePanel.tsx',
     'src/features/recovery/createShares.ts',
     'src/features/recovery/createShares.test.ts',
+    'src/features/recovery/DistributeSharesModal.tsx',
   ],
   depends_on: ['wallet-core', 'anchoring', 'connections'],
   pause_safe: true,

@@ -7,6 +7,7 @@ import {
   readCohort,
   type CohortMember,
 } from './createCohort.ts';
+import { DistributeSharesModal } from './DistributeSharesModal.tsx';
 
 interface Props {
   onClose: () => void;
@@ -59,6 +60,7 @@ export function CohortEditorModal({ onClose }: Props) {
   const [threshold, setThreshold] = useState<number>(initialView?.threshold ?? 3);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [distributeOpen, setDistributeOpen] = useState(false);
 
   const N = selected.size;
   const thresholdClamped = Math.max(2, Math.min(N, threshold));
@@ -185,6 +187,15 @@ export function CohortEditorModal({ onClose }: Props) {
             >
               {busy ? 'Publishing…' : 'Publish cohort'}
             </button>
+            {initialView && (
+              <button
+                type="button"
+                onClick={() => setDistributeOpen(true)}
+                className="mt-2 w-full rounded-md border border-ink/15 py-2 text-sm font-medium hover:bg-ink/5"
+              >
+                Distribute shares to cohort…
+              </button>
+            )}
           </>
         )}
         {error && (
@@ -193,6 +204,9 @@ export function CohortEditorModal({ onClose }: Props) {
           </p>
         )}
       </div>
+      {distributeOpen && (
+        <DistributeSharesModal onClose={() => setDistributeOpen(false)} />
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   readMembership,
   receiveMembership,
 } from '../connections/createMembership.ts';
+import { holdRecoveryShare } from '../recovery/createShares.ts';
 import {
   findLatestOfficialsRoster,
   findOwnOrgDeclaration,
@@ -145,6 +146,27 @@ export function HomeScreen() {
       setIncomingEventIdForAbsorb(eventId);
     } else if (action === 'membership-receive') {
       void acceptMembership(envelope);
+    } else if (action === 'recovery-share-receive') {
+      void acceptRecoveryShare(envelope);
+    }
+  }
+
+  async function acceptRecoveryShare(envelope: Attestation) {
+    if (!identity) return;
+    try {
+      await holdRecoveryShare(
+        wallet,
+        ownerId,
+        anchorWorker,
+        envelope,
+        identity.subject,
+      );
+      await save();
+      await refresh();
+      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
+      if (item) dismissInboxEnvelope(item.eventId);
+    } catch (err) {
+      console.warn('recovery-share receive failed', err);
     }
   }
 

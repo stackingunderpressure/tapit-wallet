@@ -3,6 +3,7 @@ import type { Attestation } from 'tapit-attest';
 import type { InboxEnvelope } from './encryptedInbox.ts';
 import { isHandshake } from '../connections/createHandshake.ts';
 import { isMembership } from '../connections/createMembership.ts';
+import { isRecoveryShare } from '../recovery/createShares.ts';
 
 // Phase 5c-i-δ/-ε — inbox surface for the People tab. Lists encrypted
 // envelopes that arrived through the transport since unlock, and
@@ -15,7 +16,11 @@ import { isMembership } from '../connections/createMembership.ts';
 //   - anything else (memberships, journals, etc.) → manual Copy for now
 // Membership auto-receive is the next sub-cut.
 
-export type InboxRouteAction = 'cosign-witness' | 'absorb-cosign' | 'membership-receive';
+export type InboxRouteAction =
+  | 'cosign-witness'
+  | 'absorb-cosign'
+  | 'membership-receive'
+  | 'recovery-share-receive';
 
 interface Props {
   envelopes: readonly InboxEnvelope[];
@@ -68,6 +73,13 @@ function routeFor(att: Attestation): Route | null {
       action: 'membership-receive',
       label: 'Accept membership',
       hint: 'A membership credential issued to you.',
+    };
+  }
+  if (isRecoveryShare(att)) {
+    return {
+      action: 'recovery-share-receive',
+      label: 'Hold share',
+      hint: 'A recovery share — a peer is asking you to hold one piece of their backup.',
     };
   }
   return null;

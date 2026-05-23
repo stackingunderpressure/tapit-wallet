@@ -130,6 +130,17 @@ const BUDGETS = [
   // when the operator opens the Lattice tab. Aggregates handshakes,
   // memberships, and recovery cohort into one read-only view.
   { pattern: /^LatticePanel-.*\.js$/, gz: 4_000, label: 'LatticePanel' },
+  // 5e-iii-b-2 createShares helpers — share-envelope builders +
+  // decrypt + hold; hoisted once both CohortEditorModal's
+  // DistributeSharesModal and the HomeScreen receive-route handler
+  // import isRecoveryShare / holdRecoveryShare.
+  { pattern: /^createShares-.*\.js$/, gz: 3_000, label: 'createShares helpers' },
+  // 5c-iii-a publishStatus helper — summarizePublish hoisted once
+  // multiple modals depend on it (now includes DistributeSharesModal).
+  { pattern: /^publishStatus-.*\.js$/, gz: 1_500, label: 'publishStatus helper' },
+  // walletStore helper hoisted once both WalletProvider and the
+  // recovery distribute modal import it directly.
+  { pattern: /^walletStore-.*\.js$/, gz: 2_000, label: 'walletStore helper' },
 
   // Phase 5c-i-δ peer-transport chunk, dynamically imported by
   // WalletProvider only when the operator opts into the Mycelium
