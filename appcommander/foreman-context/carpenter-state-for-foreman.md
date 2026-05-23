@@ -2,56 +2,46 @@
 
 **Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS.
 
-**Two-Carpenter workflow note:** Two parallel Claude sessions, main is the handshake point. `SessionStart` hook in `.claude/settings.json` validated again this session — confirmed no drift on entry, branch was current with main at 28f3238.
+**Two-Carpenter workflow note:** Two parallel Claude sessions, main is the handshake point. `SessionStart` hook in `.claude/settings.json` continues to catch drift cleanly across handoffs.
 
 ## WHAT-CHANGED-RECENTLY
 
-Three substantial cuts this 2026-05-24 session, shipping the Phase 5e substrate without the ceremony state machine itself:
+Five cuts this 2026-05-24 session toward Phase 5e recovery ceremony. Substrate + responder half complete; initiator half remains for fresh session.
 
-- **Cut 1 — Storage migration to v2 with K_data reuse** (`8ea9393`). New tapit-attest primitives `unwrapKData` + `reencryptRecoverableReuseKData` + `Wallet.exportRecoverableReuseKData`. `AnyEncryptedBlob` union flows through localStore + walletStore + remoteStore. createWallet writes v2 from day one; unlockWallet dispatches on `v`; saveWallet has three paths (fresh v2 / legacy v1 upgrade / v2 reuse). The reuse path is load-bearing: K_data stays stable across all future saves, so distributed shares stay valid forever.
+- **Cut 1 — Storage migration to v2 with K_data reuse** (`8ea9393`).
+- **Cut 2 — Recovery-share builders** (`806c45e`).
+- **Cut 3 — Distribute + receive routing** (`71c9dc6`).
+- **Cut 4 — Recovery-request + share-response envelope helpers + end-to-end round-trip test** (`d894446`). The round-trip test walks the full ceremony in-process: operator encrypts blob, extracts K_data, builds shares, peers hold them, operator's keypair is dropped, ceremony Wallet builds request, three of five peers respond, ceremony combines + decryptRecoverableWithKData decrypts the original plaintext. Math of the cascade is proven before any UI ships.
+- **Cut 5 — RecoveryResponderModal + inbox routing** (`1b089a5`). Strict out-of-band verification gating per brief decision 5; finds held share matching subject + share_for; builds + sends share-response via existing transport.
 
-- **Cut 2 — Recovery-share builders** (`806c45e`). `src/features/recovery/createShares.ts` exports `isRecoveryShare`, `readRecoveryShare`, `buildRecoveryShareEnvelope` (NIP-44 wraps share to peer), `buildRecoveryShares` (splits + builds N envelopes), `decryptHeldShare` (responder side), `holdRecoveryShare` (verify + hold + anchor on receive). Two new round-trip tests cover the full Shamir-split → encrypt-to-peer → peer-decrypts → combine loop.
-
-- **Cut 3 — Distribute + receive routing** (`71c9dc6`). `DistributeSharesModal` launched from CohortEditorModal once a cohort exists. Walks N peers with live per-row status (pending / sending / sent / failed) using `summarizePublish` for uniform language. `InboxPanel` + `HomeScreen` route incoming recovery-share envelopes via new `recovery-share-receive` action; peer's wallet auto-routes the share to `holdRecoveryShare`.
-
-D-03 stays loud across all three cuts: only K_data (32-byte symmetric data-encryption key) is ever split. The signing keypair is never touched.
-
-Prior arc on main (from code-Carpenter and prior theory-Carpenter sessions):
-
-- Phase 5c complete (5c-i α-λ, 5c-ii Tier R, 5c-iii-a delivery acks, 5c-iii-b multi-device sync).
-- Phase 5d Tier V device-verified presence.
-- Phase 5b-org full four-cut roadmap.
-- Phase 5e-ii Shamir primitives.
-- Phase 5e-iii-a cohort recording UI + credential.
-- Phase 5e-iii-b backup format v2 (library half).
-- Phase 5e-iii-b-2 library half (Wallet methods).
-- Phase 5e-iv Lattice visualization.
-- Verify-page polish for wife-test.
-- Phase 5e + 5f roadmap briefs.
+D-03 stays loud across all five cuts: only K_data is ever split. The signing keypair transfers authority ONLY through a peer-witnessed succession event the recovered wallet itself produces (5e-vii — remains for next session).
 
 ## Gates at session end
 
 - typecheck ✓
 - lint ✓
-- test ✓ — wallet 38/38 (2 new round-trip tests this session); tapit-attest 146 total (142 pass + 4 skipped network; 2 new this session)
+- test ✓ — wallet 40/40 (4 new tests this session including end-to-end ceremony round-trip); tapit-attest 146 total (142 pass + 4 skipped network; 2 new this session)
 - build ✓ — clean, no unrecognized chunks
 
 ## WHAT'S-PENDING
 
-1. **THE BIG PIECE — Phase 5e-v + 5e-vi + 5e-vii** (the recovery ceremony itself). All prerequisites now landed. Multi-round protocol-state-machine work:
-   - **5e-v initiator**: new-device first-run detects cloud-blob-exists-but-no-local-wallet → offers recovery flow → operator types/confirms cohort pubkeys (they have no local cohort credential because no wallet) → wallet generates fresh keypair → broadcasts recovery-request envelopes to each cohort pubkey via Mycelium naming the new pubkey.
-   - **5e-vi responder**: cohort peer receives recovery-request → modal opens with STRICT out-of-band verification gating ("have you verified by voice/video/in-person that this is really them?") → on confirm, peer's wallet looks up their held recovery-share for the matching subject, decrypts via `decryptHeldShare`, re-encrypts the raw share bytes to the new device's pubkey via `nip44EncryptTo`, sends back via Mycelium.
-   - **5e-vii recovery-succession**: new device collects M share-response envelopes, combines via `combineShares`, decrypts the cloud v2 blob via `Wallet.restoreFromKData`, restores the full wallet, then requests M cohort peers co-sign a recovery-succession credential binding new key to old identity. Touches the existing `tapit-attest/src/core/succession.ts` primitive — third shape of the chain alongside self-rotation and dual-signed-transition.
+1. **THE INITIATOR + COMBINE + SUCCESSION — Phase 5e-v + locked-screen wiring + restore + 5e-vii**. The heaviest remaining work.
+   - **5e-v initiator**: RecoveryInitiatorModal that opens from UnlockPrompt via a new "Lost passphrase? Start recovery" link. Generates a ceremony Wallet locally. Spins up an EPHEMERAL NostrTransport tied to the ceremony pubkey using current prefs.nostrRelays — load-bearing architectural choice; the ceremony has no Supabase session so it cannot piggy-back on the operator's existing transport. Operator enters their old identity pubkey + cohort member pubkeys/names (no local cohort credential exists yet — they have to remember or look up out-of-band). Modal sends recovery-request envelopes to each cohort pubkey via the ephemeral transport.
+   - **Combine + restore**: Ceremony pubkey's subscription receives share-response envelopes. UI shows per-responder progress (waiting / received / failed). Once M responses arrive, decryptShareResponse on each, combineShares to reconstruct K_data, then walletStore.load(ownerId) + Wallet.restoreFromKData(blob, kData) → restored Wallet.
+   - **5e-vii recovery-succession**: meta-kind attestation built via tapit-attest's existing succession primitive (third shape of the chain — peer-witnessed alongside self-rotation and dual-signed-transition). Subject = old operator identity; leaves = previous_key, new_key (the freshly-restored wallet's keypair, NOT the ceremony keypair — the restored wallet IS the operator now), recovered_at, cohort_M_witnesses. M peers asked to co-sign via the existing co-sign machinery. Once M signatures collected, the succession event is held in the new wallet alongside the recovered snapshot.
+   - **Save under new passphrase**: operator picks a new passphrase, restored wallet exports via exportRecoverable, walletStore.save with the new v2 blob, transition to unlocked state.
 
-2. **Latent bug — createCohort.readCohort reads `threshold` from a numeric leaf via leafValue (string-only), gets '', `Number('')` is 0, default-fallback of 3 masks it as the threshold silently resetting to 3 each time the cohort editor opens.** Fix is either (a) store threshold/totalShares as strings (matching the pattern in createShares.ts) or (b) add typed leafNumber helper to tapit-attest. Small follow-on, should land before the wife-test of recovery.
+2. **Latent bug — createCohort.readCohort numeric leaf via leafValue returns 0; default-fallback masks** as threshold silently resetting on every cohort-editor open. Small follow-on cut. Doesn't affect the recovery ceremony (recovery-share envelopes already store numbers as strings) but does affect the cohort editor UX. Worth landing before the wife-test of recovery.
 
-3. **Operator runs the wife-test of the polished /verify** — verify-page polish shipped at `530e946`.
+3. **K_data-stable invariant test** — assert across two serial saveWallet calls that the resulting blobs reuse the same K_data. Single most fragile property in the cascade; deserves a vitest.
 
-4. **Operator field-tests the full 5c stack with two devices** against real Nostr relays.
+4. **Operator runs the wife-test of /verify** — verify-page polish shipped at 530e946.
 
-5. **Operator field-tests Tier V presence** on a real device with real biometric + GPS.
+5. **Operator field-tests the full 5c stack with two devices** against real Nostr relays — also exercises the new distribute + responder flows.
 
-6. **First end-to-end distribute test** — declare a cohort with two real devices via Mycelium, click Distribute, watch the share arrive at the peer device's inbox and become a held attestation.
+6. **Operator field-tests Tier V presence** on a real device.
+
+7. **First end-to-end distribute test with two devices**: declare cohort with peer's pubkey, click Distribute, watch the share arrive in peer's inbox, peer hits Hold share, peer's wallet now holds the recovery-share attestation. This is the smallest real-device demo that exercises Phase 5e end-to-end before the ceremony itself ships.
 
 ### Strategic recommendations on the stack:
 
@@ -59,42 +49,44 @@ Prior arc on main (from code-Carpenter and prior theory-Carpenter sessions):
 - B. Plain-English UX language audit — open.
 - C. Nostr operational doctrine as post-hoc documentation — open.
 - D. Supply-chain expansion decision — open.
-- E. Interim peer-recovery story — superseded by 5e arc.
+- E. Interim peer-recovery story — fully superseded now; Phase 5e is the recovery story.
 - F. Auto-anchor passive capture — open.
 - G. First-pilot organization arc — operator's hands.
 - H. Positioning principle — open.
 
 ## WHAT-TO-FLAG
 
-**The substrate for the cascade is complete.** A wallet can declare a cohort, distribute shares, peers can hold their shares, and K_data stays stable across every save so the shares never silently age out. The ceremony itself remains.
+**The end-to-end round-trip test is the load-bearing proof the cascade works.** `createRecoveryRequest.test.ts` walks the full ceremony in-process and verifies plaintext recovery. Whatever else changes, that test must stay green.
 
-**The K_data-stable property is load-bearing.** If saveWallet ever drifts away from `exportRecoverableReuseKData` on the v2-existing-blob path, every distributed share silently invalidates against the next blob and recovery breaks. This is the single most fragile invariant in the cascade. Worth a comment-pin and possibly a vitest that walks save twice and asserts K_data identity (didn't add in this session — flag for future).
+**Ephemeral NostrTransport is the architectural choice the next session must make first.** The ceremony Wallet has no Supabase session and cannot piggy-back on the operator's existing transport. Cleanest: instantiate NostrTransport with the ceremony Wallet's keypair + current prefs.nostrRelays, subscribe to the ceremony pubkey, live for the modal duration, close on completion or abort. No persistent storage of the ceremony keypair anywhere.
 
-**Latent bug in existing cohort code** — see WHAT'S-PENDING #2.
+**Strict verification gating in the responder modal is non-negotiable.** Real-device walk with a peer pretending to be a real responder is worth doing before the ceremony first runs in anger. The strict checkbox is the single most important UI element below the cryptography; the language has to land as serious-but-clear.
 
-**DistributeSharesModal requires Mycelium transport enabled** — the existing sendEnvelope throws cleanly if not, but worth a note in the modal's empty-state prompt.
+**The K_data-stable invariant is the single most fragile property in the cascade.** Worth a test that asserts identity across two serial saves before the next session adds anything else to saveWallet.
 
-**Per-peer status is honest about Sent semantics** — "Sent" means a relay returned an OK frame, NOT that the recipient has accepted/decrypted/held. Consistent with the rest of the Send-via-Nostr surface.
+**The latent threshold bug in createCohort.readCohort** is small-but-real; default-fallback of 3 masks it as the threshold silently resetting on every cohort-editor reopen. Doesn't affect recovery directly because share envelopes store numbers as strings.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. **Fresh session for the ceremony** — Phase 5e-v + 5e-vi + 5e-vii bundled. Per operator directive: "we'll start a fresh one and knock out in one go."
-2. **Small follow-on cut** to fix the latent threshold bug in createCohort before the wife-test of recovery.
-3. **End-to-end distribute test** with two real devices once the operator has time.
-4. **Field tests** (wife-test, two-device 5c, Tier V real device) increasingly load-bearing.
-5. After the ceremony: **Phase 5f quorum org keys** per the `840ae02` brief.
+1. **Fresh session for the initiator + combine + succession** — heaviest remaining piece. Pre-decide the ephemeral-transport approach.
+2. **Small follow-on cut** to fix the latent threshold bug in createCohort + add the K_data-stable invariant test.
+3. **End-to-end distribute test** with two real devices.
+4. **Field tests** (wife-test, two-device 5c, Tier V real device) remain load-bearing.
+5. **After the ceremony**: Phase 5f quorum org keys per `840ae02`.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Meta-aware and momentum-protecting. Opened this session with "see where we are and let's cut" — clear directive to ground first, then ship. Hook fired, substrate landed in three layered cuts. The two-Carpenter workflow continues to produce one-Carpenter coherence; the SessionStart hook is now well-validated across multiple parallel-shipping scenarios.
+Momentum-protecting, open-handed authorization. "See where we are and let's cut" → "Cont" — clear directive, broad trust, no chip-stalls. Five cuts shipped without overreaching into the heaviest work. The two-Carpenter workflow continues to produce one-Carpenter coherence across cleanly-bounded sessions.
 
-The operator listens via TTS and copy-alls; verbose theory replies remain a real cost. Stay tight.
+The operator listens via TTS and copy-alls; keep replies tight.
 
 ## Ideas ready to revisit
 
-All prior entries hold. The supply-chain expansion decision is still open. The wife-test framing remains the highest-fidelity adoption signal at hand. The PreToolUse drift hook idea (belt-and-suspenders) is still a candidate. The branch-gate implementation idea is still on the stack.
+All prior entries hold.
 
-- **NEW 2026-05-24 — K_data-stable property pin**: worth a comment + maybe a vitest that walks save twice and asserts K_data identity. Single most fragile invariant in the cascade.
-- **NEW 2026-05-24 — typed leafNumber helper or string-leaves convention**: address the latent threshold bug in createCohort.readCohort and pin a project-wide convention for numeric leaves.
+- **2026-05-24 — K_data-stable invariant test**: assert across two serial saves that the resulting blobs reuse the same K_data. Worth landing before the next save-path change.
+- **2026-05-24 — typed leafNumber helper or string-leaves convention**: address the latent threshold bug in createCohort.readCohort, pin a project-wide convention for numeric leaves.
+- **2026-05-24 — recovery-responder UX real-device walk**: the strict-verification checkbox is load-bearing; language deserves a peer-pretending-to-respond rehearsal.
+- **2026-05-24 — ephemeral NostrTransport architectural decision**: pre-decide for the next session's initiator cut.
 
 Full entries in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`.
