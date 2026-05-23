@@ -37,13 +37,13 @@ const ASSETS_DIR = join(here, '..', 'dist', 'assets');
 // surprises matter, looser for vendors with known bulk.
 const BUDGETS = [
   // Login surface — must stay tiny. 2026-05-23 lifted from 5.5KB to
-  // 9KB when LoginPage was refactored into the shared WalletGuide
-  // tabs component (Why & Who / What it holds / Recovery / Account).
-  // The operator's explicit ask: landing page doubles as the wallet's
-  // reference surface, also reachable from inside the app at /about.
-  // Current ~7.8KB gz. The next structural rethink (lazy-load
-  // non-Account tabs as separate chunks) fires past 9KB.
-  { pattern: /^index-.*\.js$/, gz: 9_000, label: 'login bundle (main)' },
+  // 10KB across two operator-requested expansions: first the
+  // WalletGuide tabs surface (Why & Who / What it holds / Recovery /
+  // Account) replacing the standalone LoginPage hero, then the
+  // OpenTimestamps anchoring explanation added to What it holds.
+  // Current ~8.85KB gz. The next structural rethink (lazy-load the
+  // non-Account tabs as separate chunks) fires past 10KB.
+  { pattern: /^index-.*\.js$/, gz: 10_000, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB today; cap at 6KB.
   { pattern: /^index-.*\.css$/, gz: 6_000, label: 'css' },
 

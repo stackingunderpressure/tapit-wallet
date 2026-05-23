@@ -235,6 +235,65 @@ function WhatItHolds() {
         recovery-succession events. The chain's metadata about itself.
       </Card>
 
+      <div className="mt-6 rounded-xl border border-ink/15 bg-paper/70 p-4">
+        <div className="text-sm font-semibold text-ink">
+          Anchored to Bitcoin via OpenTimestamps
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-ink/75">
+          Every signed envelope can be anchored to a public clock the wallet
+          does not control. The anchoring is powered by{' '}
+          <a
+            href="https://opentimestamps.org"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-accent underline-offset-2 hover:underline"
+          >
+            OpenTimestamps
+          </a>{' '}
+          — an open standard created by Peter Todd that lets the wallet
+          submit just the SHA-256 hash of an envelope to free calendar
+          servers, which aggregate huge numbers of these hashes into one
+          Merkle tree and commit the tree's root to a Bitcoin transaction.
+          A few Bitcoin blocks later the wallet downloads a small proof
+          that walks from your envelope's hash up through the aggregation
+          tree to a real Bitcoin block height. The envelope itself never
+          touches the calendar server — only the hash does, so privacy is
+          preserved — and the wallet shows the block height inline as
+          "Time-verified · block N" once the proof has matured.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink/75">
+          Why this is different from an empty time claim: a wallet that
+          just says "I signed this at 3:42 PM" is asking you to trust the
+          wallet's clock — and the wallet's clock can lie, drift,
+          backdate, or be wound forward. A server-stamped time claim is
+          worse: now you're trusting the server too, and a compromised or
+          coerced server can stamp anything it wants. Bitcoin's block
+          chain is a public clock no single party controls. Every block
+          carries a timestamp that thousands of independent nodes have to
+          agree on. An OpenTimestamps proof says "this hash existed by
+          block N" — and rewriting block N means rewriting the entire
+          Bitcoin chain after it, which costs more energy than humans
+          currently produce. The honest precision: anchoring proves the
+          envelope existed at-or-before that block's time, not the exact
+          moment, but at-or-before is enough to refute backdating and to
+          establish before/after ordering between any two anchored
+          envelopes anywhere in the world.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink/75">
+          The proof travels with the envelope. A verifier anywhere on
+          earth, holding just your envelope's bytes plus the OTS proof
+          plus a Bitcoin block-height oracle, can independently check
+          three things at once: the wallet's signature is valid, the
+          envelope's hash matches the one OpenTimestamps recorded, and
+          the Bitcoin block at that height confirms the timestamp.
+          That's the math-not-trust principle reaching all the way down
+          to time itself. Tapit Wallet credits OpenTimestamps for making
+          this layer possible — the wallet uses the protocol exactly as
+          designed and forwards the same calendar servers anyone else
+          using OTS does.
+        </p>
+      </div>
+
       <p className="mt-5 text-xs leading-relaxed text-muted">
         Every envelope verifies against its signature alone — a third party
         with the envelope plus a tapit-attest verifier can check the math
