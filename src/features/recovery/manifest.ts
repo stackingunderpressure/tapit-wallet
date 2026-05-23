@@ -4,10 +4,11 @@ export const manifest: FeatureManifest = {
   slug: 'recovery',
   born: '2026-05-24',
   purpose:
-    'Phase 5e — hyphal lattice + Shamir cascade recovery (MYCELIUM_NETWORK_SPEC §12). Cut 5e-iii-a ships this: the operator declares which peers from their handshake web they would trust to help recover this wallet on a new device, along with the (M, N) threshold the recovery ceremony will require. The cohort is recorded as a self-signed credential, anchored to Bitcoin alongside everything else. Share distribution + backup-format v2 lands in 5e-iii-b. The recovery ceremony itself (initiator + responder + recovery-succession event) lands in 5e-v / -vi / -vii. The cryptographic floor (GF(256) Shamir split + combine) shipped in tapit-attest at 5e-ii. The load-bearing constraint stays loud: the Shamir split is over the backup ENCRYPTION KEY, never the signing keypair.',
+    'Phase 5e — hyphal lattice + Shamir cascade recovery (MYCELIUM_NETWORK_SPEC §12). Cut 5e-iii-a shipped the recovery-cohort declaration UI + credential; 5e-iii-b shipped the cryptographic foundation (backup-format v2 with two independent paths to K_data). Cut 5e-iv adds the read-only Lattice screen at /lattice — the operator’s direct web in one view: handshakes (Tier P + Tier R), memberships (with the existing chain-walk sheet), and the declared cohort, with a Cohort badge surfacing the overlap between handshake contacts and cohort members. Editing routes back to the already-shipped flows (People tab / Identity tab / Settings). The recovery ceremony itself (initiator + responder + recovery-succession event) lands in 5e-v / -vi / -vii. The cryptographic floor (GF(256) Shamir split + combine) shipped in tapit-attest at 5e-ii. The load-bearing constraint stays loud: the Shamir split is over the backup ENCRYPTION KEY, never the signing keypair.',
   touches: [
     'src/features/recovery/createCohort.ts',
     'src/features/recovery/CohortEditorModal.tsx',
+    'src/features/recovery/LatticeScreen.tsx',
   ],
   depends_on: ['wallet-core', 'anchoring', 'connections'],
   pause_safe: true,

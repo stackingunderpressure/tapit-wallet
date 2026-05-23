@@ -1,89 +1,169 @@
 # Carpenter state — for Foreman's eyes
 
-**Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS.
+**Operator-mode note:** AppCommander down. Operator running manual against
+live Netlify + Supabase deploy. v1 shipped. Operator on iOS, listens via
+TTS. SessionStart drift hook is active on this branch and reported "no
+drift detected" at session open.
 
-**Two-Carpenter workflow note:** The operator runs two parallel Claude sessions — one cutting code, one in theory conversation — each on its own branch. Main is the canonical handshake point between the two streams. A new `SessionStart` hook in `.claude/settings.json` now mechanically detects drift between the branch and `origin/main` at every session start.
+**Branch:** `claude/next-steps-xzmdk`. Current with `origin/main` at
+session start; carries `530e946` (verify-page polish), the 5c-iii pair,
+5d Tier V, the Phase 5f quorum-keys brief, the Phase 5e Shamir cascade
+roadmap, and the Shamir + cohort + backup-v2 cuts (5e-ii, 5e-iii-a,
+5e-iii-b). This session adds 5e-iv on top.
 
 ## WHAT-CHANGED-RECENTLY
 
-Phase 5c is structurally complete on main (last code work at `f406199` "Officials roster — Phase 5b-org-ii", which landed during this very session — the code-Carpenter shipped between this branch's first push and this branch's main push, which the new hook would have caught). This 2026-05-23 session added one piece of infrastructure on top:
+This 2026-05-24 session shipped Phase 5e-iv — the read-only Lattice
+screen at `/lattice`. Per the Phase 5e brief the cut was sized at 3-5
+days of mostly rendering with no protocol, and the locked sequence
+made it the next thing to cut. One session was enough.
 
-- **Cross-Carpenter drift hook** — `scripts/session-start-grounding.mjs` plus a `SessionStart` entry in `.claude/settings.json`. Fetches origin at every session start; if `origin/main` has moved past the current branch's merge-base, emits a structured drift report into the session's initial context (commit list, most-recent `current.json` summary, required reads). Catches the failure mode that surfaced this session: a theory-Carpenter on a stale branch confidently giving forward-looking advice that's wrong-relative-to-actual-state because main has shipped past where the branch was rooted.
+The screen surfaces the operator's direct web in three sections, in
+the order they care about when they open it: Recovery cohort (with
+threshold, total shares, declared-at, member list, and a Cohort
+badge per member), People (handshakes sorted newest-first with a
+Tier P / Tier R counts line, and a Cohort badge overlaid on any
+ConnectionCard whose peer is also in the cohort), and Organizations
+(memberships with the existing MembershipChainSheet wired in for
+nested-org walks). Empty states route the operator back to the
+editing surfaces — Settings for cohort, the People tab for
+handshakes. Friend-of-friend transitive paths are explicitly named
+as a future increment per the spec's "direct list first, transitive
+scoring later" framing.
 
-Prior arc on main (from the code-Carpenter, branch `claude/compare-library-wallet-OW5FF` merged):
+Wiring touches outside the new screen: lazy `/lattice` route added
+to `src/App.tsx`, header link "Lattice" added next to Settings on
+HomeScreen (wrapped in flex gap-4), recovery manifest touches array
+updated, bundle-budget script gains a LatticeScreen 5KB budget.
+Actual ship size: 2.12 KB gzipped.
 
-- **Phase 5a** in-person handshake (`6e206aa`).
-- **Phase 5b** organizations + membership (`85d6a51`).
-- **Phase 5c-i α through λ** — NIP-44 v2 primitive, Nostr wire client, wallet wire-up, inbox UI, auto-route, send-back, send-via-Nostr in CosignRequestModal + MembershipModal, peer picker, membership auto-receive, operator-editable custom relay list.
-- **NIP-44 reference-vector interop** (`a4c8f23`) — 10/10 upstream spec vectors round-trip.
-- **Phase 5c-ii** Tier R remote handshakes (`daabd3d`).
-- **Auto-dismiss polish** (`93afbc4`).
-- **Multi-field disclosure proofs** (`c013ae1`) — library primitive + wallet UI.
-- **Phase 5b-org-i** org-mode declaration + Members view (`11a262e`).
-- **Phase 5b-org-ii** officials roster — editable list of org officers as a signed credential, history audit-friendly (`f406199`, landed during this session).
-- **Phase 5b-org-iii** ratifications view — every membership card surfaces 'N of M ratifications' against the latest officials roster, reusing the existing CosignAsWitness machinery (`364437c`, also landed during this session — code-Carpenter shipped three org-roadmap cuts in real-time while this hook was being built).
+Phase 5e position now: 5e-i (library decision, documented in
+`decisions.md`), 5e-ii (Shamir primitives in tapit-attest), 5e-iii-a
+(cohort UI + credential), 5e-iii-b (backup format v2), 5e-iv
+(Lattice screen, this cut) — all landed. Remaining: 5e-v (recovery
+ceremony initiator), 5e-vi (recovery ceremony responder), 5e-vii
+(recovery-succession event).
 
 ## Gates at session end
 
 - typecheck ✓
 - lint ✓
-- test ✓ — 31/31 wallet tests; tapit-attest at 98/98 from prior sessions (4 skipped network-deps)
-- build ✓ — 274 modules transformed in 3.13s
+- test ✓ — 36/36 wallet tests (no new tests; pure composition of
+  already-tested data layer + already-tested rendering primitives)
+- build ✓ — all bundle budgets green; LatticeScreen 2.12 KB gz under
+  a 5 KB budget
 
 ## WHAT'S-PENDING
 
-1. **Operator runs the wife-test of the verify-page.** From the theory conversation: share a proof from a journal entry → wife opens `/verify` in her browser (outside `AuthGate`, no install) → pastes, sees green → tampers one character of the disclosed value, sees amber. The most valuable adoption-UX signal the project has at its disposal. Note: the verify page surface MAY have changed with the multi-field disclosure work — a quick walk before the wife-test would be smart.
-2. **Operator field-tests the full 5c stack** with two devices against real Nostr relays. The open question that nothing in code-land can resolve.
-3. **5c-iii** — multi-device connection sync + relay-OK delivery acks. Only piece of Phase 5c left.
-4. **Phase 5d** — Tier V device-verified presence (WebAuthn / passkey + geolocation + timestamp).
-5. **Phase 5e / 5f** — quorum org-key governance + recovery-share workflows.
-
-### Eight strategic recommendations from the 2026-05-23 theory walk (on the stack, no-code or polish-shaped):
-
-- **A. Verify-page polish audit** — short-form hex pubkeys humanized, amber→red severity question, QR-as-primary vs textarea-as-primary, "what just happened" inline explanation for first-time visitors. Promoted to highest-leverage by the wife-test framing.
-- **B. Plain-English UX language audit** — sweep user-facing surfaces, build a glossary mapping "attestation" / "envelope" / "merkle" / "tier" to human English, ship the rename pass.
-- **C. Nostr operational doctrine as POST-hoc documentation** — now that 5c has shipped, doc what the code actually does for relays, encryption defaults, metadata posture, NIP-65 publishing. (Was framed as pre-5c in the theory session, but 5c had already shipped.)
-- **D. Supply-chain expansion decision** — pursue, defer, or non-goal. The Phase 2.6 custody-handoff primitive IS supply-chain handoff mathematically; ten concrete applications walked in the conversation. Worth a deliberate call.
-- **E. Interim peer-recovery story** before the full Phase 5e Shamir cascade — design conversation.
-- **F. Auto-anchor passive capture** — biggest adoption lever named; real new feature, deferred design conversation.
-- **G. First-pilot organization arc** for institutional onramp — policy/sales work, operator's hands.
-- **H. Positioning principle: substrate underneath existing behavior** — meta, informs the others.
+1. **Operator walk-through the new Lattice screen** on a real device.
+   Four cases worth checking: no cohort no handshakes (full empty
+   state), no cohort with handshakes (cohort empty + People list +
+   no Cohort badges), cohort declared with overlapping handshakes
+   (Cohort badges visible on the ConnectionCards), cohort declared
+   with no overlap (cohort section shows members but no badges on
+   any ConnectionCard). Pay attention to the absolute-positioned
+   Cohort badge on ConnectionCard at narrow widths — see the
+   carpenter-opinions Section 2 note for the specific concern.
+2. **5e-v — recovery ceremony, initiator side.** The big one. New-
+   device first-run detects cloud-backup blob exists, generates
+   a fresh local keypair, publishes a recovery request via
+   Mycelium addressed to each cohort member's pubkey, names the
+   new keypair in the request, asks peers to verify out-of-band
+   before encrypting their shares. State machine work: fresh
+   keypair generation + recovery-request envelope shape + Mycelium
+   publish + collect-M-shares + combine + decrypt + Wallet.restore.
+   Brief recommends brief-refresh before code lands — the state
+   machine is real protocol work with explicit out-of-band
+   verification gating, and the Mycelium round-trips need
+   ack-aware honest status.
+3. **5e-vi — responder side, 5e-vii — recovery-succession event.**
+   Follow-on cuts after 5e-v lands.
+4. **Phase 5f — quorum org keys.** Brief already in place at
+   `briefs/2026-05-23-quorum-org-keys-roadmap.md`; opens cleanly
+   once 5e is complete.
+5. **Operator field test of the full 5a/5b/5c/5d stack** against
+   real Nostr relays with two devices. Open question that no
+   amount of code work can resolve.
+6. **Wife-test of the verify-page** with the polish that landed
+   at `530e946`. Highest-fidelity adoption-UX signal at hand.
 
 ## WHAT-TO-FLAG
 
-**The cross-Carpenter drift hook is the first of its kind in this repo.** Future PreToolUse hook on git push for belt-and-suspenders is a candidate but not built — SessionStart alone catches the case that surfaced. The CLAUDE_ROOT.md doctrine mentions "branch gate: no unfinished or dead branch before new work — run by the SessionStart hook" — that's a SEPARATE gap; no branch-unfinished check exists as a script. Worth either implementing or removing the doctrine claim in a future session.
+**The Cohort badge on ConnectionCard uses absolute positioning with
+a fixed right offset of 16** so it sits beside the Tier P / Tier R
+badge that already lives at the top-right. On a 375px screen with
+short peer names the layout reads fine; on a long peer name that
+wraps, or on a very narrow screen, the badge may overlap the name
+text awkwardly. The clean fix is restructuring ConnectionCard to
+accept an optional badges array prop and laying them out
+internally, OR rendering the Cohort badge inline below the row.
+Either is a small follow-on; not done this session because the
+brief sized 5e-iv as a single-session rendering cut. Worth a
+DevTools look at 320px width before declaring the visual
+unconditionally clean.
 
-**The theory conversation from this session's Phase A produced real strategic value despite operating on stale state.** Most of it survives the correction (the math-not-trust thesis is timeless; the human-patterns walk is forward-looking; the supply-chain mapping is unaffected by what shipped this week; the comparable-systems landscape is unaffected by phase progression). The eight recommendations are now in front of the operator. The wife-test is the single most actionable item.
+**No browser walk-through this session.** Tests and type checks
+verify code correctness, not UX correctness. The honest read is
+"the code should render the right thing on first load; the visual
+polish needs a human's eyes before declaring it shipped." The
+walk-through is the WHAT'S-PENDING #1 above for that reason.
 
-**Multi-field disclosure proofs shipped on main** (`c013ae1`). The original Phase 4 single-leaf primitive has been generalized. If the operator runs the wife-test, the verify-page experience MAY have changed surface-wise (multi-leaf reveals, etc.) — worth a five-minute walk before the demo.
-
-**The two-Carpenter workflow is now structurally protected.** Each session starts with a fetch + drift check. If the OTHER Carpenter has shipped to main, this session knows immediately and grounds against main rather than the stale local PLAN.md. If they haven't, the hook says so explicitly. Bidirectional, mechanical.
+**The Phase 5e brief explicitly recommended brief-first for the
+recovery ceremony cuts** (5e-v / 5e-vi / 5e-vii) because the state
+machine is real protocol work, and that recommendation stands.
+Recommend the next session opens with a brief refresh for 5e-v
+specifically — fresh-keypair generation, recovery-request envelope
+shape, the receive-side modal copy that surfaces out-of-band
+verification as a required step rather than an afterthought, and
+the share-encryption-to-fresh-pubkey path. The brief at
+`briefs/2026-05-24-shamir-cascade-recovery-roadmap.md` is the
+right starting point.
 
 ## RECOMMENDED-NEXT-MOVES
 
-1. **Operator runs the wife-test of the verify-page.** Highest-fidelity UX signal available right now.
-2. **Operator field-tests 5a/5b/5c stack with two devices** against real Nostr relays.
-3. **Cut 5c-iii** if the field test reveals delivery-ack or multi-device-sync urgency.
-4. **Cut Phase 5d Tier V** as the next major increment.
-5. **Pull verify-page polish audit forward** if the wife-test produces stumbling-point data.
-6. **Decide supply-chain expansion question** explicitly.
+1. **Operator walks the Lattice screen on a real device** to
+   validate the visual at 375px / 320px and confirm the cohort
+   cross-reference badge does what it should.
+2. **Brief-refresh for Phase 5e-v** — the recovery ceremony
+   initiator state machine. Sketch the envelope shape, the modal
+   sequence, and the failure-mode handling before code lands.
+3. **Cut 5e-v** once the brief is sharp. Sized 1-2 weeks in the
+   original brief; budget accordingly.
+4. **Operator field test of 5a/5b/5c/5d stack** against real
+   relays with two devices remains the open evidence question.
+5. **Wife-test of the polished verify-page** — independent of the
+   5e arc; the most actionable adoption signal at hand.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Reflective, big-picture, decisive, and increasingly meta-aware about the workflow itself. This session ended with the operator naming the cross-Carpenter failure mode directly: "that's me cutting code on one Claude and write ideas and theory with the other Claude and then you just watched it divergent catch up in one instant." He authorized the hook addition with broad latitude — "you resolve that however you think is best you know where I stand" — and named the right design principle: "let's set up some gates to climb over them and fix them and catch them." Maximum trust in autonomy; expects mechanical defenses against the failure modes he names. The Carpenter delivered on that authorization this session.
-
-The operator listens via TTS and copy-alls replies, so verbose theory replies are a real cost — that's a feedback note for future sessions.
+Operator is in execution-flow mode: terse instruction ("Fire up
+and take over on next steps knock out what you can as long as you
+see the line"), trusts the Carpenter to ground, see the locked
+sequence, and cut. Hands off, autonomous, but with the standing
+constraint that the gates must be green and the comms must be
+written. This session honored both. The line was clear — Phase
+5e-iv was the next thing in the locked sequence and it was a
+single-session rendering cut — and the work landed in one pass
+with all four gates green on the first try.
 
 ## Ideas ready to revisit
 
-- **NIP-44 reference vectors** — DONE earlier on 2026-05-23.
-- **Sign-in-with-existing-Nostr-account** — entry logged earlier; natural moment is now or just after the first two-device field test.
-- **Delivery confirmation UI** — becomes the 5c-iii cut.
-- **Tier R responder identity fetch** — polish for after field test; today's name-as-typed is honest about the tier.
-- **Wallet as hardware-backed object** — long horizon; Wallet class owns `#keypair`, the day a secure-element / passkey backend lands it slots in behind the same interface.
-- **NEW 2026-05-23 — supply-chain expansion** — surfaced in theory walk; needs deliberate pursue/defer/non-goal decision. The same substrate that does personal sovereignty does food provenance, cold-chain integrity, fair-trade-with-workers-as-signers, smart-seal-on-container, counterfeit-proof pharmaceuticals. B2B revenue model exists; doesn't compromise the sovereignty constraint.
-- **NEW 2026-05-23 — wife-test framing for adoption** — the "paste, tamper, watch math reject" demonstration on /verify is the unit of conversion for non-cryptographers. Promoted from idea to immediate operator action.
-- **NEW 2026-05-23 — PreToolUse drift hook for git push** — belt-and-suspenders to this session's SessionStart hook.
-- **NEW 2026-05-23 — branch-gate implementation** — the doctrine claim in CLAUDE_ROOT.md mentions a SessionStart-driven branch-gate that doesn't actually exist as a script. Either implement or delete the claim.
+- **CohortSummaryCard extraction with variant prop** — pressure
+  to extract a shared component grows when 5e-v adds a third
+  rendering site for cohort data (the recovery ceremony screens).
+  Pre-decision: hold off until then.
+- **ConnectionCard badges array prop** — refactor enabling
+  multiple badges on the top-right corner without absolute
+  positioning. Worth doing if the Lattice screen's Cohort badge
+  overlap surfaces as a real problem in the operator's walk-
+  through.
+- **Friend-of-friend transitive paths on the Lattice screen** —
+  the v1 surface explicitly names this as a deferred increment.
+  Likely the natural follow-on after the recovery ceremony arc
+  closes; same UX vocabulary, deeper data behind it.
+- **Lattice screen → wife-test framing** — if the verify-page
+  wife-test produces good adoption signal, the Lattice screen
+  is the natural second demo target ("this is the web that
+  proves who I am, and the web that puts me back together").
 
-Full entries in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md` (note: this session did not write to ideas.md — the new entries above are flagged here for the next session to fold in).
+Full entries belong in `project-memory/foreman-memory/projects/tapit-wallet/ideas.md`; this session did not write to that file — the new entries above are flagged here for the next session to fold in.

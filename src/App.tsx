@@ -42,6 +42,11 @@ const CaptureScreen = lazy(() =>
     default: m.CaptureScreen,
   })),
 );
+const LatticeScreen = lazy(() =>
+  import('./features/recovery/LatticeScreen.tsx').then((m) => ({
+    default: m.LatticeScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -75,6 +80,7 @@ export function App() {
                     <Route path="/entry/:digest" element={<JournalDetail />} />
                     <Route path="/sign" element={<SignApprovalScreen />} />
                     <Route path="/capture" element={<CaptureScreen />} />
+                    <Route path="/lattice" element={<LatticeScreen />} />
                   </Routes>
                 </WalletProvider>
               </Suspense>

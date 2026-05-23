@@ -68,6 +68,12 @@ const BUDGETS = [
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
   { pattern: /^CaptureScreen-.*\.js$/, gz: 2_000, label: 'CaptureScreen' },
+  // Phase 5e-iv — read-only Lattice screen. Composes existing
+  // ConnectionCard + MembershipCard + MembershipChainSheet plus a
+  // recovery-cohort summary block. Tiny code surface; budget is loose
+  // to absorb future polish (friend-of-friend rendering when
+  // transitive trust lands as a follow-on increment).
+  { pattern: /^LatticeScreen-.*\.js$/, gz: 5_000, label: 'LatticeScreen' },
 
   // QR feature carries the qrcode library — known heavy.
   { pattern: /^QrShow-.*\.js$/, gz: 15_000, label: 'QrShow (qrcode lib)' },

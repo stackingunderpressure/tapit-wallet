@@ -1,47 +1,44 @@
 {
   "v": 1,
-  "ts": "2026-05-24T01:00:00Z",
-  "session_id": "phase-5d-tier-v-2026-05-24-1779571500",
-  "who": { "actor": "carpenter", "feature_slug": "presence" },
+  "ts": "2026-05-24T06:36:30Z",
+  "session_id": "phase-5e-iv-lattice-2026-05-24-1779518029",
+  "who": { "actor": "carpenter", "feature_slug": "recovery" },
   "where": {
     "files": [
-      "src/features/presence/webauthn.ts",
-      "src/features/presence/geolocation.ts",
-      "src/features/presence/createPresence.ts",
-      "src/features/presence/MarkPresenceModal.tsx",
-      "src/features/presence/manifest.ts",
-      "src/features-registry.ts",
+      "src/features/recovery/LatticeScreen.tsx",
+      "src/App.tsx",
       "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/recovery/manifest.ts",
       "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "/#identity (Presence section + Mark Presence modal)"
+    "screen_path": "/lattice"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "This session shipped 5c-iii-a (delivery acks), 5c-iii-b (multi-device sync), and 5d (Tier V device-verified presence) — plus a Phase 5f quorum-keys roadmap brief, the verify-page polish for the wife-test, and the four-cut org-mode UI roadmap that landed earlier in the same thread. Phase 5d closes with the new src/features/presence/ feature: WebAuthn passkey enrollment + assertion, geolocation wrapper, device-passkey + tier-v-presence credential builders, and a MarkPresenceModal lazy-loaded from HomeScreen. The Identity tab grows a Presence section. Honest about limits per the spec — 'to the best of the device's ability.'",
+  "summary": "Phase 5e-iv landed — read-only Lattice screen at /lattice surfacing the operator's direct web in one view. Three sections in this order: recovery cohort (M of N peers + Cohort badge + Declared date), People (handshakes with Tier P / Tier R counts, plus a Cohort badge on the cards whose peer is also in the recovery cohort), Organizations (memberships with the existing chain-walk sheet for nested orgs). Empty states route the operator back to the editing surfaces — Settings for cohort, the People tab for handshakes. Friend-of-friend transitive paths explicitly named as a future increment per the spec's 'direct list first, transitive scoring later.'",
   "why": {
-    "text": "Operator's standing directive: 'as long as you're knocking something out and you're grounded, I think you're doing a fantastic job.' Locked sequence per Phase 5f roadmap brief: 5c-iii → 5d → 5e → 5f. Knocked out the entire 5c-iii pair plus 5d in this session.",
+    "text": "Operator's standing directive carried in this branch: 'fire up and take over on next steps knock out what you can as long as you see the line.' The Phase 5e brief's locked sequence: 5e-i (decision) → 5e-ii (Shamir primitives, DONE c8852b3) → 5e-iii-a (cohort UI, DONE 34ad1a8) → 5e-iii-b (backup v2, DONE 84ebbc2) → 5e-iv (Lattice view, this cut) → 5e-v / 5e-vi / 5e-vii (the recovery ceremony, deferred to a multi-session arc). 5e-iv is the rendering-shaped cut sized at 3-5 days in the brief; one session was enough.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5D-COMPLETE"
+    "linked_mission_id": "TAPITWALLET-2026-05-24-PHASE-5E-IV-LATTICE"
   },
   "outcome": {
     "files_changed": [
-      "5c-iii-a delivery acks: transport.publish returns PublishResult; NostrTransport routes OK frames to pending publishes; publishStatus.summarizePublish helper renders plain-English status across four send-via-Nostr modals",
-      "5c-iii-b multi-device sync: sendEnvelopeToSelf, syncEnvelope context method, inbox auto-hold on senderPubkey == own identity, JournalComposer wired",
-      "5d Tier V: src/features/presence/ (webauthn + geolocation + createPresence + MarkPresenceModal + manifest); HomeScreen Presence section; React.lazy-loaded modal",
-      "Bundle-budget adjustments: HomeScreen 13 → 14.5 KB, named MarkPresenceModal + createOrganization helpers"
+      "src/features/recovery/LatticeScreen.tsx — new read-only screen; composes ConnectionCard + MembershipCard + MembershipChainSheet + a cohort summary block; cross-section Cohort badge surfaces the overlap between handshake contacts and cohort members",
+      "src/App.tsx — lazy /lattice route inside the AuthGate / WalletProvider tree",
+      "src/features/wallet-core/HomeScreen.tsx — header link 'Lattice' added next to Settings, both wrapped in a flex container",
+      "src/features/recovery/manifest.ts — touches array adds LatticeScreen.tsx; purpose updated with 5e-iv scope",
+      "scripts/bundle-budget.mjs — LatticeScreen budget at 5 KB gz (actual ~2.12 KB gz today)"
     ],
-    "tests_passing": "wallet 36/36 (4 new ack tests + 1 self-CC test added this session). tapit-attest 109/109 from earlier sessions still green.",
+    "tests_passing": "wallet 36/36 (no new tests this cut — pure composition of already-tested data layer + already-tested rendering primitives)",
     "build_green": true,
-    "notes": "[P-001] 5c-iii-a delivery acks shipped at e40c7e1 — Sent no longer means 'I dispatched'; it means 'a relay said yes' or honestly 'no acks yet'. [P-002] 5c-iii-b multi-device sync shipped at 114447d — self-CC envelopes encrypted to own pubkey; inbox auto-holds on senderPubkey == own. [P-003] Phase 5d Tier V shipped at 939ee51 — WebAuthn passkey + Geolocation + signed event; modal lazy-loaded; Identity tab Presence section. [P-004] Phase 5f brief at 840ae02 names six cuts (library decision, library primitives, ceremony, constitutional acts, migration, FROST). [P-005] Verify-page wife-test polish at 530e946 — red on tamper, plain-English bridge, collapsible How-it-works. [FEEDBACK→Foreman]: Phase 5e (hyphal lattice + Shamir cascade recovery) is the next chunky cut and should be brief-first, not freelance — Shamir split + peer-share-encryption + recovery ceremony is a real protocol, not a one-session knockout. Recommend a sketch at briefs/2026-05-24-shamir-cascade-recovery-roadmap.md before code lands."
+    "notes": "[P-001] LatticeScreen shipped at /lattice — three sections (Recovery cohort / People / Organizations) with read-only rendering and Cohort badge cross-reference. [P-002] HomeScreen header gains a Lattice link next to Settings; both wrap in flex gap-4 so the layout stays single-line on 375px. [P-003] App.tsx lazy-loads the screen as a separate chunk; ships at 2.12 KB gz under a 5 KB budget. [P-004] Recovery manifest's touches array + purpose updated to record the cut. [P-005] All four gates green: typecheck, lint, test (36/36), build (bundle budgets all green). [FEEDBACK→Foreman]: 5e-v / 5e-vi (recovery ceremony, initiator + responder) is the heavy interactive protocol piece — sized 1-2 weeks each in the brief — and should probably get a multi-session arc rather than a single-session knockout. The state machine has explicit verification steps with out-of-band gating that need careful UX, and the Mycelium round-trips need ack-aware honest status. Recommend brief-refresh before code lands."
   },
   "confidence": 92,
-  "uncertainty": "WebAuthn enrollment + assertion are unit-untested because jsdom does not implement them; the API surface follows the standard contract and works under operator field testing. The presence verifier flow (independent verification of the WebAuthn assertion signature against a published enrollment public key) is deferred — leaves are recorded for the future verifier. Two-device field test of multi-device sync against real Nostr relays is the open evidence question.",
+  "uncertainty": "Did not exercise the screen in a browser this session — operator field walk-through is still the highest-fidelity validation. The cross-section Cohort badge on ConnectionCard uses absolute positioning with a fixed right offset which could overlap awkwardly on long peer names on very narrow screens; the existing Tier P/R badge has the same right-anchor pattern but doesn't compose with the new Cohort badge. Worth a five-second look in DevTools at 320px width before declaring the visual unconditionally clean.",
   "ripple": [
-    "transport — publish API now returns PublishResult; every consumer updated this session",
-    "wallet-core — WalletContext grew sendEnvelope (with ack) and syncEnvelope (multi-device); WalletProvider inbox handler auto-holds self-CCs",
-    "presence — new feature folder; lazy-loaded from HomeScreen",
-    "operator-workflow — wife-test, two-device field test, and Tier V presence demo are all unblocked at the UX level"
+    "recovery — feature folder gains a route-level screen; the cohort summary block reads the same data Settings reads (no new persistence surface)",
+    "wallet-core — HomeScreen header grew one link; the 14.5 KB bundle budget continues to hold (no measurable size change beyond the link element itself)",
+    "operator-workflow — Lattice surface is now a one-tap view of the entire direct web; will make the wife-test framing easier ('here's the web that proves who I am')"
   ],
-  "next": "Phase 5e — hyphal lattice + Shamir cascade recovery — is the next major increment per the locked sequence. Recommend brief-first: Shamir split is real protocol work, peer-share-encryption needs careful key-management, the recovery ceremony has multi-round state. After 5e: Phase 5f (quorum org keys) per the brief already in project-memory. Operator field tests open: wife-test of the polished /verify, two-device 5c stack against real relays, Tier V presence on a real device with real biometric + GPS."
+  "next": "Phase 5e-v — recovery ceremony, initiator side. Per the brief: new-device first-run detects cloud-backup blob exists, generates a fresh local keypair, publishes a recovery request via Mycelium addressed to each cohort member's pubkey, names the new keypair in the request, asks peers to verify out-of-band before encrypting their shares. State machine work: fresh keypair generation + recovery-request envelope shape + Mycelium publish + collect-M-shares + combine + decrypt + Wallet.restore. The brief recommends brief-first for 5e-v because the state machine is real protocol work; this matches the [FEEDBACK→Foreman] note above. After 5e-v: 5e-vi (responder), 5e-vii (recovery-succession event), then Phase 5f (quorum org keys per the existing brief)."
 }

@@ -246,13 +246,22 @@ export function HomeScreen() {
     <div className="min-h-screen p-5 max-w-md mx-auto pb-24">
       <header className="flex items-center justify-between py-2">
         <h1 className="text-lg font-semibold">Tapit Wallet</h1>
-        <Link
-          to="/settings"
-          className="text-sm text-muted hover:text-ink"
-          aria-label="Settings"
-        >
-          Settings
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/lattice"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="Lattice"
+          >
+            Lattice
+          </Link>
+          <Link
+            to="/settings"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="Settings"
+          >
+            Settings
+          </Link>
+        </div>
       </header>
 
       {/* Backup health sits above the tabs — a warning must never be
