@@ -15,6 +15,13 @@ import {
 } from './succession.js';
 import { decryptToString, encrypt, type EncryptedBlob } from './encryption.js';
 import {
+  encryptRecoverable,
+  decryptRecoverableWithPassphrase,
+  decryptRecoverableWithKData,
+  type RecoverableEncryptedBlob,
+  type RecoverableEncryptionResult,
+} from './encryption.js';
+import {
   MemoryStore,
   SyncEngine,
   loadVerified,
@@ -277,6 +284,51 @@ export class Wallet {
     store?: AttestationStore,
   ): Promise<Wallet> {
     const snapshot = JSON.parse(decryptToString(blob, password)) as WalletSnapshot;
+    return Wallet.fromSnapshot(snapshot, store);
+  }
+
+  /**
+   * Encrypt the wallet using the v2 recoverable backup format. Returns
+   * the blob plus K_data — the freshly-random data-encryption key. The
+   * caller is expected to either Shamir-split K_data across cohort peers
+   * and distribute the shares (Phase 5e cascade recovery) or discard it.
+   *
+   * K_data MUST NOT be retained on the producing device after share
+   * distribution — the security of the recovery cascade relies on the
+   * device that minted K_data forgetting it. The blob remains
+   * decryptable with the passphrase regardless.
+   */
+  async exportRecoverable(passphrase: string): Promise<RecoverableEncryptionResult> {
+    return encryptRecoverable(JSON.stringify(await this.snapshot()), passphrase);
+  }
+
+  /**
+   * Restore a wallet from a v2 recoverable backup using the passphrase.
+   * Equivalent to `restore` for v1, but reads the v2 blob shape.
+   */
+  static async restoreRecoverable(
+    blob: RecoverableEncryptedBlob,
+    passphrase: string,
+    store?: AttestationStore,
+  ): Promise<Wallet> {
+    const bytes = decryptRecoverableWithPassphrase(blob, passphrase);
+    const snapshot = JSON.parse(new TextDecoder().decode(bytes)) as WalletSnapshot;
+    return Wallet.fromSnapshot(snapshot, store);
+  }
+
+  /**
+   * Restore a wallet from a v2 recoverable backup using a K_data
+   * reconstructed from M cohort peer shares. This is the Phase 5e
+   * recovery path — no passphrase needed because the operator has
+   * proved threshold cooperation from their peer network instead.
+   */
+  static async restoreFromKData(
+    blob: RecoverableEncryptedBlob,
+    kData: Uint8Array,
+    store?: AttestationStore,
+  ): Promise<Wallet> {
+    const bytes = decryptRecoverableWithKData(blob, kData);
+    const snapshot = JSON.parse(new TextDecoder().decode(bytes)) as WalletSnapshot;
     return Wallet.fromSnapshot(snapshot, store);
   }
 
