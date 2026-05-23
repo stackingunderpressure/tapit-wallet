@@ -185,6 +185,46 @@ test('v2 exportRecoverable mints a fresh K_data per call', async () => {
   assert.equal(rb.identity, w.identity);
 });
 
+test('exportRecoverableWithKData preserves K_data across saves', async () => {
+  // Simulates the unlock → save loop: K_data extracted at unlock,
+  // re-used on every save, so a recovery cohort's distributed
+  // shares of kData stay valid for the LATEST blob, not just the
+  // one written at cohort-publish time.
+  const w = Wallet.generate();
+  const a = w.attest({
+    kind: 'identity',
+    tier: 'routine',
+    subject: w.identity,
+    fields: { label: 'Ada' },
+  });
+  await w.hold(a);
+
+  const { blob: blob0, kData } = await w.exportRecoverable('pw');
+
+  // A second held attestation between saves — the snapshot has
+  // moved on, K_data has not.
+  const b = w.attest({
+    kind: 'credential',
+    tier: 'notable',
+    subject: w.identity,
+    fields: { credential_type: 'note', label: 'second' },
+  });
+  await w.hold(b);
+
+  const blob1 = await w.exportRecoverableWithKData('pw', kData);
+
+  // The "cohort recovers from the latest blob" path: combine M
+  // shares → kData, decrypt blob1, restore. Two holdings, not one.
+  const restored = await Wallet.restoreFromKData(blob1, kData);
+  assert.equal(restored.identity, w.identity);
+  assert.equal((await restored.holdings()).length, 2);
+
+  // And the passphrase-unlock path on the new blob still works
+  // (the wrap salt is fresh per call).
+  const viaPass = await Wallet.restoreFromRecoverable(blob1, 'pw');
+  assert.equal((await viaPass.holdings()).length, 2);
+});
+
 test('sync reconciles a wallet with a remote store both ways', async () => {
   const w = Wallet.generate();
   const a = w.attest({

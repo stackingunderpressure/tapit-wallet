@@ -17,6 +17,7 @@ import {
   decryptToString,
   encrypt,
   encryptRecoverable,
+  encryptRecoverableWithKData,
   decryptRecoverableWithPassphrase,
   decryptRecoverableWithKData,
   type EncryptedBlob,
@@ -312,6 +313,26 @@ export class Wallet {
     kData: Uint8Array;
   }> {
     return encryptRecoverable(JSON.stringify(await this.snapshot()), passphrase);
+  }
+
+  /**
+   * Re-encrypt the wallet with a caller-supplied K_data. Used by
+   * the wallet's save path AFTER unlock has extracted K_data from
+   * the prior blob — the new blob is keyed on the SAME K_data, so
+   * any Shamir shares previously distributed to a recovery cohort
+   * stay valid for the new blob. K_data itself is unchanged; only
+   * the snapshot ciphertext and the passphrase-wrap parameters are
+   * fresh.
+   */
+  async exportRecoverableWithKData(
+    passphrase: string,
+    kData: Uint8Array,
+  ): Promise<RecoverableEncryptedBlob> {
+    return encryptRecoverableWithKData(
+      JSON.stringify(await this.snapshot()),
+      passphrase,
+      kData,
+    );
   }
 
   /**

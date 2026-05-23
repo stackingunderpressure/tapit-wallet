@@ -226,3 +226,77 @@ export function decryptRecoverableWithKData(
     throw new Error('decryption failed — wrong K_data or corrupt blob');
   }
 }
+
+/**
+ * Unwrap K_data from a v2 blob using the passphrase. Returns the
+ * symmetric data-encryption key without touching the encrypted
+ * snapshot. This is what an unlocking wallet does to keep K_data in
+ * memory while unlocked — so subsequent saves can re-encrypt the
+ * snapshot with the SAME K_data, and any Shamir shares previously
+ * distributed to a recovery cohort stay valid across saves.
+ *
+ * Without K_data preservation across saves, every save would mint a
+ * fresh K_data and invalidate the cohort's shares — the cascade
+ * would only recover the SNAPSHOT FROM cohort-publish TIME, not the
+ * latest one. This function is the seam that makes "shares stay
+ * good until the operator explicitly rotates them" actually true.
+ */
+export function unwrapKData(
+  blob: RecoverableEncryptedBlob,
+  passphrase: string,
+): Uint8Array {
+  assertV2(blob);
+  const wrapKey = deriveKey(passphrase, hexToBytes(blob.salt), blob.iterations);
+  try {
+    return gcm(wrapKey, hexToBytes(blob.wrapIv)).decrypt(
+      hexToBytes(blob.wrapCiphertext),
+    );
+  } catch {
+    throw new Error('K_data unwrap failed — wrong passphrase or corrupt blob');
+  }
+}
+
+/**
+ * Encrypt with a caller-supplied K_data. Same shape as
+ * encryptRecoverable but uses the K_data the caller passed in
+ * instead of minting a fresh one. The new blob's data ciphertext
+ * is keyed on the SAME K_data the cohort holds shares for, so the
+ * shares stay valid across saves.
+ *
+ * The wrapCiphertext is freshly generated (new salt + IV) so the
+ * passphrase-unlock path stays cryptographically sound — repeated
+ * wrap-key+IV reuse would weaken GCM. K_data itself is unchanged.
+ *
+ * Cohort rotation (operator wants to invalidate old shares) is the
+ * other path: call encryptRecoverable to mint a fresh K_data, then
+ * re-split + re-distribute via the cohort flow.
+ */
+export function encryptRecoverableWithKData(
+  plaintext: string | Uint8Array,
+  passphrase: string,
+  kData: Uint8Array,
+  options: { iterations?: number } = {},
+): RecoverableEncryptedBlob {
+  if (passphrase.length === 0) throw new Error('passphrase must not be empty');
+  if (kData.length !== KEY_BYTES) {
+    throw new Error(`K_data must be ${KEY_BYTES} bytes`);
+  }
+  const iterations = options.iterations ?? DEFAULT_ITERATIONS;
+  const salt = randomBytes(SALT_BYTES);
+  const dataIv = randomBytes(IV_BYTES);
+  const data = typeof plaintext === 'string' ? utf8ToBytes(plaintext) : plaintext;
+  const dataCiphertext = gcm(kData, dataIv).encrypt(data);
+  const wrapKey = deriveKey(passphrase, salt, iterations);
+  const wrapIv = randomBytes(IV_BYTES);
+  const wrapCiphertext = gcm(wrapKey, wrapIv).encrypt(kData);
+  return {
+    v: 2,
+    kdf: 'pbkdf2-sha256',
+    iterations,
+    salt: bytesToHex(salt),
+    wrapIv: bytesToHex(wrapIv),
+    wrapCiphertext: bytesToHex(wrapCiphertext),
+    dataIv: bytesToHex(dataIv),
+    dataCiphertext: bytesToHex(dataCiphertext),
+  };
+}
