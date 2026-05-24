@@ -2,6 +2,8 @@ import type { Attestation } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { readPresence, readDevicePasskey, findLatestDevicePasskey } from './createPresence.ts';
 import { leafValue } from '../connections/createHandshake.ts';
+import { useWallet } from '../wallet-core/useWallet.ts';
+import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
 
 interface Props {
   presence: Attestation;
@@ -33,6 +35,7 @@ export function PresenceDetailModal({
   walletIdentity,
   onClose,
 }: Props) {
+  const { ownerId, anchorWorker } = useWallet();
   const view = readPresence(presence);
   const fixedAt = view.fixedAt ? new Date(view.fixedAt) : null;
   const signedAt = view.signedAt ? new Date(view.signedAt) : null;
@@ -58,11 +61,22 @@ export function PresenceDetailModal({
       ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`
       : null;
 
-  const anchor = presence.anchor;
+  // Read live anchor state from the queue (same hook the journal uses)
+  // rather than the static anchor field on the held attestation. The
+  // attestation's anchor field stays null until the worker confirms
+  // AND writes the anchor back via the attach-pass in WalletProvider —
+  // which can take an hour or more. The queue row reflects the live
+  // state right away: queued (just submitted), pending (stamped,
+  // waiting for Bitcoin confirmation), confirmed (anchor known),
+  // failed (worker gave up after retries).
+  const anchorRow = useAnchorStatus(ownerId, digest, anchorWorker);
+  const liveState = anchorRow?.state;
   const anchorBlock =
-    anchor && anchor.status === 'confirmed' && anchor.btcHeight
-      ? anchor.btcHeight
-      : null;
+    anchorRow?.state === 'confirmed' && anchorRow.anchor?.btcHeight
+      ? anchorRow.anchor.btcHeight
+      : presence.anchor?.status === 'confirmed' && presence.anchor.btcHeight
+        ? presence.anchor.btcHeight
+        : null;
 
   // WebAuthn assertion materials live as leaves on the envelope
   // (set by holdPresenceEvent). Surfaced collapsibly for the
@@ -168,14 +182,20 @@ export function PresenceDetailModal({
               <div className="mt-2 text-xs text-emerald-800">
                 ⛓ Time-verified at Bitcoin block {anchorBlock}
               </div>
-            ) : anchor && anchor.status === 'pending' ? (
+            ) : liveState === 'failed' ? (
+              <div className="mt-2 text-xs text-red-700">
+                Anchoring failed — the worker will retry. The signed
+                envelope itself stays valid regardless.
+              </div>
+            ) : liveState === 'queued' || liveState === 'pending' || liveState === undefined ? (
               <div className="mt-2 text-xs text-muted">
-                ⏳ Anchoring to Bitcoin in progress — the proof matures over
-                the next few blocks.
+                ⏳ Time-verifying… anchors usually settle within an hour
+                but can take longer if calendar servers are slow. The
+                envelope is signed and valid in the meantime.
               </div>
             ) : (
               <div className="mt-2 text-xs text-muted">
-                Not yet anchored to Bitcoin.
+                Not yet queued for anchoring.
               </div>
             )}
           </div>
