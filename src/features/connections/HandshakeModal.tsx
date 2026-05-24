@@ -15,6 +15,7 @@ import {
   readHandshake,
 } from './createHandshake.ts';
 import { PeerPicker } from './PeerPicker.tsx';
+import { extractPubkey } from './extractPubkey.ts';
 import {
   summarizePublish,
   type PublishStatusSummary,
@@ -193,9 +194,17 @@ export function HandshakeModal({ onClose }: Props) {
       setError('Your identity is not ready yet.');
       return;
     }
-    const pubkey = remotePubkey.trim().toLowerCase();
-    if (!/^[0-9a-f]{64}$/i.test(pubkey)) {
-      setError('Need a 64-character hex public key.');
+    // extractPubkey is generous: accepts a raw 64-hex string with
+    // any surrounding whitespace, OR a full identity envelope JSON
+    // (it reads .subject out). The PeerPicker already runs the same
+    // extraction on paste, but rerunning here is the belt-and-
+    // suspenders move in case the value came from somewhere other
+    // than the picker (e.g. a future programmatic prefill).
+    const pubkey = extractPubkey(remotePubkey);
+    if (!pubkey) {
+      setError(
+        "That doesn't look like a public key or an identity code — paste their 64-character key (Settings → Identity → Copy full key on their wallet) or the full identity JSON.",
+      );
       return;
     }
     if (pubkey === identity.subject) {

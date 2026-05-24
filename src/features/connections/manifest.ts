@@ -17,6 +17,7 @@ export const manifest: FeatureManifest = {
     'src/features/connections/ConnectionCard.tsx',
     'src/features/connections/MembershipCard.tsx',
     'src/features/connections/PeerPicker.tsx',
+    'src/features/connections/extractPubkey.ts',
     'src/features/connections/ClassicConnections.tsx',
     'src/features/connections/FreshCrew.tsx',
     'src/features/connections/identicon.ts',

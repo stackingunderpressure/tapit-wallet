@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { isHandshake, readHandshake } from './createHandshake.ts';
+import { extractPubkey } from './extractPubkey.ts';
 
 // Peer picker — given the operator's holdings and their identity,
 // surfaces the people they have already handshaken with as one-tap
@@ -75,6 +76,21 @@ export function PeerPicker({ holdings, myIdentity, value, onChange }: Props) {
     return uniqueByPubkey(found);
   }, [holdings, myIdentity]);
 
+  // Generous paste handling — if the user dropped an envelope JSON,
+  // a hex with stray whitespace, or anything else extractPubkey
+  // recognises, swap the field value for the clean hex immediately
+  // so the form sees a valid pubkey without the user having to
+  // hand-edit. Falls through to raw passthrough when extraction
+  // yields nothing so partial typing still works.
+  function handlePaste(raw: string) {
+    const extracted = extractPubkey(raw);
+    if (extracted) {
+      onChange(extracted);
+      return;
+    }
+    onChange(raw);
+  }
+
   const valueNormalized = value.trim().toLowerCase();
   const valueValid = HEX_64.test(valueNormalized);
   const selectedPeer = peers.find((p) => p.pubkey === valueNormalized);
@@ -115,8 +131,8 @@ export function PeerPicker({ holdings, myIdentity, value, onChange }: Props) {
         <input
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="64-character hex public key"
+          onChange={(e) => handlePaste(e.target.value)}
+          placeholder="Paste their 64-char public key or full identity code"
           className="mt-1.5 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
           spellCheck={false}
           autoCapitalize="none"
@@ -124,7 +140,8 @@ export function PeerPicker({ holdings, myIdentity, value, onChange }: Props) {
         />
         {value.length > 0 && !selectedPeer && !valueValid && (
           <p className="mt-1 text-xs text-red-600">
-            Needs 64 hex characters.
+            Doesn't look like a public key or identity code yet — keep
+            typing or paste the full thing.
           </p>
         )}
         {selectedPeer && (
