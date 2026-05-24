@@ -187,6 +187,24 @@ export function HandshakeModal({ onClose }: Props) {
   }
 
   function handleScan(raw: string) {
+    // "Do what I mean" pivot. If the operator pasted a raw 64-char
+    // pubkey (not an envelope JSON) into any of the in-person scan
+    // steps, their intent is to handshake with that person but they
+    // only had the pubkey to hand — that's the remote-handshake
+    // path. Pre-fill the remote pubkey state and switch the modal
+    // to remote-pick instead of throwing 'paste is not valid JSON'
+    // through the in-person scan parser. Envelope-shaped pastes
+    // (anything that starts with '{') keep the existing per-step
+    // routing because they're real handshake / identity envelopes.
+    const trimmed = raw.trim();
+    const cleanHex = trimmed.replace(/\s+/g, '').replace(/^0x/i, '').toLowerCase();
+    const isJustPubkey =
+      /^[0-9a-f]{64}$/i.test(cleanHex) && !trimmed.startsWith('{');
+    if (isJustPubkey && identity && cleanHex !== identity.subject) {
+      setRemotePubkey(cleanHex);
+      setStep('remote-pick');
+      return;
+    }
     if (step === 'i-show-identity') onScanHandshake(raw);
     else if (step === 'r-ready') onScanIdentity(raw);
     else if (step === 'r-show-handshake') onScanCosigned(raw);
