@@ -1076,3 +1076,5 @@
 {"event":"gate_passed","ts":"2026-05-24T18:31:18Z","session_id":"788a6e5f-c977-4adc-bbf6-04e7840e5df5","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T18:31:18Z","session_id":"788a6e5f-c977-4adc-bbf6-04e7840e5df5","gate":"test","summary":"48/48 across 10 files"}
 {"event":"gate_passed","ts":"2026-05-24T18:31:18Z","session_id":"788a6e5f-c977-4adc-bbf6-04e7840e5df5","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T18:31:20Z","session_id":"788a6e5f-c977-4adc-bbf6-04e7840e5df5","sha":"7a83fc38923dabde17024e6b02b7c775d183de1a","branch":"main+dispatch","message":"Fix Fresh card contrast + add real title field on composer"}
+{"event":"session_ended","ts":"2026-05-24T18:31:20Z","session_id":"788a6e5f-c977-4adc-bbf6-04e7840e5df5","outcome":"completed","summary":"One commit live on main: dropped wash-out gradient body, category becomes chip with dot, explicit title leaf supported and surfaced as composer input. All four gates green.","files_total":4,"commits_total":1}
