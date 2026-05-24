@@ -119,7 +119,7 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
                 required
                 value={toKey}
                 onChange={(e) => setToKey(e.target.value)}
-                placeholder="64-character hex (x-only secp256k1)"
+                placeholder="64-character hex"
                 className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </label>

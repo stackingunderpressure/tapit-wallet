@@ -160,9 +160,9 @@ export function PresenceDetailModal({
               {shortKey(digest, 16, 8)}
             </div>
             <div className="mt-1 text-xs text-muted">
-              The envelope's content-address. A verifier with the envelope
-              bytes recomputes this and checks the Schnorr signature
-              against your wallet's public key.
+              The record's content fingerprint. A verifier with the record
+              bytes recomputes this and checks the wallet's signature
+              against your public key.
             </div>
             {anchorBlock !== null ? (
               <div className="mt-2 text-xs text-emerald-800">

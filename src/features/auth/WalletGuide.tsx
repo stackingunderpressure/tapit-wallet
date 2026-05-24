@@ -135,9 +135,9 @@ function WhyAndWho() {
       <SectionTitle>The record of your life belongs to you.</SectionTitle>
       <Lede>
         Today our names, our histories, our proofs of who we are live in other
-        companies' databases. Tapit Wallet inverts that. Your keypair is
-        generated on your device, never leaves unencrypted, and is the Merkle
-        holder of the signed attestations that make up your verifiable life.
+        companies' databases. Tapit Wallet inverts that. Your wallet key is
+        generated on your device, never leaves unencrypted, and is the
+        holder of the signed records that make up your verifiable life.
         One identity per person, owned by you, that every app can ask for
         signatures from. Math, not trust.
       </Lede>
@@ -186,11 +186,11 @@ function WhatItHolds() {
     <section>
       <SectionTitle>Seven shapes of signed truth.</SectionTitle>
       <Lede>
-        Every record in the wallet is a tapit-attest envelope — one envelope
-        shape carrying seven kinds of attestation across three trust tiers,
-        signed by Schnorr over secp256k1 with a Merkle field tree and
-        optional anchoring to Bitcoin via OpenTimestamps. The seven kinds in
-        plain English:
+        Every record in the wallet is a small signed envelope. One envelope
+        shape carries seven kinds of record across three trust tiers —
+        signed by your own key, committed to a tamper-evident structure,
+        optionally anchored to Bitcoin via OpenTimestamps. The seven kinds
+        in plain English:
       </Lede>
 
       <Card title="Identity">
