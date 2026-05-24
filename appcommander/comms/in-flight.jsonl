@@ -1122,3 +1122,5 @@
 {"event":"gate_passed","ts":"2026-05-24T20:04:29Z","session_id":"73531b50-ea13-4d26-a29e-b0345e9bb282","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T20:04:29Z","session_id":"73531b50-ea13-4d26-a29e-b0345e9bb282","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T20:04:29Z","session_id":"73531b50-ea13-4d26-a29e-b0345e9bb282","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T20:04:31Z","session_id":"73531b50-ea13-4d26-a29e-b0345e9bb282","sha":"b38ee72d11879e45584079148c6f6701b8155ade","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T20:04:31Z","session_id":"73531b50-ea13-4d26-a29e-b0345e9bb282","outcome":"completed","summary":"WalletGuide gains a top-level ← Home link visible on every tab + session state, confusing buried in-card Back-to-wallet removed. CaptureScreen gains the standard ← Home header link. Every routed screen now ships the same back affordance.","files_total":2,"commits_total":1}
