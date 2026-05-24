@@ -46,17 +46,25 @@ function initialState(): State {
 // decoded text and the parent closes the modal + populates its
 // textarea. On unsupported browsers (Firefox), or on iPhone PWA
 // standalone mode where camera + BarcodeDetector are unreliable,
-// shows a paste field instead. The "Or paste text" toggle is
-// available from every state so a stuck camera always has an
-// escape hatch.
+// shows a paste field PLUS a Pick-image-from-Photos button that
+// decodes the QR out of a static image — the static-image
+// BarcodeDetector path works in PWA standalone where the live
+// video path does not, so the iPhone-installed operator's
+// workflow becomes Camera app → take photo → return to wallet →
+// Pick image → choose. No round-trip through the clipboard. The
+// "Or paste text" escape hatch from every other state stays as
+// the universal-last-resort.
 //
 // The video stream is stopped on unmount; the detect-loop uses
 // requestAnimationFrame and a cancelled flag so a slow detector
 // can't keep running after the user closes.
 export function QrScanModal({ onScanned, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>(initialState);
   const [pasted, setPasted] = useState('');
+  const [pickError, setPickError] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     if (state.kind !== 'starting') return;
@@ -122,6 +130,40 @@ export function QrScanModal({ onScanned, onClose }: Props) {
     const trimmed = pasted.trim();
     if (trimmed.length === 0) return;
     onScanned(trimmed);
+  }
+
+  async function pickImage(file: File) {
+    setPickError(null);
+    setPicking(true);
+    const url = URL.createObjectURL(file);
+    try {
+      const detector = createQrDetector();
+      if (!detector) {
+        setPickError(
+          'QR decoding is not supported on this browser. Use the paste field below instead.',
+        );
+        return;
+      }
+      const img = new Image();
+      img.src = url;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Could not load the chosen image.'));
+      });
+      const codes = await detector.detect(img);
+      if (codes.length === 0 || !codes[0]) {
+        setPickError(
+          'No QR code detected in this image. Try a clearer photo (good lighting, the QR fills most of the frame, no glare).',
+        );
+        return;
+      }
+      onScanned(codes[0].rawValue);
+    } catch (err) {
+      setPickError(err instanceof Error ? err.message : 'Could not decode the image.');
+    } finally {
+      setPicking(false);
+      URL.revokeObjectURL(url);
+    }
   }
 
   const cameraEverPossible =
@@ -198,13 +240,46 @@ export function QrScanModal({ onScanned, onClose }: Props) {
           state.kind === 'unsupported' ||
           state.kind === 'error') && (
           <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void pickImage(file);
+                e.target.value = '';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={picking || !isBarcodeDetectorSupported()}
+              className="mt-3 w-full rounded-md bg-accent py-2.5 text-paper text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
+            >
+              {picking ? 'Decoding image…' : '📷 Pick a photo of the QR'}
+            </button>
+            <p className="mt-1.5 text-xs text-muted">
+              Take a photo of the QR with your iPhone Camera app, then come
+              back here and pick it from Photos. The wallet decodes the
+              image directly — no need to copy text.
+            </p>
+            {pickError && (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {pickError}
+              </div>
+            )}
+
+            <div className="my-4 h-px bg-gradient-to-r from-transparent via-ink/10 to-transparent" />
+            <div className="text-xs uppercase tracking-wide text-muted">
+              Or paste the text
+            </div>
             <textarea
               value={pasted}
               onChange={(e) => setPasted(e.target.value)}
-              rows={5}
-              autoFocus
+              rows={4}
               placeholder="Paste the QR text here…"
-              className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
+              className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button

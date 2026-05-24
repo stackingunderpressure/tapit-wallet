@@ -22,12 +22,15 @@ export function KnownLimitationsSection() {
           </div>
           <p className="mt-1 text-xs text-muted">
             When the wallet is installed to your iPhone home screen, Safari's
-            standalone mode restricts camera access in ways the wallet can't
-            work around. The scanner falls back to a paste field. Easiest
-            workaround: open the iPhone Camera app on the other phone, point
-            it at the QR, tap the link/text it picks up to copy, then paste
-            into the wallet. Camera scanning works normally in regular Safari
-            tabs and on Android.
+            standalone mode restricts the live-video camera path in ways the
+            wallet can't work around. The scanner detects this and offers
+            two alternatives that DO work in standalone mode: a Pick-a-photo
+            button that decodes a QR out of any image you've taken with your
+            iPhone Camera app (workflow becomes Camera → take photo of QR →
+            return to wallet → Pick a photo → choose; the wallet reads the
+            QR directly from the image, no copy-paste needed), and a paste
+            field as the universal fallback. Camera scanning works normally
+            in regular Safari tabs and on Android.
           </p>
         </div>
 
@@ -59,15 +62,21 @@ export function KnownLimitationsSection() {
 
         <div>
           <div className="text-sm font-medium">
-            Peer-witnessed recovery succession is not yet wired
+            Peer co-signs of the recovery-succession event not yet wired
           </div>
           <p className="mt-1 text-xs text-muted">
-            After a successful cohort recovery the spec calls for M cohort
-            peers to co-sign a peer-witnessed succession event asserting
-            the recovery happened. That ceremony is the last remaining
-            Phase 5e piece and lands in its own session. The recovered
-            wallet works correctly without it; the succession event is a
-            third-party audit trail rather than a functional requirement.
+            After a successful cohort recovery the wallet now automatically
+            emits a self-signed recovery-succession credential — the
+            audit-trail record asserting "I was recovered on date X from
+            this cohort," signed by the restored wallet and time-anchored
+            to Bitcoin like every other envelope. What's still deferred is
+            the M cohort peer co-signs the spec calls for, which turn that
+            self-attestation into a peer-witnessed succession event for
+            third-party verification. The peer co-sign UI rides on the
+            existing mergeSignatures machinery and lands in its own
+            session. The self-attested record stands on its own
+            cryptographically; the peer-witnessed upgrade strengthens it
+            into a third-party-checkable claim.
           </p>
         </div>
 

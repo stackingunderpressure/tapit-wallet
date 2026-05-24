@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Wallet,
   combineShares,
+  envelopeId,
   type Attestation,
   type RecoverableEncryptedBlob,
   type Share,
@@ -9,6 +10,8 @@ import {
 import type { AnyEncryptedBlob } from '../storage/localStore.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
+import { anchorQueue } from '../anchoring/anchorQueue.ts';
+import { buildRecoverySuccession } from './createRecoverySuccession.ts';
 
 const QrScanModal = lazy(() =>
   import('../qr/QrScanModal.tsx').then((m) => ({ default: m.QrScanModal })),
@@ -27,26 +30,17 @@ import {
   readShareResponse,
 } from './createRecoveryRequest.ts';
 
-// Phase 5e-v — the recovery initiator. The new device opens this
-// modal from the locked screen. A fresh ceremony Wallet is generated
-// in modal-local state, an ephemeral NostrTransport is bound to its
-// keypair, the operator enters their old identity + cohort + threshold
-// out-of-band, the modal publishes recovery-request envelopes to each
-// cohort member, waits for share-responses, combines M shares into
-// K_data, calls Wallet.restoreFromKData against the cloud blob, asks
-// for a new passphrase, saves under the new passphrase via
+// Phase 5e-v — the recovery initiator. Opens from the locked screen;
+// generates a fresh ceremony Wallet in modal-local state (never
+// persisted), opens an ephemeral NostrTransport bound to its keypair,
+// sends recovery-requests to the cohort, combines M share-responses
+// into K_data, restores via Wallet.restoreFromKData against the
+// cloud blob, saves under a new passphrase via
 // exportRecoverableWithKData (K_data preserved → distributed shares
-// stay valid forever), and hands the restored wallet plus new
-// passphrase up to WalletProvider via onRecovered.
-//
-// The ceremony Wallet's keypair is never persisted. Lives in modal
-// state, GC'd on close. Aborting and reopening produces a fresh
-// ceremony keypair — there is no resume semantic.
-//
-// The Mycelium transport's default relay set (defaultRelays.ts) is
-// used as a fallback when the operator never enabled Mycelium and
-// has no relays in prefs. That keeps the modal usable for a first-
-// time recovery on a device that has not yet opted into the network.
+// stay valid), auto-emits the 5e-vii self-signed succession credit
+// as an audit-trail record, hands restored wallet + new passphrase
+// to WalletProvider via onRecovered. Falls back to DEFAULT_RELAYS
+// when prefs.nostrRelays is empty.
 
 interface CohortEntry {
   pubkey: string;
@@ -80,6 +74,20 @@ interface Props {
 }
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
+
+function phaseHeadline(phase: Phase, peerCount: number): string {
+  switch (phase.kind) {
+    case 'configuring': return 'Recover your wallet';
+    case 'sending': return 'Asking your cohort…';
+    case 'awaiting': return `Waiting for ${phase.needed} of ${peerCount}…`;
+    case 'combining': return 'Combining the shares…';
+    case 'restoring': return 'Putting your wallet back together…';
+    case 'naming': return 'Choose a new passphrase';
+    case 'saving': return 'Saving your wallet…';
+    case 'done': return 'Welcome back.';
+    case 'error': return 'Recovery stopped';
+  }
+}
 
 function shortKey(hex: string): string {
   if (hex.length <= 12) return hex;
@@ -432,6 +440,21 @@ export function RecoveryInitiatorModal({
     }
     setPhase({ kind: 'saving' });
     try {
+      // 5e-vii self-signed half — audit-trail record of the recovery
+      // moment, held + anchored before save so it lives in the new
+      // blob. Peer co-signs ride the existing mergeSignatures path
+      // and ship in the dedicated 5e-vii UI session.
+      const succession = buildRecoverySuccession(restored, peers.map((p) => p.pubkey));
+      await restored.hold(succession);
+      await anchorQueue.upsert(ownerId, {
+        digestHex: envelopeId(succession),
+        state: 'queued',
+        anchor: null,
+        attempts: 0,
+        last_attempt: null,
+        last_error: null,
+      });
+
       const blob = await restored.exportRecoverableWithKData(kData, newPass);
       await walletStore.save(ownerId, blob);
       await onRecovered(restored, newPass);
@@ -446,28 +469,10 @@ export function RecoveryInitiatorModal({
 
   // ---------- Render ----------
 
-  const headline = useMemo(() => {
-    switch (phase.kind) {
-      case 'configuring':
-        return 'Recover your wallet';
-      case 'sending':
-        return 'Asking your cohort…';
-      case 'awaiting':
-        return `Waiting for ${phase.needed} of ${peers.length}…`;
-      case 'combining':
-        return 'Combining the shares…';
-      case 'restoring':
-        return 'Putting your wallet back together…';
-      case 'naming':
-        return 'Choose a new passphrase';
-      case 'saving':
-        return 'Saving your wallet…';
-      case 'done':
-        return 'Welcome back.';
-      case 'error':
-        return 'Recovery stopped';
-    }
-  }, [phase, peers.length]);
+  const headline = useMemo(
+    () => phaseHeadline(phase, peers.length),
+    [phase, peers.length],
+  );
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">

@@ -70,11 +70,13 @@ const BUDGETS = [
   // only the section display + button is in the main chunk;
   // current ~4.8KB gz. Headroom raised to 6KB before another
   // structural rethink (split Settings into tabs?) is needed.
-  // 2026-05-23: lifted from 6KB to 7KB after the Known Limitations
-  // section + Recovery key reveal form landed. Current ~6KB gz; next
-  // structural rethink (split out limitations / recovery into their
-  // own components) fires past 7KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 7_000, label: 'SettingsScreen' },
+  // 2026-05-23: lifted from 6KB → 7KB → 7.5KB across the Known
+  // Limitations + Recovery key reveal + Sovereign-confirm panel +
+  // updated QR/succession copy. Current ~7KB gz; KnownLimitations
+  // extracted to its own file but inlined into SettingsScreen at
+  // import time so its bytes still ride this chunk. Lazy-load
+  // KnownLimitationsSection if growth continues.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 7_500, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
