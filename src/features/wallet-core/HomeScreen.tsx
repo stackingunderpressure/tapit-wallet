@@ -11,7 +11,8 @@ import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
-import { ConnectionCard } from '../connections/ConnectionCard.tsx';
+import { ClassicConnections } from '../connections/ClassicConnections.tsx';
+const FreshCrew = lazy(() => import('../connections/FreshCrew.tsx').then((m) => ({ default: m.FreshCrew })));
 import {
   isHandshake,
   peerNamesByPubkey,
@@ -612,46 +613,22 @@ export function HomeScreen() {
             onDismiss={dismissInboxEnvelope}
             onOpen={routeInbox}
           />
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setHandshakeOpen(true)}
-              className="rounded-md bg-ink py-3 text-paper text-sm font-medium"
-            >
-              + New handshake
-            </button>
-            <button
-              type="button"
-              onClick={() => setScanEnvelopeOpen(true)}
-              className="rounded-md border border-ink/20 bg-white py-3 text-ink text-sm font-medium"
-            >
-              Scan envelope
-            </button>
-          </div>
-          {connectionEntries.length === 0 ? (
-            <div className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-10 text-center">
-              <div className="text-xs uppercase tracking-wide text-accent">
-                No connections yet
-              </div>
-              <h2 className="mt-2 text-base font-semibold">
-                Your people, in person
-              </h2>
-              <p className="mt-2 text-sm text-muted">
-                Meet someone face to face and tap New handshake — two
-                phones, one exchange, and you each hold a signed,
-                time-anchored record that you connected.
-              </p>
-            </div>
+          {resolvedTheme === 'fresh' ? (
+            <Suspense fallback={null}>
+              <FreshCrew
+                connectionEntries={connectionEntries}
+                myIdentity={wallet.identity}
+                onNewHandshake={() => setHandshakeOpen(true)}
+                onScanEnvelope={() => setScanEnvelopeOpen(true)}
+              />
+            </Suspense>
           ) : (
-            <div className="mt-3 space-y-3">
-              {connectionEntries.map((a, i) => (
-                <ConnectionCard
-                  key={i}
-                  attestation={a}
-                  myIdentity={wallet.identity}
-                />
-              ))}
-            </div>
+            <ClassicConnections
+              connectionEntries={connectionEntries}
+              myIdentity={wallet.identity}
+              onNewHandshake={() => setHandshakeOpen(true)}
+              onScanEnvelope={() => setScanEnvelopeOpen(true)}
+            />
           )}
         </section>
       )}
