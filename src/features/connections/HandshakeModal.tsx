@@ -52,6 +52,24 @@ const eyebrow = 'text-xs uppercase tracking-wide text-accent';
 const primaryBtn =
   'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40';
 
+// Relationship-leaf options the chip picker offers. Wire values are
+// lowercase so they stay stable across builds; display labels are
+// capitalised for the operator's eyes. Empty string means the
+// operator chose not to label the bond — the leaf is omitted from
+// the attestation, which round-trips as relationship: '' on read.
+const RELATIONSHIPS: { value: string; label: string }[] = [
+  { value: 'family', label: 'Family' },
+  { value: 'friend', label: 'Friend' },
+  { value: 'coworker', label: 'Coworker' },
+  { value: 'acquaintance', label: 'Acquaintance' },
+  { value: 'other', label: 'Other' },
+];
+
+/** Capitalised display form of a relationship wire value. */
+function relationshipLabel(value: string): string {
+  return RELATIONSHIPS.find((r) => r.value === value)?.label ?? value;
+}
+
 export function HandshakeModal({ onClose }: Props) {
   const { wallet, ownerId, holdings, identity, anchorWorker, prefs, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>('role');
@@ -63,6 +81,10 @@ export function HandshakeModal({ onClose }: Props) {
     null,
   );
   const [peerName, setPeerName] = useState('');
+  // Optional relationship label the builder picks before signing.
+  // Empty string = no label. The leaf is omitted from the envelope
+  // when empty so older verifiers see no new field.
+  const [relationship, setRelationship] = useState('');
   // Remote-handshake-start (Tier R) state.
   const [remotePubkey, setRemotePubkey] = useState('');
   const [remoteName, setRemoteName] = useState('');
@@ -127,7 +149,7 @@ export function HandshakeModal({ onClose }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const draft = buildHandshakeDraft(scannedIdentity, identity);
+      const draft = buildHandshakeDraft(scannedIdentity, identity, relationship);
       const signed = wallet.sign(draft);
       await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
       await save();
@@ -254,10 +276,11 @@ export function HandshakeModal({ onClose }: Props) {
     setBusy(true);
     setError(null);
     try {
-      const draft = buildRemoteHandshakeDraft(identity, {
-        pubkey,
-        name: remoteName.trim(),
-      });
+      const draft = buildRemoteHandshakeDraft(
+        identity,
+        { pubkey, name: remoteName.trim() },
+        relationship,
+      );
       const signed = wallet.sign(draft);
       await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
       await save();
@@ -371,6 +394,10 @@ export function HandshakeModal({ onClose }: Props) {
                   className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
                 />
               </label>
+              <RelationshipChips
+                value={relationship}
+                onChange={setRelationship}
+              />
               <button
                 type="button"
                 onClick={startRemoteHandshake}
@@ -429,6 +456,15 @@ export function HandshakeModal({ onClose }: Props) {
               you have signed. It's anchored to Bitcoin like every
               other entry.
             </p>
+            {handshake && readHandshake(handshake).relationship && (
+              <div className="mt-3 rounded-md border border-ink/15 bg-ink/[0.02] px-3 py-2 text-sm">
+                <span className="text-muted">They labelled this connection</span>{' '}
+                <span className="font-medium">
+                  {relationshipLabel(readHandshake(handshake).relationship)}
+                </span>
+                <span className="text-muted">. Co-signing means you agree.</span>
+              </div>
+            )}
             <button
               type="button"
               onClick={coSign}
@@ -490,6 +526,10 @@ export function HandshakeModal({ onClose }: Props) {
               This builds one in-person handshake record. You sign it
               now; they co-sign it next, and you both keep a copy.
             </p>
+            <RelationshipChips
+              value={relationship}
+              onChange={setRelationship}
+            />
             <button
               type="button"
               onClick={buildAndSign}
@@ -554,6 +594,47 @@ export function HandshakeModal({ onClose }: Props) {
       {scanning && (
         <QrScanModal onScanned={handleScan} onClose={() => setScanning(false)} />
       )}
+    </div>
+  );
+}
+
+// Chip picker for the optional relationship leaf. Tapping a chip
+// toggles its selection — picking the same chip again clears the
+// label entirely so the leaf is omitted from the envelope. Both
+// the in-person builder (r-preview) and the remote initiator
+// (not-here panel) render this; the picker writes to the parent's
+// `relationship` state which the build* functions read at signing.
+function RelationshipChips({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <div className="mt-3">
+      <div className="text-xs text-muted">How do you know them? (optional)</div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {RELATIONSHIPS.map((r) => {
+          const selected = value === r.value;
+          return (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => onChange(selected ? '' : r.value)}
+              aria-pressed={selected}
+              className={
+                'rounded-full border px-3 py-1 text-xs font-medium transition ' +
+                (selected
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]')
+              }
+            >
+              {r.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

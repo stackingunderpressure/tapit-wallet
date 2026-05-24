@@ -34,6 +34,14 @@ export function ConnectionCard({ attestation, myIdentity }: Props) {
       ? 'bg-ink/5 text-muted'
       : 'bg-accent/10 text-accent';
 
+  const relationship = hs.relationship;
+  const relationshipLabel = relationship
+    ? relationship.charAt(0).toUpperCase() + relationship.slice(1)
+    : null;
+  const relationshipBadgeClass = isFresh
+    ? 'bg-fresh-accent-primary/15 text-fresh-accent-primary border border-fresh-accent-primary/30'
+    : 'bg-ink/[0.06] text-ink border border-ink/15';
+
   return (
     <div className={`rounded-2xl p-4 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10 shadow-sm'}`}>
       <div className="flex items-center justify-between gap-2">
@@ -42,9 +50,16 @@ export function ConnectionCard({ attestation, myIdentity }: Props) {
           {badgeLabel}
         </span>
       </div>
-      <div className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-tertiary' : 'text-muted'}`}>
-        Connected {when}
-        {!cosigned && ' · awaiting their co-signature'}
+      <div className="mt-1 flex items-center gap-2 flex-wrap">
+        {relationshipLabel && (
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${relationshipBadgeClass}`}>
+            {relationshipLabel}
+          </span>
+        )}
+        <span className={`text-xs ${isFresh ? 'text-fresh-text-tertiary' : 'text-muted'}`}>
+          Connected {when}
+          {!cosigned && ' · awaiting their co-signature'}
+        </span>
       </div>
     </div>
   );

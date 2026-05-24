@@ -4,11 +4,12 @@ export const manifest: FeatureManifest = {
   slug: 'connections',
   born: '2026-05-22',
   purpose:
-    'Phases 5a, 5b, and 5c-ii of the Mycelium peer network (MYCELIUM_NETWORK_SPEC.md). 5a — the in-person handshake (Tier P): two wallets physically together exchange identities by QR and co-sign one relationship attestation carrying verification=in-person; both hold it. 5b — organizations and membership: an organization is itself a wallet, and a membership is a credential the organization signs about a person; memberships nest. 5c-ii — the remote handshake (Tier R, per D-09): two wallets that have never been in the same room form the same relationship attestation but with verification=remote, sent via Nostr; the initiator builds + signs + ships, the responder cosigns via the existing inbox routing, both hold the dual-signed Tier R record. ConnectionCard renders the badge by tier — accent for Tier P, neutral for Tier R — so a verifier always sees which kind of link it is.',
+    'Phases 5a, 5b, and 5c-ii of the Mycelium peer network (MYCELIUM_NETWORK_SPEC.md). 5a — the in-person handshake (Tier P): two wallets physically together exchange identities by QR and co-sign one relationship attestation carrying verification=in-person; both hold it. 5b — organizations and membership: an organization is itself a wallet, and a membership is a credential the organization signs about a person; memberships nest. 5c-ii — the remote handshake (Tier R, per D-09): two wallets that have never been in the same room form the same relationship attestation but with verification=remote, sent via Nostr; the initiator builds + signs + ships, the responder cosigns via the existing inbox routing, both hold the dual-signed Tier R record. ConnectionCard renders the badge by tier — accent for Tier P, neutral for Tier R — so a verifier always sees which kind of link it is. Sub-cut 2a of the per-peer chat surface roadmap (brief 2026-05-24-per-peer-chat-surface-roadmap.md section 7) adds an optional relationship leaf to the handshake envelope — family / friend / coworker / acquaintance / other — chosen by the builder in HandshakeModal and surfaced for agreement to the co-signer in the i-preview step, then rendered as a chip on ConnectionCard alongside the Tier P/R badge.',
   touches: [
     'src/features/connections/HandshakeModal.tsx',
     'src/features/connections/MembershipModal.tsx',
     'src/features/connections/createHandshake.ts',
+    'src/features/connections/createHandshake.test.ts',
     'src/features/connections/createMembership.ts',
     'src/features/connections/createOrganization.ts',
     'src/features/connections/OfficialsEditorModal.tsx',

@@ -35,6 +35,14 @@ export interface HandshakeView {
   responderName: string;
   verification: string;
   handshakeAt: string;
+  /**
+   * Optional relationship label both parties agreed to at signing
+   * time — 'family', 'friend', 'coworker', 'acquaintance', 'other',
+   * or empty when the handshake predates this leaf or the operator
+   * chose not to label it. Older handshakes that never carried the
+   * leaf read as empty string here.
+   */
+  relationship: string;
 }
 
 /** Read a handshake attestation's fields into a plain view. */
@@ -46,6 +54,7 @@ export function readHandshake(att: Attestation): HandshakeView {
     responderName: leafValue(att, 'responder_name'),
     verification: leafValue(att, 'verification'),
     handshakeAt: leafValue(att, 'handshake_at'),
+    relationship: leafValue(att, 'relationship'),
   };
 }
 
@@ -54,22 +63,32 @@ export function readHandshake(att: Attestation): HandshakeView {
 // and hold their own. The responder signs it, the initiator co-signs
 // it, and both hold the co-signed result. The subject is the
 // initiator's canonical identity; both parties' ids and names are
-// signed leaves so the People tab can name either side.
+// signed leaves so the People tab can name either side. An optional
+// relationship leaf records the kind of bond ('family' / 'friend' /
+// 'coworker' / 'acquaintance' / 'other') if the operator chose one.
+// The leaf is set by the builder and agreed-to by the co-signer
+// when they sign the same envelope — both signatures cover the
+// relationship value, so it cannot be silently altered later.
 export function buildHandshakeDraft(
   initiatorIdentity: Attestation,
   responderIdentity: Attestation,
+  relationship?: string,
 ): Attestation {
+  const fields: Record<string, string> = {
+    verification: 'in-person',
+    handshake_at: new Date().toISOString(),
+    initiator_id: initiatorIdentity.subject,
+    initiator_name: displayNameOf(initiatorIdentity),
+    responder_id: responderIdentity.subject,
+    responder_name: displayNameOf(responderIdentity),
+  };
+  if (relationship && relationship.length > 0) {
+    fields.relationship = relationship;
+  }
   return relationshipAttestation({
     subject: initiatorIdentity.subject,
     tier: 'notable',
-    fields: {
-      verification: 'in-person',
-      handshake_at: new Date().toISOString(),
-      initiator_id: initiatorIdentity.subject,
-      initiator_name: displayNameOf(initiatorIdentity),
-      responder_id: responderIdentity.subject,
-      responder_name: displayNameOf(responderIdentity),
-    },
+    fields,
   });
 }
 
@@ -78,22 +97,28 @@ export function buildHandshakeDraft(
 // pubkey and name (typically from a prior connection via PeerPicker,
 // or by manual paste) but the responder is not in the room to scan.
 // verification='remote' labels the link honestly per D-09; a verifier
-// always sees this is the weaker tier.
+// always sees this is the weaker tier. Optional relationship leaf
+// matches the in-person path semantics.
 export function buildRemoteHandshakeDraft(
   initiatorIdentity: Attestation,
   responder: { pubkey: string; name: string },
+  relationship?: string,
 ): Attestation {
+  const fields: Record<string, string> = {
+    verification: 'remote',
+    handshake_at: new Date().toISOString(),
+    initiator_id: initiatorIdentity.subject,
+    initiator_name: displayNameOf(initiatorIdentity),
+    responder_id: responder.pubkey,
+    responder_name: responder.name,
+  };
+  if (relationship && relationship.length > 0) {
+    fields.relationship = relationship;
+  }
   return relationshipAttestation({
     subject: initiatorIdentity.subject,
     tier: 'notable',
-    fields: {
-      verification: 'remote',
-      handshake_at: new Date().toISOString(),
-      initiator_id: initiatorIdentity.subject,
-      initiator_name: displayNameOf(initiatorIdentity),
-      responder_id: responder.pubkey,
-      responder_name: responder.name,
-    },
+    fields,
   });
 }
 
