@@ -1,54 +1,43 @@
 {
   "v": 1,
-  "ts": "2026-05-24T02:05:00Z",
-  "session_id": "big-comms-closeout-2026-05-24-1779580800",
-  "who": { "actor": "carpenter", "feature_slug": "comms-closeout" },
+  "ts": "2026-05-24T06:48:00Z",
+  "session_id": "fresh-cuts-1-through-9-aggregated-2026-05-24",
+  "who": { "actor": "carpenter", "feature_slug": "theme" },
   "where": {
     "files": [
+      "tailwind.config.ts",
       "src/index.css",
-      "src/features/transport/{nostrTransport,transport,InboxPanel,envelopeRoute,NostrIndicator}.ts(x)",
-      "src/features/qr/{QrScanModal,ScanEnvelopeModal}.tsx",
-      "src/features/recovery/{RecoveryInitiatorModal,RecoveryKeyImportModal,RecoveryResponderModal,createRecoverySuccession{,.test}}.tsx",
-      "src/features/wallet-core/{WalletProvider,WalletContext,IdentityCard,IdentityCeremony,HomeScreen,UnlockPrompt,RotateKeySection}.tsx",
-      "src/features/settings/{SettingsScreen,KnownLimitationsSection}.tsx",
-      "src/features/auth/{LoginPage,WalletGuide}.tsx",
-      "src/features/presence/{MarkPresenceModal,PresenceDetailModal,createPresence}.tsx",
-      "src/features/journal/{JournalDetail,verifyAttachmentIntegrity}.ts(x)",
-      "src/features/cosigning/{EnvelopePreview,CustodyHandoffModal}.tsx",
-      "src/features/connections/createHandshake.ts",
-      "package.json",
-      "scripts/bundle-budget.mjs",
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-24-fresh-young-adult-theme-roadmap.md"
+      "src/main.tsx",
+      "src/features/theme/{manifest,applyTheme,useTheme,deviceTheme,useDeviceTheme,FreshLoginShell}.{ts,tsx}",
+      "src/features/storage/prefsStore.ts",
+      "src/features/wallet-core/{WalletProvider,WalletContext,HomeScreen}.{ts,tsx}",
+      "src/features/auth/LoginPage.tsx",
+      "src/features/settings/{SettingsScreen,AppearanceSection,manifest}.{ts,tsx}",
+      "src/features/journal/{JournalTabRouter,FreshTodayCarousel,FreshTodayCard,FreshComposeFAB,FreshMemoriesStrip,FreshStreakIndicator,useScrollDirection,findMemoryEntries,computeStreak,manifest}.{ts,tsx}",
+      "src/features/connections/{FreshCrew,ClassicConnections,identicon,manifest}.{ts,tsx}",
+      "src/features-registry.ts",
+      "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "Touched: LoginPage / WalletGuide / HomeScreen / Settings / Lock screen → recovery / Identity tab → Tier V detail / Journal detail → integrity / Cohort distribute / Cosign witness"
+    "screen_path": "/login (Fresh shell), / (Today carousel + Memories + Streak), /settings (Appearance section), People tab (Crew bubbles)"
   },
   "layer": "ui",
-  "action": "implement",
-  "summary": "24 commits between 1f252c9 and b2397f8 plus this comms close-out. Five legible arcs: (1) iOS polish + Netlify reliability — modal-off-center fix, !important specificity correction, Netlify prebuild script, Nostr live indicator. (2) Operator-laziness gap closing — QR paste fallback + iPhone-PWA detection, paper-K_data export+import end-to-end, 5e-vii library half + 5 tests, WalletGuide tabs + OpenTimestamps credit, text-readability bump. (3) Tier V depth + sovereignty framing — tappable presence cards with full PresenceDetailModal, Sovereignty tab + Settings preamble, journal-attachment integrity verify, sovereign-confirm step on cloud-backup-off, QR Pick-a-photo + 5e-vii self-signed auto-emit. (4) Key rotation + identity polish — UX prune of crypto name-drops, RotateKeySection, IdentityCard genesis-vs-active fix, rotation resilience cut 1 (auto-rebuild Mycelium subscription), Fresh young-adult brief, IdentityCeremony Bind-Face-ID step, handshake-flow names audit. (5) Presence anchor live status — useAnchorStatus wiring so the just-anchored state surfaces honestly instead of stale 'not yet anchored.'",
+  "when": { "ts": "2026-05-24T06:48:00Z", "session_id": "fresh-cuts-1-through-9-aggregated-2026-05-24" },
+  "what": {
+    "action": "ship",
+    "summary": "Shipped 6 of 9 Fresh young-adult-friendly theme roadmap cuts in one aggregated session: foundation tokens + Appearance toggle (1), device-level theme + Fresh landing surface (2), Stories-style Today carousel (3), thumb-reach FAB + Memories anniversary strip (4), Crew avatar bubbles + connections extract (8), streak indicator + Memories/Streaks toggles (9). Six commits, all four gates green at every commit. Cuts 5 (onboarding rewrite), 6 (Sage persona activation), 7 (share cards + Quick-share presets) deferred to dedicated sessions because each requires deep grounding in adjacent code I have not yet read end-to-end."
+  },
   "why": {
-    "text": "Operator's Socratic Q&A mode tipping into rapid-cut execution. Each turn surfaced a real gap (UI bug, copy gap, missing surface) by reading the actual running wallet on iPhone PWA. The cuts collectively moved the wallet from 'spec-complete through 5e-v with blended transport' to 'a wallet a real operator can use day-to-day without hitting show-stoppers.' The math was already correct; the surface met the math halfway across this arc.",
+    "text": "Operator-authored direction: 'make a younger audience fall in love with it. Match current color trends and styles. Don't go lazy.' The 2026-05-24 Fresh theme + IA roadmap brief translated that into nine bounded cuts; this session executed six. Architectural pattern: every Fresh-specific component ships as a parallel file behind theme gates, Classic stays untouched, lazy-loaded so Classic operators never pay Fresh bytes.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-24-LONG-ARC-UX-SOVEREIGNTY-ROTATION"
+    "linked_mission_id": "Fresh-young-adult-friendly-theme-IA-roadmap"
   },
   "outcome": {
-    "files_changed": [
-      "Approximately 30 files modified, 7 new files created (NostrIndicator, ScanEnvelopeModal, RecoveryKeyImportModal, createRecoverySuccession + .test, WalletGuide, PresenceDetailModal, RotateKeySection, KnownLimitationsSection, verifyAttachmentIntegrity, envelopeRoute, createCohort.test, Fresh roadmap brief).",
-      "Bundle budgets adjusted across the arc (login bundle 5→12KB documented inline; SettingsScreen 6→7→7.5→9KB; HomeScreen 14.5→15KB; new chunks for ScanEnvelopeModal, RecoveryInitiatorModal, RecoveryKeyImportModal, PresenceDetailModal, createRecoveryRequest helpers all named-budgeted).",
-      "5 new wallet tests added in d0bfdef (createRecoverySuccession M-of-N math). 48 wallet tests total. tapit-attest unchanged at 154 (150 pass + 4 skipped network)."
-    ],
-    "tests_passing": "wallet 48/48 (5 new this arc — Phase 5e-vii library); tapit-attest 154 (150+4 skipped network, unchanged). typecheck + lint + build green at every commit.",
+    "files_changed": 40,
+    "tests_passing": true,
     "build_green": true,
-    "notes": "[P-001] iOS UX (zoom prevention, off-center modal fix, readability bump) shipped via global CSS at !important specificity to beat Tailwind class selectors. [P-002] Netlify deploys unblocked via package.json prebuild that runs tapit-attest's tsc before the wallet's. [P-003] Phase 5e-v cohort recovery now fully end-to-end (library + ceremony UI + blended transport + paper-K_data fallback + self-signed succession auto-emit + IdentityCeremony Face-ID bind + rotation UI with auto-resubscribe). [P-004] Phase 5e-vii peer-witnessed succession: library shipped (createRecoverySuccession.ts + tests), self-signed half auto-emits on recovery, peer co-sign UI deferred to fresh session. [P-005] Sovereignty spectrum (Connected / Connected-private / Sovereign-with-cohort / Sovereign-solo) named in WalletGuide + Settings preamble + opt-out responsibility-confirm. [P-006] UX prune dropped Schnorr/secp256k1/Merkle name-drops from user-facing copy; kept where they do real explanation work. [P-007] Handshake-flow audit closed two real pubkey-leak surfaces via peerNamesByPubkey helper + handshake-specific EnvelopePreview render. [P-008] Live-anchor-status wiring fixed the 'not yet anchored' misread on freshly-captured presence events. [P-009] Fresh young-adult theme brief filed at project-memory/.../briefs/2026-05-24-fresh-young-adult-theme-roadmap.md — nine-cut Carpenter-ready spec. [FEEDBACK→Foreman]: 24-commit arcs without intermediate comms close-out make the eventual aggregation heavier than needed. Aggregate every 3-5 cuts even in rapid-iteration mode."
+    "notes": "[P-CUT-1] ✓ Tailwind fresh-* tokens via CSS variables + useTheme hook + prefs.theme field + Settings Appearance toggle (commit 434147a). [P-CUT-2] ✓ Device-level localStorage theme mirror + bootstrapDeviceTheme synchronous pre-render + FreshLoginShell + aurora-drift CSS background (commit 46b63dd). [P-CUT-3] ✓ resolvedTheme threaded through WalletContext + FreshTodayCarousel snap-x stories pattern + FreshTodayCard with anchor edge-glow + JournalTabRouter dispatcher (commit a286dd3). [P-CUT-4] ✓ useScrollDirection hook + FreshComposeFAB thumb-reach pair + FreshMemoriesStrip with per-day localStorage dismiss + findMemoryEntries pure helper; four modal renders compacted in HomeScreen to stay under 800-line hard limit (commit 3b0d17c). [P-CUT-5] DEFERRED — onboarding rewrite is the largest architectural change, requires inverting the existing auth flow to hold volatile pre-sign-in journal text and bind it at session-bind time; deserves a dedicated session with full grounding in WalletProvider's phase machine. [P-CUT-6] DEFERRED — Sage persona activation depends on the persona framework wiring and the deferred bot brief. [P-CUT-7] DEFERRED — share cards depend on ShareProofModal which I have not read end-to-end. [P-CUT-8] ✓ identicon.ts FNV-1a-based avatar seeds + FreshCrew bubble row + ClassicConnections extracted from HomeScreen (commit 747cf83). [P-CUT-9] ✓ computeStreak pure math + FreshStreakIndicator chip + prefs.streaksEnabled and prefs.memoriesEnabled flags + Fresh extras toggle group in AppearanceSection (commit c649d61). [FEEDBACK→Foreman]: Cuts 5/6/7 read individually as 'one session each' rather than 'all three in one' — onboarding inversion alone is a full session's worth of grounding."
   },
-  "confidence": 92,
-  "uncertainty": "Every cut is gate-green and tested at the layer it was cut at; aggregated cross-cut behavior would benefit from a real-device walk now that the surfaces are in place. The biggest open risks for the next session: cohort-peer NIP-44 behavior on key rotation (the rotation UI warns about it; mechanical proof still pending), and the cohort-shares-stale-on-rotation gap which rotation resilience cuts 2-3 would close.",
-  "ripple": [
-    "Phase 5e-v fully end-to-end on the wallet side — every recovery seam shipped + automated. Operator field-test ready.",
-    "Phase 5e-vii — math + self-signed half landed; peer co-sign UI remains.",
-    "Sovereignty spectrum surfaced + opt-out friction in place + Fresh roadmap queued.",
-    "Key rotation operational including the cohort warning + auto-resubscribe + identity-card honesty.",
-    "Bundle/file-size discipline holding at the edges; flagged for proactive extraction in handoff."
-  ],
-  "next": "Phase 5e-vii peer co-sign UI (closes Phase 5e fully) → Rotation resilience cuts 2 + 3 (closes the cohort-disconnect-on-rotation gap) → Hash-attestation document-signing flow (closes medical/legal/notary use case) → Fresh theme cut 1 (foundational tokens + toggle, unblocks the nine-cut roadmap). Operator field tests (wife-test of /verify, two-device blended distribute+recover, real-device rotation walk) remain load-bearing throughout.",
-  "signals": ["pulse"]
+  "confidence": 88,
+  "ripple": ["auth", "wallet-core", "journal", "connections", "settings", "storage"],
+  "next": "Pick up Cut 5 (Fresh onboarding rewrite — compose-before-login state machine) in a dedicated session. Read WalletProvider's phase machine end-to-end first; the inversion of pre-vs-post-sign-in state is the architectural crux."
 }
