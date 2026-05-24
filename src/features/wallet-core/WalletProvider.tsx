@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
 import type { RelayStatus, Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
+import { mergeSignatures } from '../cosigning/mergeSignatures.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
 import { useSession } from '../auth/useSession.ts';
@@ -267,9 +268,69 @@ export function WalletProvider({ children }: Props) {
             })();
             return;
           }
-          setInboxEnvelopes((prev) =>
-            prev.some((p) => p.eventId === item.eventId) ? prev : [item, ...prev],
-          );
+          // Silent-absorb path. When the incoming envelope's
+          // canonical envelopeId matches one we already hold —
+          // the classic case is a counter-signed handshake
+          // returning to the originator — merge any new
+          // signatures into our held copy in-place and skip the
+          // inbox UI entirely. mergeSignatures is idempotent on
+          // signer/sig pairs, so a relay re-delivering the same
+          // event becomes a no-op rather than re-opening the
+          // absorb modal. Without this guard the operator hit a
+          // loop: dismiss the inbox row, Mycelium relay history
+          // re-emits the same event on reconnect, dedupe-by-
+          // eventId finds nothing in the now-empty inbox and
+          // re-adds it, absorb prompt comes back. Auto-merging
+          // on arrival breaks the loop at the source.
+          void (async () => {
+            try {
+              const incomingId = envelopeId(item.envelope);
+              const held = (await wallet.holdings()).find(
+                (a) => envelopeId(a) === incomingId,
+              );
+              if (!held) {
+                setInboxEnvelopes((prev) =>
+                  prev.some((p) => p.eventId === item.eventId)
+                    ? prev
+                    : [item, ...prev],
+                );
+                return;
+              }
+              const { merged, newSignatures } = mergeSignatures(
+                held,
+                item.envelope,
+              );
+              if (newSignatures.length === 0) {
+                // Already absorbed — silent no-op. Make sure no
+                // stale inbox row exists for this envelopeId.
+                setInboxEnvelopes((prev) =>
+                  prev.filter((p) => envelopeId(p.envelope) !== incomingId),
+                );
+                return;
+              }
+              await wallet.hold(merged);
+              const pass = passphraseRef.current;
+              if (pass && ownerId) {
+                await saveWallet(wallet, pass, ownerId);
+              }
+              setHoldings(await wallet.holdings());
+              // Clear any inbox row that pointed at this envelopeId
+              // — the absorb is done, no need to surface it.
+              setInboxEnvelopes((prev) =>
+                prev.filter((p) => envelopeId(p.envelope) !== incomingId),
+              );
+            } catch (err) {
+              console.warn('silent-absorb on inbox arrival failed', err);
+              // Fall back to inbox UI so the operator can resolve
+              // manually if the auto-merge failed (e.g. signature
+              // verification mismatch).
+              setInboxEnvelopes((prev) =>
+                prev.some((p) => p.eventId === item.eventId)
+                  ? prev
+                  : [item, ...prev],
+              );
+            }
+          })();
         },
       });
       transportRef.current = conn.transport;
