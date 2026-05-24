@@ -39,13 +39,12 @@ interface Props {
 
 type Step =
   | 'role'
-  | 'i-show-identity'
+  | 'start'
   | 'i-preview'
   | 'i-show-cosigned'
   | 'r-ready'
   | 'r-preview'
   | 'r-show-handshake'
-  | 'remote-pick'
   | 'remote-sent'
   | 'done';
 
@@ -187,25 +186,23 @@ export function HandshakeModal({ onClose }: Props) {
   }
 
   function handleScan(raw: string) {
-    // "Do what I mean" pivot. If the operator pasted a raw 64-char
-    // pubkey (not an envelope JSON) into any of the in-person scan
-    // steps, their intent is to handshake with that person but they
-    // only had the pubkey to hand — that's the remote-handshake
-    // path. Pre-fill the remote pubkey state and switch the modal
-    // to remote-pick instead of throwing 'paste is not valid JSON'
-    // through the in-person scan parser. Envelope-shaped pastes
-    // (anything that starts with '{') keep the existing per-step
-    // routing because they're real handshake / identity envelopes.
+    // "Do what I mean" pivot. A pasted raw 64-char pubkey (not an
+    // envelope JSON) is the remote-handshake input — pre-fill the
+    // PeerPicker's value and land back on the unified Start page
+    // so the operator can confirm + send. Envelope-shaped pastes
+    // (anything starting with '{') flow through the existing per-
+    // step parsers because they are real handshake / identity
+    // envelopes.
     const trimmed = raw.trim();
     const cleanHex = trimmed.replace(/\s+/g, '').replace(/^0x/i, '').toLowerCase();
     const isJustPubkey =
       /^[0-9a-f]{64}$/i.test(cleanHex) && !trimmed.startsWith('{');
     if (isJustPubkey && identity && cleanHex !== identity.subject) {
       setRemotePubkey(cleanHex);
-      setStep('remote-pick');
+      setStep('start');
       return;
     }
-    if (step === 'i-show-identity') onScanHandshake(raw);
+    if (step === 'start') onScanHandshake(raw);
     else if (step === 'r-ready') onScanIdentity(raw);
     else if (step === 'r-show-handshake') onScanCosigned(raw);
   }
@@ -278,73 +275,95 @@ export function HandshakeModal({ onClose }: Props) {
         {step === 'role' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              A handshake connects two wallets. In person is the strong
-              tier — two phones, two scans. Remote is the honest weaker
-              tier — same record, marked as such.
+              A handshake connects two wallets. Start one if you're
+              the one inviting them — works whether they're with you
+              in person or across the world. Join one if they've
+              already started by handing you their wallet.
             </p>
             <div className="mt-4 space-y-2">
               <button
                 type="button"
-                onClick={() => setStep('i-show-identity')}
+                onClick={() => setStep('start')}
                 className={primaryBtn}
               >
-                I'll start (in person)
+                Start a handshake
               </button>
               <button
                 type="button"
                 onClick={() => setStep('r-ready')}
                 className="w-full rounded-md border border-ink/15 py-3 text-sm font-medium"
               >
-                I'll join (in person)
+                Join one in person
               </button>
-              {prefs.nostrTransportEnabled && (
-                <button
-                  type="button"
-                  onClick={() => setStep('remote-pick')}
-                  className="w-full rounded-md border border-accent/40 bg-accent/5 py-3 text-sm font-medium text-accent"
-                >
-                  Start a remote handshake (Tier R)
-                </button>
-              )}
             </div>
           </>
         )}
 
-        {step === 'remote-pick' && (
+        {step === 'start' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>Remote handshake · Tier R</div>
-            <p className="mt-1 text-sm text-muted">
-              Pick a connection or paste a public key. They will see a
-              handshake request in their inbox; once they sign, both of
-              you hold a Tier R record — labelled remote, weaker than
-              an in-person handshake.
+            <p className="mt-2 text-sm text-muted">
+              Connect with someone. Pick whichever way you have their
+              info — show them your code in person, scan theirs, or
+              paste their public key for a remote handshake.
             </p>
-            <div className="mt-3">
-              <PeerPicker
-                holdings={holdings}
-                myIdentity={identity?.subject ?? ''}
-                value={remotePubkey}
-                onChange={setRemotePubkey}
-              />
-            </div>
-            <label className="mt-3 block text-sm">
-              <span className="text-muted">Their name (optional)</span>
-              <input
-                type="text"
-                value={remoteName}
-                onChange={(e) => setRemoteName(e.target.value)}
-                placeholder="What should the record say about them?"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={startRemoteHandshake}
-              disabled={busy || remotePubkey.trim().length === 0}
-              className={`mt-4 ${primaryBtn}`}
-            >
-              {busy ? 'Sending…' : 'Send remote handshake'}
-            </button>
+
+            <section className="mt-4 rounded-xl border border-ink/10 bg-white p-4">
+              <div className={eyebrow}>If they're with you</div>
+              {identity ? (
+                <QrShow
+                  text={canonicalEnvelope(identity)}
+                  label="Show them this code"
+                />
+              ) : (
+                <p className="mt-2 text-sm text-red-600">
+                  Your identity isn't ready yet.
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setScanning(true)}
+                className={`mt-3 ${primaryBtn}`}
+              >
+                Scan their code →
+              </button>
+            </section>
+
+            <section className="mt-3 rounded-xl border border-ink/10 bg-white p-4">
+              <div className={eyebrow}>
+                If they're not here{!prefs.nostrTransportEnabled && ' (needs Mycelium on)'}
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                Pick a connection or paste their public key — they'll
+                see a handshake request the next time they open their
+                wallet.
+              </p>
+              <div className="mt-3">
+                <PeerPicker
+                  holdings={holdings}
+                  myIdentity={identity?.subject ?? ''}
+                  value={remotePubkey}
+                  onChange={setRemotePubkey}
+                />
+              </div>
+              <label className="mt-3 block text-sm">
+                <span className="text-muted">Their name (optional)</span>
+                <input
+                  type="text"
+                  value={remoteName}
+                  onChange={(e) => setRemoteName(e.target.value)}
+                  placeholder="What should the record say about them?"
+                  className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={startRemoteHandshake}
+                disabled={busy || remotePubkey.trim().length === 0}
+                className={`mt-3 ${primaryBtn}`}
+              >
+                {busy ? 'Sending…' : 'Send remote handshake'}
+              </button>
+            </section>
           </>
         )}
 
@@ -381,33 +400,6 @@ export function HandshakeModal({ onClose }: Props) {
               Done
             </button>
           </div>
-        )}
-
-        {step === 'i-show-identity' && (
-          <>
-            <div className={`mt-2 ${eyebrow}`}>Step 1 of 3</div>
-            <p className="mt-1 text-sm text-muted">
-              Show this to the person you're connecting with. They scan
-              it from their wallet.
-            </p>
-            {identity ? (
-              <QrShow
-                text={canonicalEnvelope(identity)}
-                label="Your identity"
-              />
-            ) : (
-              <p className="mt-3 text-sm text-red-600">
-                Your identity isn't ready yet.
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => setScanning(true)}
-              className={`mt-4 ${primaryBtn}`}
-            >
-              Next: scan their handshake code
-            </button>
-          </>
         )}
 
         {step === 'i-preview' && (
