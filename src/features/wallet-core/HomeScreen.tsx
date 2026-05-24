@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Attestation, FieldBranch } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
@@ -155,8 +156,11 @@ export function HomeScreen() {
   const [incomingForWitness, setIncomingForWitness] = useState<Attestation | null>(null);
   const [incomingSenderForWitness, setIncomingSenderForWitness] = useState<string | null>(null);
   const [incomingEventIdForWitness, setIncomingEventIdForWitness] = useState<string | null>(null);
+  // Absorb does NOT carry an eventId — the success callback dedupes
+  // by envelopeId across the whole inboxEnvelopes list because multiple
+  // relays can deliver the same counter-signed envelope under distinct
+  // Nostr event-ids and absorbing one should clear them all.
   const [incomingForAbsorb, setIncomingForAbsorb] = useState<Attestation | null>(null);
-  const [incomingEventIdForAbsorb, setIncomingEventIdForAbsorb] = useState<string | null>(null);
   // 5e-vi — recovery-request from a ceremony pubkey on a new device.
   // When the operator opens the modal, the responder side walks
   // strict out-of-band verification before releasing a share.
@@ -176,7 +180,6 @@ export function HomeScreen() {
       setIncomingEventIdForWitness(eventId);
     } else if (action === 'absorb-cosign') {
       setIncomingForAbsorb(envelope);
-      setIncomingEventIdForAbsorb(eventId);
     } else if (action === 'membership-receive') {
       void acceptMembership(envelope);
     } else if (action === 'recovery-share-receive') {
@@ -698,11 +701,25 @@ export function HomeScreen() {
         <AbsorbCosignModal
           incoming={incomingForAbsorb}
           onSuccess={() => {
-            if (incomingEventIdForAbsorb) dismissInboxEnvelope(incomingEventIdForAbsorb);
+            // Multiple relays can deliver the same counter-signed envelope
+            // under distinct Nostr event-ids; the Nostr client dedupes
+            // events by id but two relays receiving the same envelope can
+            // each emit it with the relay's own re-broadcast id. The
+            // earlier behaviour dismissed only the event-id that opened
+            // the modal, leaving the other inbox rows in place — so the
+            // operator absorbed once and was offered absorb again the
+            // moment they closed the modal, looking like a loop. Compute
+            // the envelopeId of the just-absorbed envelope and drop every
+            // inbox row that points at the same envelopeId in one pass.
+            const absorbedId = envelopeId(incomingForAbsorb);
+            for (const item of inboxEnvelopes) {
+              if (envelopeId(item.envelope) === absorbedId) {
+                dismissInboxEnvelope(item.eventId);
+              }
+            }
           }}
           onClose={() => {
             setIncomingForAbsorb(null);
-            setIncomingEventIdForAbsorb(null);
           }}
         />
       )}
