@@ -55,6 +55,7 @@ import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
 // 5d Tier V — MarkPresenceModal is lazy-loaded so the webauthn +
 // geolocation + presence code only ships when the operator actually
 // opens the flow. Keeps HomeScreen bundle within budget.
+const FreshComposeFAB = lazy(() => import('../journal/FreshComposeFAB.tsx').then((m) => ({ default: m.FreshComposeFAB })));
 const MarkPresenceModal = lazy(() =>
   import('../presence/MarkPresenceModal.tsx').then((m) => ({
     default: m.MarkPresenceModal,
@@ -132,6 +133,7 @@ export function HomeScreen() {
     relayStatus,
     save,
     refresh,
+    resolvedTheme,
   } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
@@ -679,7 +681,7 @@ export function HomeScreen() {
               />
             </div>
           </section>
-        ) : (
+        ) : resolvedTheme === 'fresh' ? null : (
           <div className="fixed bottom-6 inset-x-0 flex items-center justify-center gap-3 px-5">
             <button
               type="button"
@@ -698,9 +700,7 @@ export function HomeScreen() {
           </div>
         ))}
 
-      {witnessOpen && (
-        <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />
-      )}
+      {witnessOpen && <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />}
 
       {incomingForWitness && (
         <CosignAsWitnessModal
@@ -746,9 +746,7 @@ export function HomeScreen() {
         </Suspense>
       )}
 
-      {handshakeOpen && (
-        <HandshakeModal onClose={() => setHandshakeOpen(false)} />
-      )}
+      {handshakeOpen && <HandshakeModal onClose={() => setHandshakeOpen(false)} />}
 
       {scanEnvelopeOpen && (
         <Suspense fallback={null}>
@@ -762,13 +760,9 @@ export function HomeScreen() {
         </Suspense>
       )}
 
-      {membershipOpen && (
-        <MembershipModal onClose={() => setMembershipOpen(false)} />
-      )}
+      {membershipOpen && <MembershipModal onClose={() => setMembershipOpen(false)} />}
 
-      {officialsOpen && (
-        <OfficialsEditorModal onClose={() => setOfficialsOpen(false)} />
-      )}
+      {officialsOpen && <OfficialsEditorModal onClose={() => setOfficialsOpen(false)} />}
 
       {chainFor && (
         <MembershipChainSheet
@@ -792,6 +786,10 @@ export function HomeScreen() {
             onClose={() => setPresenceDetail(null)}
           />
         </Suspense>
+      )}
+
+      {resolvedTheme === 'fresh' && tab === 'journal' && !composerOpen && (
+        <Suspense fallback={null}><FreshComposeFAB onCompose={() => setComposerOpen(true)} onWitnessSign={() => setWitnessOpen(true)} /></Suspense>
       )}
     </div>
   );
