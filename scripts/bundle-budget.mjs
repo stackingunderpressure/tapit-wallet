@@ -95,7 +95,10 @@ const BUDGETS = [
 
   // Small hoisted helpers — context, hooks, single-export modules.
   // Budgets are tight because these should stay tiny by design.
-  { pattern: /^WalletContext-.*\.js$/, gz: 500, label: 'WalletContext' },
+  // 2026-05-24 bump: holds the small EnrollResult re-export pulled
+  // through the WalletContext consumer chain after identity-ceremony
+  // gained Face ID binding.
+  { pattern: /^WalletContext-.*\.js$/, gz: 700, label: 'WalletContext' },
   { pattern: /^useWallet-.*\.js$/, gz: 500, label: 'useWallet hook' },
   { pattern: /^useAnchorWorker-.*\.js$/, gz: 500, label: 'useAnchorWorker hook' },
   { pattern: /^useAnchorStatus-.*\.js$/, gz: 4_000, label: 'useAnchorStatus hook' },

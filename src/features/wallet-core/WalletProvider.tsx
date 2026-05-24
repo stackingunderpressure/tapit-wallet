@@ -14,6 +14,8 @@ import {
   createIdentityAttestation,
   type IdentityInput,
 } from './createIdentityAttestation.ts';
+import { holdDevicePasskey } from '../presence/createPresence.ts';
+import type { EnrollResult } from '../presence/webauthn.ts';
 import { saveWallet } from './saveWallet.ts';
 import { WalletContext, type WalletContextValue } from './WalletContext.ts';
 import {
@@ -362,7 +364,7 @@ export function WalletProvider({ children }: Props) {
   );
 
   const onCreateIdentity = useCallback(
-    async (input: IdentityInput) => {
+    async (input: IdentityInput, passkeyEnroll?: EnrollResult) => {
       if (phase.kind !== 'needs-identity') {
         throw new Error('not in needs-identity state');
       }
@@ -370,11 +372,18 @@ export function WalletProvider({ children }: Props) {
       const passphrase = passphraseRef.current;
       if (!passphrase) throw new Error('passphrase not in memory; re-unlock');
       await createIdentityAttestation(phase.wallet, input);
+      // If the ceremony's optional bind-Face-ID step produced a passkey
+      // enrollment, hold the device-passkey credential as the first
+      // sibling envelope to the identity — same moment, same wallet
+      // key signing both, queued for the same OpenTimestamps anchor.
+      if (passkeyEnroll) {
+        await holdDevicePasskey(phase.wallet, ownerId, anchorWorker, passkeyEnroll);
+      }
       await saveWallet(phase.wallet, passphrase, ownerId);
       await landAfterUnlock(phase.wallet);
       setPrefs(await prefsStore.load(ownerId));
     },
-    [phase, ownerId],
+    [phase, ownerId, anchorWorker],
   );
 
   const save = useCallback(async () => {
@@ -493,7 +502,12 @@ export function WalletProvider({ children }: Props) {
   }
 
   if (phase.kind === 'needs-identity') {
-    return <IdentityCeremony onComplete={onCreateIdentity} />;
+    return (
+      <IdentityCeremony
+        walletPubkey={phase.wallet.publicKey}
+        onComplete={onCreateIdentity}
+      />
+    );
   }
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
