@@ -1193,3 +1193,5 @@
 {"event":"gate_passed","ts":"2026-05-24T22:54:39Z","session_id":"3f5300b0-a347-44be-8f83-7bc3cab72a29","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T22:54:39Z","session_id":"3f5300b0-a347-44be-8f83-7bc3cab72a29","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T22:54:39Z","session_id":"3f5300b0-a347-44be-8f83-7bc3cab72a29","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T22:54:41Z","session_id":"3f5300b0-a347-44be-8f83-7bc3cab72a29","sha":"4796f563719a70278e9bdcd1e6d0380f328e2e59","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T22:54:41Z","session_id":"3f5300b0-a347-44be-8f83-7bc3cab72a29","outcome":"completed","summary":"Fresh is now the default theme at three layers (prefsStore default, useDeviceTheme first-run, bootstrapDeviceTheme cold-start). New wallets land on Fresh; existing operators' saved choice is preserved by the merge-on-top semantics.","files_total":3,"commits_total":1}
