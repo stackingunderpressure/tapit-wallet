@@ -67,6 +67,11 @@ export function HandshakeModal({ onClose }: Props) {
   const [remotePubkey, setRemotePubkey] = useState('');
   const [remoteName, setRemoteName] = useState('');
   const [remoteSendStatus, setRemoteSendStatus] = useState<PublishStatusSummary | null>(null);
+  // Which accordion panel of the unified Start page is expanded.
+  // Smart default: open the 'not-here' panel if a pubkey is
+  // already present (e.g. the operator was pivoted here from the
+  // raw-pubkey-paste sniffer), else default to 'with-you'.
+  const [openPanel, setOpenPanel] = useState<'with-you' | 'not-here'>('with-you');
 
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
@@ -82,6 +87,16 @@ export function HandshakeModal({ onClose }: Props) {
   useEffect(() => {
     setError(null);
   }, [step]);
+
+  // When the operator arrives on 'start' with a pubkey already
+  // filled (handleScan pivot, returning to the page, etc.), open
+  // the remote panel so they see their work. Otherwise leave the
+  // panel state alone so manual toggles are sticky.
+  useEffect(() => {
+    if (step === 'start' && remotePubkey.trim().length > 0) {
+      setOpenPanel('not-here');
+    }
+  }, [step, remotePubkey]);
 
   // Responder scanned the initiator's identity QR.
   function onScanIdentity(raw: string) {
@@ -300,15 +315,15 @@ export function HandshakeModal({ onClose }: Props) {
         )}
 
         {step === 'start' && (
-          <>
-            <p className="mt-2 text-sm text-muted">
-              Connect with someone. Pick whichever way you have their
-              info — show them your code in person, scan theirs, or
-              paste their public key for a remote handshake.
-            </p>
-
-            <section className="mt-4 rounded-xl border border-ink/10 bg-white p-4">
-              <div className={eyebrow}>If they're with you</div>
+          <div className="mt-3 space-y-2">
+            <AccordionPanel
+              label="If they're with you"
+              hint="Show your code · scan theirs"
+              open={openPanel === 'with-you'}
+              onToggle={() =>
+                setOpenPanel(openPanel === 'with-you' ? 'not-here' : 'with-you')
+              }
+            >
               {identity ? (
                 <QrShow
                   text={canonicalEnvelope(identity)}
@@ -326,25 +341,26 @@ export function HandshakeModal({ onClose }: Props) {
               >
                 Scan their code →
               </button>
-            </section>
+            </AccordionPanel>
 
-            <section className="mt-3 rounded-xl border border-ink/10 bg-white p-4">
-              <div className={eyebrow}>
-                If they're not here{!prefs.nostrTransportEnabled && ' (needs Mycelium on)'}
-              </div>
-              <p className="mt-1 text-xs text-muted">
-                Pick a connection or paste their public key — they'll
-                see a handshake request the next time they open their
-                wallet.
-              </p>
-              <div className="mt-3">
-                <PeerPicker
-                  holdings={holdings}
-                  myIdentity={identity?.subject ?? ''}
-                  value={remotePubkey}
-                  onChange={setRemotePubkey}
-                />
-              </div>
+            <AccordionPanel
+              label="If they're not here"
+              hint={
+                prefs.nostrTransportEnabled
+                  ? 'Pick or paste their public key'
+                  : 'Needs Mycelium on'
+              }
+              open={openPanel === 'not-here'}
+              onToggle={() =>
+                setOpenPanel(openPanel === 'not-here' ? 'with-you' : 'not-here')
+              }
+            >
+              <PeerPicker
+                holdings={holdings}
+                myIdentity={identity?.subject ?? ''}
+                value={remotePubkey}
+                onChange={setRemotePubkey}
+              />
               <label className="mt-3 block text-sm">
                 <span className="text-muted">Their name (optional)</span>
                 <input
@@ -363,8 +379,8 @@ export function HandshakeModal({ onClose }: Props) {
               >
                 {busy ? 'Sending…' : 'Send remote handshake'}
               </button>
-            </section>
-          </>
+            </AccordionPanel>
+          </div>
         )}
 
         {step === 'remote-sent' && (
@@ -539,5 +555,49 @@ export function HandshakeModal({ onClose }: Props) {
         <QrScanModal onScanned={handleScan} onClose={() => setScanning(false)} />
       )}
     </div>
+  );
+}
+
+// Lightweight controlled accordion panel. Header line carries the
+// section label + a one-line hint and a rotating chevron; body
+// only renders when open so closed panels are tap-targets that
+// take no vertical room beyond the header. Used by the unified
+// Start step to fit two handshake paths (in-person + remote) on
+// one screen without forcing the operator to scroll past one to
+// reach the other.
+function AccordionPanel({
+  label,
+  hint,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  hint: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-ink/10 bg-white overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-ink/[0.02]"
+      >
+        <div className="min-w-0">
+          <div className={eyebrow}>{label}</div>
+          <div className="mt-0.5 text-xs text-muted truncate">{hint}</div>
+        </div>
+        <span
+          aria-hidden
+          className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+        >
+          ▾
+        </span>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </section>
   );
 }
