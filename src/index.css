@@ -53,6 +53,20 @@
   --fresh-accent-danger: #f87171;
   --fresh-anchor-glow: #f59e0b;
   --fresh-mycelium-glow: #22d3ee;
+
+  /* Classic --paper / --ink / --muted tokens are read by the
+     inline body styles in index.html (background: var(--paper);
+     color: var(--ink);) so the page itself paints theme-aware
+     without touching the Tailwind hex literals every Classic
+     component still relies on. Swapping these three under
+     [data-theme="fresh"] is what flips the page from cream-on-
+     cream to the dark-aurora-adjacent surface the brief promised.
+     Pure Tailwind utilities like `bg-paper` / `text-ink` keep
+     their hardcoded values — only the inline-body and any other
+     consumer that explicitly reads var(--paper)/var(--ink) flips. */
+  --paper: #0b0c0f;
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
 }
 
 /* iOS Safari zoom-prevention. iOS auto-zooms on tap whenever a form
