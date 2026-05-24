@@ -1183,3 +1183,5 @@
 {"event":"gate_passed","ts":"2026-05-24T22:26:53Z","session_id":"94450753-a5cb-4b70-aa2d-a6f92e77c259","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T22:26:53Z","session_id":"94450753-a5cb-4b70-aa2d-a6f92e77c259","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T22:26:53Z","session_id":"94450753-a5cb-4b70-aa2d-a6f92e77c259","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T22:26:55Z","session_id":"94450753-a5cb-4b70-aa2d-a6f92e77c259","sha":"58a7962839f64073e351522b7b5a52d0405dc3b7","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T22:26:55Z","session_id":"94450753-a5cb-4b70-aa2d-a6f92e77c259","outcome":"completed","summary":"Unified Start page is now two accordion panels; closed panels are header-only tap targets; smart-opens the remote panel when a pubkey is already filled.","files_total":1,"commits_total":1}
