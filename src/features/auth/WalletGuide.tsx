@@ -60,6 +60,13 @@ export function WalletGuide({ initialTab = 'why' }: Props) {
       />
       <div className="relative mx-auto max-w-2xl px-4 py-8">
         <header className="mb-6 flex items-center justify-between">
+          <Link
+            to="/"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="Back to wallet"
+          >
+            ← Home
+          </Link>
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             <span className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-accent">
@@ -515,18 +522,12 @@ function SignedInAccount({ email }: { email: string | null }) {
           : "Your wallet's keypair and attestations live on this device, encrypted under your passphrase."}
       </Lede>
 
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <Link
-          to="/"
-          className="rounded-xl bg-gradient-to-b from-accent to-[#22503b] py-3 text-center font-medium text-paper shadow-lg shadow-accent/30 transition active:scale-[0.99]"
-        >
-          Back to wallet
-        </Link>
+      <div className="mt-5">
         <button
           type="button"
           onClick={() => void doSignOut()}
           disabled={signingOut}
-          className="rounded-xl border border-ink/15 bg-white py-3 text-sm font-medium text-ink hover:bg-ink/5 disabled:opacity-40"
+          className="w-full rounded-xl border border-ink/15 bg-white py-3 text-sm font-medium text-ink hover:bg-ink/5 disabled:opacity-40"
         >
           {signingOut ? 'Signing out…' : 'Sign out'}
         </button>

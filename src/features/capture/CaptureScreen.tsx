@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { createJournalEntry } from '../journal/createJournalEntry.ts';
@@ -85,7 +85,10 @@ export function CaptureScreen() {
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto">
       <header className="py-2">
-        <div className="text-xs uppercase tracking-wide text-accent">
+        <Link to="/" className="text-sm text-muted hover:text-ink">
+          ← Home
+        </Link>
+        <div className="mt-2 text-xs uppercase tracking-wide text-accent">
           Capture
         </div>
         <h1 className="mt-1 text-xl font-semibold">Timestamp this</h1>
