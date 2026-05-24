@@ -1138,3 +1138,5 @@
 {"event":"gate_passed","ts":"2026-05-24T20:13:12Z","session_id":"5486484c-8ee9-447c-b481-c35149608f75","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T20:13:12Z","session_id":"5486484c-8ee9-447c-b481-c35149608f75","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T20:13:12Z","session_id":"5486484c-8ee9-447c-b481-c35149608f75","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T20:13:13Z","session_id":"5486484c-8ee9-447c-b481-c35149608f75","sha":"4217edd40382af6d21751d0a3f0719381488a0d8","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T20:13:13Z","session_id":"5486484c-8ee9-447c-b481-c35149608f75","outcome":"completed","summary":"PeerPicker shows peer list + paste input simultaneously, no toggle. Operator can paste new pubkey immediately even with existing peers, no hidden link.","files_total":1,"commits_total":1}
