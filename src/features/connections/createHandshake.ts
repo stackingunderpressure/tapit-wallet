@@ -97,6 +97,49 @@ export function buildRemoteHandshakeDraft(
   });
 }
 
+// Build a pubkey → display-name lookup from the operator's holdings.
+// Pulls from every handshake (initiator/responder pair) and every
+// held identity attestation. The operator's own identity is included
+// keyed by their identity pubkey so any UI displaying "from
+// <senderPubkey>" can resolve to "You" for self-CC envelopes. Most-
+// recent name wins on pubkey collisions so a peer who later updated
+// their identity attestation's display name shows the current value.
+//
+// Used by InboxPanel + EnvelopePreview + anywhere else a raw pubkey
+// would otherwise leak into user-facing copy. Nobody recognizes a
+// hex string; everyone recognizes a name.
+export function peerNamesByPubkey(
+  holdings: readonly Attestation[],
+  myIdentity: string,
+  myDisplayName?: string,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  // Sort by issuedAt so newer attestations overwrite older entries.
+  const sorted = [...holdings].sort((a, b) => {
+    const ta = new Date(a.issuedAt).getTime();
+    const tb = new Date(b.issuedAt).getTime();
+    return (Number.isFinite(ta) ? ta : 0) - (Number.isFinite(tb) ? tb : 0);
+  });
+  for (const att of sorted) {
+    if (att.kind === 'identity') {
+      const name = leafValue(att, 'display_name');
+      if (name && att.subject) out.set(att.subject.toLowerCase(), name);
+    } else if (isHandshake(att)) {
+      const v = readHandshake(att);
+      if (v.initiatorId && v.initiatorName) {
+        out.set(v.initiatorId.toLowerCase(), v.initiatorName);
+      }
+      if (v.responderId && v.responderName) {
+        out.set(v.responderId.toLowerCase(), v.responderName);
+      }
+    }
+  }
+  if (myIdentity) {
+    out.set(myIdentity.toLowerCase(), myDisplayName || 'You');
+  }
+  return out;
+}
+
 // Hold a handshake attestation and queue it for OpenTimestamps
 // anchoring — the same pipeline journal entries use. envelopeId is
 // stable across signature additions, so anchoring is idempotent

@@ -18,6 +18,13 @@ export type { InboxRouteAction } from './envelopeRoute.ts';
 
 interface Props {
   envelopes: readonly InboxEnvelope[];
+  /**
+   * Pubkey → display name lookup. UI surfaces sender as a name when
+   * the pubkey is in this map; falls back to a short pubkey rendering
+   * otherwise. Built once in HomeScreen via peerNamesByPubkey from
+   * holdings + identity. Nobody recognizes a hex string.
+   */
+  peerNames?: ReadonlyMap<string, string>;
   onDismiss: (eventId: string) => void;
   onOpen: (
     envelope: Attestation,
@@ -42,7 +49,7 @@ function attKindLabel(att: Attestation): string {
 }
 
 
-export function InboxPanel({ envelopes, onDismiss, onOpen }: Props) {
+export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
   if (envelopes.length === 0) return null;
   return (
     <section className="mb-4 rounded-2xl bg-accent/5 border border-accent/30 p-4">
@@ -63,6 +70,10 @@ export function InboxPanel({ envelopes, onDismiss, onOpen }: Props) {
           <InboxRow
             key={item.eventId}
             item={item}
+            senderLabel={
+              peerNames?.get(item.senderPubkey.toLowerCase()) ??
+              shortKey(item.senderPubkey)
+            }
             onDismiss={onDismiss}
             onOpen={onOpen}
           />
@@ -74,6 +85,8 @@ export function InboxPanel({ envelopes, onDismiss, onOpen }: Props) {
 
 interface RowProps {
   item: InboxEnvelope;
+  /** Resolved name for the sender, or short-pubkey fallback. */
+  senderLabel: string;
   onDismiss: (eventId: string) => void;
   onOpen: (
     envelope: Attestation,
@@ -82,7 +95,7 @@ interface RowProps {
   ) => void;
 }
 
-function InboxRow({ item, onDismiss, onOpen }: RowProps) {
+function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
   const [copied, setCopied] = useState(false);
   const route = routeFor(item.envelope);
 
@@ -102,7 +115,7 @@ function InboxRow({ item, onDismiss, onOpen }: RowProps) {
         <div className="min-w-0">
           <div className="text-sm font-medium">{attKindLabel(item.envelope)}</div>
           <div className="mt-0.5 text-xs text-muted truncate">
-            From {shortKey(item.senderPubkey)} · {formatTime(item.receivedAt)}
+            From {senderLabel} · {formatTime(item.receivedAt)}
           </div>
           {route && (
             <div className="mt-1 text-xs text-muted">{route.hint}</div>

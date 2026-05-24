@@ -12,7 +12,11 @@ import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { ConnectionCard } from '../connections/ConnectionCard.tsx';
-import { isHandshake } from '../connections/createHandshake.ts';
+import {
+  isHandshake,
+  peerNamesByPubkey,
+  displayNameOf,
+} from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
 import { MembershipCard } from '../connections/MembershipCard.tsx';
 import {
@@ -301,6 +305,11 @@ export function HomeScreen() {
             new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
         ),
     [holdings, wallet.identity],
+  );
+
+  const peerNames = useMemo(
+    () => peerNamesByPubkey(holdings, wallet.identity, identity ? displayNameOf(identity) : undefined),
+    [holdings, wallet.identity, identity],
   );
 
   return (
@@ -597,6 +606,7 @@ export function HomeScreen() {
         <section className="mt-5">
           <InboxPanel
             envelopes={inboxEnvelopes}
+            peerNames={peerNames}
             onDismiss={dismissInboxEnvelope}
             onOpen={routeInbox}
           />
