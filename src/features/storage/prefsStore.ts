@@ -6,6 +6,17 @@ import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 // Stored under prefs:<ownerId> so multiple accounts on the same
 // browser don't trip over each other.
 
+/**
+ * The presentation skin the wallet renders under. 'classic' is the
+ * original surface that shipped through Phases 1-5. 'fresh' is the
+ * younger-audience theme described in the 2026-05-24 Fresh roadmap.
+ * 'system' resolves to fresh on devices that report prefers-color-
+ * scheme: dark and classic otherwise — chosen this way because the
+ * Fresh palette is dark-default. Cryptographic core is identical
+ * under every choice; only the surface differs.
+ */
+export type ThemeChoice = 'classic' | 'fresh' | 'system';
+
 export interface Prefs {
   /** When false, walletStore.save() skips the Supabase write entirely. */
   cloudSync: boolean;
@@ -34,6 +45,13 @@ export interface Prefs {
    * sign out and back in).
    */
   nostrRelays: string[];
+  /**
+   * The active presentation theme. Default 'classic' for existing
+   * wallets — the Fresh roadmap explicitly keeps Classic as default
+   * until adoption signal warrants flipping it. Operator changes
+   * this from Settings → Appearance.
+   */
+  theme: ThemeChoice;
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -44,6 +62,7 @@ const DEFAULT_PREFS: Prefs = {
   idleTimeoutMs: 30 * 60 * 1000,
   nostrTransportEnabled: false,
   nostrRelays: [...DEFAULT_RELAYS],
+  theme: 'classic',
 };
 
 export const prefsStore = {

@@ -2,6 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fresh theme tokens — CSS variables consumed by Tailwind utility
+   classes declared in `tailwind.config.ts`. The variables exist at
+   `:root` so any `bg-fresh-*` / `text-fresh-*` utility resolves to a
+   safe default even when the operator has not flipped the theme,
+   then get overridden under `[data-theme="fresh"]` to deliver the
+   Fresh palette. One `<html data-theme="fresh">` switch flips every
+   token at once with no React re-render of consumers.
+
+   Documented in the 2026-05-24 Fresh theme + IA roadmap brief, Cut 1.
+
+   At root the variables hold values that read sensibly on the
+   existing Classic ink-on-paper surface — deep ink on near-paper
+   with the Classic accent green standing in for the electric lime —
+   so a Classic-tagged component that happens to use a fresh-* token
+   does not visually shout. */
+:root {
+  --fresh-surface-base: #f7f6f1;
+  --fresh-surface-raised: #ffffff;
+  --fresh-surface-glass: rgba(15, 20, 25, 0.04);
+  --fresh-surface-edge: rgba(15, 20, 25, 0.10);
+  --fresh-text-primary: #0f1419;
+  --fresh-text-secondary: #6b7280;
+  --fresh-text-tertiary: #9ca3af;
+  --fresh-text-inverse: #f7f6f1;
+  --fresh-accent-primary: #2d6a4f;
+  --fresh-accent-secondary: #6366f1;
+  --fresh-accent-warning: #b45309;
+  --fresh-accent-danger: #b91c1c;
+  --fresh-anchor-glow: #f59e0b;
+  --fresh-mycelium-glow: #0e7490;
+}
+
+/* The Fresh palette itself — deep neutral with electric accents,
+   Liquid-Glass-style translucent surfaces, audience-targeted at
+   late-2025 / 2026 visual trends. Activated by setting
+   `<html data-theme="fresh">` from the `useFreshTheme` hook. */
+[data-theme='fresh'] {
+  --fresh-surface-base: #0b0c0f;
+  --fresh-surface-raised: #15171c;
+  --fresh-surface-glass: rgba(255, 255, 255, 0.06);
+  --fresh-surface-edge: rgba(255, 255, 255, 0.08);
+  --fresh-text-primary: #f4f4f5;
+  --fresh-text-secondary: #a1a1aa;
+  --fresh-text-tertiary: #71717a;
+  --fresh-text-inverse: #0b0c0f;
+  --fresh-accent-primary: #c0fc4d;
+  --fresh-accent-secondary: #a78bfa;
+  --fresh-accent-warning: #fbbf24;
+  --fresh-accent-danger: #f87171;
+  --fresh-anchor-glow: #f59e0b;
+  --fresh-mycelium-glow: #22d3ee;
+}
+
 /* iOS Safari zoom-prevention. iOS auto-zooms on tap whenever a form
    field's font-size is below 16px, and once the page is zoomed a
    position:fixed modal lands relative to the layout viewport while

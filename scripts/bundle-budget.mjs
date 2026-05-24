@@ -51,8 +51,13 @@ const BUDGETS = [
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
   // current is ~5.5KB gz, bumped to 7KB to carry headroom for the
   // remaining 5c-i / 5c-ii / 5c-iii additions before code-splitting
-  // becomes the better option.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 7_000, label: 'WalletProvider' },
+  // becomes the better option. 2026-05-24 Fresh-Cut-1 bumped to
+  // 7.5KB to absorb the useTheme hook + applyTheme helper inlined
+  // into WalletProvider as a foundational dependency every later
+  // Fresh cut consumes. Hook is tiny (~200 bytes gz) and a hook
+  // cannot be React.lazy-loaded — the audit-and-bump path is the
+  // correct one here.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 7_500, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence

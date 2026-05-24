@@ -20,6 +20,7 @@ import {
   readOrganizationName,
   selfDeclareOrganization,
 } from '../connections/createOrganization.ts';
+import { AppearanceSection } from './AppearanceSection.tsx';
 
 function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
   const ok: string[] = [];
@@ -249,6 +250,8 @@ export function SettingsScreen() {
           Read the full sovereignty picture in the Guide →
         </Link>
       </section>
+
+      <AppearanceSection prefs={prefs} updatePrefs={updatePrefs} />
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">

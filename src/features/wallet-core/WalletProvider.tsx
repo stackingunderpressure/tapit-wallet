@@ -24,6 +24,7 @@ import {
 } from '../anchoring/anchorWorker.ts';
 import type { StoredBlob } from '../storage/localStore.ts';
 import { useIdleLock } from './useIdleLock.ts';
+import { useTheme } from '../theme/useTheme.ts';
 // connectWallet is dynamically imported below so the transport stack
 // (Nostr WebSocket client, NIP-44 encryption surface) only loads when
 // the operator opts into the Mycelium network. Type-only import here
@@ -62,6 +63,7 @@ export function WalletProvider({ children }: Props) {
     idleTimeoutMs: 30 * 60 * 1000,
     nostrTransportEnabled: false,
     nostrRelays: [],
+    theme: 'classic',
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
@@ -439,6 +441,12 @@ export function WalletProvider({ children }: Props) {
     setHoldings([]);
     setPhase(stored ? { kind: 'locked', stored } : { kind: 'first-login' });
   });
+
+  // Paint the operator's chosen presentation theme. Reads from
+  // prefs.theme; flips `<html data-theme>` whenever the operator
+  // changes Appearance in Settings. Pre-unlock surfaces (login,
+  // AuthGate) stay Classic — they render outside this provider.
+  useTheme(prefs.theme);
 
   const value = useMemo<WalletContextValue | null>(() => {
     if (phase.kind !== 'unlocked') return null;
