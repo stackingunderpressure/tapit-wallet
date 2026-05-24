@@ -1096,3 +1096,5 @@
 {"event":"gate_passed","ts":"2026-05-24T18:47:27Z","session_id":"c3df43cb-68df-4d0f-9340-a95557d3a26f","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T18:47:27Z","session_id":"c3df43cb-68df-4d0f-9340-a95557d3a26f","gate":"test","summary":"48/48 (file-size now 789 lines, under 800 hard limit)"}
 {"event":"gate_passed","ts":"2026-05-24T18:47:27Z","session_id":"c3df43cb-68df-4d0f-9340-a95557d3a26f","gate":"build","summary":"Bundle budgets OK after 1KB HomeScreen bump"}
+{"event":"commit_pushed","ts":"2026-05-24T18:47:28Z","session_id":"c3df43cb-68df-4d0f-9340-a95557d3a26f","sha":"cc22747c9a35454d7faaf81480797b5806dfb5ae","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T18:47:28Z","session_id":"c3df43cb-68df-4d0f-9340-a95557d3a26f","outcome":"completed","summary":"Lavender accents (body bloom + wordmark dot + lavender tab pill) + InboxPanel/ConnectionCard theme-aware so they no longer render as stark white boxes on the dark Fresh body.","files_total":6,"commits_total":1}
