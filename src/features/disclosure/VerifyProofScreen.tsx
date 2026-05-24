@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   disclosedLeavesOf,
   verifyDisclosureProof,
@@ -49,14 +49,28 @@ function asString(v: unknown): string {
 // legacy single-leaf bundles still in the wild, and the multi-leaf
 // bundles new wallets produce. The disclosed-fields list is rendered
 // uniformly regardless of which kind arrived.
+function decodeInlineProof(encoded: string): string {
+  // Decode the base64url-encoded proof bundle from the ?p= query
+  // parameter the Fresh share card mints. Mirrors the encoder in
+  // QuickShareModal — replace url-safe chars, restore padding,
+  // atob, then UTF-8 round-trip.
+  const padded = encoded
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(encoded.length + ((4 - (encoded.length % 4)) % 4), '=');
+  const latin1 = atob(padded);
+  return decodeURIComponent(escape(latin1));
+}
+
 export function VerifyProofScreen() {
+  const [searchParams] = useSearchParams();
   const [raw, setRaw] = useState('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
   const [scanning, setScanning] = useState(false);
 
-  function verify() {
+  function verifyText(text: string) {
     try {
-      const parsed = parseDisclosureProof(raw);
+      const parsed = parseDisclosureProof(text);
       if (parsed.kind === 'multi') {
         const result = verifyMultiDisclosureProof(parsed.bundle);
         const fields = disclosedLeavesOf(parsed.bundle).map((d) => ({
@@ -100,6 +114,33 @@ export function VerifyProofScreen() {
       });
     }
   }
+
+  function verify() {
+    verifyText(raw);
+  }
+
+  // One-tap verify path: the Fresh share card mints links like
+  // /verify?p=<base64url-encoded-bundle>. Decode, paste into the
+  // textarea so the operator can see exactly what was verified,
+  // and run the verifier. Falls back gracefully when decode fails
+  // (badly-truncated link, manual paste of a typo) by surfacing
+  // the error in the same Outcome surface a paste would.
+  useEffect(() => {
+    const encoded = searchParams.get('p');
+    if (!encoded) return;
+    let decoded: string;
+    try {
+      decoded = decodeInlineProof(encoded);
+    } catch {
+      setOutcome({
+        kind: 'error',
+        detail: 'The verify link is malformed — paste the proof manually.',
+      });
+      return;
+    }
+    setRaw(decoded);
+    verifyText(decoded);
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto">

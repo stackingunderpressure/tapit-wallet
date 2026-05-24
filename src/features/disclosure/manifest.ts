@@ -10,11 +10,14 @@ export const manifest: FeatureManifest = {
     'src/features/disclosure/VerifyProofScreen.tsx',
     'src/features/disclosure/parseDisclosureProof.ts',
     'src/features/disclosure/leafIndex.ts',
+    'src/features/disclosure/ShareCard.tsx',
+    'src/features/disclosure/QuickShareModal.tsx',
+    'src/features/disclosure/quickSharePresets.ts',
   ],
-  depends_on: ['wallet-core'],
+  depends_on: ['wallet-core', 'connections'],
   pause_safe: false,
   removal_safe: false,
   monetizable: false,
   notes:
-    "The /verify route lives outside AuthGate because the verifier is a third-party context — anyone with a copy of the PWA. The verifier never sees the operator's wallet, only the proof bundle they pasted, and the math is the truth. ShareProofModal uses checkboxes (multi-select) and calls multiDisclosureProof for both one-field and many-field cases; the bundle shape is one pruned tree, not N stacked single-leaf bundles, so the wire payload stays small as the selection grows.",
+    "The /verify route lives outside AuthGate because the verifier is a third-party context — anyone with a copy of the PWA. The verifier never sees the operator's wallet, only the proof bundle they pasted, and the math is the truth. ShareProofModal uses checkboxes (multi-select) and calls multiDisclosureProof for both one-field and many-field cases; the bundle shape is one pruned tree, not N stacked single-leaf bundles, so the wire payload stays small as the selection grows. Cut 7 (2026-05-24) added the Fresh share-card surface: ShareCard renders a 9:16 screenshot-targeted card carrying the assertion, the Bitcoin block stamp, and a verifier URL; QuickShareModal mints the proof and base64url-encodes it into a /verify?p=<bundle> URL when the encoded size fits under 1.8KB so the verifier taps once and the math runs automatically. The brief listed four Quick-share presets but only two are buildable today (verified-profile + organization-membership); the over-18 / over-21 presets need a birthday leaf added to the founding identity attestation, which is a structural identity-model change deferred to a future cut.",
 };

@@ -21,6 +21,7 @@ import {
   selfDeclareOrganization,
 } from '../connections/createOrganization.ts';
 import { AppearanceSection } from './AppearanceSection.tsx';
+import { QuickShareSection } from './QuickShareSection.tsx';
 
 function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
   const ok: string[] = [];
@@ -35,7 +36,7 @@ function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
 }
 
 export function SettingsScreen() {
-  const { wallet, ownerId, holdings, prefs, anchorWorker, updatePrefs, save, refresh } = useWallet();
+  const { wallet, ownerId, holdings, prefs, identity, resolvedTheme, anchorWorker, updatePrefs, save, refresh } = useWallet();
   const [cohortOpen, setCohortOpen] = useState(false);
   const cohortAtt = findLatestCohort(holdings, wallet.identity);
   const cohortView = cohortAtt ? readCohort(cohortAtt) : null;
@@ -252,6 +253,10 @@ export function SettingsScreen() {
       </section>
 
       <AppearanceSection prefs={prefs} updatePrefs={updatePrefs} />
+
+      {resolvedTheme === 'fresh' && (
+        <QuickShareSection identity={identity} holdings={holdings} />
+      )}
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">

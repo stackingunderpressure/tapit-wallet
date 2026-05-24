@@ -1,9 +1,22 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { multiDisclosureProof } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
+import { useWallet } from '../wallet-core/useWallet.ts';
+
+// Cut 7 of the Fresh roadmap — when the operator is under Fresh,
+// the "View as share card" button in the generated state opens
+// the same QuickShareModal that the Settings Quick-share presets
+// open, pre-filled with the leaves the operator just selected.
+// Lazy-loaded so Classic operators never pay for the share-card
+// bytes — they only render the existing JSON+QR+Copy flow.
+const QuickShareModal = lazy(() =>
+  import('./QuickShareModal.tsx').then((m) => ({
+    default: m.QuickShareModal,
+  })),
+);
 
 interface Props {
   attestation: Attestation;
@@ -34,12 +47,14 @@ function asString(v: unknown): string {
 }
 
 export function ShareProofModal({ attestation, onClose }: Props) {
+  const { resolvedTheme } = useWallet();
   const leaves = useMemo(() => leafIndex(attestation.claim), [attestation]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [step, setStep] = useState<Step>({ kind: 'pick' });
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [shareCardOpen, setShareCardOpen] = useState(false);
 
   function toggle(path: string) {
     setSelected((prev) => {
@@ -149,6 +164,22 @@ export function ShareProofModal({ attestation, onClose }: Props) {
           </>
         )}
 
+        {shareCardOpen && step.kind === 'generated' && (
+          <Suspense fallback={null}>
+            <QuickShareModal
+              preset={{
+                id: 'adhoc',
+                kind: 'verified-profile',
+                label: `Proof from this ${attestation.kind}`,
+                subLabel: `Reveals ${step.paths.length === 1 ? 'the field' : `${step.paths.length} fields`}: ${step.paths.join(', ')}.`,
+                attestation,
+                disclosedPaths: step.paths,
+              }}
+              onClose={() => setShareCardOpen(false)}
+            />
+          </Suspense>
+        )}
+
         {step.kind === 'generated' && (
           <>
             <p className="mt-2 text-sm text-muted">
@@ -164,13 +195,24 @@ export function ShareProofModal({ attestation, onClose }: Props) {
               rows={8}
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
-            <button
-              type="button"
-              onClick={() => setShowQr((v) => !v)}
-              className="mt-2 text-xs text-accent hover:underline"
-            >
-              {showQr ? 'Hide QR' : 'Show as QR code'}
-            </button>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowQr((v) => !v)}
+                className="text-xs text-accent hover:underline"
+              >
+                {showQr ? 'Hide QR' : 'Show as QR code'}
+              </button>
+              {resolvedTheme === 'fresh' && (
+                <button
+                  type="button"
+                  onClick={() => setShareCardOpen(true)}
+                  className="text-xs text-accent hover:underline"
+                >
+                  View as share card →
+                </button>
+              )}
+            </div>
             {showQr && <QrShow text={step.json} label="Disclosure proof" />}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
