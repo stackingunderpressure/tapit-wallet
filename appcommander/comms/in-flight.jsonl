@@ -1149,3 +1149,5 @@
 {"event":"gate_passed","ts":"2026-05-24T20:32:14Z","session_id":"594748ea-b96a-493b-b64e-2f6478b6ee7e","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T20:32:14Z","session_id":"594748ea-b96a-493b-b64e-2f6478b6ee7e","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T20:32:14Z","session_id":"594748ea-b96a-493b-b64e-2f6478b6ee7e","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T20:32:16Z","session_id":"594748ea-b96a-493b-b64e-2f6478b6ee7e","sha":"202324691ce7966348995db1beb07dd827c787c1","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T20:32:16Z","session_id":"594748ea-b96a-493b-b64e-2f6478b6ee7e","outcome":"completed","summary":"extractPubkey accepts pubkey hex with any embedded whitespace and falls back to parsing a full identity envelope JSON, picker and modal both wired to use it.","files_total":4,"commits_total":1}
