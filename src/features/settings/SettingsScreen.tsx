@@ -205,7 +205,27 @@ export function SettingsScreen() {
         <span className="w-12" aria-hidden />
       </header>
 
-      <section className="mt-6 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+      <section className="mt-6 rounded-2xl bg-accent/[0.06] border border-accent/30 p-5">
+        <div className="font-medium">Sovereignty</div>
+        <p className="mt-1 text-sm text-muted">
+          Every lever below moves the wallet toward sovereign. Turn off cloud
+          backup to keep your blob only on this device. Enable Mycelium and
+          point it at your own Nostr relays in the editor below. Declare a
+          recovery cohort and reveal your recovery key — both close the gap
+          between "I trust the cloud" and "I trust myself and my people." A
+          first-run sovereign-mode picker, opt-in peer-shard backup storage,
+          custom OpenTimestamps calendar URLs, and a custom remote-backup
+          endpoint are the next moves on the roadmap.
+        </p>
+        <Link
+          to="/about"
+          className="mt-3 inline-block text-xs font-medium text-accent hover:underline"
+        >
+          Read the full sovereignty picture in the Guide →
+        </Link>
+      </section>
+
+      <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="font-medium">Cloud backup</div>

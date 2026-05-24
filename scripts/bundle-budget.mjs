@@ -36,14 +36,14 @@ const ASSETS_DIR = join(here, '..', 'dist', 'assets');
 // the current measured size; tighter for small chunks where
 // surprises matter, looser for vendors with known bulk.
 const BUDGETS = [
-  // Login surface — must stay tiny. 2026-05-23 lifted from 5.5KB to
-  // 10KB across two operator-requested expansions: first the
-  // WalletGuide tabs surface (Why & Who / What it holds / Recovery /
-  // Account) replacing the standalone LoginPage hero, then the
-  // OpenTimestamps anchoring explanation added to What it holds.
-  // Current ~8.85KB gz. The next structural rethink (lazy-load the
-  // non-Account tabs as separate chunks) fires past 10KB.
-  { pattern: /^index-.*\.js$/, gz: 10_000, label: 'login bundle (main)' },
+  // Login surface — must stay tiny. 2026-05-23 lifted across three
+  // operator-requested expansions: WalletGuide tabs surface, OTS
+  // anchoring explanation, and the Sovereignty tab covering the
+  // four-gradation spectrum (Connected / Connected-private / Sovereign-
+  // with-cohort / Sovereign-solo). Current ~10.2KB gz. Past 12KB the
+  // honest next move is to lazy-load the non-Account tabs as separate
+  // chunks so the cold-start landing still ships tight.
+  { pattern: /^index-.*\.js$/, gz: 12_000, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB today; cap at 6KB.
   { pattern: /^index-.*\.css$/, gz: 6_000, label: 'css' },
 

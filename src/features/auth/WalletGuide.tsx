@@ -25,7 +25,7 @@ import { useSession } from './useSession.ts';
 // landing surface; /about renders it as a reference while signed
 // in. The Account tab reads useSession to decide what to show.
 
-type Tab = 'why' | 'what' | 'recovery' | 'account';
+type Tab = 'why' | 'what' | 'recovery' | 'sovereignty' | 'account';
 
 interface TabSpec {
   id: Tab;
@@ -36,6 +36,7 @@ const TABS: TabSpec[] = [
   { id: 'why', label: 'Why & Who' },
   { id: 'what', label: 'What it holds' },
   { id: 'recovery', label: 'Recovery' },
+  { id: 'sovereignty', label: 'Sovereignty' },
   { id: 'account', label: 'Account' },
 ];
 
@@ -93,6 +94,7 @@ export function WalletGuide({ initialTab = 'why' }: Props) {
           {tab === 'why' && <WhyAndWho />}
           {tab === 'what' && <WhatItHolds />}
           {tab === 'recovery' && <RecoveryPaths />}
+          {tab === 'sovereignty' && <Sovereignty />}
           {tab === 'account' && <Account />}
         </div>
       </div>
@@ -371,7 +373,100 @@ function RecoveryPaths() {
 }
 
 // ============================================================
-// Tab 4 — Account
+// Tab 4 — Sovereignty
+// ============================================================
+
+function Sovereignty() {
+  return (
+    <section>
+      <SectionTitle>A spectrum, not a switch.</SectionTitle>
+      <Lede>
+        The wallet is built so you can run it as lazy or as sovereign as you
+        want. Every cryptographic primitive already runs on your device —
+        signing, encryption, OpenTimestamps anchoring, Mycelium peer
+        connections — and the pieces that touch outside infrastructure are
+        either optional today or on the roadmap. Four gradations are useful
+        to name.
+      </Lede>
+
+      <Card title="Connected (today's default)">
+        Email + 6-digit code login. Encrypted blob mirrored to Tapit's
+        cloud backup so a new phone can pick up where the old one left off.
+        Mycelium uses the default relay set. The cohort cascade and the
+        paper recovery key both work. Easiest UX, least work for you.
+      </Card>
+
+      <Card title="Connected but private">
+        Same login as above, but flip Settings → Cloud backup OFF. Your
+        encrypted blob lives only in IndexedDB on this device. The host
+        sees only that you have an account — no ciphertext, no holdings,
+        no metadata. Continuity now depends on the paper recovery key or
+        a downloaded encrypted-file backup. Already toggleable today.
+      </Card>
+
+      <Card title="Sovereign with cohort (roadmap)">
+        No central server in the data path. Your N cohort peers each hold
+        an encrypted shard of your full backup blob — same Shamir
+        machinery the wallet uses today for the K_data key, scaled up to
+        the whole blob. Recovery on a new device pulls M shards from M
+        peers via Mycelium and reassembles. Heavier per-save (every save
+        re-distributes to the cohort), but zero third-party storage.
+        Custom Nostr relay support already exists in Settings; the
+        peer-shard storage layer ships in a future cut.
+      </Card>
+
+      <Card title="Sovereign solo (roadmap)">
+        No login, no peers, no cloud. First run picks a passphrase, the
+        wallet generates and lives entirely on this phone, ownerId is a
+        device-local UUID. Continuity is your paper recovery key and your
+        encrypted-file backup, full stop. Strongest sovereignty, hardest
+        UX — losing the device with no backup means the wallet is gone.
+        For the operator who wants the strictest version of "no
+        third-party dependencies."
+      </Card>
+
+      <div className="mt-6 rounded-xl border border-ink/15 bg-paper/70 p-4">
+        <div className="text-sm font-semibold text-ink">
+          What you can already do
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-ink/75">
+          Settings exposes the levers that already shift the wallet
+          toward sovereign today: turn off cloud backup, point Mycelium
+          at your own Nostr relays, declare a recovery cohort of people
+          you trust, reveal your recovery key and write it down. Each of
+          those independently reduces your dependence on outside
+          infrastructure. The OpenTimestamps anchoring layer already
+          runs against free public calendars no one controls — that's
+          Bitcoin doing the timestamp work, not us.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink/75">
+          What's coming: a no-login first-run picker, an opt-in
+          peer-shard storage layer so cohort recovery works without any
+          cloud blob, custom OpenTimestamps calendar server URLs so you
+          can use your own bitcoind plus your own calendar instance for
+          the full sovereign-anchor loop, and a custom remote-backup
+          endpoint so an operator running their own server (an
+          increasingly common shape — many sovereign users already run
+          their own Bitcoin node and could run a tiny blob-storage
+          endpoint alongside) can point the wallet at it. None of these
+          require new cryptography; they're transport choices over the
+          primitives already shipped.
+        </p>
+      </div>
+
+      <p className="mt-5 text-xs leading-relaxed text-muted">
+        The lazy and the sovereign are the same wallet at different
+        settings. You can start lazy and move sovereign one toggle at a
+        time, or first-run straight into sovereign once that picker
+        ships. The cryptographic core never changes — only what
+        infrastructure the wallet asks of anyone else.
+      </p>
+    </section>
+  );
+}
+
+// ============================================================
+// Tab 5 — Account
 // ============================================================
 
 type AuthStep = 'email' | 'code';
