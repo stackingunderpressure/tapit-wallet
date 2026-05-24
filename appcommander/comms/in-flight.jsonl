@@ -1084,3 +1084,5 @@
 {"event":"gate_passed","ts":"2026-05-24T18:36:09Z","session_id":"515b9caf-165f-45ed-959d-edc8f2d0830e","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T18:36:09Z","session_id":"515b9caf-165f-45ed-959d-edc8f2d0830e","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T18:36:09Z","session_id":"515b9caf-165f-45ed-959d-edc8f2d0830e","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T18:36:10Z","session_id":"515b9caf-165f-45ed-959d-edc8f2d0830e","sha":"5a51a0f0307777a02789b82afd87394c88d90dcb","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T18:36:10Z","session_id":"515b9caf-165f-45ed-959d-edc8f2d0830e","outcome":"completed","summary":"One-line fix: page body flips dark under [data-theme=fresh] by swapping Classic --paper/--ink/--muted tokens at the same time the --fresh-* tokens flip.","files_total":1,"commits_total":1}
