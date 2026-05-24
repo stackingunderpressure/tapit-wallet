@@ -97,6 +97,96 @@ html[data-theme='fresh'] body {
   background: transparent;
 }
 
+/* CROSS-CUTTING FRESH OVERRIDES FOR CLASSIC SURFACES.
+
+   Many Classic-era components hardcode the Tailwind utilities
+   bg-white / bg-paper for card body, border-ink/N for borders,
+   text-ink for primary text, text-muted for secondary. Under
+   [data-theme="fresh"] those hex literals from tailwind.config
+   become illegible on the dark body — white cards floating on
+   a dark page, near-black text invisible inside them. Operator
+   verified this directly: "All five tabs have the white
+   background you only fixed one of them."
+
+   Touching every card component would mean editing fifteen-plus
+   files (IdentityCard, AttestationCard, MembershipCard,
+   JournalCard, JournalTabs, ClassicConnections, LatticePanel,
+   the inline officials/members lists in HomeScreen, and so on).
+   The sweep below is a single targeted CSS rule set that catches
+   the Classic surface vocabulary on container elements only —
+   div, li, section, article, button, ul — so form inputs keep
+   their explicit bg-white-on-dark contrast.
+
+   Element-scoped selectors plus attribute-substring matching on
+   the Tailwind class names beats Tailwind's class-only
+   specificity (0,0,2,2 vs 0,0,1,0) so the override wins without
+   !important. The :where() / :is() families let the rule list
+   stay compact.
+
+   The shadow uses a two-stop recipe — a soft outer for the
+   lift, a tighter inner for definition — so every Classic card
+   under Fresh now reads as an elevated raised tile against the
+   deep neutral body. */
+html[data-theme='fresh'] :is(div, li, section, article, button, ul)[class~="bg-white"],
+html[data-theme='fresh'] :is(div, li, section, article, button, ul)[class*="bg-white/"],
+html[data-theme='fresh'] :is(div, li, section, article, button, ul)[class~="bg-paper"],
+html[data-theme='fresh'] :is(div, li, section, article, button, ul)[class*="bg-paper/"] {
+  background-color: var(--fresh-surface-raised);
+  border-color: var(--fresh-surface-edge);
+  box-shadow:
+    0 14px 36px -16px rgba(0, 0, 0, 0.65),
+    0 2px 8px -2px rgba(0, 0, 0, 0.40);
+}
+
+/* Border-ink/N borders collapse to a subtle white-alpha hairline
+   so the card edge still defines the shape on the dark body. */
+html[data-theme='fresh'] [class*="border-ink"] {
+  border-color: var(--fresh-surface-edge);
+}
+
+/* Pastel info banners (bg-amber-50 / bg-emerald-50 / bg-red-50)
+   keep their semantic hue intent but step the value down to a
+   low-alpha tint so they read as tinted dark cards rather than
+   bright pastel lozenges on the dark body. The matching border
+   colors swap to a matching alpha so the banner edge stays
+   visible. */
+html[data-theme='fresh'] [class*="bg-amber-50"] {
+  background-color: rgba(245, 158, 11, 0.10);
+  color: #fcd34d;
+}
+html[data-theme='fresh'] [class*="border-amber-200"] {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+html[data-theme='fresh'] [class*="bg-emerald-50"] {
+  background-color: rgba(34, 197, 94, 0.10);
+  color: #6ee7b7;
+}
+html[data-theme='fresh'] [class*="border-emerald-200"] {
+  border-color: rgba(34, 197, 94, 0.35);
+}
+html[data-theme='fresh'] [class*="bg-red-50"] {
+  background-color: rgba(220, 38, 38, 0.10);
+  color: #fca5a5;
+}
+html[data-theme='fresh'] [class*="border-red-200"] {
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+/* Classic text colours. text-ink (near-black) and text-muted
+   (slate gray) swap to the Fresh text scale so any Classic
+   component nested under Fresh reads correctly. Fresh-styled
+   components use text-fresh-text-* and are not affected. */
+html[data-theme='fresh'] .text-ink {
+  color: var(--fresh-text-primary);
+}
+html[data-theme='fresh'] .text-muted {
+  color: var(--fresh-text-secondary);
+}
+
+/* Inputs / textareas / selects keep their explicit bg-white
+   styling so focus contrast survives on the dark body — they
+   are excluded from the surface rule above by element tag. */
+
 /* iOS Safari zoom-prevention. iOS auto-zooms on tap whenever a form
    field's font-size is below 16px, and once the page is zoomed a
    position:fixed modal lands relative to the layout viewport while
