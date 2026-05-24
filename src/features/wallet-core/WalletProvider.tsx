@@ -25,6 +25,11 @@ import {
 import type { StoredBlob } from '../storage/localStore.ts';
 import { useIdleLock } from './useIdleLock.ts';
 import { useTheme } from '../theme/useTheme.ts';
+import {
+  consumePendingOnboarding,
+  peekPendingOnboarding,
+} from '../onboarding/pendingOnboarding.ts';
+import { applyOnboardingBundle } from '../onboarding/applyOnboardingBundle.ts';
 // connectWallet is dynamically imported below so the transport stack
 // (Nostr WebSocket client, NIP-44 encryption surface) only loads when
 // the operator opts into the Mycelium network. Type-only import here
@@ -35,6 +40,7 @@ import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 type Phase =
   | { kind: 'checking' }
   | { kind: 'first-login' }
+  | { kind: 'onboarding-setup' }
   | { kind: 'locked'; stored: StoredBlob }
   | { kind: 'needs-identity'; wallet: Wallet }
   | { kind: 'unlocked'; wallet: Wallet };
@@ -106,13 +112,90 @@ export function WalletProvider({ children }: Props) {
       ([stored, loadedPrefs]) => {
         if (!alive) return;
         setPrefs(loadedPrefs);
-        setPhase(stored ? { kind: 'locked', stored } : { kind: 'first-login' });
+        if (stored) {
+          setPhase({ kind: 'locked', stored });
+          return;
+        }
+        // Fresh compose-before-login path. If FreshOnboarding stashed a
+        // bundle just before verifyOtp resolved, jump straight into the
+        // post-sign-in ceremony instead of showing PassphrasePrompt. The
+        // bundle stays peek-only here; the onboarding-setup effect below
+        // consumes it under a ref-guard so StrictMode's double-invoke
+        // cannot apply it twice.
+        const pending = peekPendingOnboarding();
+        setPhase(
+          pending ? { kind: 'onboarding-setup' } : { kind: 'first-login' },
+        );
       },
     );
     return () => {
       alive = false;
     };
   }, [ownerId]);
+
+  // Fresh-onboarding bundle consumer. Runs once when the provider
+  // enters the onboarding-setup phase. Consumes the volatile bundle
+  // FreshOnboarding stashed, generates the wallet under the
+  // captured passphrase, signs the founding identity attestation
+  // with the captured display name + founding declaration, signs
+  // the first journal entry from the captured text/attachment (if
+  // any), and lands the operator in the unlocked phase with the
+  // home screen rendered. The ranRef guard ensures StrictMode's
+  // double-invocation cannot run the ceremony twice; the consume
+  // call clears the holder so a later remount cannot pick up a
+  // stale bundle either.
+  const onboardingRanRef = useRef(false);
+  useEffect(() => {
+    if (phase.kind !== 'onboarding-setup') return;
+    if (!ownerId) return;
+    if (onboardingRanRef.current) return;
+    onboardingRanRef.current = true;
+    let cancelled = false;
+    (async () => {
+      const bundle = consumePendingOnboarding();
+      if (!bundle) {
+        // Should not happen — peek saw a bundle before we got
+        // here — but recover gracefully by falling back to the
+        // manual PassphrasePrompt flow.
+        if (!cancelled) setPhase({ kind: 'first-login' });
+        return;
+      }
+      try {
+        const wallet = await createWallet(ownerId, bundle.passphrase);
+        if (cancelled) return;
+        const loadedPrefs = await prefsStore.load(ownerId);
+        // Anchor worker has not started yet (its effect only fires
+        // on unlocked/needs-identity); pass null so the entry queues
+        // an anchor row, then the worker picks it up the moment
+        // we transition. Same pattern createJournalEntry handles
+        // for any caller without a live worker.
+        await applyOnboardingBundle(
+          wallet,
+          ownerId,
+          null,
+          bundle,
+          loadedPrefs.cloudSync,
+        );
+        if (cancelled) return;
+        setPassphrase(bundle.passphrase);
+        setHoldings(await wallet.holdings());
+        setPrefs(loadedPrefs);
+        setPhase({ kind: 'unlocked', wallet });
+      } catch (err) {
+        console.error('onboarding setup failed', err);
+        // The wallet may or may not have been created depending
+        // on where the failure landed. Reset the ref so a retry
+        // could run if the operator manages to stash a fresh
+        // bundle, and fall back to first-login so they can pick
+        // a passphrase manually and try again.
+        onboardingRanRef.current = false;
+        if (!cancelled) setPhase({ kind: 'first-login' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase.kind, ownerId]);
 
   // Start/stop the anchor worker as a function of unlock state.
   useEffect(() => {
@@ -501,6 +584,22 @@ export function WalletProvider({ children }: Props) {
 
   if (phase.kind === 'first-login') {
     return <PassphrasePrompt onSubmit={onCreate} />;
+  }
+
+  if (phase.kind === 'onboarding-setup') {
+    return (
+      <div className="relative min-h-screen overflow-hidden fresh-aurora-bg flex items-center justify-center px-6">
+        <div className="text-center animate-fresh-rise motion-reduce:animate-none">
+          <p className="text-fresh-title font-fresh-display text-fresh-text-primary">
+            Signing your first entry…
+          </p>
+          <p className="mt-3 text-sm text-fresh-text-secondary">
+            Generating your keypair, signing your founding declaration, and
+            anchoring your first moment to Bitcoin.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (phase.kind === 'locked') {

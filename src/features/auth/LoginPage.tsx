@@ -1,6 +1,18 @@
+import { lazy, Suspense } from 'react';
 import { WalletGuide } from './WalletGuide.tsx';
-import { FreshLoginShell } from '../theme/FreshLoginShell.tsx';
 import { useDeviceTheme } from '../theme/useDeviceTheme.ts';
+
+// FreshLoginShell carries the entire Fresh compose-before-login
+// onboarding state machine (Cut 5). Lazy-loaded so the cold-start
+// login bundle Classic operators land on stays tight — the Fresh
+// chunk only flies down the wire when useDeviceTheme resolves to
+// 'fresh'. This is the "lazy-loaded so Classic operators never
+// pay Fresh bytes" pattern the brief asks for.
+const FreshLoginShell = lazy(() =>
+  import('../theme/FreshLoginShell.tsx').then((m) => ({
+    default: m.FreshLoginShell,
+  })),
+);
 
 // The signed-out landing page. Two presentations:
 //
@@ -11,14 +23,30 @@ import { useDeviceTheme } from '../theme/useDeviceTheme.ts';
 //   - Fresh: the dark-default FreshLoginShell — compose-first
 //     register, no marketing essay at the door, reference tabs
 //     reachable via /about. Shipped as part of Cut 2 of the 2026-
-//     05-24 Fresh young-adult-friendly theme + IA roadmap.
+//     05-24 Fresh young-adult-friendly theme + IA roadmap;
+//     expanded in Cut 5 to host the full 90-second compose-
+//     before-login state machine.
 //
 // Which one paints comes from `useDeviceTheme`, which reads the
 // localStorage mirror of the operator's last Appearance choice.
 // Pre-auth surfaces cannot read prefs (the wallet is not unlocked)
 // so the device-level mirror is the canonical source here.
+//
+// The Fresh fallback uses the aurora-drift background so the
+// transition from cold-paint to lazy-loaded FreshLoginShell is
+// visually continuous — no Classic-flash during the chunk fetch.
 export function LoginPage() {
   const theme = useDeviceTheme();
-  if (theme === 'fresh') return <FreshLoginShell />;
+  if (theme === 'fresh') {
+    return (
+      <Suspense
+        fallback={
+          <div className="relative min-h-screen overflow-hidden fresh-aurora-bg" />
+        }
+      >
+        <FreshLoginShell />
+      </Suspense>
+    );
+  }
   return <WalletGuide initialTab="account" />;
 }

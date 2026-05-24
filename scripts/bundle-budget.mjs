@@ -65,8 +65,13 @@ const BUDGETS = [
   // into WalletProvider as a foundational dependency every later
   // Fresh cut consumes. Hook is tiny (~200 bytes gz) and a hook
   // cannot be React.lazy-loaded — the audit-and-bump path is the
-  // correct one here.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 7_500, label: 'WalletProvider' },
+  // correct one here. 2026-05-24 Fresh-Cut-5 bumped 7.5KB -> 8KB
+  // to absorb the onboarding-setup phase + the consume-bundle
+  // effect + the Fresh-styled setup overlay render branch. The
+  // pendingOnboarding holder and applyOnboardingBundle helper
+  // sit inside the WalletProvider chunk because the consumer
+  // path runs at first-login and cannot reasonably defer.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 8_000, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -219,6 +224,15 @@ const BUDGETS = [
   // value) and SettingsScreen (restore-defaults button) import it.
   // ~140 bytes gz — should stay tiny.
   { pattern: /^defaultRelays-.*\.js$/, gz: 500, label: 'defaultRelays constant' },
+
+  // 2026-05-24 Fresh-Cut-5 — FreshLoginShell is React.lazy from
+  // LoginPage so the cold-start login bundle Classic operators land
+  // on stays tight. The chunk carries the FreshLoginShell shell +
+  // the FreshOnboarding 90-second state machine + the seven step
+  // components. ~4.3KB gz today; budget carries headroom for the
+  // Cut 6 Sage activation hook-in if it lands as a sibling import
+  // before a more granular split is earned.
+  { pattern: /^FreshLoginShell-.*\.js$/, gz: 5_500, label: 'FreshLoginShell (lazy)' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },
