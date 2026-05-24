@@ -446,7 +446,9 @@ export function WalletProvider({ children }: Props) {
   // prefs.theme; flips `<html data-theme>` whenever the operator
   // changes Appearance in Settings. Pre-unlock surfaces (login,
   // AuthGate) stay Classic — they render outside this provider.
-  useTheme(prefs.theme);
+  // Resolved value is threaded through WalletContext so Fresh-aware
+  // components can gate their rendering without re-running effects.
+  const resolvedTheme = useTheme(prefs.theme);
 
   const value = useMemo<WalletContextValue | null>(() => {
     if (phase.kind !== 'unlocked') return null;
@@ -467,6 +469,7 @@ export function WalletProvider({ children }: Props) {
       save,
       updatePrefs,
       refresh,
+      resolvedTheme,
     };
   }, [
     phase,
@@ -483,6 +486,7 @@ export function WalletProvider({ children }: Props) {
     relayStatus,
     sendEnvelope,
     syncEnvelope,
+    resolvedTheme,
   ]);
 
   if (!ownerId || phase.kind === 'checking') {

@@ -62,6 +62,14 @@ export interface WalletContextValue {
   updatePrefs: (next: Partial<Prefs>) => Promise<void>;
   /** Reload holdings + identity after a mutation. */
   refresh: () => Promise<void>;
+  /**
+   * The currently-painted theme — 'classic' or 'fresh' — after
+   * resolving the operator's prefs.theme choice (which can be
+   * 'system') against the device's prefers-color-scheme. Read this
+   * to gate Fresh-specific component rendering. WalletProvider is
+   * the single owner of the effect that applies it to the document.
+   */
+  resolvedTheme: 'classic' | 'fresh';
 }
 
 // Pulled into its own module so react-refresh fast-refresh works in

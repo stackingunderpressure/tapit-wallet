@@ -44,8 +44,17 @@ const BUDGETS = [
   // honest next move is to lazy-load the non-Account tabs as separate
   // chunks so the cold-start landing still ships tight.
   { pattern: /^index-.*\.js$/, gz: 12_000, label: 'login bundle (main)' },
-  // CSS — single sheet, mostly Tailwind. ~3KB today; cap at 6KB.
-  { pattern: /^index-.*\.css$/, gz: 6_000, label: 'css' },
+  // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
+  // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
+  // variable blocks plus the aurora-drift keyframes + background.
+  // Bumped 6KB -> 7KB to absorb the Fresh tokens; remaining
+  // headroom carries Cuts 3-9 (Fresh-specific component classes
+  // emit only when those components actually mount in source, since
+  // Tailwind's content scanner sees the new files). Past 7KB the
+  // honest next move is to consider CSS code-splitting via Vite's
+  // per-entry stylesheets, which would only be earned once the Fresh
+  // surface ships more than the foundation.
+  { pattern: /^index-.*\.css$/, gz: 7_000, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;

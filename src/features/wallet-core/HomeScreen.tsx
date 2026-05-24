@@ -5,7 +5,7 @@ import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
 import { JournalComposer } from '../journal/JournalComposer.tsx';
-import { JournalTabs } from '../journal/JournalTabs.tsx';
+import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
@@ -371,7 +371,7 @@ export function HomeScreen() {
         <section className="mt-5">
           <h2 className="text-sm font-medium text-muted">Your diary</h2>
           <div className="mt-2">
-            <JournalTabs entries={diaryEntries} />
+            <JournalTabRouter entries={diaryEntries} />
           </div>
         </section>
       )}
