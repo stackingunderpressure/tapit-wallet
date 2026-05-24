@@ -385,7 +385,7 @@ export function HomeScreen() {
               </p>
             </div>
           )}
-          <IdentityCard publicKey={wallet.publicKey} />
+          <IdentityCard identity={wallet.identity} activeKey={wallet.publicKey} />
           {identity && <AttestationCard attestation={identity} />}
           {orgDeclaration && (
             <div className="pt-2">
