@@ -89,8 +89,11 @@ const BUDGETS = [
   // and succession copy updates, and the RotateKeySection. Current
   // ~8KB gz; KnownLimitations and RotateKey both extracted to their
   // own files but inlined into SettingsScreen at import time so the
-  // bytes ride this chunk. Lazy-load split fires past 9KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 9_000, label: 'SettingsScreen' },
+  // bytes ride this chunk. 2026-05-24 Fresh-Cut-9 bumped 9KB -> 10KB
+  // to absorb the AppearanceSection growth: theme radio + Fresh
+  // extras toggle group (Memories + Streaks). Past 10KB the honest
+  // next move is to lazy-load AppearanceSection itself.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 10_000, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.

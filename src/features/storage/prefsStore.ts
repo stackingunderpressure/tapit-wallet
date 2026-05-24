@@ -52,6 +52,20 @@ export interface Prefs {
    * this from Settings → Appearance.
    */
   theme: ThemeChoice;
+  /**
+   * When true (default), the Today tab surfaces a small "streak"
+   * indicator counting consecutive days the operator has signed
+   * at least one journal entry. Honest opt-out for operators
+   * who read it as guilt-inducing. Only consumed under Fresh.
+   */
+  streaksEnabled: boolean;
+  /**
+   * When true (default), the Today tab surfaces a Memories strip
+   * above the carousel — entries from 7, 30, and 365 days ago.
+   * Per-day dismiss is handled separately in localStorage; this
+   * toggle is the structural opt-out. Only consumed under Fresh.
+   */
+  memoriesEnabled: boolean;
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -63,6 +77,8 @@ const DEFAULT_PREFS: Prefs = {
   nostrTransportEnabled: false,
   nostrRelays: [...DEFAULT_RELAYS],
   theme: 'classic',
+  streaksEnabled: true,
+  memoriesEnabled: true,
 };
 
 export const prefsStore = {

@@ -64,6 +64,8 @@ export function WalletProvider({ children }: Props) {
     nostrTransportEnabled: false,
     nostrRelays: [],
     theme: 'classic',
+    streaksEnabled: true,
+    memoriesEnabled: true,
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);

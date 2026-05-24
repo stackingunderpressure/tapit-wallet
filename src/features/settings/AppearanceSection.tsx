@@ -37,7 +37,49 @@ interface Props {
  * (2026-05-24). Stays in its own file because SettingsScreen.tsx
  * is already near the 800-line file-size limit.
  */
+function FreshToggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-ink/15 bg-white/60 p-3">
+      <div className="flex-1">
+        <div className="text-sm font-medium">{label}</div>
+        <p className="mt-0.5 text-xs text-muted">{description}</p>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        aria-pressed={checked}
+        aria-label={label}
+        className={`shrink-0 w-10 h-6 rounded-full transition-colors ${
+          checked ? 'bg-accent' : 'bg-ink/15'
+        }`}
+      >
+        <span
+          className={`block h-5 w-5 bg-white rounded-full shadow transform transition-transform ${
+            checked ? 'translate-x-4' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
 export function AppearanceSection({ prefs, updatePrefs }: Props) {
+  // The Fresh-only toggles surface once the operator has picked
+  // Fresh OR System — under Classic they would have no effect, so
+  // hiding them avoids cluttering the Settings surface for
+  // operators who have not opted in.
+  const showFreshToggles = prefs.theme === 'fresh' || prefs.theme === 'system';
+
   return (
     <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
       <div className="font-medium">Appearance</div>
@@ -80,6 +122,26 @@ export function AppearanceSection({ prefs, updatePrefs }: Props) {
           );
         })}
       </div>
+
+      {showFreshToggles && (
+        <div className="mt-4 border-t border-ink/10 pt-4 space-y-2">
+          <div className="text-xs uppercase tracking-wide text-muted">
+            Fresh extras
+          </div>
+          <FreshToggle
+            label="Memories"
+            description="Surface entries from 7, 30, and 365 days ago above Today. Per-day dismiss is also available on the strip itself."
+            checked={prefs.memoriesEnabled}
+            onChange={(next) => updatePrefs({ memoriesEnabled: next })}
+          />
+          <FreshToggle
+            label="Streaks"
+            description="Show a small day-streak indicator on Today. Off if you read it as guilt-inducing — the entries themselves are the record either way."
+            checked={prefs.streaksEnabled}
+            onChange={(next) => updatePrefs({ streaksEnabled: next })}
+          />
+        </div>
+      )}
     </section>
   );
 }

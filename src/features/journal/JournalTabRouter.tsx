@@ -19,6 +19,11 @@ const FreshMemoriesStrip = lazy(() =>
     default: m.FreshMemoriesStrip,
   })),
 );
+const FreshStreakIndicator = lazy(() =>
+  import('./FreshStreakIndicator.tsx').then((m) => ({
+    default: m.FreshStreakIndicator,
+  })),
+);
 
 interface Props {
   entries: Attestation[];
@@ -35,11 +40,16 @@ interface Props {
  * Cuts 3 + 4 of the 2026-05-24 Fresh roadmap.
  */
 export function JournalTabRouter({ entries }: Props) {
-  const { resolvedTheme } = useWallet();
+  const { resolvedTheme, prefs } = useWallet();
   if (resolvedTheme === 'fresh') {
     return (
       <Suspense fallback={null}>
-        <FreshMemoriesStrip entries={entries} />
+        {prefs.streaksEnabled && (
+          <div className="mb-3">
+            <FreshStreakIndicator entries={entries} />
+          </div>
+        )}
+        {prefs.memoriesEnabled && <FreshMemoriesStrip entries={entries} />}
         <div className="mt-3">
           <FreshTodayCarousel entries={entries} />
         </div>
