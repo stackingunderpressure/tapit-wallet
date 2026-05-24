@@ -4,6 +4,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { downloadEncryptedBackup } from './localExport.ts';
 import { KnownLimitationsSection } from './KnownLimitationsSection.tsx';
+import { RotateKeySection } from '../wallet-core/RotateKeySection.tsx';
 import { unwrapKData, type RecoverableEncryptedBlob } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
@@ -714,6 +715,8 @@ export function SettingsScreen() {
           )}
         </div>
       </section>
+
+      <RotateKeySection wallet={wallet} save={save} refresh={refresh} />
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="font-medium">Session</div>

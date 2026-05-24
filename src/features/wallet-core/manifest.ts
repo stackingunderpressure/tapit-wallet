@@ -20,6 +20,7 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/IdentityCard.tsx',
     'src/features/wallet-core/AttestationCard.tsx',
     'src/features/wallet-core/useIdleLock.ts',
+    'src/features/wallet-core/RotateKeySection.tsx',
   ],
   depends_on: ['auth', 'storage'],
   pause_safe: false,
