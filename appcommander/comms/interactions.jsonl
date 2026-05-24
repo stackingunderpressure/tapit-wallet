@@ -78,3 +78,37 @@
   "next": "Operator browser-verifies the Cut 5 flow against Netlify+Supabase: pick Fresh in Settings → Appearance, sign out, walk /login through the 90s onboarding, confirm /  lands with founding identity + first entry already signed. Then choose Cut 6 (Sage persona activation, voice-dependent on operator authorship) or Cut 7 (share cards + Quick-share presets, design-heavier, less voice-dependent) as the next dispatch. My read: Cut 7 lands more independent audience-facing value sooner because share cards are the audience's distribution channel."
 }
 
+{
+  "v": 1,
+  "ts": "2026-05-24T17:50:00Z",
+  "session_id": "7e6ab563-25fa-4a19-8600-dbde958cab7f",
+  "who": { "actor": "carpenter", "feature_slug": "disclosure" },
+  "where": {
+    "files": [
+      "src/features/disclosure/{ShareCard,QuickShareModal,quickSharePresets,ShareProofModal,VerifyProofScreen,manifest}.{ts,tsx}",
+      "src/features/settings/{QuickShareSection,SettingsScreen}.tsx"
+    ],
+    "screen_path": "Settings → Fresh → Quick share (preset catalog + share-card modal); /verify (URL ?p=<base64url> ingestion for one-tap verify); existing /entry/:digest → Share a proof (Fresh 'View as share card' button)"
+  },
+  "layer": "ui",
+  "when": { "ts": "2026-05-24T17:50:00Z", "session_id": "7e6ab563-25fa-4a19-8600-dbde958cab7f" },
+  "what": {
+    "action": "ship",
+    "summary": "Shipped Fresh roadmap Cut 7: the 9:16 screenshot-targeted share card (assertion + Bitcoin block stamp + verifier URL on aurora-drift background), the Quick-share preset catalog under Settings → Fresh (verified-profile + one membership preset per held credential), the QuickShareModal that mints multi-disclosure proofs and base64url-encodes for inline /verify?p=<bundle> URLs under a 1.8KB cap, and the VerifyProofScreen URL-parameter ingestion that auto-pastes-and-verifies a tapped share-card link. ShareProofModal gained a Fresh-only 'View as share card →' button that opens the same modal with an adhoc preset matching the operator's manual leaf selection. One commit (322a40d), all four gates green, bundle budgets clean."
+  },
+  "why": {
+    "text": "Cut 7 of the 2026-05-24 Fresh young-adult-friendly theme + IA roadmap. The brief framed the share card as the audience's actual distribution channel — sovereignty spreads not because people read white papers but because someone screenshots a one-tap credential that worked at a door and the receiver taps the link and watches math validate in green. Compose-first onboarding (Cut 5) argued the operator's life is the substrate; share cards argue the operator's reputation is propagatable. Brief listed four presets but only two have data — operator picked the smallest correct slice and deferred over-N presets to a future identity-model cut rather than change the founding identity shape mid-pilot.",
+    "linked_pixel_id": null,
+    "linked_mission_id": "Fresh-young-adult-friendly-theme-IA-roadmap"
+  },
+  "outcome": {
+    "files_changed": 9,
+    "tests_passing": true,
+    "build_green": true,
+    "notes": "[P-CUT-7] ✓ ShareCard 9:16 visual treatment (pure presentation, no business logic) (commit 322a40d). QuickShareModal mints proof + computes inline-URL with 1.8KB cap fallback to plain /verify. QuickShareSection Settings preset catalog Fresh-gated, lazy-loads modal. VerifyProofScreen accepts ?p=<base64url>, auto-pastes-and-verifies. ShareProofModal Fresh-only 'View as share card →' opens modal with adhoc preset matching manual selection. quickSharePresets.ts enumerator reuses isMembership from connections feature so catalog stays in lockstep with People-tab recognition. Brief-vs-code mismatch on over-18/over-21 presets surfaced BEFORE coding; operator decision logged. All four gates green: typecheck ✓ / lint ✓ / 48 tests ✓ / build ✓. Bundle budgets clean: QuickShareModal lazy chunk 2.11KB gz under 3KB catch-all, SettingsScreen 9.85KB gz under 10KB, login bundle unchanged at 11.11KB gz under 12KB. Keys-never-leave audit: no new code path logs, persists, or transmits a key, seed, or passphrase; disclosure bundles only reveal leaves the operator explicitly selected. [FEEDBACK→Foreman]: surfacing brief-vs-code mismatches before coding via AskUserQuestion worked well — the operator chose the right slice in one round and Cut 7 landed clean in one session."
+  },
+  "confidence": 91,
+  "ripple": ["settings", "disclosure", "connections"],
+  "next": "Cut 6 Sage persona activation is the last remaining cut from the Fresh roadmap. Cut 6 needs operator-authored Sage voice (name, register, tone) before it can cleanly land — the brief's open-questions section flagged this as operator-mode. With Cuts 1-5 and 7-9 shipped, the Fresh young-adult-friendly skin is structurally complete; the wallet is ready for the audience pilot once Sage's voice ships. Operator should browser-verify Cut 7 against Netlify+Supabase: Settings → Appearance pick Fresh, scroll to Quick share section, tap a preset, screenshot the card, paste URL into another tab, watch verifier turn green."
+}
+
