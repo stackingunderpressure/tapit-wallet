@@ -1,6 +1,8 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { FreshTodayCard } from './FreshTodayCard.tsx';
+import { useWallet } from '../wallet-core/useWallet.ts';
+import { categoryAccent } from './categoryAccents.ts';
 
 interface Props {
   entries: Attestation[];
@@ -13,43 +15,72 @@ function category(att: Attestation): string {
   return 'Diary';
 }
 
-const ALL = '__all';
+function writtenAt(att: Attestation): number {
+  const claim = att.claim as FieldBranch;
+  const w = claim.children.find((x) => x.name === 'written_at');
+  const raw =
+    w && w.node === 'leaf' && typeof w.value === 'string'
+      ? w.value
+      : att.issuedAt;
+  return new Date(raw).getTime();
+}
 
-// Stories-style horizontal carousel for the Today tab. One category
-// fills the viewport; adjacent categories peek 12-16px into view as
-// affordance. Snap-x scroll with snap-mandatory so the carousel
-// settles cleanly between cards. Tap a category chip to jump to it.
+const ALL = '__all';
+const ME = '__me';
+const OTHERS = '__others';
+
+type SortChoice = 'newest' | 'oldest';
+type SubjectFilter = typeof ALL | typeof ME | typeof OTHERS;
+
+// Vertical sort-and-filter list for journal entries under Fresh.
 //
-// Replaces JournalTabs + JournalCard when the resolved theme is
-// 'fresh'. Classic surface stays untouched — the gate happens
-// upstream in HomeScreen so this file does not know about Classic
-// at all.
+// The brief originally sketched a Stories-style horizontal snap
+// carousel, but operator feedback on the 2026-05-24 live deploy
+// flagged the carousel as the wrong shape — they wanted to see
+// everything at once, with sort and filter dimensions they could
+// pick from. The vertical list is the response: a sort chip pair
+// (Newest / Oldest), a category chip strip (All + the categories
+// the operator has actually used), a subject chip strip (All /
+// About me / About others), then a vertical stack of cards. Each
+// card carries a per-category accent stripe + a synthetic title
+// so the list scans cleanly.
 //
-// Shipped as part of Cut 3 of the 2026-05-24 Fresh roadmap.
+// The bottom of the list reserves a 24-unit pad so the floating
+// compose FAB never sits on top of the last card's metadata.
 export function FreshTodayCarousel({ entries }: Props) {
+  const walletKey = useWallet().wallet.identity;
+
   const categories = useMemo(() => {
     const set = new Set<string>();
     for (const e of entries) set.add(category(e));
     return [ALL, ...[...set].sort()];
   }, [entries]);
 
-  const [active, setActive] = useState<string>(ALL);
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const subjectFilters: ReadonlyArray<{ value: SubjectFilter; label: string }> = [
+    { value: ALL, label: 'Everyone' },
+    { value: ME, label: 'About me' },
+    { value: OTHERS, label: 'About others' },
+  ];
 
-  // Snap to the active category whenever the operator picks one
-  // from the chip strip. Smooth scroll respects reduced-motion via
-  // the CSS media query in index.css applied through Tailwind's
-  // motion-reduce variant on the chip transitions.
-  useEffect(() => {
-    const target = sectionRefs.current.get(active);
-    if (!target || !scrollerRef.current) return;
-    target.scrollIntoView({
-      behavior: 'smooth',
-      inline: 'start',
-      block: 'nearest',
-    });
-  }, [active]);
+  const [activeCategory, setActiveCategory] = useState<string>(ALL);
+  const [activeSubject, setActiveSubject] = useState<SubjectFilter>(ALL);
+  const [sort, setSort] = useState<SortChoice>('newest');
+
+  const filtered = useMemo(() => {
+    let list = entries;
+    if (activeCategory !== ALL) {
+      list = list.filter((e) => category(e) === activeCategory);
+    }
+    if (activeSubject === ME) {
+      list = list.filter((e) => e.subject === walletKey);
+    } else if (activeSubject === OTHERS) {
+      list = list.filter((e) => e.subject !== walletKey);
+    }
+    const sorted = [...list].sort((a, b) =>
+      sort === 'newest' ? writtenAt(b) - writtenAt(a) : writtenAt(a) - writtenAt(b),
+    );
+    return sorted;
+  }, [entries, activeCategory, activeSubject, sort, walletKey]);
 
   if (entries.length === 0) {
     return (
@@ -63,56 +94,103 @@ export function FreshTodayCarousel({ entries }: Props) {
   }
 
   return (
-    <div>
-      <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 scrollbar-none">
-        {categories.map((c) => (
+    <div className="space-y-3">
+      {/* Sort toggle — pair of pills, the active one in lime. */}
+      <div className="flex items-center gap-2">
+        <span className="text-[0.62rem] uppercase tracking-[0.22em] text-fresh-text-tertiary">
+          Sort
+        </span>
+        {(['newest', 'oldest'] as const).map((s) => (
           <button
-            key={c}
+            key={s}
             type="button"
-            onClick={() => setActive(c)}
-            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-medium border transition active:animate-fresh-press motion-reduce:active:animate-none ${
-              active === c
+            onClick={() => setSort(s)}
+            className={`rounded-full px-3 py-1 text-xs font-medium border transition active:animate-fresh-press motion-reduce:active:animate-none ${
+              sort === s
                 ? 'bg-fresh-accent-primary text-fresh-text-inverse border-fresh-accent-primary'
                 : 'bg-fresh-surface-glass text-fresh-text-secondary border-fresh-surface-edge hover:text-fresh-text-primary'
             }`}
           >
-            {c === ALL ? 'All' : c}
+            {s === 'newest' ? 'Newest first' : 'Oldest first'}
           </button>
         ))}
       </div>
 
-      <div
-        ref={scrollerRef}
-        className="mt-2 flex gap-3 overflow-x-auto snap-x snap-mandatory pb-3 -mx-5 px-5 scrollbar-none"
-        style={{ scrollPaddingLeft: '1.25rem' }}
-      >
+      {/* Category chip strip — colored dot per chip so the
+          category-accent vocabulary is visible at the filter
+          level too, not just on each card. */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
         {categories.map((c) => {
-          const list = c === ALL ? entries : entries.filter((e) => category(e) === c);
+          const active = activeCategory === c;
+          const accent = c === ALL ? null : categoryAccent(c);
           return (
-            <section
+            <button
               key={c}
-              ref={(el) => {
-                if (el) sectionRefs.current.set(c, el);
-                else sectionRefs.current.delete(c);
-              }}
-              className="shrink-0 snap-start w-[calc(100%-1.5rem)] space-y-3 animate-fresh-rise motion-reduce:animate-none"
-              aria-label={c === ALL ? 'All entries' : c}
+              type="button"
+              onClick={() => setActiveCategory(c)}
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition active:animate-fresh-press motion-reduce:active:animate-none flex items-center gap-1.5 ${
+                active
+                  ? 'border-fresh-accent-primary text-fresh-text-primary bg-fresh-accent-primary/[0.12]'
+                  : 'bg-fresh-surface-glass text-fresh-text-secondary border-fresh-surface-edge hover:text-fresh-text-primary'
+              }`}
             >
-              {list.length === 0 ? (
-                <div className="rounded-3xl border border-fresh-surface-edge bg-fresh-surface-glass backdrop-blur-xl p-8 text-center">
-                  <p className="text-fresh-text-secondary text-sm">
-                    Nothing in {c} yet.
-                  </p>
-                </div>
-              ) : (
-                list.map((a, i) => (
-                  <FreshTodayCard key={i} attestation={a} />
-                ))
+              {accent && (
+                <span
+                  aria-hidden
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: accent.hex }}
+                />
               )}
-            </section>
+              {c === ALL ? 'All categories' : c}
+            </button>
           );
         })}
       </div>
+
+      {/* Subject filter — Everyone / About me / About others. */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+        {subjectFilters.map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            onClick={() => setActiveSubject(s.value)}
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition active:animate-fresh-press motion-reduce:active:animate-none ${
+              activeSubject === s.value
+                ? 'border-fresh-accent-secondary text-fresh-text-primary bg-fresh-accent-secondary/[0.14]'
+                : 'bg-fresh-surface-glass text-fresh-text-secondary border-fresh-surface-edge hover:text-fresh-text-primary'
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Result count + vertical card stack. pb-28 reserves room
+          for the compose FAB to sit over empty space instead of
+          the last card's metadata. */}
+      <div className="pt-1">
+        <p className="text-[0.62rem] uppercase tracking-[0.22em] text-fresh-text-tertiary">
+          {filtered.length === 0
+            ? 'No entries match these filters'
+            : filtered.length === 1
+              ? '1 entry'
+              : `${filtered.length} entries`}
+        </p>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="rounded-3xl border border-fresh-surface-edge bg-fresh-surface-glass backdrop-blur-xl p-8 text-center">
+          <p className="text-fresh-text-secondary text-sm">
+            Nothing matches. Try widening a filter above.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3 animate-fresh-rise motion-reduce:animate-none pb-28">
+          {filtered.map((a, i) => (
+            <FreshTodayCard key={i} attestation={a} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
