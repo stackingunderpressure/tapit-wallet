@@ -1104,3 +1104,5 @@
 {"event":"gate_passed","ts":"2026-05-24T18:53:12Z","session_id":"fd042891-b6b9-4b5c-a19b-1b97c2b5f36e","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T18:53:12Z","session_id":"fd042891-b6b9-4b5c-a19b-1b97c2b5f36e","gate":"test","summary":"48/48 across 10 files"}
 {"event":"gate_passed","ts":"2026-05-24T18:53:12Z","session_id":"fd042891-b6b9-4b5c-a19b-1b97c2b5f36e","gate":"build","summary":"Bundle budgets OK. CSS 6.93KB gz under 7KB budget."}
+{"event":"commit_pushed","ts":"2026-05-24T18:53:14Z","session_id":"fd042891-b6b9-4b5c-a19b-1b97c2b5f36e","sha":"4d1fa75adc1af9395bd7c1d0270276235e9402c3","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T18:53:14Z","session_id":"fd042891-b6b9-4b5c-a19b-1b97c2b5f36e","outcome":"completed","summary":"One CSS rule set under [data-theme=fresh] sweeps every Classic card surface across all five tabs to fresh-raised-with-elevation-shadow. Catches bg-white/bg-paper/border-ink/text-ink/text-muted plus pastel banners. Element-scoped so form inputs stay correct.","files_total":1,"commits_total":1}
