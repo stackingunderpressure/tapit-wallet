@@ -8,6 +8,7 @@ export const manifest: FeatureManifest = {
   touches: [
     'src/features/settings/SettingsScreen.tsx',
     'src/features/settings/localExport.ts',
+    'src/features/settings/KnownLimitationsSection.tsx',
   ],
   depends_on: ['auth', 'wallet-core', 'storage'],
   pause_safe: false,

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { downloadEncryptedBackup } from './localExport.ts';
+import { KnownLimitationsSection } from './KnownLimitationsSection.tsx';
 import { unwrapKData, type RecoverableEncryptedBlob } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
@@ -41,6 +42,13 @@ export function SettingsScreen() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [passphraseForExport, setPassphraseForExport] = useState('');
   const [showExportForm, setShowExportForm] = useState(false);
+  // Inline confirmation when the operator turns cloud backup OFF.
+  // Flipping it OFF has irreversible recovery implications (cohort
+  // cascade cannot restore without a cloud blob; only paper key +
+  // encrypted-file backup remain), so the OFF direction requires
+  // explicit acknowledgment. ON direction stays one-tap.
+  const [showSovereignConfirm, setShowSovereignConfirm] = useState(false);
+  const [sovereignAcknowledged, setSovereignAcknowledged] = useState(false);
   // Paper-K_data export state. The recovery key is the symmetric data-
   // encryption key wrapping the v2 backup blob — 32 random bytes the
   // operator writes down once. Anyone holding it plus the cloud blob
@@ -159,16 +167,32 @@ export function SettingsScreen() {
 
   async function toggleCloudSync() {
     const next = !prefs.cloudSync;
-    await updatePrefs({ cloudSync: next });
-    // Re-save so the new policy takes effect (and so a freshly-
-    // re-enabled cloud-sync immediately pushes a copy).
-    if (next) {
-      try {
-        await save();
-      } catch {
-        // The save outcome is reflected in prefs.lastRemoteSync.
-      }
+    // Turning OFF is the dangerous direction — show the inline
+    // sovereign-confirm panel and let the operator acknowledge what
+    // they're taking responsibility for before the pref actually
+    // flips. Turning ON is the safer direction and stays one-tap.
+    if (!next) {
+      setSovereignAcknowledged(false);
+      setShowSovereignConfirm(true);
+      return;
     }
+    await updatePrefs({ cloudSync: true });
+    try {
+      await save();
+    } catch {
+      // The save outcome is reflected in prefs.lastRemoteSync.
+    }
+  }
+
+  async function confirmSovereign() {
+    await updatePrefs({ cloudSync: false });
+    setShowSovereignConfirm(false);
+    setSovereignAcknowledged(false);
+  }
+
+  function cancelSovereign() {
+    setShowSovereignConfirm(false);
+    setSovereignAcknowledged(false);
   }
 
   async function onExport(e: React.FormEvent) {
@@ -250,6 +274,75 @@ export function SettingsScreen() {
             />
           </button>
         </div>
+
+        {showSovereignConfirm && (
+          <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4">
+            <div className="text-sm font-semibold text-ink">
+              Going sovereign — accept responsibility
+            </div>
+            <p className="mt-2 text-sm text-ink/80">
+              Turning cloud backup OFF means your wallet's encrypted snapshot
+              lives only on this device. The host keeps nothing for you.
+              That's the strongest form of sovereignty the wallet offers
+              today, and it comes with a real cost you need to accept
+              before you flip it.
+            </p>
+            <ul className="mt-3 list-disc pl-5 text-sm text-ink/80 space-y-1">
+              <li>
+                If this device is lost or wiped and you have not written
+                down your recovery key and have not downloaded an
+                encrypted-file backup, the wallet is gone. There is no math
+                path back.
+              </li>
+              <li>
+                Cohort cascade recovery decrypts the cloud blob to
+                restore on a new device. With cloud backup off there is
+                no cloud blob, so the cohort cannot bring you back unless
+                you also distribute shares of the blob itself out-of-band
+                — a future feature, not shipped today.
+              </li>
+              <li>
+                Clearing browser data while in this mode wipes the wallet
+                from the device permanently if you have no other backup.
+              </li>
+            </ul>
+            <p className="mt-3 text-sm text-ink/80">
+              Before flipping the switch, the wallet recommends you reveal
+              your recovery key (below in this same panel) and write it
+              down, OR download a local encrypted-file backup. Either one
+              gives you a math path back.
+            </p>
+            <label className="mt-4 flex items-start gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sovereignAcknowledged}
+                onChange={(e) => setSovereignAcknowledged(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I understand. I am responsible for my own backup from
+                this point forward.
+              </span>
+            </label>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void confirmSovereign()}
+                disabled={!sovereignAcknowledged}
+                className="rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              >
+                Turn off cloud backup
+              </button>
+              <button
+                type="button"
+                onClick={cancelSovereign}
+                className="rounded-md border border-ink/15 bg-white py-2 text-sm"
+              >
+                Keep cloud backup on
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
@@ -633,87 +726,7 @@ export function SettingsScreen() {
         </button>
       </section>
 
-      {/* Known limitations — honest user-facing warnings about
-          things the wallet does NOT yet do, or does in a partial
-          way the operator should know about before they need it.
-          Plain language, no jargon. Updated as things change. */}
-      <section className="mt-4 rounded-2xl bg-amber-50/40 border border-amber-200 p-5">
-        <div className="font-medium">Known limitations</div>
-        <p className="mt-1 text-sm text-muted">
-          Things the wallet does not do yet, or does only in a partial way.
-          Knowing them up front saves frustration later.
-        </p>
-
-        <div className="mt-4 space-y-4">
-          <div>
-            <div className="text-sm font-medium">
-              QR scanner may not open the camera on installed iPhone PWA
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              When the wallet is installed to your iPhone home screen, Safari's
-              standalone mode restricts camera access in ways the wallet can't
-              work around. The scanner falls back to a paste field. Easiest
-              workaround: open the iPhone Camera app on the other phone, point
-              it at the QR, tap the link/text it picks up to copy, then paste
-              into the wallet. Camera scanning works normally in regular Safari
-              tabs and on Android.
-            </p>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium">Face ID unlock not yet built</div>
-            <p className="mt-1 text-xs text-muted">
-              The wallet still requires your passphrase at every unlock.
-              Biometric unlock is on the roadmap (Phase 7+) but deferred until
-              the cross-device recovery story is fully shipped — biometrics
-              are per-device and can't replace the passphrase as a recovery
-              primitive. Face ID is already used inside the wallet for
-              device-verified presence (Tier V), just not for unlock yet.
-            </p>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium">
-              Recovery from a lost device requires preparation
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              To recover this wallet on a new device using your cohort, the
-              wallet must have had cloud backup turned on AND a recovery
-              cohort declared AND shares distributed to the cohort BEFORE the
-              loss. The cohort cascade can't reach back in time. If none of
-              that was set up, the only path back is the original passphrase
-              plus the original device or a downloaded local backup file.
-            </p>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium">
-              Peer-witnessed recovery succession is not yet wired
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              After a successful cohort recovery the spec calls for M cohort
-              peers to co-sign a peer-witnessed succession event asserting
-              the recovery happened. That ceremony is the last remaining
-              Phase 5e piece and lands in its own session. The recovered
-              wallet works correctly without it; the succession event is a
-              third-party audit trail rather than a functional requirement.
-            </p>
-          </div>
-
-          <div>
-            <div className="text-sm font-medium">
-              Recovery requires the cloud backup to be on this device
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              Both recovery paths — cohort cascade and recovery key —
-              decrypt the cloud-mirrored backup blob, which only reaches a
-              new device if cloud sync was on. If cloud sync was off and
-              the original device is gone, the local-backup file download
-              plus your passphrase is the only path back.
-            </p>
-          </div>
-        </div>
-      </section>
+      <KnownLimitationsSection />
 
       {cohortOpen && (
         <Suspense fallback={null}>
