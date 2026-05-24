@@ -1130,3 +1130,5 @@
 {"event":"gate_passed","ts":"2026-05-24T20:08:33Z","session_id":"29961507-ae05-46ad-8417-8446230efd8c","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T20:08:33Z","session_id":"29961507-ae05-46ad-8417-8446230efd8c","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T20:08:33Z","session_id":"29961507-ae05-46ad-8417-8446230efd8c","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T20:08:35Z","session_id":"29961507-ae05-46ad-8417-8446230efd8c","sha":"f491e29aa93eacd350037c5be0ec5c5639b24367","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T20:08:35Z","session_id":"29961507-ae05-46ad-8417-8446230efd8c","outcome":"completed","summary":"Absorb loop killed at the source. onEnvelope now silently auto-merges any incoming envelope whose envelopeId matches a held attestation, so Mycelium relay re-deliveries become idempotent no-ops instead of re-opening the absorb modal.","files_total":1,"commits_total":1}
