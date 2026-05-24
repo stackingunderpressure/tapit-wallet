@@ -1167,3 +1167,5 @@
 {"event":"gate_passed","ts":"2026-05-24T22:03:22Z","session_id":"2bf11328-2c50-49e4-bfac-3485bbd23ac5","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T22:03:22Z","session_id":"2bf11328-2c50-49e4-bfac-3485bbd23ac5","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T22:03:22Z","session_id":"2bf11328-2c50-49e4-bfac-3485bbd23ac5","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T22:03:23Z","session_id":"2bf11328-2c50-49e4-bfac-3485bbd23ac5","sha":"affe70a732a86f3779b5033da020e9f8666da5a7","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T22:03:23Z","session_id":"2bf11328-2c50-49e4-bfac-3485bbd23ac5","outcome":"completed","summary":"handleScan in HandshakeModal sniffs raw-pubkey-vs-envelope and auto-pivots to remote-pick when the operator pasted a raw pubkey into the in-person scan modal.","files_total":1,"commits_total":1}
