@@ -3,6 +3,7 @@ import { Wallet, identityAttestation } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 
 import {
+  TAPIT_CHAT_KIND,
   TAPIT_ENVELOPE_KIND,
   buildEvent,
   verifyEvent,
@@ -11,9 +12,12 @@ import {
 } from './nostrEvent.ts';
 import { NostrTransport } from './nostrTransport.ts';
 import {
+  sendChatMessageTo,
   sendEnvelopeTo,
   sendEnvelopeToSelf,
+  subscribeChatMessages,
   subscribeInbox,
+  type InboxChatMessage,
 } from './encryptedInbox.ts';
 import { connectWallet } from './connectWallet.ts';
 import type {
@@ -242,6 +246,164 @@ describe('encrypted inbox round-trip', () => {
     // auto-hold instead of routing to UI.
     expect(senders[0]).toBe(alice.wallet.publicKey);
     expect(received[0]!.subject).toBe(alice.wallet.publicKey);
+  });
+});
+
+describe('chat-message round-trip (Cut 1 — TAPIT_CHAT_KIND)', () => {
+  it('delivers a signed chat payload from Alice to Bob through a transport', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const transport = new FakeTransport();
+    const received: InboxChatMessage[] = [];
+    subscribeChatMessages(transport, bob.wallet, (item) => {
+      received.push(item);
+    });
+    await sendChatMessageTo(
+      transport,
+      { text: 'we were here, bang bang' },
+      bob.wallet.publicKey,
+      alice.wallet,
+    );
+    await flush();
+    expect(received).toHaveLength(1);
+    expect(received[0]!.payload.text).toBe('we were here, bang bang');
+    expect(received[0]!.senderPubkey).toBe(alice.wallet.publicKey);
+  });
+
+  it('uses TAPIT_CHAT_KIND and addresses the recipient in a p tag', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const transport = new FakeTransport();
+    let captured: TransportEvent | null = null;
+    transport.subscribe({}, (e) => { captured = e; });
+    await sendChatMessageTo(
+      transport,
+      { text: 'wire-shape check' },
+      bob.wallet.publicKey,
+      alice.wallet,
+    );
+    await flush();
+    expect(captured).not.toBeNull();
+    const ev = captured as unknown as TransportEvent;
+    expect(ev.kind).toBe(TAPIT_CHAT_KIND);
+    expect(ev.tags.some((t) => t[0] === 'p' && t[1] === bob.wallet.publicKey)).toBe(true);
+  });
+
+  it('the chat subscription does not see envelope-kind events and vice versa', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const transport = new FakeTransport();
+    const chatSeen: InboxChatMessage[] = [];
+    const envSeen: Attestation[] = [];
+    subscribeChatMessages(transport, bob.wallet, (item) => { chatSeen.push(item); });
+    subscribeInbox(transport, bob.wallet, (item) => { envSeen.push(item.envelope); });
+    await sendEnvelopeTo(transport, alice.identity, bob.wallet.publicKey, alice.wallet);
+    await sendChatMessageTo(
+      transport,
+      { text: 'just a hello' },
+      bob.wallet.publicKey,
+      alice.wallet,
+    );
+    await flush();
+    expect(envSeen).toHaveLength(1);
+    expect(chatSeen).toHaveLength(1);
+    expect(chatSeen[0]!.payload.text).toBe('just a hello');
+  });
+
+  it('drops a tampered chat event silently — handler is never called', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const cheating = new FakeTransport();
+    const seen: InboxChatMessage[] = [];
+    subscribeChatMessages(cheating, bob.wallet, (item) => { seen.push(item); });
+    let captured: TransportEvent | null = null;
+    const peek = new FakeTransport();
+    peek.subscribe({}, (e) => { captured = e; });
+    await sendChatMessageTo(
+      peek,
+      { text: 'hi' },
+      bob.wallet.publicKey,
+      alice.wallet,
+    );
+    await flush();
+    const ev = captured as unknown as TransportEvent;
+    const tampered: TransportEvent = {
+      ...ev,
+      content: ev.content.slice(0, -4) + 'AAAA',
+    };
+    await cheating.publish(tampered);
+    await flush();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('drops a chat event rerouted to a different recipient (wrong-recipient MAC failure)', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const eve = newWalletAs('Eve');
+    const transport = new FakeTransport();
+    const seen: InboxChatMessage[] = [];
+    subscribeChatMessages(transport, eve.wallet, (item) => { seen.push(item); });
+    let captured: TransportEvent | null = null;
+    const peek = new FakeTransport();
+    peek.subscribe({}, (e) => { captured = e; });
+    await sendChatMessageTo(
+      peek,
+      { text: 'private' },
+      bob.wallet.publicKey,
+      alice.wallet,
+    );
+    await flush();
+    const ev = captured as unknown as TransportEvent;
+    const rerouted: TransportEvent = {
+      ...ev,
+      tags: [['p', eve.wallet.publicKey]],
+    };
+    await transport.publish(rerouted);
+    await flush();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('drops a malformed payload silently — non-JSON plaintext', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const transport = new FakeTransport();
+    const seen: InboxChatMessage[] = [];
+    subscribeChatMessages(transport, bob.wallet, (item) => { seen.push(item); });
+    // Hand-roll an event with valid crypto but garbage plaintext —
+    // proves the parseChatPayload defense, not just MAC validation.
+    const ciphertext = alice.wallet.nip44EncryptTo('not json at all', bob.wallet.publicKey);
+    const event = await buildEvent({
+      pubkey: alice.wallet.publicKey,
+      sign: (d) => alice.wallet.signDigest(d),
+      kind: TAPIT_CHAT_KIND,
+      content: ciphertext,
+      tags: [['p', bob.wallet.publicKey]],
+    });
+    await transport.publish(event);
+    await flush();
+    expect(seen).toHaveLength(0);
+  });
+
+  it('drops a payload with the wrong shape silently — JSON but no text field', async () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const transport = new FakeTransport();
+    const seen: InboxChatMessage[] = [];
+    subscribeChatMessages(transport, bob.wallet, (item) => { seen.push(item); });
+    const ciphertext = alice.wallet.nip44EncryptTo(
+      JSON.stringify({ unexpected: 'shape' }),
+      bob.wallet.publicKey,
+    );
+    const event = await buildEvent({
+      pubkey: alice.wallet.publicKey,
+      sign: (d) => alice.wallet.signDigest(d),
+      kind: TAPIT_CHAT_KIND,
+      content: ciphertext,
+      tags: [['p', bob.wallet.publicKey]],
+    });
+    await transport.publish(event);
+    await flush();
+    expect(seen).toHaveLength(0);
   });
 });
 
