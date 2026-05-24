@@ -32,3 +32,32 @@ html,
 body {
   overflow-x: hidden;
 }
+
+/* Readability bump for iPhone (and everywhere else). Tailwind's
+   text-xs defaults to 12px and text-sm to 14px — both fine on a
+   desktop monitor at half-arm's-length, both genuinely hard to
+   read on a 6-inch phone held at arm's length. The operator
+   surfaced this directly: "Small and hard to read on iPhone.
+   Pretty much everywhere. Guide too."
+
+   The wallet uses text-xs and text-sm extensively for body prose
+   (184 occurrences of text-xs alone). Touching each call site is
+   wrong; one rule here lifts every tier at once.
+
+   text-xs: 12px → 14px with proportional leading.
+   text-sm: 14px → 15px with proportional leading.
+
+   !important again because Tailwind's utilities are class
+   selectors at equal specificity — source order plus !important
+   makes the override stick regardless of where the call sites
+   land in the cascade. Leading is bumped alongside size so
+   multi-line prose stays comfortably loose. */
+.text-xs {
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+}
+
+.text-sm {
+  font-size: 0.9375rem !important;
+  line-height: 1.55 !important;
+}
