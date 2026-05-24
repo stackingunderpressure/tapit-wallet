@@ -1159,3 +1159,5 @@
 {"event":"gate_passed","ts":"2026-05-24T21:08:52Z","session_id":"63d25a34-a9d1-41bb-8df5-65c2e5e9aa10","gate":"lint"}
 {"event":"gate_passed","ts":"2026-05-24T21:08:52Z","session_id":"63d25a34-a9d1-41bb-8df5-65c2e5e9aa10","gate":"test","summary":"48/48"}
 {"event":"gate_passed","ts":"2026-05-24T21:08:52Z","session_id":"63d25a34-a9d1-41bb-8df5-65c2e5e9aa10","gate":"build","summary":"Bundle budgets OK"}
+{"event":"commit_pushed","ts":"2026-05-24T21:09:15Z","session_id":"63d25a34-a9d1-41bb-8df5-65c2e5e9aa10","sha":"1d8594eaf721c7205831a8ba1b4fcb3f05902eb0","branch":"main+dispatch"}
+{"event":"session_ended","ts":"2026-05-24T21:09:15Z","session_id":"63d25a34-a9d1-41bb-8df5-65c2e5e9aa10","outcome":"completed","summary":"QR wrapper inline-styled white so Fresh sweep can't dark-ify it, modal error clears on step transitions, text-accent maps to lavender under Fresh.","files_total":3,"commits_total":1}
