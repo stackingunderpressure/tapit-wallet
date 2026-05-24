@@ -7,6 +7,10 @@ import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { mediaStore } from '../storage/mediaStore.ts';
 import { downloadJournalEntry } from './downloadEntry.ts';
+import {
+  verifyAttachmentIntegrity,
+  type VerifyResult,
+} from './verifyAttachmentIntegrity.ts';
 import { CosignRequestModal } from '../cosigning/CosignRequestModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
@@ -25,6 +29,8 @@ export function JournalDetail() {
   const [modal, setModal] = useState<
     'request' | 'absorb' | 'custody' | 'share-proof' | null
   >(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
 
   const entry = useMemo<Attestation | undefined>(() => {
     if (!digest) return undefined;
@@ -143,6 +149,75 @@ export function JournalDetail() {
               : 'Time-verified'
             : 'Time-verifying… (usually within an hour; can take days)'}
         </div>
+
+        {attachmentHash && (
+          <div className="mt-4 rounded-md border border-ink/10 bg-paper/50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted">
+              File integrity
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              The hash of this file was signed and time-anchored when you
+              saved it. Re-hashing the bytes on the device now should match
+              that signed-and-anchored value exactly — if it does, no one
+              has tampered with the file since the day it was filed.
+            </p>
+            <div className="mt-2 text-[11px] font-mono text-muted break-all">
+              SHA-256 · {attachmentHash}
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setVerifyBusy(true);
+                setVerifyResult(null);
+                try {
+                  const result = await verifyAttachmentIntegrity(
+                    ownerId,
+                    passphrase,
+                    attachmentHash,
+                  );
+                  setVerifyResult(result);
+                } finally {
+                  setVerifyBusy(false);
+                }
+              }}
+              disabled={verifyBusy}
+              className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
+            >
+              {verifyBusy ? 'Re-hashing the file…' : 'Verify file integrity'}
+            </button>
+            {verifyResult?.state === 'match' && (
+              <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                ✓ Match. The bytes on this device today hash to exactly what
+                the signed envelope committed to
+                {verifiedAnchor?.btcHeight
+                  ? ` at Bitcoin block ${verifiedAnchor.btcHeight}`
+                  : ' at signing time'}
+                . The file has not been tampered with since the day it was
+                filed.
+              </div>
+            )}
+            {verifyResult?.state === 'mismatch' && (
+              <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+                ✗ Mismatch. The bytes on this device hash to{' '}
+                <span className="font-mono break-all">
+                  {verifyResult.actual}
+                </span>{' '}
+                which does not match the signed value. Treat the local copy
+                as untrusted and pull a fresh copy from a backup, a cohort
+                peer, or your original source.
+              </div>
+            )}
+            {verifyResult?.state === 'missing' && (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                The encrypted file is not present in local storage or in the
+                cloud mirror right now. The signed envelope still proves
+                what the file's hash was on the day you filed it — re-supply
+                the bytes from any source that produces that same hash and
+                the integrity claim holds.
+              </div>
+            )}
+          </div>
+        )}
       </article>
 
       <div className="mt-4 space-y-2">
