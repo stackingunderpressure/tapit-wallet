@@ -69,6 +69,34 @@
   --muted: #a1a1aa;
 }
 
+/* Subtle lavender + lime atmospheric bloom on the always-on
+   home surface under Fresh. Less saturated and unanimated
+   compared to fresh-aurora-bg (which the landing surface uses)
+   so the home stays readable during long reading sessions, but
+   the radial colour gives the page depth and ties it to the
+   brief's "digital lavender supporting role" without
+   overpowering the cards. The image attaches to the html
+   element so it does not scroll out of frame as the operator
+   moves through long journal lists. */
+html[data-theme='fresh'] {
+  background:
+    radial-gradient(
+      circle at 14% 8%,
+      rgba(167, 139, 250, 0.14) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 88% 92%,
+      rgba(192, 252, 77, 0.08) 0%,
+      transparent 42%
+    ),
+    #0b0c0f;
+  background-attachment: fixed;
+}
+html[data-theme='fresh'] body {
+  background: transparent;
+}
+
 /* iOS Safari zoom-prevention. iOS auto-zooms on tap whenever a form
    field's font-size is below 16px, and once the page is zoomed a
    position:fixed modal lands relative to the layout viewport while

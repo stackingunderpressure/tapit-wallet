@@ -1,5 +1,6 @@
 import type { Attestation } from 'tapit-attest';
 import { readHandshake } from './createHandshake.ts';
+import { useWallet } from '../wallet-core/useWallet.ts';
 
 interface Props {
   attestation: Attestation;
@@ -13,6 +14,8 @@ interface Props {
 // signatures means the handshake completed; one means the other
 // side's co-signature is still outstanding.
 export function ConnectionCard({ attestation, myIdentity }: Props) {
+  const { resolvedTheme } = useWallet();
+  const isFresh = resolvedTheme === 'fresh';
   const hs = readHandshake(attestation);
   const peerName =
     hs.initiatorId === myIdentity ? hs.responderName : hs.initiatorName;
@@ -22,26 +25,24 @@ export function ConnectionCard({ attestation, myIdentity }: Props) {
     ? hs.handshakeAt
     : parsed.toLocaleDateString();
   const isRemote = hs.verification === 'remote';
-  // Tier R reads as the weaker tier visually too — neutral ink badge
-  // rather than the accent color reserved for Tier P. The label
-  // matches the spec's verification leaf so the same word the wire
-  // format uses is the word the operator sees.
   const badgeLabel = isRemote ? 'Remote' : 'In person';
-  const badgeClass = isRemote
-    ? 'bg-ink/5 text-muted'
-    : 'bg-accent/10 text-accent';
+  const badgeClass = isFresh
+    ? isRemote
+      ? 'bg-fresh-surface-glass text-fresh-text-tertiary border border-fresh-surface-edge'
+      : 'bg-fresh-accent-secondary/15 text-fresh-accent-secondary border border-fresh-accent-secondary/30'
+    : isRemote
+      ? 'bg-ink/5 text-muted'
+      : 'bg-accent/10 text-accent';
 
   return (
-    <div className="rounded-2xl bg-white border border-ink/10 p-4 shadow-sm">
+    <div className={`rounded-2xl p-4 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10 shadow-sm'}`}>
       <div className="flex items-center justify-between gap-2">
-        <div className="font-medium truncate">{peerName || 'Unknown'}</div>
-        <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
-        >
+        <div className={`font-medium truncate ${isFresh ? 'text-fresh-text-primary' : ''}`}>{peerName || 'Unknown'}</div>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
           {badgeLabel}
         </span>
       </div>
-      <div className="mt-1 text-xs text-muted">
+      <div className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-tertiary' : 'text-muted'}`}>
         Connected {when}
         {!cosigned && ' · awaiting their co-signature'}
       </div>

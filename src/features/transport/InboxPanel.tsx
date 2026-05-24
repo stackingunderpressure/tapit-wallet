@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import type { InboxEnvelope } from './encryptedInbox.ts';
 import { routeFor, type InboxRouteAction } from './envelopeRoute.ts';
+import { useWallet } from '../wallet-core/useWallet.ts';
 
 // Phase 5c-i-δ/-ε — inbox surface for the People tab. Lists encrypted
 // envelopes that arrived through the Mycelium transport since unlock,
@@ -50,17 +51,19 @@ function attKindLabel(att: Attestation): string {
 
 
 export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
+  const { resolvedTheme } = useWallet();
+  const isFresh = resolvedTheme === 'fresh';
   if (envelopes.length === 0) return null;
   return (
-    <section className="mb-4 rounded-2xl bg-accent/5 border border-accent/30 p-4">
+    <section className={`mb-4 rounded-2xl p-4 border ${isFresh ? 'bg-fresh-accent-secondary/[0.08] border-fresh-accent-secondary/30' : 'bg-accent/5 border-accent/30'}`}>
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-accent">
+        <div className={`text-sm font-medium ${isFresh ? 'text-fresh-accent-secondary' : 'text-accent'}`}>
           {envelopes.length === 1
             ? '1 envelope waiting'
             : `${envelopes.length} envelopes waiting`}
         </div>
       </div>
-      <p className="mt-1 text-xs text-muted">
+      <p className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>
         Encrypted to you and verified. Open routes a handshake to the
         right step; Copy puts the JSON on your clipboard for envelopes
         the wallet does not yet auto-route.
@@ -96,6 +99,8 @@ interface RowProps {
 }
 
 function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
+  const { resolvedTheme } = useWallet();
+  const isFresh = resolvedTheme === 'fresh';
   const [copied, setCopied] = useState(false);
   const route = routeFor(item.envelope);
 
@@ -110,15 +115,15 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
   }
 
   return (
-    <li className="rounded-md bg-white border border-ink/10 p-3">
+    <li className={`rounded-md p-3 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10'}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-sm font-medium">{attKindLabel(item.envelope)}</div>
-          <div className="mt-0.5 text-xs text-muted truncate">
+          <div className={`text-sm font-medium ${isFresh ? 'text-fresh-text-primary' : ''}`}>{attKindLabel(item.envelope)}</div>
+          <div className={`mt-0.5 text-xs truncate ${isFresh ? 'text-fresh-text-tertiary' : 'text-muted'}`}>
             From {senderLabel} · {formatTime(item.receivedAt)}
           </div>
           {route && (
-            <div className="mt-1 text-xs text-muted">{route.hint}</div>
+            <div className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>{route.hint}</div>
           )}
         </div>
         <div className="shrink-0 flex gap-2">
@@ -126,7 +131,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             <button
               type="button"
               onClick={() => onOpen(item.envelope, route.action, item.senderPubkey)}
-              className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-paper hover:bg-ink/90"
+              className={`rounded-md px-3 py-1 text-xs font-medium ${isFresh ? 'bg-fresh-accent-primary text-fresh-text-inverse' : 'bg-ink text-paper hover:bg-ink/90'}`}
             >
               {route.label}
             </button>
@@ -134,7 +139,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             <button
               type="button"
               onClick={onCopy}
-              className="rounded-md border border-ink/15 px-3 py-1 text-xs font-medium hover:bg-ink/5"
+              className={`rounded-md px-3 py-1 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
             >
               {copied ? 'Copied' : 'Copy'}
             </button>
@@ -142,7 +147,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
           <button
             type="button"
             onClick={() => onDismiss(item.eventId)}
-            className="rounded-md border border-ink/15 px-3 py-1 text-xs font-medium hover:bg-ink/5"
+            className={`rounded-md px-3 py-1 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
             aria-label="Dismiss envelope"
           >
             Dismiss

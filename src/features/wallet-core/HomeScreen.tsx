@@ -123,20 +123,7 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const {
-    wallet,
-    ownerId,
-    holdings,
-    identity,
-    prefs,
-    anchorWorker,
-    inboxEnvelopes,
-    dismissInboxEnvelope,
-    relayStatus,
-    save,
-    refresh,
-    resolvedTheme,
-  } = useWallet();
+  const { wallet, ownerId, holdings, identity, prefs, anchorWorker, inboxEnvelopes, dismissInboxEnvelope, relayStatus, save, refresh, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
   const [witnessOpen, setWitnessOpen] = useState(false);
@@ -321,7 +308,10 @@ export function HomeScreen() {
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto pb-24">
       <header className="flex items-center justify-between py-2 gap-2">
-        <h1 className="text-lg font-semibold">Tapit Wallet</h1>
+        <h1 className="text-lg font-semibold flex items-center gap-2">
+          {resolvedTheme === 'fresh' && <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-fresh-accent-secondary shadow-[0_0_14px_rgba(167,139,250,0.7)]" />}
+          Tapit Wallet
+        </h1>
         <div className="flex items-center gap-2">
           <NostrIndicator status={relayStatus} />
           <Link
@@ -356,7 +346,10 @@ export function HomeScreen() {
         </div>
       )}
 
-      <div className="mt-4 flex rounded-xl bg-ink/5 p-1" role="tablist">
+      <div
+        className={`mt-4 flex rounded-xl p-1 ${resolvedTheme === 'fresh' ? 'bg-fresh-accent-secondary/[0.06]' : 'bg-ink/5'}`}
+        role="tablist"
+      >
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -365,7 +358,13 @@ export function HomeScreen() {
             aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
             className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
-              tab === t.id ? 'bg-white text-ink shadow-sm' : 'text-muted'
+              resolvedTheme === 'fresh'
+                ? tab === t.id
+                  ? 'bg-fresh-accent-secondary/20 text-fresh-text-primary ring-1 ring-fresh-accent-secondary/40'
+                  : 'text-fresh-text-tertiary'
+                : tab === t.id
+                  ? 'bg-white text-ink shadow-sm'
+                  : 'text-muted'
             }`}
           >
             {t.label}
