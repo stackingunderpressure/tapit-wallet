@@ -1,7 +1,14 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
+import { bootstrapDeviceTheme } from './features/theme/applyTheme.ts';
 import './index.css';
+
+// Paint the operator's last-applied theme before React mounts so
+// the first frame already carries the right palette. Synchronous
+// read from localStorage; no Classic-flash-then-Fresh-flicker on
+// cold boot for returning operators.
+bootstrapDeviceTheme();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found in index.html');

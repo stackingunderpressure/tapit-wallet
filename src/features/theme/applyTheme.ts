@@ -32,3 +32,28 @@ export function applyTheme(resolved: 'classic' | 'fresh'): void {
     root.removeAttribute('data-theme');
   }
 }
+
+/**
+ * Synchronous boot-time bootstrap. Reads the device-level theme
+ * from localStorage and paints the document attribute BEFORE React
+ * mounts so the first frame already carries the right palette —
+ * no Classic-flash-then-Fresh-flicker on cold start. Called from
+ * `main.tsx` ahead of `createRoot`. Safe under SSR / vitest.
+ */
+export function bootstrapDeviceTheme(): void {
+  if (typeof localStorage === 'undefined') return;
+  let stored: string | null;
+  try {
+    stored = localStorage.getItem('tapit-wallet:device-theme');
+  } catch {
+    return;
+  }
+  if (stored !== 'classic' && stored !== 'fresh' && stored !== 'system') {
+    return;
+  }
+  const prefersDark =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(resolveTheme(stored, prefersDark));
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ThemeChoice } from '../storage/prefsStore.ts';
 import { applyTheme, resolveTheme } from './applyTheme.ts';
+import { loadDeviceTheme, saveDeviceTheme } from './deviceTheme.ts';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
@@ -41,13 +42,30 @@ export function useTheme(choice: ThemeChoice): 'classic' | 'fresh' {
     applyTheme(resolved);
   }, [resolved]);
 
-  // Revert to Classic when the component owning the hook unmounts —
-  // e.g. WalletProvider tears down on sign-out and the login surface
-  // should always render under the Classic palette regardless of
-  // what the previous operator had picked.
+  // Mirror the operator's literal choice to localStorage so the
+  // pre-auth surface (LoginPage) honours it on the next cold boot
+  // and the post-sign-out landing renders under the right palette.
+  // 'system' is preserved as-is so OS-follow behaviour persists.
+  useEffect(() => {
+    saveDeviceTheme(choice);
+  }, [choice]);
+
+  // Revert to the device-level theme when the component owning the
+  // hook unmounts — e.g. WalletProvider tears down on sign-out and
+  // the login surface should render under whatever the operator
+  // last picked. Falls back to Classic when nothing is persisted.
   useEffect(() => {
     return () => {
-      applyTheme('classic');
+      const stored = loadDeviceTheme();
+      if (stored === null) {
+        applyTheme('classic');
+        return;
+      }
+      const fallbackDark =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia(DARK_QUERY).matches;
+      applyTheme(resolveTheme(stored, fallbackDark));
     };
   }, []);
 

@@ -114,3 +114,56 @@ body {
   font-size: 0.9375rem !important;
   line-height: 1.55 !important;
 }
+
+/* Aurora-drift background for the Fresh landing surface. Replaces
+   the Classic float-glows (the two `animate-float` blurred orbs in
+   `WalletGuide`) with a slow gradient sweep across deep neutrals
+   plus the electric-lime and digital-lavender accents. The hue
+   stops are placed at the corners so the eye reads diagonal motion
+   instead of horizontal banding. `prefers-reduced-motion` halts
+   the animation but keeps the still gradient — accessibility
+   floor that is non-negotiable per the brief. Pure CSS so no JS
+   bytes ride this — the surface paints on first frame. */
+.fresh-aurora-bg {
+  background: radial-gradient(
+      at 18% 12%,
+      rgba(192, 252, 77, 0.18) 0%,
+      transparent 42%
+    ),
+    radial-gradient(
+      at 82% 88%,
+      rgba(167, 139, 250, 0.22) 0%,
+      transparent 48%
+    ),
+    radial-gradient(
+      at 8% 92%,
+      rgba(34, 211, 238, 0.10) 0%,
+      transparent 38%
+    ),
+    linear-gradient(
+      135deg,
+      #0a0b0e 0%,
+      #0b0c0f 35%,
+      #0d1014 70%,
+      #0b0c0f 100%
+    );
+  background-size: 220% 220%, 220% 220%, 220% 220%, 100% 100%;
+  background-position: 0% 0%, 100% 100%, 0% 100%, 0% 0%;
+  animation: fresh-aurora 22s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fresh-aurora-bg {
+    animation: none;
+  }
+}
+
+@keyframes fresh-aurora {
+  0%,
+  100% {
+    background-position: 0% 0%, 100% 100%, 0% 100%, 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%, 0% 0%, 100% 0%, 0% 0%;
+  }
+}
