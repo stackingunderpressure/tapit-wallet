@@ -5,6 +5,14 @@ import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 export interface JournalInput {
+  /**
+   * Optional one-line title authored by the operator. When present
+   * it becomes a signed `title` leaf and the home cards render it
+   * verbatim instead of deriving a title from the first sentence
+   * of body text. Operator-authored beats heuristic — surfaced as
+   * an optional input on the composer.
+   */
+  title?: string;
   /** Free-text body of the entry. */
   text: string;
   /** "Diary" / "Family" / typed-by-user — becomes a leaf in the claim. */
@@ -45,6 +53,10 @@ export async function createJournalEntry(
     category: input.category,
     written_at: new Date().toISOString(),
   };
+
+  if (input.title && input.title.trim().length > 0) {
+    fields.title = input.title.trim();
+  }
 
   if (input.attachment) {
     const bytes = new Uint8Array(await input.attachment.arrayBuffer());

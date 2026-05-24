@@ -18,29 +18,32 @@ function readString(claim: FieldBranch, name: string): string | undefined {
 }
 
 // Fresh-styled card for a single journal entry. Renders inside
-// FreshTodayList. Each card carries a synthetic title derived
-// from the first line of the entry's text, a left-edge accent
-// stripe coloured per-category (Diary lime, Family lavender,
-// Medical cyan, Marriage amber, Witness coral, custom labels
-// hash to a stable palette hue), and the existing anchor / age
-// signal. Anchored entries get an amber edge-glow; un-anchored
-// entries pulse the mycelium cyan in their first hour.
+// FreshTodayList.
 //
-// Rewritten in the 2026-05-24 polish session per operator
-// feedback: titles, full visibility, per-category colour pop.
+// Visual treatment (revised 2026-05-24 polish session after the
+// first rework washed out text contrast under the light :root
+// Fresh defaults): solid raised surface for the body, NO
+// gradient tint — text reads cleanly under both light and dark
+// Fresh palettes. Colour signal lives in (a) a 4px left-edge
+// accent stripe and (b) a small chip with a coloured dot next
+// to the category name. Title prefers an explicit `title` leaf
+// on the attestation; falls back to the first sentence of the
+// body text; falls back to the attachment name; falls back to
+// "{category} entry". Body text only renders when it carries
+// something beyond what is already shown in the title.
 export function FreshTodayCard({ attestation }: Props) {
-  const { ownerId } = useWallet();
+  const { ownerId, wallet } = useWallet();
   const worker = useAnchorWorker();
   const digestHex = useMemo(() => envelopeId(attestation), [attestation]);
   const row = useAnchorStatus(ownerId, digestHex, worker);
 
+  const explicitTitle = readString(attestation.claim, 'title') ?? '';
   const text = readString(attestation.claim, 'text') ?? '';
   const category = readString(attestation.claim, 'category') ?? 'Diary';
   const writtenAt = readString(attestation.claim, 'written_at') ?? attestation.issuedAt;
   const subject = attestation.subject;
-  const walletKey = useWallet().wallet.identity;
   const subjectLabel =
-    subject === walletKey ? 'About me' : subject ? `About ${subject}` : null;
+    subject === wallet.identity ? null : subject ? `About ${subject}` : null;
   const attachmentMime = readString(attestation.claim, 'attachment_mime');
   const attachmentName = readString(attestation.claim, 'attachment_name');
   const attachmentIcon = attachmentMime
@@ -51,15 +54,15 @@ export function FreshTodayCard({ attestation }: Props) {
 
   const accent = categoryAccent(category);
   const derived = deriveTitle(text);
-  const title = derived.length > 0
-    ? derived
-    : attachmentName
-      ? attachmentName
-      : `${category} entry`;
-  // Show the body only when it carries something beyond the
-  // derived title (avoids "Lacey loves you" repeating "Lacey
-  // loves you" verbatim under itself).
-  const body = derived.length > 0 && text.trim() !== derived ? text : '';
+  const title =
+    explicitTitle ||
+    derived ||
+    attachmentName ||
+    `${category} entry`;
+  // Show the body when it carries something the title does NOT
+  // already say — avoids a short entry repeating itself.
+  const body =
+    text.trim().length > 0 && text.trim() !== title ? text : '';
 
   const verifiedAnchor =
     attestation.anchor?.status === 'confirmed'
@@ -74,18 +77,17 @@ export function FreshTodayCard({ attestation }: Props) {
   return (
     <Link
       to={`/entry/${digestHex}`}
-      className="block rounded-3xl backdrop-blur-xl border border-fresh-surface-edge transition active:animate-fresh-press motion-reduce:active:animate-none overflow-hidden"
-      style={{
-        background: `linear-gradient(90deg, ${accent.tint} 0%, var(--fresh-surface-glass, rgba(255,255,255,0.06)) 65%)`,
-        borderLeft: `4px solid ${accent.hex}`,
-      }}
+      className="block rounded-3xl bg-fresh-surface-raised border border-fresh-surface-edge transition active:animate-fresh-press motion-reduce:active:animate-none overflow-hidden"
+      style={{ borderLeft: `4px solid ${accent.hex}` }}
     >
       <div className="p-5">
         <div className="flex items-center justify-between gap-3">
-          <span
-            className="text-[0.65rem] uppercase tracking-[0.22em] font-medium"
-            style={{ color: accent.hex }}
-          >
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.18em] font-medium border border-fresh-surface-edge bg-fresh-surface-glass text-fresh-text-secondary">
+            <span
+              aria-hidden
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: accent.hex }}
+            />
             {category}
           </span>
           <span className="text-xs text-fresh-text-tertiary">
@@ -112,10 +114,7 @@ export function FreshTodayCard({ attestation }: Props) {
             </span>
           )}
           {verifiedAnchor ? (
-            <span
-              className="text-xs rounded-full px-2.5 py-1 border bg-fresh-anchor-glow/[0.08]"
-              style={{ color: 'var(--fresh-anchor-glow, #f59e0b)', borderColor: 'rgba(245, 158, 11, 0.5)' }}
-            >
+            <span className="text-xs rounded-full px-2.5 py-1 border border-fresh-anchor-glow/50 text-fresh-anchor-glow bg-fresh-anchor-glow/[0.08]">
               {verifiedAnchor.btcHeight
                 ? `Block ${verifiedAnchor.btcHeight} · verified`
                 : 'Time-verified'}

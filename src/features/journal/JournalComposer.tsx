@@ -20,6 +20,7 @@ type SubjectMode = 'me' | 'other';
 export function JournalComposer({ onCreated, onCancel }: Props) {
   const { wallet, ownerId, passphrase, prefs, save, syncEnvelope } = useWallet();
   const worker = useAnchorWorker();
+  const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [category, setCategory] = useState<string>(SUGGESTED_CATEGORIES[0]);
   const [customCategory, setCustomCategory] = useState('');
@@ -88,6 +89,7 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
         passphrase,
         worker,
         {
+          title: title.trim() || undefined,
           text: text.trim(),
           category: chosenCategory,
           subject:
@@ -119,6 +121,21 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
+        <label className="text-sm font-medium" htmlFor="entry-title">
+          Title{' '}
+          <span className="text-muted font-normal">(optional)</span>
+        </label>
+        <input
+          id="entry-title"
+          type="text"
+          maxLength={80}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          placeholder="Short headline — leave empty to let the first line stand in"
+        />
+      </div>
+      <div>
         <label className="text-sm font-medium" htmlFor="entry-text">
           What happened?
         </label>
@@ -126,7 +143,7 @@ export function JournalComposer({ onCreated, onCancel }: Props) {
           id="entry-text"
           required
           rows={5}
-          autoFocus
+          autoFocus={title.length === 0}
           value={text}
           onChange={(e) => setText(e.target.value)}
           className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
