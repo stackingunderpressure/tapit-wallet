@@ -127,6 +127,19 @@ export function WalletProvider({ children }: Props) {
   // operator turns it on in Settings. The transport module is
   // dynamically imported so users who never opt in pay zero bytes
   // for the WebSocket client.
+  //
+  // activeKey is derived per-render from the wallet's current
+  // publicKey. Wallet.rotate() mutates the wallet object in place
+  // and refresh() triggers a re-render via setHoldings — on the
+  // post-rotation render this value evaluates to the new key,
+  // React's dep-array shallow-compare sees the change, and the
+  // effect tears down the old subscription and opens a new one
+  // bound to the rotated key. Without this, the inbox would stay
+  // subscribed to the pre-rotation pubkey forever.
+  const activeKey =
+    phase.kind === 'unlocked' || phase.kind === 'needs-identity'
+      ? phase.wallet.publicKey
+      : '';
   useEffect(() => {
     if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') return;
     if (!prefs.nostrTransportEnabled) return;
@@ -193,8 +206,15 @@ export function WalletProvider({ children }: Props) {
     };
     // relaysKey is a stable string derived from prefs.nostrRelays;
     // re-runs only when the content changes (not the reference).
+    // activeKey is read directly from the wallet on each render —
+    // Wallet.rotate() mutates the wallet in place so the phase
+    // reference does not change, but the active publicKey getter
+    // returns the new value. Including activeKey in deps ensures
+    // the transport tears down and re-subscribes on the new key
+    // after rotation; without it the subscription stays bound to
+    // the pre-rotation pubkey and incoming events go to nowhere.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, prefs.nostrTransportEnabled, relaysKey]);
+  }, [phase, prefs.nostrTransportEnabled, relaysKey, activeKey]);
 
   const dismissInboxEnvelope = useCallback((eventId: string) => {
     setInboxEnvelopes((prev) => prev.filter((p) => p.eventId !== eventId));

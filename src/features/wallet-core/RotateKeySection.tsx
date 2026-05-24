@@ -141,6 +141,15 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
               apps that store your pubkey directly may need to refresh.
             </li>
             <li>
+              Your Mycelium inbox automatically re-subscribes to the new
+              pubkey, so your wallet does not go dark on the receive side.
+              But your peers do not know you rotated until you tell them
+              (a rotation-announcement broadcast is a future feature); until
+              then, messages they send still go to your old pubkey and
+              don't reach you. Re-handshaking with active contacts after a
+              rotation is the manual workaround.
+            </li>
+            <li>
               Messages encrypted-to-your-old-pubkey can no longer be
               decrypted by your wallet after rotation. This includes any
               recovery share that was encrypted to you as a cohort member
