@@ -34,6 +34,11 @@ const ScanEnvelopeModal = lazy(() =>
     default: m.ScanEnvelopeModal,
   })),
 );
+const PresenceDetailModal = lazy(() =>
+  import('../presence/PresenceDetailModal.tsx').then((m) => ({
+    default: m.PresenceDetailModal,
+  })),
+);
 import {
   findLatestOfficialsRoster,
   findOwnOrgDeclaration,
@@ -133,6 +138,7 @@ export function HomeScreen() {
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
   const [presenceOpen, setPresenceOpen] = useState(false);
+  const [presenceDetail, setPresenceDetail] = useState<Attestation | null>(null);
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
   // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
@@ -532,14 +538,26 @@ export function HomeScreen() {
                   const p = readPresence(a);
                   const when = new Date(p.signedAt).toLocaleString();
                   return (
-                    <li
-                      key={i}
-                      className="rounded-2xl bg-white border border-ink/10 p-3"
-                    >
-                      <div className="text-sm font-medium">{when}</div>
-                      <div className="mt-1 text-xs text-muted font-mono">
-                        {p.latitude}, {p.longitude} (±{Math.round(Number(p.accuracyMeters))}m)
-                      </div>
+                    <li key={i}>
+                      <button
+                        type="button"
+                        onClick={() => setPresenceDetail(a)}
+                        className="w-full text-left rounded-2xl bg-white border border-ink/10 p-3 hover:bg-ink/[0.02] active:bg-ink/[0.04] transition"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-medium">{when}</div>
+                          <div className="text-xs text-muted">View →</div>
+                        </div>
+                        <div className="mt-1 text-xs text-muted font-mono">
+                          {p.latitude}, {p.longitude} (±{Math.round(Number(p.accuracyMeters))}m)
+                        </div>
+                        <div className="mt-1 text-xs text-emerald-700">
+                          Face ID signed · keypair signed
+                          {a.anchor && a.anchor.status === 'confirmed' && a.anchor.btcHeight
+                            ? ` · ⛓ block ${a.anchor.btcHeight}`
+                            : ''}
+                        </div>
+                      </button>
                     </li>
                   );
                 })}
@@ -752,6 +770,17 @@ export function HomeScreen() {
       {presenceOpen && (
         <Suspense fallback={null}>
           <MarkPresenceModal onClose={() => setPresenceOpen(false)} />
+        </Suspense>
+      )}
+
+      {presenceDetail && (
+        <Suspense fallback={null}>
+          <PresenceDetailModal
+            presence={presenceDetail}
+            holdings={holdings}
+            walletIdentity={wallet.identity}
+            onClose={() => setPresenceDetail(null)}
+          />
         </Suspense>
       )}
     </div>

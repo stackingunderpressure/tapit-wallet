@@ -149,6 +149,11 @@ const BUDGETS = [
   // 5e-vi RecoveryResponderModal — React.lazy from HomeScreen;
   // loads when an incoming recovery-request envelope opens it.
   { pattern: /^RecoveryResponderModal-.*\.js$/, gz: 5_000, label: 'RecoveryResponderModal' },
+  // 2026-05-23 PresenceDetailModal — React.lazy from HomeScreen
+  // Identity tab. Opens when the operator taps an existing Tier V
+  // presence card to see the full envelope detail (when, where,
+  // Face ID assertion materials, wallet signature, Bitcoin anchor).
+  { pattern: /^PresenceDetailModal-.*\.js$/, gz: 3_000, label: 'PresenceDetailModal' },
   // 2026-05-23 RecoveryKeyImportModal — React.lazy from UnlockPrompt
   // alongside RecoveryInitiatorModal. Lazy because most operators
   // never need it; small because it's just a hex input + new-pass

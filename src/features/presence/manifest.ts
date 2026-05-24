@@ -10,6 +10,7 @@ export const manifest: FeatureManifest = {
     'src/features/presence/geolocation.ts',
     'src/features/presence/createPresence.ts',
     'src/features/presence/MarkPresenceModal.tsx',
+    'src/features/presence/PresenceDetailModal.tsx',
   ],
   depends_on: ['wallet-core', 'anchoring', 'connections', 'transport'],
   pause_safe: true,
