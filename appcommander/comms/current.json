@@ -1,62 +1,54 @@
 {
   "v": 1,
-  "ts": "2026-05-23T18:10:00Z",
-  "session_id": "phase-5e-blended-recovery-2026-05-23-1779555600",
-  "who": { "actor": "carpenter", "feature_slug": "recovery" },
+  "ts": "2026-05-24T02:05:00Z",
+  "session_id": "big-comms-closeout-2026-05-24-1779580800",
+  "who": { "actor": "carpenter", "feature_slug": "comms-closeout" },
   "where": {
     "files": [
-      "tapit-attest/src/core/encryption.ts",
-      "tapit-attest/src/core/wallet.ts",
-      "tapit-attest/test/encryption-recoverable.test.mjs",
-      "tapit-attest/test/wallet-recoverable.test.mjs",
-      "src/features/recovery/RecoveryInitiatorModal.tsx",
-      "src/features/recovery/RecoveryResponderModal.tsx",
-      "src/features/recovery/DistributeSharesModal.tsx",
-      "src/features/recovery/createCohort.ts",
-      "src/features/recovery/createCohort.test.ts",
-      "src/features/recovery/manifest.ts",
-      "src/features/transport/envelopeRoute.ts",
-      "src/features/transport/InboxPanel.tsx",
-      "src/features/qr/ScanEnvelopeModal.tsx",
-      "src/features/qr/manifest.ts",
-      "src/features/wallet-core/UnlockPrompt.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "scripts/bundle-budget.mjs"
+      "src/index.css",
+      "src/features/transport/{nostrTransport,transport,InboxPanel,envelopeRoute,NostrIndicator}.ts(x)",
+      "src/features/qr/{QrScanModal,ScanEnvelopeModal}.tsx",
+      "src/features/recovery/{RecoveryInitiatorModal,RecoveryKeyImportModal,RecoveryResponderModal,createRecoverySuccession{,.test}}.tsx",
+      "src/features/wallet-core/{WalletProvider,WalletContext,IdentityCard,IdentityCeremony,HomeScreen,UnlockPrompt,RotateKeySection}.tsx",
+      "src/features/settings/{SettingsScreen,KnownLimitationsSection}.tsx",
+      "src/features/auth/{LoginPage,WalletGuide}.tsx",
+      "src/features/presence/{MarkPresenceModal,PresenceDetailModal,createPresence}.tsx",
+      "src/features/journal/{JournalDetail,verifyAttachmentIntegrity}.ts(x)",
+      "src/features/cosigning/{EnvelopePreview,CustodyHandoffModal}.tsx",
+      "src/features/connections/createHandshake.ts",
+      "package.json",
+      "scripts/bundle-budget.mjs",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-24-fresh-young-adult-theme-roadmap.md"
     ],
-    "screen_path": "Locked screen → 'Lost passphrase? Start recovery' → RecoveryInitiatorModal (Mycelium OR show-request-QR + scan-share-response) → unlocked. Setup: Cohort editor → Distribute shares (per-peer Send-via-Nostr OR Show-QR). Receive: People tab → Scan envelope (any tapit envelope routes to its modal)."
+    "screen_path": "Touched: LoginPage / WalletGuide / HomeScreen / Settings / Lock screen → recovery / Identity tab → Tier V detail / Journal detail → integrity / Cohort distribute / Cosign witness"
   },
   "layer": "ui",
   "action": "implement",
-  "summary": "Six feature cuts shipped 2026-05-23 across two logical sessions. First half (Phase 5e-v initiator): Cut 1 (57bd569) library primitive encryptRecoverableWithKData + 8 tests. Cut 2 (fa55c57) RecoveryInitiatorModal with the full new-device choreography (~700 lines, 9-phase state machine, ephemeral NostrTransport, combine + restore + save-under-new-passphrase). Cut 3 (8547175) latent threshold-leaf bug fix in createCohort + 3 regression tests. Second half (blended-recovery arc, authorized as session extension): Cut 4 (eaadcde) blended distribute — per-peer transport choice in DistributeSharesModal (Send via Nostr / Show QR), extracted routeFor into shared envelopeRoute.ts, new ScanEnvelopeModal generalizing the scan path, 'Scan envelope' button on People tab. Cut 5 (56938e5) blended ceremony halves — responder grows 'Release in person' QR output, initiator extracts absorbShareResponse helper + 'Scan a share-response' surface, in-person responders added to journey board. Cut 6 (73db6cc) blended request side — RecoveryInitiatorModal stores recovery-request envelope so 'Show request QR' renders it for nearby peers. The slime metaphor is now real in code through both transports end-to-end.",
+  "summary": "24 commits between 1f252c9 and b2397f8 plus this comms close-out. Five legible arcs: (1) iOS polish + Netlify reliability — modal-off-center fix, !important specificity correction, Netlify prebuild script, Nostr live indicator. (2) Operator-laziness gap closing — QR paste fallback + iPhone-PWA detection, paper-K_data export+import end-to-end, 5e-vii library half + 5 tests, WalletGuide tabs + OpenTimestamps credit, text-readability bump. (3) Tier V depth + sovereignty framing — tappable presence cards with full PresenceDetailModal, Sovereignty tab + Settings preamble, journal-attachment integrity verify, sovereign-confirm step on cloud-backup-off, QR Pick-a-photo + 5e-vii self-signed auto-emit. (4) Key rotation + identity polish — UX prune of crypto name-drops, RotateKeySection, IdentityCard genesis-vs-active fix, rotation resilience cut 1 (auto-rebuild Mycelium subscription), Fresh young-adult brief, IdentityCeremony Bind-Face-ID step, handshake-flow names audit. (5) Presence anchor live status — useAnchorStatus wiring so the just-anchored state surfaces honestly instead of stale 'not yet anchored.'",
   "why": {
-    "text": "Operator's vision in their own words: 'I want both. You can do it all blended ways. Dome over nostr dome in person. All either way. You go on the journey to get back your identity. All physical if need be. Setup same. One key holder is two states away one lives next door. Need to be able to do all of it. Obviously back ups are the right answer but we are trying to help the lazy with great ux. Nothing fills that gap all the way. But want to close as much as possible.' First half delivered Phase 5e-v initiator side as the named ceremony work; second half delivered the blended-transport arc that closes the gap by ~60-70% with paper-K_data named as the next pairing for the remaining unconditional closure.",
+    "text": "Operator's Socratic Q&A mode tipping into rapid-cut execution. Each turn surfaced a real gap (UI bug, copy gap, missing surface) by reading the actual running wallet on iPhone PWA. The cuts collectively moved the wallet from 'spec-complete through 5e-v with blended transport' to 'a wallet a real operator can use day-to-day without hitting show-stoppers.' The math was already correct; the surface met the math halfway across this arc.",
     "linked_pixel_id": null,
-    "linked_mission_id": "TAPITWALLET-2026-05-23-PHASE-5E-CEREMONY-AND-BLENDED-RECOVERY"
+    "linked_mission_id": "TAPITWALLET-2026-05-24-LONG-ARC-UX-SOVEREIGNTY-ROTATION"
   },
   "outcome": {
     "files_changed": [
-      "Cut 1 (57bd569): tapit-attest encryption.ts + wallet.ts + 2 test files; 8 new library tests.",
-      "Cut 2 (fa55c57): new RecoveryInitiatorModal.tsx (~700 lines), UnlockPrompt + WalletProvider wired with entry point + onRecovered.",
-      "Cut 3 (8547175): createCohort.ts + new createCohort.test.ts + manifest; 3 regression tests for the threshold-leaf bug.",
-      "Cut 4 (eaadcde): new envelopeRoute.ts + ScanEnvelopeModal.tsx, InboxPanel refactored, DistributeSharesModal grows per-peer toggle, HomeScreen + manifests + bundle budgets.",
-      "Cut 5 (56938e5): RecoveryResponderModal 'Release in person' path; RecoveryInitiatorModal absorbShareResponse helper + 'Scan a share-response' button.",
-      "Cut 6 (73db6cc): RecoveryInitiatorModal stores recovery-request envelope; 'Show request QR' surface."
+      "Approximately 30 files modified, 7 new files created (NostrIndicator, ScanEnvelopeModal, RecoveryKeyImportModal, createRecoverySuccession + .test, WalletGuide, PresenceDetailModal, RotateKeySection, KnownLimitationsSection, verifyAttachmentIntegrity, envelopeRoute, createCohort.test, Fresh roadmap brief).",
+      "Bundle budgets adjusted across the arc (login bundle 5→12KB documented inline; SettingsScreen 6→7→7.5→9KB; HomeScreen 14.5→15KB; new chunks for ScanEnvelopeModal, RecoveryInitiatorModal, RecoveryKeyImportModal, PresenceDetailModal, createRecoveryRequest helpers all named-budgeted).",
+      "5 new wallet tests added in d0bfdef (createRecoverySuccession M-of-N math). 48 wallet tests total. tapit-attest unchanged at 154 (150 pass + 4 skipped network)."
     ],
-    "tests_passing": "tapit-attest 154 total (150 pass + 4 skipped network; 8 new this session); wallet 43/43 (3 new this session). typecheck, lint, build all green at every commit.",
+    "tests_passing": "wallet 48/48 (5 new this arc — Phase 5e-vii library); tapit-attest 154 (150+4 skipped network, unchanged). typecheck + lint + build green at every commit.",
     "build_green": true,
-    "notes": "[P-001] Phase 5e-v shipped end-to-end through the initiator side (Cuts 1-3). [P-002] Blended-recovery arc shipped through both transports (Cuts 4-6). [P-003] Three new chunks introduced and named-budgeted: ScanEnvelopeModal (1.21KB gz / 2KB budget), createRecoveryRequest helpers (0.90KB / 1.5KB), RecoveryInitiatorModal (5.12KB / 6KB). [P-004] Phase 5e-vii peer-witnessed recovery-succession event remains for a fresh session — recommend blended-transport-from-cut-1, not Mycelium-only-then-retrofit. [P-005] Paper-K_data export remains as the lazy-operator's unconditional last-resort companion to the cohort cascade. [P-006] Six feature cuts across two sessions in one day; explicit operator authorization for the second-half extension ('go until session_ended'). [FEEDBACK→Foreman]: past five cuts in a session the artifact-quality fragmentation starts to show — first three cuts had richer test coverage than the last three. Future as-much-as-possible work should ideally split across two operator-authorized sessions with a fresh ground-state in the middle."
+    "notes": "[P-001] iOS UX (zoom prevention, off-center modal fix, readability bump) shipped via global CSS at !important specificity to beat Tailwind class selectors. [P-002] Netlify deploys unblocked via package.json prebuild that runs tapit-attest's tsc before the wallet's. [P-003] Phase 5e-v cohort recovery now fully end-to-end (library + ceremony UI + blended transport + paper-K_data fallback + self-signed succession auto-emit + IdentityCeremony Face-ID bind + rotation UI with auto-resubscribe). [P-004] Phase 5e-vii peer-witnessed succession: library shipped (createRecoverySuccession.ts + tests), self-signed half auto-emits on recovery, peer co-sign UI deferred to fresh session. [P-005] Sovereignty spectrum (Connected / Connected-private / Sovereign-with-cohort / Sovereign-solo) named in WalletGuide + Settings preamble + opt-out responsibility-confirm. [P-006] UX prune dropped Schnorr/secp256k1/Merkle name-drops from user-facing copy; kept where they do real explanation work. [P-007] Handshake-flow audit closed two real pubkey-leak surfaces via peerNamesByPubkey helper + handshake-specific EnvelopePreview render. [P-008] Live-anchor-status wiring fixed the 'not yet anchored' misread on freshly-captured presence events. [P-009] Fresh young-adult theme brief filed at project-memory/.../briefs/2026-05-24-fresh-young-adult-theme-roadmap.md — nine-cut Carpenter-ready spec. [FEEDBACK→Foreman]: 24-commit arcs without intermediate comms close-out make the eventual aggregation heavier than needed. Aggregate every 3-5 cuts even in rapid-iteration mode."
   },
-  "confidence": 90,
-  "uncertainty": "Six cuts are gate-green and tested at unit + library level. The biggest open uncertainty is the in-person ceremony UI which has been vitest-built but not browser-walked end-to-end with a real second device. The state machine handles errors with explicit transitions, the journey-board adds in-person responders correctly via absorbShareResponse, the Show-request-QR and Show-share-response-QR surfaces render via the proven QrShow primitive, but the real validation is a peer-pretending-to-respond walk with one Nostr peer and one in-person peer covering all four blend cells (in/out of distribute × in/out of recovery). Smaller uncertainty: the cohort-peer key-rotation case may break decryptHeldShare for both transports — worth verifying against the nip44 module surface before the wife-test.",
+  "confidence": 92,
+  "uncertainty": "Every cut is gate-green and tested at the layer it was cut at; aggregated cross-cut behavior would benefit from a real-device walk now that the surfaces are in place. The biggest open risks for the next session: cohort-peer NIP-44 behavior on key rotation (the rotation UI warns about it; mechanical proof still pending), and the cohort-shares-stale-on-rotation gap which rotation resilience cuts 2-3 would close.",
   "ripple": [
-    "tapit-attest — gained the new save-side primitive + Wallet method + 8 tests in Cut 1",
-    "wallet-core — UnlockPrompt + WalletProvider drilled with recovery props (Cut 2); HomeScreen gains Scan envelope button + ScanEnvelopeModal mount (Cut 4)",
-    "recovery — RecoveryInitiatorModal grew through Cuts 2, 5, 6 (state machine + scan + show-request-QR); RecoveryResponderModal grew through Cut 5 (release-in-person); DistributeSharesModal grew through Cut 4 (per-peer toggle); createCohort fixed in Cut 3; new createCohort.test.ts + RecoveryInitiatorModal.tsx",
-    "transport — new envelopeRoute.ts extracted (Cut 4); InboxPanel refactored to use it",
-    "qr — new ScanEnvelopeModal.tsx (Cut 4); existing QrShow + QrScanModal reused by recovery flows",
-    "scripts/bundle-budget.mjs — three new named budgets (RecoveryInitiatorModal, createRecoveryRequest, ScanEnvelopeModal)"
+    "Phase 5e-v fully end-to-end on the wallet side — every recovery seam shipped + automated. Operator field-test ready.",
+    "Phase 5e-vii — math + self-signed half landed; peer co-sign UI remains.",
+    "Sovereignty spectrum surfaced + opt-out friction in place + Fresh roadmap queued.",
+    "Key rotation operational including the cohort warning + auto-resubscribe + identity-card honesty.",
+    "Bundle/file-size discipline holding at the edges; flagged for proactive extraction in handoff."
   ],
-  "next": "Phase 5e-vii peer-witnessed recovery-succession event with M co-signatures, designed as blended-transport from the first cut (don't ship Mycelium-only and retrofit). Paper-K_data export in Settings + matching lock-screen import as the lazy-operator's unconditional last resort. Both fresh-session pieces. Real-device walk of the blended flow with two peers covering all four blend cells.",
+  "next": "Phase 5e-vii peer co-sign UI (closes Phase 5e fully) → Rotation resilience cuts 2 + 3 (closes the cohort-disconnect-on-rotation gap) → Hash-attestation document-signing flow (closes medical/legal/notary use case) → Fresh theme cut 1 (foundational tokens + toggle, unblocks the nine-cut roadmap). Operator field tests (wife-test of /verify, two-device blended distribute+recover, real-device rotation walk) remain load-bearing throughout.",
   "signals": ["pulse"]
 }

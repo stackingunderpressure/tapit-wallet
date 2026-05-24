@@ -1,10 +1,38 @@
 # Hyphal lattice + Shamir cascade recovery — Phase 5e roadmap (2026-05-24)
 
-> Status: SKETCH for operator review. Names seven sequenced cuts
-> plus the load-bearing decisions that gate them. Companion to
-> `MYCELIUM_NETWORK_SPEC.md` §12 and `PLAN.md` Phase 5 — the spec
-> promised "the network of this document, used backwards." If
-> greenlit needs a `decisions.md` entry before any code is cut.
+> Status: MOSTLY SHIPPED as of 2026-05-24 close-out. Phase 5e-v
+> (cohort cascade recovery) is fully end-to-end on the wallet side
+> across both Mycelium and in-person QR transports. Phase 5e-vii's
+> library + self-signed half landed; peer co-sign UI remains the
+> last open piece. Paper-K_data export+import shipped as the
+> unconditional last-resort fallback. The first writing of this
+> brief was a sketch for operator review; what follows below is
+> the original spec, kept as-written for archival continuity.
+> Anyone using this brief as a roadmap going forward should consult
+> the current foreman handoff at `appcommander/foreman-context/
+> carpenter-state-for-foreman.md` for live state — the open items
+> there supersede this brief's "next moves" section.
+>
+> Shipped through this roadmap's intent (commit refs):
+>   - 5e-iii-a cohort declaration: 34ad1a8
+>   - 5e-iii-b library + wallet halves: 84ebbc2 / 8ea9393
+>   - 5e-iii-b-2 share distribution + receive: 806c45e / 71c9dc6
+>   - 5e-iv lattice viz: b976169
+>   - 5e-v library primitive + ceremony modal: 57bd569 / fa55c57
+>   - 5e-v latent threshold-leaf fix: 8547175
+>   - 5e blended distribute / ceremony halves / request side: eaadcde / 56938e5 / 73db6cc
+>   - Paper-K_data export+import: 304d839
+>   - 5e-vii library: d0bfdef
+>   - 5e-vii self-signed auto-emit on recovery: 1089e1f
+>   - Rotation UI + resilience cut 1: f8df997 / a287717
+>   - IdentityCeremony Bind-Face-ID: d2c98d4
+>
+> Remaining from the spirit of this brief:
+>   - 5e-vii peer co-sign UI (RecoverySuccessionModal initiator + peer-side responder + envelopeRoute entry)
+>   - Rotation resilience cuts 2 + 3 (announcement broadcast + peer-side share-refresh)
+>   - Wallet-side K_data-stable integration test
+>
+> Companion to `MYCELIUM_NETWORK_SPEC.md` §12 and `PLAN.md` Phase 5.
 
 ## What this delivers
 
