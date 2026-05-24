@@ -39,10 +39,17 @@
    late-2025 / 2026 visual trends. Activated by setting
    `<html data-theme="fresh">` from the `useFreshTheme` hook. */
 [data-theme='fresh'] {
-  --fresh-surface-base: #0b0c0f;
-  --fresh-surface-raised: #15171c;
+  /* 2026-05-24 polish: bump the base a touch toward warm plum and
+     the raised surface toward neutral-with-violet-undertone so the
+     dark stops reading as pure-black and starts reading as the
+     "deep neutral with electric accents" the brief actually
+     describes. Edge hairline picks up the lavender accent at a
+     subtle alpha so every card edge under Fresh carries a hint
+     of the supporting hue, not just the cards I touched explicitly. */
+  --fresh-surface-base: #0c0a13;
+  --fresh-surface-raised: #18161f;
   --fresh-surface-glass: rgba(255, 255, 255, 0.06);
-  --fresh-surface-edge: rgba(255, 255, 255, 0.08);
+  --fresh-surface-edge: rgba(167, 139, 250, 0.18);
   --fresh-text-primary: #f4f4f5;
   --fresh-text-secondary: #a1a1aa;
   --fresh-text-tertiary: #71717a;
@@ -64,37 +71,61 @@
      Pure Tailwind utilities like `bg-paper` / `text-ink` keep
      their hardcoded values — only the inline-body and any other
      consumer that explicitly reads var(--paper)/var(--ink) flips. */
-  --paper: #0b0c0f;
+  --paper: #0c0a13;
   --ink: #f4f4f5;
   --muted: #a1a1aa;
 }
 
-/* Subtle lavender + lime atmospheric bloom on the always-on
-   home surface under Fresh. Less saturated and unanimated
-   compared to fresh-aurora-bg (which the landing surface uses)
-   so the home stays readable during long reading sessions, but
-   the radial colour gives the page depth and ties it to the
-   brief's "digital lavender supporting role" without
-   overpowering the cards. The image attaches to the html
-   element so it does not scroll out of frame as the operator
-   moves through long journal lists. */
+/* Subtle lavender + lime + cyan atmospheric bloom on the always-on
+   home surface under Fresh. Less saturated and unanimated compared
+   to fresh-aurora-bg (which the landing surface uses) so the home
+   stays readable during long reading sessions, but the radial
+   colour gives the page depth and ties it to the brief's "digital
+   lavender supporting role." 2026-05-24 polish lifted the lavender
+   stop from 14% -> 22%, the lime from 8% -> 13%, and added a third
+   cyan stop at the top-right so the composition stops feeling
+   bottom-heavy. The image attaches to the html element so it does
+   not scroll out of frame as the operator moves through long
+   journal lists. */
 html[data-theme='fresh'] {
   background:
     radial-gradient(
-      circle at 14% 8%,
-      rgba(167, 139, 250, 0.14) 0%,
-      transparent 38%
+      circle at 12% 6%,
+      rgba(167, 139, 250, 0.22) 0%,
+      transparent 44%
     ),
     radial-gradient(
       circle at 88% 92%,
-      rgba(192, 252, 77, 0.08) 0%,
-      transparent 42%
+      rgba(192, 252, 77, 0.13) 0%,
+      transparent 46%
     ),
-    #0b0c0f;
+    radial-gradient(
+      circle at 96% 8%,
+      rgba(34, 211, 238, 0.09) 0%,
+      transparent 38%
+    ),
+    #0c0a13;
   background-attachment: fixed;
 }
 html[data-theme='fresh'] body {
   background: transparent;
+}
+
+/* Classic section headers under Fresh pick up a small lavender
+   dot before the label so the "accents throughout" feel lands on
+   every tab without having to touch each section's JSX. Targets
+   only the h2.text-muted shape Classic sections use; Fresh-styled
+   components use text-fresh-text-* and are not matched. */
+html[data-theme='fresh'] h2.text-muted::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--fresh-accent-secondary);
+  margin-right: 8px;
+  vertical-align: middle;
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.6);
 }
 
 /* CROSS-CUTTING FRESH OVERRIDES FOR CLASSIC SURFACES.
@@ -134,8 +165,8 @@ html[data-theme='fresh'] :is(div, li, section, article, button, ul)[class*="bg-p
   background-color: var(--fresh-surface-raised);
   border-color: var(--fresh-surface-edge);
   box-shadow:
-    0 14px 36px -16px rgba(0, 0, 0, 0.65),
-    0 2px 8px -2px rgba(0, 0, 0, 0.40);
+    0 16px 38px -16px rgba(50, 22, 90, 0.55),
+    0 2px 10px -2px rgba(0, 0, 0, 0.45);
 }
 
 /* Border-ink/N borders collapse to a subtle white-alpha hairline

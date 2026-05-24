@@ -54,7 +54,12 @@ const BUDGETS = [
   // honest next move is to consider CSS code-splitting via Vite's
   // per-entry stylesheets, which would only be earned once the Fresh
   // surface ships more than the foundation.
-  { pattern: /^index-.*\.css$/, gz: 7_000, label: 'css' },
+  // 2026-05-24 polish: bumped 7KB -> 7.5KB to absorb the
+  // cross-cutting Fresh overrides sweep (every Classic bg-white /
+  // bg-paper / border-ink / text-ink surface routed through one
+  // rule set) plus the accent dial-up (body radial bloom, lavender
+  // edge tint, h2 dot prefix, plum-tinted elevation shadow).
+  { pattern: /^index-.*\.css$/, gz: 7_500, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
