@@ -29,8 +29,15 @@ function readPrefersDark(): boolean {
  * Classic WalletGuide).
  */
 export function useDeviceTheme(): 'classic' | 'fresh' {
+  // First-run fallback flipped from 'classic' to 'fresh' on
+  // 2026-05-24 per operator direction. A device that has never
+  // written tapit-wallet:device-theme paints Fresh by default so
+  // the pre-auth surface (LoginPage, the FreshOnboarding compose-
+  // before-login flow) lands new users on the audience-targeted
+  // surface from first touch. Existing operators who already
+  // picked a theme keep their saved choice via loadDeviceTheme.
   const [choice, setChoice] = useState<ThemeChoice>(
-    () => loadDeviceTheme() ?? 'classic',
+    () => loadDeviceTheme() ?? 'fresh',
   );
   const [prefersDark, setPrefersDark] = useState<boolean>(readPrefersDark);
 

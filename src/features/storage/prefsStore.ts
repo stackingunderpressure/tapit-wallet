@@ -46,10 +46,14 @@ export interface Prefs {
    */
   nostrRelays: string[];
   /**
-   * The active presentation theme. Default 'classic' for existing
-   * wallets — the Fresh roadmap explicitly keeps Classic as default
-   * until adoption signal warrants flipping it. Operator changes
-   * this from Settings → Appearance.
+   * The active presentation theme. Default 'fresh' as of 2026-05-24
+   * — operator flipped the default on the strength of the polish
+   * arc: new wallets land on Fresh, the audience-targeted surface,
+   * and Classic stays as an opt-in for operators who prefer the
+   * original ink-on-paper register. Existing wallets keep their
+   * saved choice because prefsStore.load merges saved prefs on top
+   * of defaults, so anyone with a previously-saved theme field
+   * (the vast majority) is unaffected.
    */
   theme: ThemeChoice;
   /**
@@ -76,7 +80,7 @@ const DEFAULT_PREFS: Prefs = {
   idleTimeoutMs: 30 * 60 * 1000,
   nostrTransportEnabled: false,
   nostrRelays: [...DEFAULT_RELAYS],
-  theme: 'classic',
+  theme: 'fresh',
   streaksEnabled: true,
   memoriesEnabled: true,
 };

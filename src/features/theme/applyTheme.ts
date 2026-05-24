@@ -41,14 +41,24 @@ export function applyTheme(resolved: 'classic' | 'fresh'): void {
  * `main.tsx` ahead of `createRoot`. Safe under SSR / vitest.
  */
 export function bootstrapDeviceTheme(): void {
-  if (typeof localStorage === 'undefined') return;
+  // First-run devices (and edge cases where localStorage is gone)
+  // paint Fresh on the very first frame as of 2026-05-24 — Fresh
+  // is the new default, so the cold-start surface should never
+  // show as Classic-light to a brand-new operator just to flip a
+  // tick later when React mounts and useDeviceTheme runs.
+  if (typeof localStorage === 'undefined') {
+    applyTheme('fresh');
+    return;
+  }
   let stored: string | null;
   try {
     stored = localStorage.getItem('tapit-wallet:device-theme');
   } catch {
+    applyTheme('fresh');
     return;
   }
   if (stored !== 'classic' && stored !== 'fresh' && stored !== 'system') {
+    applyTheme('fresh');
     return;
   }
   const prefersDark =
