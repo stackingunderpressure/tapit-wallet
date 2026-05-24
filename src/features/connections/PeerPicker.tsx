@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { isHandshake, readHandshake } from './createHandshake.ts';
 
 // Peer picker — given the operator's holdings and their identity,
 // surfaces the people they have already handshaken with as one-tap
-// options. A manual-paste fallback covers the case where the
-// operator wants to send to someone not yet in their People tab.
-// Used by any modal whose Send-via-Nostr step needs a recipient
-// pubkey.
+// options AND a paste-a-public-key field. Both are always visible
+// when there is at least one peer; the picker no longer hides the
+// paste path behind a toggle link the operator may not see (which
+// was actively invisible under the Fresh dark surface because the
+// `text-accent` link rendered dark green on dark). The toggle
+// pattern was the friction the operator named directly: "Won't
+// let me paste new id code in only pick one peer I have." Show
+// both, no clicks required.
 //
 // The peer's pubkey is recovered from the handshake's signed leaves
 // (initiator_id / responder_id), so this works for both the
@@ -71,17 +75,18 @@ export function PeerPicker({ holdings, myIdentity, value, onChange }: Props) {
     return uniqueByPubkey(found);
   }, [holdings, myIdentity]);
 
-  const [showPaste, setShowPaste] = useState(peers.length === 0);
   const valueNormalized = value.trim().toLowerCase();
   const valueValid = HEX_64.test(valueNormalized);
   const selectedPeer = peers.find((p) => p.pubkey === valueNormalized);
 
   return (
-    <div>
-      {peers.length > 0 && !showPaste && (
-        <>
-          <div className="text-xs text-muted">From your connections:</div>
-          <ul className="mt-1 space-y-1">
+    <div className="space-y-3">
+      {peers.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted">
+            From your connections
+          </div>
+          <ul className="mt-1.5 space-y-1">
             {peers.map((p) => (
               <li key={p.pubkey}>
                 <button
@@ -100,47 +105,34 @@ export function PeerPicker({ holdings, myIdentity, value, onChange }: Props) {
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            onClick={() => setShowPaste(true)}
-            className="mt-2 text-xs text-accent hover:underline"
-          >
-            Or paste a public key…
-          </button>
-        </>
+        </div>
       )}
 
-      {showPaste && (
-        <>
-          {peers.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowPaste(false);
-                onChange('');
-              }}
-              className="mb-2 text-xs text-accent hover:underline"
-            >
-              ← Pick from your connections
-            </button>
-          )}
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="64-character hex public key"
-            className="w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
-            spellCheck={false}
-            autoCapitalize="none"
-            autoCorrect="off"
-          />
-          {value.length > 0 && !valueValid && (
-            <p className="mt-1 text-xs text-red-600">
-              Needs 64 hex characters.
-            </p>
-          )}
-        </>
-      )}
+      <div>
+        <div className="text-xs uppercase tracking-wide text-muted">
+          {peers.length > 0 ? 'Or paste a public key' : 'Paste a public key'}
+        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="64-character hex public key"
+          className="mt-1.5 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
+          spellCheck={false}
+          autoCapitalize="none"
+          autoCorrect="off"
+        />
+        {value.length > 0 && !selectedPeer && !valueValid && (
+          <p className="mt-1 text-xs text-red-600">
+            Needs 64 hex characters.
+          </p>
+        )}
+        {selectedPeer && (
+          <p className="mt-1 text-xs text-muted">
+            Selected: <span className="font-medium">{selectedPeer.name}</span>
+          </p>
+        )}
+      </div>
     </div>
   );
 }
