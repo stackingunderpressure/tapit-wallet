@@ -213,6 +213,16 @@ html[data-theme='fresh'] .text-ink {
 html[data-theme='fresh'] .text-muted {
   color: var(--fresh-text-secondary);
 }
+/* Classic text-accent (forest green #2d6a4f from tailwind.config)
+   is the eyebrow / action-link colour on Classic surfaces. Under
+   Fresh that hex literal renders as dim green on the dark body
+   and is hard to read — operator surfaced this directly on the
+   in-person handshake step indicator. Swap to the lavender
+   supporting accent so eyebrow text and inline action links read
+   at full contrast under Fresh without touching each call site. */
+html[data-theme='fresh'] .text-accent {
+  color: var(--fresh-accent-secondary);
+}
 
 /* Inputs / textareas / selects keep their explicit bg-white
    styling so focus contrast survives on the dark body — they

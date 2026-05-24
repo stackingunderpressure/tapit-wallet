@@ -62,7 +62,18 @@ export function QrShow({ text, label }: Props) {
         </div>
       )}
       <div
-        className="bg-white p-3 rounded-md border border-ink/10 inline-block"
+        // Inline backgroundColor + border so the cross-cutting Fresh
+        // surface override (html[data-theme=fresh] div.bg-white {...})
+        // does NOT swap this wrapper to the dark raised surface. QR
+        // codes need stark white behind the dark pattern; without the
+        // inline style the QR was rendering dark-on-dark and was
+        // unreadable. Inline-style specificity (1,0,0,0) beats the
+        // override's selector (0,0,2,2).
+        className="mt-3 p-3 rounded-md inline-block"
+        style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid rgba(15, 20, 25, 0.10)',
+        }}
         // The SVG from the qrcode library is machine-generated
         // geometry with no user-controlled markup or script tags.
         // Safe to render as raw HTML.

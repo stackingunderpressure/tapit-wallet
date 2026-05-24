@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
@@ -73,6 +73,16 @@ export function HandshakeModal({ onClose }: Props) {
     setError(err instanceof Error ? err.message : fallback);
     setBusy(false);
   }
+
+  // Error messages are step-local. A scan failure on the responder
+  // path ("paste is not valid JSON" from a non-Tapit QR) should not
+  // still be sitting at the bottom of the page when the operator
+  // backs out and starts over on the initiator path. Clear the
+  // banner whenever the step changes; individual handlers still
+  // set fresh errors from their own try/catch when they fail.
+  useEffect(() => {
+    setError(null);
+  }, [step]);
 
   // Responder scanned the initiator's identity QR.
   function onScanIdentity(raw: string) {
