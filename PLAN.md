@@ -247,12 +247,38 @@ Four phases:
   endpoint. Each new self-declaration must be authorized by
   the prior charter's `charter_amendment` rule. About one to
   two sessions.
+- **Phase E** — Open-joining + per-org configurable
+  membership-policy. Member-initiated self-membership
+  attestations gated by a `join` rule in the org's auth tree
+  (open / allow-list / requires-handshake / requires-credential
+  / requires-vouch). Roster shows founder first, then joiners
+  in chronological order via Bitcoin anchor heights. Three
+  substrate options (org auto-publishes roster / org pre-signs
+  open policy / hybrid) deferred to a substrate-decision chip
+  after operator reads the dedicated brief. Brief of record:
+  `project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md`.
+  Depends on Phase A (shipped) and Phase B (verifier).
+  About 5-7 sessions, ~2-3 weeks.
+
+Phase E extends the canonical Tapscript brief along the
+membership-acquisition axis (how do people become members)
+while Phases A–D handle the org-control axis (who can authorize
+org actions). Both briefs live side-by-side; neither supersedes
+the other.
 
 Operator-locked decisions (2026-05-25 evening + late-evening
-chip sessions): Tapscript-style substrate over list-of-sigs and
-FROST, auth-tree as sub-branch of the claim tree (reuses
-shipped disclosure primitive verbatim), no FROST, no MuSig2, no
-DKG, no tapit-attest version bump.
++ deep-evening chip sessions): Tapscript-style substrate over
+list-of-sigs and FROST, auth-tree as sub-branch of the claim
+tree (reuses shipped disclosure primitive verbatim), no FROST,
+no MuSig2, no DKG, no tapit-attest version bump. Phase E
+adds: per-org configurable membership-policy via a `join` rule
+in the auth tree, abuse-resistance posture configurable per org
+(not at the substrate), member-initiated self-membership
+attestations as a NEW dimension extending MYCELIUM_NETWORK_SPEC
+§6 along the membership-acquisition axis. Open-joining substrate
+choice (org auto-publishes roster / org pre-signs open policy /
+hybrid) deferred to a follow-up chip after operator reads the
+Phase E brief.
 
 Estimated calendar: 4-6 sessions, ~1.5-3 weeks. Similar to the
 list-of-sigs calendar because most of the work is wallet-side
