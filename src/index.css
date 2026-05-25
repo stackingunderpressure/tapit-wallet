@@ -272,11 +272,20 @@ html[data-theme='fresh'] [class*="text-ink/"] {
    purpose. Every modal in the wallet uses <div ... bg-ink/40>
    as a backdrop overlay to darken the page; if div is included
    here the modal backdrops all turn lime green and the modal
-   overlay becomes a neon flashbang instead of a darkening.
-   Operator screenshot showed exactly that: PromoteMenu open →
-   whole screen lime. Keep this rule on button-elements only. */
-html[data-theme='fresh'] button[class~="bg-ink"],
-html[data-theme='fresh'] button[class*="bg-ink/"] {
+   becomes a neon flashbang instead of a darkening.
+
+   Also IMPORTANT — the [class~="bg-ink"] exact-word match is
+   used deliberately and the prior [class*="bg-ink/"] substring
+   form has been removed. The substring form matched Tailwind's
+   pseudo-variant classes like `hover:bg-ink/5` (used on the
+   Guide tab buttons for their non-active state) and flipped
+   their default background to lime — combined with text-ink/70
+   that the Fresh override paints light, the inactive Guide tabs
+   rendered as white-on-lime and looked invisible. Operator:
+   "Text on guide tabs only visible when clicked on." Exact-word
+   match catches the solid `bg-ink` CTA buttons (Save relays,
+   Continue, etc.) without sweeping in opacity / pseudo-variants. */
+html[data-theme='fresh'] button[class~="bg-ink"] {
   background-color: var(--fresh-accent-primary);
 }
 html[data-theme='fresh'] button[class~="text-paper"] {
