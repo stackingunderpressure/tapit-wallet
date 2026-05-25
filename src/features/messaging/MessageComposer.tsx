@@ -5,6 +5,12 @@ interface Props {
   onSend: (text: string) => Promise<void>;
   isFresh: boolean;
   placeholder?: string;
+  /**
+   * Sub-cut 2c — opens the promote-to-envelope menu seeded with
+   * whatever is currently in the composer (empty string is fine;
+   * the menu still surfaces). Optional for back-compat.
+   */
+  onOpenPromote?: (currentText: string) => void;
 }
 
 // Bottom-of-thread composer. Text input + Send button. Disables
@@ -13,7 +19,7 @@ interface Props {
 // are blocked at the button level. Future cuts add the plus-button
 // for promote-to-envelope (sub-cut 2c) and attachment chips (Cut 4
 // surface).
-export function MessageComposer({ onSend, isFresh, placeholder }: Props) {
+export function MessageComposer({ onSend, isFresh, placeholder, onOpenPromote }: Props) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +55,9 @@ export function MessageComposer({ onSend, isFresh, placeholder }: Props) {
   const buttonClass = isFresh
     ? 'bg-fresh-accent-primary text-fresh-text-inverse disabled:opacity-40'
     : 'bg-ink text-paper disabled:opacity-40';
+  const plusBtnClass = isFresh
+    ? 'border-fresh-surface-edge text-fresh-text-tertiary hover:text-fresh-text-primary'
+    : 'border-ink/15 text-muted hover:text-ink';
 
   return (
     <div className={`border-t ${wrapperClass}`}>
@@ -58,6 +67,16 @@ export function MessageComposer({ onSend, isFresh, placeholder }: Props) {
         </p>
       )}
       <div className="flex items-end gap-2 p-3">
+        {onOpenPromote && (
+          <button
+            type="button"
+            onClick={() => onOpenPromote(text)}
+            aria-label="Promote to envelope"
+            className={`shrink-0 h-10 w-10 rounded-full border text-lg leading-none flex items-center justify-center transition ${plusBtnClass}`}
+          >
+            +
+          </button>
+        )}
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

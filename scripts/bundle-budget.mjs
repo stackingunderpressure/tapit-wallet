@@ -261,6 +261,13 @@ const BUDGETS = [
   { pattern: /^supabase-.*\.js$/, gz: 60_000, label: 'supabase vendor' },
   { pattern: /^qrcode-.*\.js$/, gz: 15_000, label: 'qrcode vendor' },
 
+  // PeerThread is the per-peer chat surface (sub-cut 2b + 2c).
+  // 2026-05-25 sub-cut 2c brought it to ~3KB gz with the
+  // PromoteMenu, useLongPress hook, and bubble long-press wiring.
+  // Headroom to 4KB covers the remaining promote targets that
+  // will plug into the same data-driven menu in later cuts.
+  { pattern: /^PeerThread-.*\.js$/, gz: 4_000, label: 'PeerThread' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.

@@ -5,7 +5,7 @@ import { envelopeId } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
-import { JournalComposer } from '../journal/JournalComposer.tsx';
+import { JournalTabBody } from './JournalTabBody.tsx';
 import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
@@ -73,6 +73,8 @@ const LatticePanel = lazy(() =>
 );
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
 import { type InboxRouteAction } from '../transport/InboxPanel.tsx';
+import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promoteToJournalPrefill.ts';
+import type { PromotePayload } from '../messaging/promoteTarget.ts';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -125,6 +127,14 @@ export function HomeScreen() {
   const { wallet, ownerId, holdings, identity, prefs, anchorWorker, inboxEnvelopes, dismissInboxEnvelope, relayStatus, save, refresh, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerPrefill, setComposerPrefill] = useState<JournalPrefill | null>(null);
+  const closeComposer = () => { setComposerOpen(false); setComposerPrefill(null); };
+  const handlePromote = (payload: PromotePayload) => {
+    if (payload.target !== 'journal') return;
+    setComposerPrefill(promoteToJournalPrefill(payload));
+    setComposerOpen(true);
+    setTab('journal');
+  };
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
   const [scanEnvelopeOpen, setScanEnvelopeOpen] = useState(false);
@@ -597,6 +607,7 @@ export function HomeScreen() {
           onNewHandshake={() => setHandshakeOpen(true)}
           onScanEnvelope={() => setScanEnvelopeOpen(true)}
           resolvedTheme={resolvedTheme}
+          onPromote={handlePromote}
         />
       )}
 
@@ -614,35 +625,16 @@ export function HomeScreen() {
         </section>
       )}
 
-      {tab === 'journal' &&
-        (composerOpen ? (
-          <section className="mt-6 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-            <h2 className="text-base font-semibold">New entry</h2>
-            <div className="mt-3">
-              <JournalComposer
-                onCreated={() => setComposerOpen(false)}
-                onCancel={() => setComposerOpen(false)}
-              />
-            </div>
-          </section>
-        ) : resolvedTheme === 'fresh' ? null : (
-          <div className="fixed bottom-20 inset-x-0 flex items-center justify-center gap-3 px-5 z-20">
-            <button
-              type="button"
-              onClick={() => setWitnessOpen(true)}
-              className="rounded-full bg-white text-ink border border-ink/15 px-4 py-3 text-sm font-medium shadow"
-            >
-              Sign someone else's entry
-            </button>
-            <button
-              type="button"
-              onClick={() => setComposerOpen(true)}
-              className="rounded-full bg-ink text-paper px-5 py-3 font-medium shadow-lg"
-            >
-              + New entry
-            </button>
-          </div>
-        ))}
+      {tab === 'journal' && (
+        <JournalTabBody
+          composerOpen={composerOpen}
+          composerPrefill={composerPrefill}
+          resolvedTheme={resolvedTheme}
+          onCompose={() => setComposerOpen(true)}
+          onWitness={() => setWitnessOpen(true)}
+          onCloseComposer={closeComposer}
+        />
+      )}
 
       {witnessOpen && <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />}
 

@@ -13,19 +13,41 @@ interface Props {
   onCreated: (digestHex: string) => void;
   /** Called when the user dismisses without creating. */
   onCancel: () => void;
+  /**
+   * Sub-cut 2c — optional pre-fill from a chat moment. When the
+   * operator promotes a chat bubble or composer-line into a
+   * journal entry, PeerThread sends the source text + peer name
+   * upward; HomeScreen routes it here so the composer opens with
+   * the text already written and the subject pinned to the peer.
+   */
+  prefill?: {
+    text?: string;
+    subjectLabel?: string;
+    category?: string;
+  };
 }
 
 type SubjectMode = 'me' | 'other';
 
-export function JournalComposer({ onCreated, onCancel }: Props) {
+export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
   const { wallet, ownerId, passphrase, prefs, save, syncEnvelope } = useWallet();
   const worker = useAnchorWorker();
   const [title, setTitle] = useState('');
-  const [text, setText] = useState('');
-  const [category, setCategory] = useState<string>(SUGGESTED_CATEGORIES[0]);
-  const [customCategory, setCustomCategory] = useState('');
-  const [subjectMode, setSubjectMode] = useState<SubjectMode>('me');
-  const [subjectLabel, setSubjectLabel] = useState('');
+  const [text, setText] = useState(prefill?.text ?? '');
+  const initialCategory =
+    prefill?.category && SUGGESTED_CATEGORIES.includes(prefill.category as never)
+      ? prefill.category
+      : prefill?.category
+        ? '__custom'
+        : SUGGESTED_CATEGORIES[0];
+  const [category, setCategory] = useState<string>(initialCategory);
+  const [customCategory, setCustomCategory] = useState(
+    initialCategory === '__custom' ? (prefill?.category ?? '') : '',
+  );
+  const [subjectMode, setSubjectMode] = useState<SubjectMode>(
+    prefill?.subjectLabel ? 'other' : 'me',
+  );
+  const [subjectLabel, setSubjectLabel] = useState(prefill?.subjectLabel ?? '');
   const photoRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<File | null>(null);

@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { readHandshake } from '../connections/createHandshake.ts';
 import { MessageBubble } from './MessageBubble.tsx';
 import { MessageComposer } from './MessageComposer.tsx';
+import { PromoteMenu } from './PromoteMenu.tsx';
 import { formatBubbleHeader } from './bubbleFormat.ts';
 import type { ThreadMessage } from './threadMessage.ts';
+import type { PromotePayload, PromoteTarget } from './promoteTarget.ts';
 
 interface Props {
   /** Most recent handshake between the operator and this peer. */
@@ -15,6 +17,13 @@ interface Props {
   /** Peer's display name derived from the handshake. */
   peerName: string;
   onBack: () => void;
+  /**
+   * Sub-cut 2c — fires when the operator picks a promote target
+   * from the menu. PeopleTabBody threads this up to HomeScreen
+   * which routes to the matching modal (e.g. JournalComposer with
+   * the moment pre-filled).
+   */
+  onPromote?: (payload: PromotePayload) => void;
 }
 
 // iMessage-shaped per-peer thread surface. Renders chat history
@@ -27,7 +36,7 @@ interface Props {
 // Sub-cut 2b ships text-only Tier 1 messaging. Sub-cut 2c will
 // add the plus-menu and long-press promote-to-envelope; Cut 4
 // will refactor the in-memory state to IDB-paged persistence.
-export function PeerThread({ handshake, peerPubkey, peerName, onBack }: Props) {
+export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote }: Props) {
   const { resolvedTheme, chatThreadsByPeer, sendChatMessage } = useWallet();
   const isFresh = resolvedTheme === 'fresh';
   const messages = useMemo(
@@ -35,6 +44,7 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack }: Props) {
     [chatThreadsByPeer, peerPubkey],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [promoteSource, setPromoteSource] = useState<string | null>(null);
 
   // Auto-scroll to bottom on new message arrival. The smooth
   // behaviour is intentional — the operator should see the new
@@ -93,6 +103,24 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack }: Props) {
     await sendChatMessage(peerPubkey, text);
   }
 
+  function openPromote(sourceText: string) {
+    if (!onPromote) return;
+    setPromoteSource(sourceText);
+  }
+
+  function handlePromoteSelect(target: PromoteTarget) {
+    const sourceText = promoteSource ?? '';
+    setPromoteSource(null);
+    if (!onPromote) return;
+    onPromote({
+      target,
+      sourceText,
+      peerPubkey,
+      peerName,
+      relationship,
+    });
+  }
+
   return (
     <section className={`mt-5 flex flex-col rounded-2xl border overflow-hidden ${containerClass}`} style={{ minHeight: '70vh' }}>
       <div className={`flex items-center gap-3 px-4 py-3 border-b ${headerClass}`}>
@@ -128,13 +156,29 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack }: Props) {
             <div key={gi} className="space-y-2">
               <div className={`text-center text-[11px] ${dividerClass}`}>{g.label}</div>
               {g.items.map((m, mi) => (
-                <MessageBubble key={`${gi}-${mi}-${m.eventId ?? m.ts}`} message={m} isFresh={isFresh} />
+                <MessageBubble
+                  key={`${gi}-${mi}-${m.eventId ?? m.ts}`}
+                  message={m}
+                  isFresh={isFresh}
+                  onLongPress={onPromote ? (msg) => openPromote(msg.text) : undefined}
+                />
               ))}
             </div>
           ))
         )}
       </div>
-      <MessageComposer onSend={handleSend} isFresh={isFresh} placeholder={`Message ${peerName || ''}…`.trim()} />
+      <MessageComposer
+        onSend={handleSend}
+        isFresh={isFresh}
+        placeholder={`Message ${peerName || ''}…`.trim()}
+        onOpenPromote={onPromote ? openPromote : undefined}
+      />
+      <PromoteMenu
+        sourceText={promoteSource}
+        isFresh={isFresh}
+        onSelect={handlePromoteSelect}
+        onClose={() => setPromoteSource(null)}
+      />
     </section>
   );
 }

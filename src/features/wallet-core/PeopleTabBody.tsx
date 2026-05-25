@@ -7,6 +7,7 @@ import {
   type InboxRouteAction,
 } from '../transport/InboxPanel.tsx';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
+import type { PromotePayload } from '../messaging/promoteTarget.ts';
 
 const FreshCrew = lazy(() =>
   import('../connections/FreshCrew.tsx').then((m) => ({ default: m.FreshCrew })),
@@ -29,6 +30,8 @@ interface Props {
   onNewHandshake: () => void;
   onScanEnvelope: () => void;
   resolvedTheme: 'classic' | 'fresh';
+  /** Sub-cut 2c — operator promoted a chat moment; HomeScreen routes it. */
+  onPromote?: (payload: PromotePayload) => void;
 }
 
 // People-tab body — extracted from HomeScreen so HomeScreen stays
@@ -47,6 +50,7 @@ export function PeopleTabBody({
   onNewHandshake,
   onScanEnvelope,
   resolvedTheme,
+  onPromote,
 }: Props) {
   const [selectedPeer, setSelectedPeer] = useState<{
     pubkey: string;
@@ -71,6 +75,7 @@ export function PeopleTabBody({
           peerPubkey={selectedPeer.pubkey}
           peerName={selectedPeer.name}
           onBack={() => setSelectedPeer(null)}
+          onPromote={onPromote}
         />
       </Suspense>
     );
