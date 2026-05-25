@@ -80,7 +80,11 @@ const BUDGETS = [
   // absorb chatThreadsByPeer state + sendChatMessage callback +
   // the chat-kind subscription block running alongside the
   // existing inbox subscription on the same transport handle.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 8_500, label: 'WalletProvider' },
+  // 2026-05-25 chat-persistence bug fix bumped 8.5KB -> 9KB to
+  // absorb useChatPersistence hook import + call (IDB load on
+  // unlock + debounce-save on update). messagesStore lives in
+  // the storage chunk; this bump covers only the hook surface.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 9_000, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence

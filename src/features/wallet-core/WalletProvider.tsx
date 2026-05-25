@@ -38,6 +38,7 @@ import { applyOnboardingBundle } from '../onboarding/applyOnboardingBundle.ts';
 import type { WalletConnection } from '../transport/connectWallet.ts';
 import type { InboxChatMessage, InboxEnvelope } from '../transport/encryptedInbox.ts';
 import type { ThreadMessage } from '../messaging/threadMessage.ts';
+import { useChatPersistence } from '../messaging/useChatPersistence.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -398,7 +399,7 @@ export function WalletProvider({ children }: Props) {
       if (conn) conn.close();
       transportRef.current = null;
       setInboxEnvelopes([]);
-      setChatThreadsByPeer(new Map());
+      // chat threads NOT cleared on transport teardown — messagesStore persists.
       setRelayStatus(null);
     };
     // relaysKey is a stable string derived from prefs.nostrRelays;
@@ -700,6 +701,7 @@ export function WalletProvider({ children }: Props) {
   // Resolved value is threaded through WalletContext so Fresh-aware
   // components can gate their rendering without re-running effects.
   const resolvedTheme = useTheme(prefs.theme);
+  useChatPersistence(ownerId ?? null, chatThreadsByPeer, setChatThreadsByPeer);
 
   const value = useMemo<WalletContextValue | null>(() => {
     if (phase.kind !== 'unlocked') return null;

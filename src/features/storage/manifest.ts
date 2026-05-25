@@ -12,6 +12,7 @@ export const manifest: FeatureManifest = {
     'src/features/storage/prefsStore.ts',
     'src/features/storage/mediaStore.ts',
     'src/features/storage/remoteMediaStore.ts',
+    'src/features/storage/messagesStore.ts',
     'supabase/migrations/20260521000001_create_wallet_blobs.sql',
     'supabase/migrations/20260522000001_create_wallet_media_bucket.sql',
   ],
