@@ -186,66 +186,84 @@ grandchild eventually absorbs the thread into their own keypair
 when they get one. That lighter model already ships in Phase 2.6.
 Full-keypair custody is now optional, not required for v1.
 
-## Phase 8 — Simple-multisig orgs + charter governance [PLANNED]
+## Phase 8 — Tapscript-style org authorization tree + charter governance [PLANNED]
 
-Promoted from Phase 7+ non-goal to active future phase per
-operator direction 2026-05-25 ("Frost looks ripe then org
-governance structure"), then re-scoped the same evening per
-operator decision to skip FROST and ship list-of-signatures
-multi-key control on the primitives already in the wallet
-("regular multisig and not a complicated frost where the
-complexity is overwhelming us, but we still have an
-organization controlled by more than one key").
+Promoted from Phase 7+ non-goal through three iterations on
+2026-05-25 — FROST-first morning brief, list-of-sigs evening
+brief, then this Tapscript-style late-evening brief — after the
+operator asked whether what was being briefed actually was
+"Taproot multisig" and whether the wallet's leaves theory held
+up. The honest answer surfaced that the wallet's existing
+leaf-tree primitive (Phase 4 selective disclosure) is the EXACT
+cryptographic shape needed to port Taproot's script-path
+Merkle-tree-of-conditions model to off-chain attestation
+envelopes, and the operator chose to pivot to that substrate.
 
 Brief of record:
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-simple-multisig-orgs-roadmap.md`.
-Supersedes both the 2026-05-23 quorum brief's MuSig2-first
-ordering AND the 2026-05-25-morning FROST-first ordering.
-Per-action thresholds — the load-bearing argument for FROST
-over MuSig2 — work natively for list-of-signatures because
-the verifier just counts distinct officials' signatures and
-compares to the charter-declared threshold for that action.
+`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md`.
+Supersedes all three prior briefs:
+
+- `2026-05-23-quorum-org-keys-roadmap.md` (MuSig2-first)
+- `2026-05-25-frost-first-and-charter-governance-roadmap.md` (FROST-first)
+- `2026-05-25-simple-multisig-orgs-roadmap.md` (list-of-Schnorr-signatures)
+
+All three stay in the briefs folder. List-of-sigs is preserved
+as the simpler fallback if Tapscript-style proves heavier than
+expected during implementation; FROST is preserved as the
+upgrade path for the day an org specifically needs
+signer-anonymity.
+
+Substrate: an org's authority is a Merkle commitment to a tree
+of authorization-rule leaves
+(`{action, threshold, eligible}` tuples), implemented as a
+sub-branch in the org's self-declaration claim tree. An
+org-issued envelope carries a disclosure proof of one rule leaf
+(via the shipped `disclosureProof` /
+`verifyDisclosureProof` from `tapit-attest/src/core/field-tree.ts`)
+plus signatures from the eligible signers named in that leaf.
+Zero new cryptographic code; the entire arc is wallet-side
+plumbing on a primitive already in production for selective
+disclosure of facts (Phase 4), now generalized to selective
+disclosure of authorization rules.
 
 Four phases:
 
-- **Phase A** — Threshold leaf on the org self-declaration +
-  `isOrgRatified(envelope, roster, threshold)` verifier helper
-  in `createOrganization.ts`. `RatificationsBadge` gains a
-  `required` prop. No new crypto, no new files. About one
+- **Phase A** — `AuthRule` type + `selfDeclareOrganization`
+  gains `authRules` parameter; rules become a sub-branch of
+  the claim tree; `proveAuthorization(org, action)` wraps
+  the shipped `disclosureProof`. Default rule preserves
+  existing-shape declarations. About one session.
+- **Phase B** — Authorized envelope shape:
+  `authorized_by` leaf carries the disclosure proof bundle;
+  `verifyOrgAuthorization(envelope, knownOrgs)` reconstructs
+  the org's auth-root, checks the disclosed rule, counts
+  eligible-signer signatures against threshold. About one
   session.
-- **Phase B** — Multi-fanout `CosignRequestModal` that ships
-  the envelope to several officials at once instead of one
-  witness at a time. Reuses the existing `CosignAsWitnessModal`
-  + `AbsorbCosignModal` + `mergeSignatures` pipeline unchanged.
-  About one session.
-- **Phase C** — Quorum-controlled organizations as a creation-
-  time choice alongside the existing single-key org tier (which
-  is just threshold=1 of the same shape). No migration path
-  needed (no orgs formed yet on production wallets). About one
-  session.
-- **Phase D** — Charter governance. Charter attestation
-  declaring per-action thresholds (routine_issuance,
-  roster_change, key_rotation, dissolution, charter_amend)
-  with validator-enforced higher-stakes-higher-threshold
-  ordering. Charter is itself a signed envelope; amendments
-  meet the in-force charter's `charter_amend` threshold. About
-  one to two sessions.
+- **Phase C** — Multi-rule org creation UI + per-action
+  signing flow. `RatificationsBadge` extended to render the
+  rule name inline. About one to two sessions.
+- **Phase D** — Charter amendment chain
+  (`walkCharterChain` / `findActiveCharter`) + dissolution
+  endpoint. Each new self-declaration must be authorized by
+  the prior charter's `charter_amendment` rule. About one to
+  two sessions.
 
-Operator-locked decisions (2026-05-25 evening chip session):
-list-of-signatures substrate over FROST / MuSig2, no new
-dependencies, no tapit-attest version bump, FROST preserved in
-the brief drawer as a future opt-in tier for orgs that need
-signer-anonymity. The
-`2026-05-25-frost-first-and-charter-governance-roadmap.md`
-brief stays in the briefs folder as the canonical reference for
-that future tier.
+Operator-locked decisions (2026-05-25 evening + late-evening
+chip sessions): Tapscript-style substrate over list-of-sigs and
+FROST, auth-tree as sub-branch of the claim tree (reuses
+shipped disclosure primitive verbatim), no FROST, no MuSig2, no
+DKG, no tapit-attest version bump.
 
-Estimated calendar: 4-5 sessions, ~1.5-2 weeks. Roughly
-one-quarter the calendar of the FROST roadmap; the arc is
-dominated by UI plumbing on tested primitives
-(`mergeSignatures.ts`, `countRatifications`, `CosignRequestModal`,
-`OfficialsEditorModal`, `publishOfficialsRoster`) rather than
-cryptographic engineering.
+Estimated calendar: 4-6 sessions, ~1.5-3 weeks. Similar to the
+list-of-sigs calendar because most of the work is wallet-side
+UI plumbing on a cryptographic primitive
+(`disclosureProof` / `verifyDisclosureProof`) already in
+production. The structural payoff over list-of-sigs is
+per-action thresholds with per-rule eligible subsets, plus
+privacy of unused rules until invoked — properties that mirror
+Bitcoin Taproot's script-path multisig at the SHAPE level
+(while remaining off-chain attestation signing, not Bitcoin
+script execution).
 
 ## Phase 9+ — explicit non-goals for v1
 
