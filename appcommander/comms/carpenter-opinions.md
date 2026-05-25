@@ -1,31 +1,166 @@
-# Carpenter opinions — 2026-05-25 — per-peer chat sub-cut 2b shipped
+# Carpenter opinions — 2026-05-25 evening, brief authoring session
 
 ## Section 1: What I did
 
-This session opened on a recentre and continue from the operator after the previous session left the chat arc paused at sub-cut 2a (the relationship-leaf-on-handshake fix folded into the existing builder ceremony). The SessionStart hook reported no drift — my four prior commits still sat on the feature branch awaiting merge — so the directive was clear: cut sub-cut 2b, the per-peer thread UI under the People tab, the visible-magic delta the brief named as the unlock that turns the People tab from a list of pubkeys into a place you actually talk to your people. The architecture call between in-memory state in WalletContext and IDB-paged from a future messagesStore had been flagged for operator decision last session, but the operator's recentre-and-continue authorised the Carpenter recommendation — in-memory for sub-cut 2b alone with the IDB-paged refactor landing when Cut 4 ships the messagesStore. That's the call I executed.
+This session opened as a status question — do we have multisig
+organizations live right now — and ended three briefs deep into
+the architecture of how an organization controlled by more than
+one key should actually work on this wallet. The status answer
+was no, organizations as they exist today are single-key
+entities where the org's wallet signs everything and officers
+contribute decorative ratifications via the existing cosigning
+pipeline; the open question was what shape the multi-key
+upgrade should take. The Foreman had authored a FROST-first
+brief earlier in the day proposing to vendor a Rust-via-WASM
+build of FROST-Secp256k1 into tapit-attest, pass the RFC 9591
+reference vectors, ship a DKG ceremony, then build quorum-orgs
+on top — a six-to-seven-week arc dominated by cryptographic
+engineering. You asked whether we could do the simpler thing,
+get multi-key control without the FROST complexity overwhelming
+the build, and I drafted the list-of-signatures brief in
+response because the grounding pass showed that the wallet
+already had every primitive needed — `mergeSignatures` already
+merges N independent Schnorr sigs on a single envelope by
+envelopeId, `countRatifications` already cross-references those
+sigs against the officials roster, the cosigning pipeline
+already does request-cosign-absorb end to end — so what was
+missing was mechanical not cryptographic. We committed that
+brief.
 
-The work created a new messaging feature folder under src slash features slash messaging holding five small files plus a manifest. The threadMessage module owns the in-memory type — a direction discriminator for in-versus-out, the text body, a Unix-seconds timestamp matching Nostr's created at convention, the peer pubkey, and an optional Nostr event id present after publish settles. The bubbleFormat module is a pure helper that formats a timestamp into either a time-of-day label for today's messages or a date label for older ones, used as the group divider above clusters of messages. MessageBubble dot tsx is a theme-aware presentation component, right-aligned with the accent fill for outbound and left-aligned with the surface fill for inbound, max-width eighty per cent of the thread, with whitespace-pre-wrap and break-words so long messages render honestly without overflowing. MessageComposer dot tsx is the bottom-of-thread textarea plus Send button, with Enter to send and Shift-Enter for newline, disabled while a publish is in flight, error surface above the input, and empty-or-whitespace blocked at the button level. PeerThread dot tsx is the iMessage-shaped surface itself — header with a back button per the no-dead-ends doctrine the operator established earlier in the Fresh roadmap arc, the peer's name, the relationship chip from sub-cut 2a pinned right under the name, and the Tier P or Tier R badge alongside; scrollable history with grouped time-of-day dividers and auto-scroll to bottom on new arrival; composer pinned at the bottom; consumes chatThreadsByPeer and sendChatMessage directly via useWallet rather than receiving them as props.
+Then you asked the load-bearing question of the session,
+"Taproot multisig correct? So our leaves theory holds up?",
+and I had to surface honestly that the list-of-sigs brief was
+NOT Taproot multisig in the BIP 341 sense — Taproot multisig
+is a Bitcoin transaction script construction with a key-path
+aggregated Schnorr signature or a script-path reveal of one
+Tapscript leaf from a Merkle tree of alternative spending
+conditions, and the wallet doesn't operate at the Bitcoin
+script layer at all — though every individual signature in
+the wallet IS a BIP340 Schnorr sig over secp256k1, the exact
+Taproot primitive. Your leaves theory absolutely held up but
+for a different reason than the question implied: the
+wallet's `field-tree.ts` primitive that powers Phase 4
+selective disclosure is structurally identical to a Taproot
+Tapscript leaf tree (Merkle root, reveal-one-leaf with
+sibling-hash path, verifier reconstructs the root), just with
+data leaves instead of script leaves. That symmetry is what
+made the pivot possible. You chose to rework the brief to
+actually port the Tapscript-style shape to off-chain
+attestations, and you chose the cleanest architectural answer
+— that the authorization tree lives as a sub-branch inside
+the org self-declaration's existing claim tree, reusing the
+shipped `disclosureProof` and `verifyDisclosureProof`
+functions verbatim, zero new cryptographic code anywhere in
+tapit-attest. I authored that third brief, rewrote PLAN.md
+Phase 8 again to point at it, and committed and pushed.
 
-The plumbing that feeds the thread lives in WalletProvider. I extended WalletContext with chatThreadsByPeer as a ReadonlyMap of pubkey to readonly ThreadMessage array, and sendChatMessage as a peer-pubkey-plus-text-arrow-Promise-void callback. Inside WalletProvider the existing transport useEffect — which already opens connectWallet and runs the envelope inbox subscription on the same connection — now also opens a TAPIT_CHAT_KIND subscription on that same connection handle. The inbound chat handler appends to the per-peer thread, deduping by Nostr event id so a relay re-delivering the same event becomes a no-op. The sendChatMessage callback optimistically appends an outbound message to the local thread before the publish settles so the composer clears instantly and the operator sees their message in the thread without waiting on the network round-trip, then attaches the event id to that local record once publish returns so subsequent relay-history re-arrivals dedupe correctly. The subscription handle lives in a chatSubRef alongside the existing statusUnsubRef so the effect cleanup tears down both before closing the transport. Lock or disable clears the thread map, preserving the keys-never-leave-unencrypted posture by not letting chat history outlive the unlocked session.
-
-The connection wiring threads through three components. ConnectionCard gains an optional onOpen prop — when set, it renders as a button with a hover state and fires the handler with the peer's pubkey and display name; when unset, it renders as a plain div for back-compat with any callers that haven't opted in. ClassicConnections accepts an onOpenThread prop and passes it through to ConnectionCard. FreshCrew accepts the same prop and threads it through to both the bubble row at the top and the cards below — the bubble tap behaviour now opens the thread when onOpenThread is set, with the prior scroll-to-card fallback preserved when it isn't. Both gestures collapse to the same intent: I want to talk to this person.
-
-The HomeScreen wiring hit a wall the first try. After I added the selectedPeer state plus the openThreadFor helper plus the Suspense-wrapped PeerThread route inline in the People-tab block, the file crossed the eight-hundred-line hard limit at eight-twenty-four lines and the file-size test failed. I extracted a new PeopleTabBody dot tsx in wallet-core that owns the selectedPeer state and the thread-versus-list routing internally, calling useWallet itself for the bits it needs rather than receiving them as props. HomeScreen now calls PeopleTabBody with a half-dozen props and stays at seven-seventy-five lines, well under the limit. The lint warning on MessageBubble's co-located formatBubbleHeader export also surfaced — react-refresh wants component files to export only components — and I extracted that helper into its own bubbleFormat dot ts module. Bundle budgets needed bumps as well: WalletProvider grew from roughly seven-point-eight to eight-point-one-three kilobytes gzipped, bumped the budget from eight to eight-point-five with a dated comment explaining the chat state plus send plus subscription block; HomeScreen grew from sixteen point sixty-three to sixteen-point-five (a real overage of zero-point-zero-two kilobytes, but the budget check rejected), bumped to sixteen-point-five with a comment naming the PeopleTabBody indirection. All four gates green: typecheck clean, lint clean after the bubbleFormat extract, sixty of sixty tests pass with no new test additions this cut (PeerThread render tests are flagged as a polish follow-on), build clean in four-point-three-four seconds. Commit one-b-c-a-e-b-one pushed to the feature branch.
+What you should understand going forward is that an org's
+authority under this design stops being a single threshold
+number and becomes a Merkle commitment to a tree of
+authorization-rule leaves, where each leaf says "action X
+requires threshold Y from eligible set Z." Routine issuance
+might be one of five officers, expulsion might be three of
+five, charter amendment might be four of five, dissolution
+might be five of five, and each lives as one leaf in the
+tree, all committed by the same self-declaration signature.
+When the org takes an action, the envelope carries a
+disclosure proof revealing only the rule being satisfied
+plus a sibling-hash path proving that rule lives in the
+self-declaration's auth tree, plus signatures from the
+eligible signers — and the verifier runs the same disclosure
+verification it already runs for "prove I'm over 21" today,
+then counts eligible signatures against the disclosed
+threshold. Unused rules stay private until invoked, exactly
+the way Taproot's unused script-leaves stay private until
+they're spent under. The brief is honest about the cost
+trade-off versus list-of-sigs — a small disclosure-proof
+bundle per org-issued envelope, a verifier that runs one
+extra primitive — and lists list-of-sigs as the documented
+fallback if Tapscript-style proves heavier than expected
+during implementation.
 
 ## Section 2: What you could do better
 
-A handful of honest things. First, I did not write automated tests for PeerThread or the chat-thread integration end-to-end. The transport wire is tested from sub-cut 2a forward and the round-trip is proven at the encryptedInbox level by Cut 1's seven tests, but the UI layer — PeerThread rendering correctly, MessageBubble alignment by direction, the auto-scroll-on-new-message behaviour, the optimistic-append-then-eventId-attach round-trip through sendChatMessage — has no coverage. UI render tests for the messaging feature are the natural next polish cut and I should have flagged the gap more loudly before committing rather than only in the comms close-out.
+The substrate-decision rhythm in this session moved through
+three options in three hours, which is excellent for
+converging on the right architecture but does create a real
+risk that the briefs folder becomes a graveyard of
+stepping-stones rather than a working library, and the next
+Carpenter session needs to read the right one. The PLAN.md
+Phase 8 section now names the roles of each prior brief
+(list-of-sigs as fallback, FROST as future signer-anonymity
+tier) which mitigates this, but a two-line "SUPERSEDED BY:
+filename, REASON: ..." banner at the top of each superseded
+brief would make the navigation self-documenting without
+anyone needing to read PLAN.md first. Cheap and worth adding
+before Phase A code is cut.
 
-Second, the WalletProvider sits at seven-ninety-eight lines, two below the eight-hundred hard limit. That is not a problem for this cut but it is a real constraint for the next dispatch — any addition to that file will trip the file-size test, which means sub-cut 2c's promote-to-envelope wiring or Cut 4's persistence wiring or any rotation-resilience cut that touches the transport effect will need to plan an extraction first. The honest move would have been to extract the transport useEffect into its own hook in this cut so the file dropped under the warning threshold, but doing that surgically would have been scope creep on what was already a heavy cut, so I flagged it for next dispatch instead.
+The Tapscript-style brief leans hard on the elegance of
+reusing the shipped `disclosureProof` primitive verbatim,
+and the architectural argument is genuine, but there is one
+risk surface I want to flag explicitly: today's disclosure
+proofs are produced and verified IN ISOLATION — the proof is
+the authoritative artifact for one attestation. The
+Tapscript-style design uses them CROSS-ENVELOPE — an envelope
+X carries a disclosure proof of one leaf from a DIFFERENT
+envelope Y (the org's self-declaration). The verifier has to
+fetch Y from its known-orgs store, recompute Y's claim root
+from the proof bundle, and confirm the recomputed root
+matches Y's actually-held digest. That cross-envelope binding
+is the security-critical step and it has no existing test
+coverage because nothing in the wallet does it today; Phase B
+needs to fuzz that boundary specifically. The brief mentions
+this in the risk section but it deserves a louder asterisk
+before the code lands.
 
-Third, the chat surface is most useful to operators who have Mycelium enabled and have at least one Tier R remote peer or a Tier P peer the operator has also reached over Mycelium. Tier P in-person handshakes do not automatically expose the chat-capable pubkey route unless Mycelium is on. That's an honest constraint of the existing transport feature, not something this cut introduced, but it means the live-demo experience requires the operator to first enable Mycelium in Settings and confirm relay status is green before the chat surface feels alive. Worth knowing for the browser-verify pass.
-
-Fourth, the file-size-failure-then-extract loop and the lint-warning-then-extract loop both surfaced after the first commit attempt. A pre-flight check that counts lines on each touched file and runs the react-refresh sniff before staging would save a round trip on cuts that approach the file-size ceiling. The wallet's gate fence catches this honestly today but the catch-then-fix-then-retry loop costs a build cycle each time; this is a workflow ergonomics observation more than a code problem.
-
-Nothing else surfaced beyond those four points. The codebase received a meaningfully visible piece of new product surface inside a single bounded cut that respects the manifest doctrine, the keys-never-leave posture, and the existing transport plus connections plumbing.
+One process observation worth naming for the
+in-the-loop-as-Foreman side of the workflow: your "explain
+to me first" interjection after the Tapscript chip was picked
+was the right instinct and it saved a 400-line brief from
+being authored under a mental model you hadn't fully absorbed
+yet. The chip-form direction tool is great for locking
+decisions fast, but for architecture pivots of this weight,
+the prose-explanation-before-brief sequence we ended up
+running should probably be the default rhythm: Carpenter
+explains the model in plain prose first, operator confirms
+understanding, THEN the brief gets authored. Slower per
+decision but faster per correct decision.
 
 ## Section 3: The bigger picture
 
-The interesting thing about today's cut is what just got built without anyone needing to invent new cryptography. The wallet now has a per-peer messaging surface that is end-to-end encrypted, signature-authenticated, runs over a custom Nostr event kind that the relays can store and forward but cannot read, and lives inside the same People tab that already holds the operator's family and close friends. Every primitive that makes this work was already shipping: the wallet's BIP340 Schnorr key for signing, the NIP-44 v2 wrap for encryption, the Nostr WebSocket transport for delivery, the existing inbox subscription pattern for receive, the existing send envelope helper as a structural template for sendChatMessage. The new event kind from Cut 1 is the only literal new piece, and even that is a one-line constant adjacent to the existing TAPIT_ENVELOPE_KIND. The pattern this cut completes — wire-format scaffolding first, then UI on top, then peer-level features like relationship labels, then the destination surface where it all comes together — is what makes the wallet feel like coherent product rather than a stack of independent features.
+The wallet has been building toward Tapscript-shaped
+architecture without naming it as such for the entire arc of
+the tapit-attest library, and your leaves-theory question is
+the moment that becomes explicit. Phase 4 selective disclosure
+shipped a Merkle tree of facts with reveal-one-leaf semantics
+because the operator wanted to prove a single claim without
+revealing the others, and the cryptographic primitive that
+made that possible is the same primitive Bitcoin chose for
+Taproot's script-path multisig because the same shape solves
+the same problem — privacy of unused alternatives through
+Merkle commitment, integrity of the revealed alternative
+through sibling-hash reconstruction. What this brief
+recognizes is that the same shape solves a THIRD problem too,
+which is organizational governance with per-action thresholds
+and per-rule eligible subsets, and the wallet gets it almost
+for free because the primitive is already shipped, tested,
+and in production.
 
-The thing that makes this work is that the wallet's identity layer was honest about itself from the beginning. Because every event the wallet emits is Schnorr-signed and every recipient-addressed event is NIP-44 encrypted by construction, adding a new kind of conversation between two wallets does not require negotiating a new trust model or a new key exchange or a new auth handshake; it just rides the same rails. The user experience that emerges is what consumer messaging apps already feel like, but with two structural differences that matter long-term. First, the authenticity guarantee is mathematical rather than platform-mediated — the sender of every message in your thread is provably the holder of the pubkey you handshook with, not the holder of an account that some platform maintains under your peer's name. Second, the promote-to-envelope path that lands in sub-cut 2c collapses the friction between casual conversation and signed life-history down to one gesture, which is the move that ties this whole arc back to the brief's original families framing. The chat surface is the soft layer; the promote button is the deliberate hand on the moments that matter. Today's cut is the soft layer. The deliberate-hand layer is the next dispatch, and the whole stack starts feeling like an actual everyday wallet when those two land together. Until then the People tab is no longer a list of pubkeys, which is already a real change worth feeling.
+The deeper architectural pattern is that
+Merkle-tree-with-selective-reveal is a more general primitive
+than any of its named applications — selective disclosure of
+facts, Tapscript script-path multisig, governance
+authorization — and a sovereign identity wallet that lets
+people commit-many-reveal-one is structurally well-positioned
+to absorb every future application of the same shape without
+needing to add new cryptographic machinery. The FROST brief
+in the drawer is the day this generalization meets its limit,
+the day an org needs aggregate signatures so the verifier sees
+only THAT the org signed and not WHICH officers signed, and
+the substrate question becomes whether to add aggregate-sig
+primitives or whether to live with signer-transparency as a
+feature. For most human organizations governing themselves on
+a sovereign wallet, signer transparency is the right answer,
+but the wallet should be ready for the orgs that need
+otherwise. That is the leaves theory you have been building —
+quietly, brick by brick — and tonight it got named.

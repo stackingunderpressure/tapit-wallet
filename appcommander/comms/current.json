@@ -1,77 +1,59 @@
 {
   "v": 1,
-  "ts": "2026-05-25T00:21:30Z",
-  "session_id": "chat-cut2b-2026-05-25-001",
+  "ts": "2026-05-25T01:50:00Z",
+  "session_id": "simple-multisig-brief-2026-05-25-001",
   "who": {
     "actor": "Carpenter (Claude)",
-    "feature_slug": "messaging"
+    "feature_slug": "governance"
   },
   "where": {
     "files": [
-      "src/features/messaging/manifest.ts",
-      "src/features/messaging/threadMessage.ts",
-      "src/features/messaging/bubbleFormat.ts",
-      "src/features/messaging/MessageBubble.tsx",
-      "src/features/messaging/MessageComposer.tsx",
-      "src/features/messaging/PeerThread.tsx",
-      "src/features/wallet-core/PeopleTabBody.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/WalletContext.ts",
-      "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/ClassicConnections.tsx",
-      "src/features/connections/FreshCrew.tsx",
-      "src/features-registry.ts",
-      "scripts/bundle-budget.mjs"
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-simple-multisig-orgs-roadmap.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md",
+      "PLAN.md",
+      "appcommander/comms/in-flight.jsonl",
+      "appcommander/comms/carpenter-opinions.md",
+      "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
-    "screen_path": "People tab → tap a ConnectionCard or FreshCrew bubble → PeerThread opens with header (back / peer name / relationship chip / Tier P/R badge) + scrollable history with time-of-day dividers + composer pinned at bottom. Back button returns to the connections list."
+    "screen_path": "n/a — doc-only session. Operator's surfaces unchanged."
   },
-  "layer": "ui",
+  "layer": "doctrine",
   "when": {
-    "ts": "2026-05-25T00:21:30Z",
-    "session_id": "chat-cut2b-2026-05-25-001"
+    "ts": "2026-05-25T01:50:00Z",
+    "session_id": "simple-multisig-brief-2026-05-25-001"
   },
   "what": {
-    "action": "Per-peer chat sub-cut 2b — per-peer thread UI under People tab",
-    "summary": "The visible-magic delta from the chat arc lands. New messaging feature folder ships PeerThread + MessageBubble + MessageComposer + bubbleFormat helper + threadMessage type. WalletProvider gains chatThreadsByPeer state (in-memory Map per the architecture call) and sendChatMessage callback; the existing transport useEffect opens a TAPIT_CHAT_KIND subscription alongside the envelope inbox on the same connection. ConnectionCard gains optional onOpen prop; ClassicConnections + FreshCrew thread it through (FreshCrew bubble-tap now opens thread, fallback to scroll-to-card preserved). HomeScreen extracted into PeopleTabBody to stay under the 800-line hard limit after the chat routing was added. Bundle budgets bumped: WalletProvider 8KB→8.5KB, HomeScreen 16KB→16.5KB. All 60 tests pass, build clean."
+    "action": "Authored two roadmap briefs in sequence for the multi-key org upgrade — list-of-Schnorr-signatures, then Tapscript-style leaf tree — with the second superseding the first plus the prior FROST and MuSig2 briefs.",
+    "summary": "Status question (do we have multisig orgs live?) opened into a substrate decision for the Phase 8 multi-key org upgrade. First commit (0eab0e8) authored the list-of-sigs brief on the back of the operator chip 'Simple multisig now', proposing to harden the existing mergeSignatures + countRatifications + cosigning pipeline with a threshold leaf and a verifier gate. Operator then asked whether the brief was actually Taproot multisig and whether the leaves theory held up; surfaced honestly that it was NOT Taproot script-path multisig (no Bitcoin script, no aggregated key-path, no Tapscript leaf tree) but used the same BIP340 Schnorr primitive at the per-sig level, and that the wallet's existing field-tree primitive (Phase 4 selective disclosure) was structurally identical to a Taproot Tapscript leaf tree. Operator chose to pivot the brief to actually port the Tapscript-style shape. Second commit (9e58108) authored the Tapscript-style brief: an org's authority becomes a Merkle commitment to a tree of authorization-rule leaves, implemented as a sub-branch in the org self-declaration's claim tree, with each org-issued envelope carrying a DisclosureProofBundle of the satisfied rule via the shipped disclosureProof primitive. Zero new cryptographic code in tapit-attest; no library version bump. PLAN.md Phase 8 rewritten twice to track the substrate decisions; all three superseded briefs preserved with explicit roles named."
   },
   "why": {
-    "text": "Operator said 'Recenter and continue on' after the prior session shipped the rebase + sub-cut 2a relationship-leaf. Sub-cut 2b is the per-peer thread UI that turns the People tab from a list of pubkeys into a place you actually talk to your people — the visible-magic delta the brief framed as the unlock. Architecture call (in-memory vs IDB-paged state) resolved Carpenter-side per the prior session's recommendation: in-memory state in WalletContext for 2b alone, IDB-paged when Cut 4's messagesStore lands. The relationship chip from sub-cut 2a pins into the thread header from this cut's first commit per the operator's earlier 'fix in' directive, not retrofit later.",
+    "text": "Operator's status question (do we have multisig orgs live right now?) became a substrate-decision session when the answer was no AND the previously-authored FROST brief was surfaced as too heavy for the actual product need. The leaves-theory pivot was driven entirely by the operator's architectural sharpness — they recognized that what was being briefed didn't match their Taproot mental model, and surfacing that mismatch produced a structurally better answer than either party had at session start.",
     "linked_pixel_id": null,
-    "linked_mission_id": "per-peer-chat-surface-roadmap-2026-05-24"
+    "linked_mission_id": "multi-key-org-substrate-decision-2026-05-25"
   },
   "outcome": {
     "files_changed": [
-      "src/features/messaging/manifest.ts",
-      "src/features/messaging/threadMessage.ts",
-      "src/features/messaging/bubbleFormat.ts",
-      "src/features/messaging/MessageBubble.tsx",
-      "src/features/messaging/MessageComposer.tsx",
-      "src/features/messaging/PeerThread.tsx",
-      "src/features/wallet-core/PeopleTabBody.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/WalletContext.ts",
-      "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/ClassicConnections.tsx",
-      "src/features/connections/FreshCrew.tsx",
-      "src/features-registry.ts",
-      "scripts/bundle-budget.mjs"
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-simple-multisig-orgs-roadmap.md",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md",
+      "PLAN.md",
+      "appcommander/comms/in-flight.jsonl",
+      "appcommander/comms/carpenter-opinions.md",
+      "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
     "tests_passing": true,
     "build_green": true,
-    "notes": "[P-001] ✓ messaging feature folder created (manifest + threadMessage + bubbleFormat + MessageBubble + MessageComposer + PeerThread). [P-002] ✓ WalletContext gains chatThreadsByPeer + sendChatMessage. [P-003] ✓ WalletProvider opens chat-kind subscription alongside envelope inbox, dedupes by event id, optimistic local append on send, attaches eventId on settle. [P-004] ✓ ConnectionCard gains optional onOpen prop, renders as button when set. [P-005] ✓ FreshCrew bubble + card both open thread when onOpenThread set; fallback to scroll-to-card preserved. [P-006] ✓ ClassicConnections threads onOpenThread through. [P-007] ✓ PeopleTabBody extracted from HomeScreen owns selectedPeer state. [P-008] ✓ messaging registered in features-registry.ts. [P-009] ✓ formatBubbleHeader extracted to bubbleFormat.ts to satisfy react-refresh lint. [P-010] ✓ Bundle budgets bumped with dated comments. [P-011] ✓ All 4 gates green — typecheck, lint, 60/60 tests, build (4.34s). HomeScreen 775 lines (down from 824 after PeopleTabBody extract), WalletProvider 798 lines (2 below hard limit — next dispatch must plan extraction). [FEEDBACK→Foreman]: the file-size hard-limit trip + lint react-refresh warning both surfaced AFTER first attempt — pre-flight checks (line count + react-refresh sniff) before committing would have saved a round-trip; potential ergonomics improvement for the in-flight workflow."
+    "notes": "[P-001] Status answered: no multisig orgs live today — single-key org-mode shipped (5b-org-i..iv), multi-key path was pre-implementation. [P-002] FROST brief surfaced as overscoped relative to immediate product need; list-of-sigs brief authored as alternative (commit 0eab0e8). [P-003] Operator's Taproot-vs-list-of-sigs question surfaced the framing mismatch; honest answer led to pivot. [P-004] Tapscript-style leaf tree brief authored porting Taproot script-path shape to off-chain attestations on the shipped disclosureProof primitive (commit 9e58108). [P-005] PLAN.md Phase 8 rewritten twice to track the substrate evolution. [P-006] All four briefs preserved with explicit roles named (May 23 MuSig2, May 25 morning FROST, May 25 evening list-of-sigs as canonical-now-superseded; May 25 late-evening Tapscript-style as canonical). [P-007] Gates not applicable — doc-only session, no code changes. [FEEDBACK->Foreman]: Tapscript-style as the natural shape for off-chain org governance was discoverable only because the operator pushed back on the list-of-sigs framing; pattern-of-record: when a brief proposes a substrate, ask the operator to name what cryptographic shape they think it is BEFORE committing the brief, surface mismatches early."
   },
   "confidence": {
-    "score": 88,
-    "uncertainty": "Bundle-budget bumps are real but small (0.5KB each). The chat subscription block lives inline in WalletProvider's transport useEffect — at some point that effect needs extracting into its own hook for readability, but doing it now would have been scope creep. The chatThreadsByPeer Map is rebuilt on every state update via new Map(prev) — fine for hundreds of messages, becomes a perf concern in the thousands; IDB-paged refactor in Cut 4 handles that ceiling. PeerThread has no automated tests yet — UI render tests + the chat-thread integration test against a fake transport are the natural next cut. The Tier R remote-handshake path is the only place chat actually works end-to-end today: Tier P in-person handshakes do not exchange chat-capable pubkeys with the Mycelium transport enabled by default, so the chat surface is most useful to operators who have already enabled Mycelium and have at least one Tier R or Mycelium-active Tier P peer."
+    "score": 86,
+    "uncertainty": "Phase A through D of the Tapscript-style brief is sketched at a level the operator can authorize but has not yet been operator-approved; the brief itself flags one technical risk surface (the cross-envelope disclosure-proof binding has no existing test coverage because nothing in the wallet uses disclosure proofs cross-envelope today) that Phase B will need to fuzz specifically. The brief estimate of 4-6 sessions / 1.5-3 weeks tracks the list-of-sigs estimate because most of the new work is wallet-side UI plumbing on an already-shipped primitive, but the multi-rule UI (Phase C) and amendment-chain UX (Phase D) each have a real design surface that may warrant chip-form check-ins during the cut. The substrate decision is final pending operator approval; the prior briefs (MuSig2, FROST, list-of-sigs) are explicitly preserved as alternative substrates with documented roles, not deleted."
   },
   "ripple": [
-    "messaging",
-    "wallet-core",
-    "connections",
-    "transport (chat subscription consumer)",
-    "storage (future Cut 4 messagesStore.ts)"
+    "governance (new feature folder TBD at Phase A cut)",
+    "connections (createOrganization extension)",
+    "cosigning (CosignRequestModal multi-fanout in Phase C)",
+    "disclosure (disclosureProof primitive used cross-envelope for the first time in Phase B)",
+    "wallet-core (org-creation form gains the multi-rule editor in Phase C)"
   ],
-  "next": "Sub-cut 2c — promote-to-envelope (plus-menu + long-press). Adds a + button in the MessageComposer and long-press on MessageBubble that opens a menu with: Save as journal entry, Mark presence with this person, Ask to witness an entry, Send cosign request, Share a held envelope, Disclose a proof of one leaf. Each target launches the existing modal pre-populated with the peer's pubkey and a quoted reference to the chat moment. Mostly wiring into existing modals via new optional prefill props; lighter than 2b despite being the most visible-magic piece. Followed by Cut 4 (local persistence + opt-in cloud backup via messagesStore) which closes the chat arc. Operator should also browser-verify the just-landed Cut 2a + Cut 2b stack against live Netlify+Supabase before the next dispatch lands."
+  "next": "Operator authorizes Phase A -> cut AuthRule type + selfDeclareOrganization extension + proveAuthorization helper + tests in the next dispatch. About one session, zero tapit-attest changes. Before Phase A code lands, a cheap doctrine improvement worth absorbing: add a two-line 'SUPERSEDED BY: filename, REASON: ...' banner at the top of each superseded brief in the briefs folder so navigation is self-documenting. Operator should also read the Tapscript-style brief on a desktop (not iOS) — the table comparing Taproot script-path vs tapit-attest selective disclosure is the load-bearing exposition and reads better at width."
 }
