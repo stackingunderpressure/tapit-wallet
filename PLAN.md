@@ -186,42 +186,66 @@ grandchild eventually absorbs the thread into their own keypair
 when they get one. That lighter model already ships in Phase 2.6.
 Full-keypair custody is now optional, not required for v1.
 
-## Phase 8 — FROST-first quorum + charter governance [PLANNED]
+## Phase 8 — Simple-multisig orgs + charter governance [PLANNED]
 
 Promoted from Phase 7+ non-goal to active future phase per
 operator direction 2026-05-25 ("Frost looks ripe then org
-governance structure"). Brief of record:
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-frost-first-and-charter-governance-roadmap.md`.
-Supersedes the 2026-05-23 quorum brief's MuSig2-first ordering
-because charter governance needs different thresholds for
-different actions, which MuSig2's N-of-N model cannot express.
+governance structure"), then re-scoped the same evening per
+operator decision to skip FROST and ship list-of-signatures
+multi-key control on the primitives already in the wallet
+("regular multisig and not a complicated frost where the
+complexity is overwhelming us, but we still have an
+organization controlled by more than one key").
+
+Brief of record:
+`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-simple-multisig-orgs-roadmap.md`.
+Supersedes both the 2026-05-23 quorum brief's MuSig2-first
+ordering AND the 2026-05-25-morning FROST-first ordering.
+Per-action thresholds — the load-bearing argument for FROST
+over MuSig2 — work natively for list-of-signatures because
+the verifier just counts distinct officials' signatures and
+compares to the charter-declared threshold for that action.
 
 Four phases:
 
-- **Phase A** — FROST primitives in `tapit-attest` (vendored
-  Rust-via-WASM build, library selection chip-locked in
-  Phase A's first sub-task). RFC 9591 reference-vector
-  compliance gate. Library version bump to `0.2.0-wallet.0`.
-- **Phase B** — Wallet quorum scaffolding. New `quorum`
-  feature folder with DKG ceremony, signing ceremony,
-  encrypted-share persistence, inbox routing for DKG /
-  signing rounds (decision locked: DKG rounds surface in
-  inbox so live operators see they're holding up a key
-  generation).
+- **Phase A** — Threshold leaf on the org self-declaration +
+  `isOrgRatified(envelope, roster, threshold)` verifier helper
+  in `createOrganization.ts`. `RatificationsBadge` gains a
+  `required` prop. No new crypto, no new files. About one
+  session.
+- **Phase B** — Multi-fanout `CosignRequestModal` that ships
+  the envelope to several officials at once instead of one
+  witness at a time. Reuses the existing `CosignAsWitnessModal`
+  + `AbsorbCosignModal` + `mergeSignatures` pipeline unchanged.
+  About one session.
 - **Phase C** — Quorum-controlled organizations as a creation-
-  time choice alongside the existing single-key org tier. No
-  migration path needed (no orgs formed yet on production
-  wallets); single-key orgs stay as the simpler tier.
-- **Phase D** — Charter governance. Charter attestation with
-  per-action thresholds, silent-objection admission with
-  Bitcoin-block-anchored deadlines via OpenTimestamps, charter
-  amendment via meta-governance at whatever threshold the
-  charter itself declares.
+  time choice alongside the existing single-key org tier (which
+  is just threshold=1 of the same shape). No migration path
+  needed (no orgs formed yet on production wallets). About one
+  session.
+- **Phase D** — Charter governance. Charter attestation
+  declaring per-action thresholds (routine_issuance,
+  roster_change, key_rotation, dissolution, charter_amend)
+  with validator-enforced higher-stakes-higher-threshold
+  ordering. Charter is itself a signed envelope; amendments
+  meet the in-force charter's `charter_amend` threshold. About
+  one to two sessions.
 
-Operator-locked decisions (2026-05-25 chip session): vendored
-FROST library, Bitcoin-block-anchored objection deadlines,
-DKG rounds in inbox, dual-tier org creation (no migration),
-charters amendable via meta-governance.
+Operator-locked decisions (2026-05-25 evening chip session):
+list-of-signatures substrate over FROST / MuSig2, no new
+dependencies, no tapit-attest version bump, FROST preserved in
+the brief drawer as a future opt-in tier for orgs that need
+signer-anonymity. The
+`2026-05-25-frost-first-and-charter-governance-roadmap.md`
+brief stays in the briefs folder as the canonical reference for
+that future tier.
+
+Estimated calendar: 4-5 sessions, ~1.5-2 weeks. Roughly
+one-quarter the calendar of the FROST roadmap; the arc is
+dominated by UI plumbing on tested primitives
+(`mergeSignatures.ts`, `countRatifications`, `CosignRequestModal`,
+`OfficialsEditorModal`, `publishOfficialsRoster`) rather than
+cryptographic engineering.
 
 ## Phase 9+ — explicit non-goals for v1
 
