@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
 import type { RelayStatus, Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
+import { summarizePublish } from '../transport/publishStatus.ts';
 import { createInboxEnvelopeHandler } from './inboxEnvelopeHandler.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
@@ -402,6 +403,38 @@ export function WalletProvider({ children }: Props) {
         phase.wallet,
         { created_at: localTs },
       );
+      // Inspect publish outcome. Transport.publish does NOT reject on
+      // relay failure — the caller has to read PublishResult to know
+      // whether the event actually went out. Without this check the
+      // operator's optimistic local append made them THINK the
+      // message sent while every relay silently rejected — the bug
+      // they reported as "messages are still not sending properly.
+      // The other person is not receiving the message either way."
+      // 'fail' = every relay rejected AND none are still pending →
+      // the message is not going anywhere; surface the failure and
+      // rip the optimistic record out so the operator's thread
+      // honestly reflects what happened. 'pending' / 'ok' both
+      // attach the eventId and let the operator keep the optimistic
+      // record; pending messages may still land via slow relays.
+      const summary = summarizePublish(result.publish);
+      if (summary.tone === 'fail') {
+        setChatThreadsByPeer((prev) => {
+          const existing = prev.get(recipientPubkey) ?? [];
+          const filtered = existing.filter(
+            (m) =>
+              !(
+                m.direction === 'out' &&
+                m.ts === localTs &&
+                m.text === trimmed &&
+                !m.eventId
+              ),
+          );
+          const next = new Map(prev);
+          next.set(recipientPubkey, filtered);
+          return next;
+        });
+        throw new Error(summary.detail);
+      }
       // Attach the event id to the optimistic record so subsequent
       // re-arrivals from relay history dedupe correctly. Match by
       // ts + text + direction since the optimistic record had no id.
