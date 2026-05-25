@@ -1,59 +1,59 @@
 {
   "v": 1,
-  "ts": "2026-05-25T01:50:00Z",
-  "session_id": "simple-multisig-brief-2026-05-25-001",
+  "ts": "2026-05-25T02:35:00Z",
+  "session_id": "tapscript-auth-tree-phase-a-2026-05-25-001",
   "who": {
     "actor": "Carpenter (Claude)",
-    "feature_slug": "governance"
+    "feature_slug": "connections"
   },
   "where": {
     "files": [
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-simple-multisig-orgs-roadmap.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md",
-      "PLAN.md",
+      "src/features/connections/createOrganization.ts",
+      "src/features/connections/createOrganization.test.ts",
+      "src/features/connections/manifest.ts",
       "appcommander/comms/in-flight.jsonl",
       "appcommander/comms/carpenter-opinions.md",
       "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
-    "screen_path": "n/a — doc-only session. Operator's surfaces unchanged."
+    "screen_path": "n/a — Phase A is a primitive cut. No new UI; SettingsScreen.tsx org-creation form still calls selfDeclareOrganization with the 4-arg signature unchanged, defaults to single routine_issuance rule with founder eligible. Phase C will surface multi-rule editor UI."
   },
-  "layer": "doctrine",
+  "layer": "logic",
   "when": {
-    "ts": "2026-05-25T01:50:00Z",
-    "session_id": "simple-multisig-brief-2026-05-25-001"
+    "ts": "2026-05-25T02:35:00Z",
+    "session_id": "tapscript-auth-tree-phase-a-2026-05-25-001"
   },
   "what": {
-    "action": "Authored two roadmap briefs in sequence for the multi-key org upgrade — list-of-Schnorr-signatures, then Tapscript-style leaf tree — with the second superseding the first plus the prior FROST and MuSig2 briefs.",
-    "summary": "Status question (do we have multisig orgs live?) opened into a substrate decision for the Phase 8 multi-key org upgrade. First commit (0eab0e8) authored the list-of-sigs brief on the back of the operator chip 'Simple multisig now', proposing to harden the existing mergeSignatures + countRatifications + cosigning pipeline with a threshold leaf and a verifier gate. Operator then asked whether the brief was actually Taproot multisig and whether the leaves theory held up; surfaced honestly that it was NOT Taproot script-path multisig (no Bitcoin script, no aggregated key-path, no Tapscript leaf tree) but used the same BIP340 Schnorr primitive at the per-sig level, and that the wallet's existing field-tree primitive (Phase 4 selective disclosure) was structurally identical to a Taproot Tapscript leaf tree. Operator chose to pivot the brief to actually port the Tapscript-style shape. Second commit (9e58108) authored the Tapscript-style brief: an org's authority becomes a Merkle commitment to a tree of authorization-rule leaves, implemented as a sub-branch in the org self-declaration's claim tree, with each org-issued envelope carrying a DisclosureProofBundle of the satisfied rule via the shipped disclosureProof primitive. Zero new cryptographic code in tapit-attest; no library version bump. PLAN.md Phase 8 rewritten twice to track the substrate decisions; all three superseded briefs preserved with explicit roles named."
+    "action": "Phase 8 Phase A landed — Tapscript-style authorization tree primitives on the org self-declaration (commit 4eaeba8).",
+    "summary": "selfDeclareOrganization extended with optional authRules parameter that emits an auth sub-branch in the claim tree. Each rule is one field-tree leaf carrying canonical JSON of {threshold, eligible}, eligible normalized to sorted-lowercased. Validation throws synchronously on duplicate action / threshold < 1 / non-integer threshold / threshold > eligible-set size. New exported helpers findAuthRule + listAuthRules + proveAuthorization; proveAuthorization wraps the shipped disclosureProof from tapit-attest/src/core/field-tree.ts to produce a DisclosureProofBundle that Phase B's verifier will consume. Zero new cryptographic code in tapit-attest; no library version bump. New test file ships 15 tests across three describe blocks; the load-bearing one forges a leaf-value in a proof bundle and confirms verifyDisclosureProof rejects it, proving the carried signature binds the proof to the original claim digest."
   },
   "why": {
-    "text": "Operator's status question (do we have multisig orgs live right now?) became a substrate-decision session when the answer was no AND the previously-authored FROST brief was surfaced as too heavy for the actual product need. The leaves-theory pivot was driven entirely by the operator's architectural sharpness — they recognized that what was being briefed didn't match their Taproot mental model, and surfacing that mismatch produced a structurally better answer than either party had at session start.",
+    "text": "Operator authorized Phase A with 'Yes a please' after the prior session committed the canonical Tapscript-style brief. Phase A is the substrate-on-disk step — not yet a user-visible feature, but the load-bearing proof that the architectural argument from the brief compiles, type-checks, verifies its own cryptography under tamper, and integrates cleanly with the shipped disclosure-proof primitive. Every subsequent phase builds on a substrate that no longer has to be argued for from theory.",
     "linked_pixel_id": null,
-    "linked_mission_id": "multi-key-org-substrate-decision-2026-05-25"
+    "linked_mission_id": "tapscript-auth-tree-phase-a-2026-05-25"
   },
   "outcome": {
     "files_changed": [
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-simple-multisig-orgs-roadmap.md",
-      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md",
-      "PLAN.md",
+      "src/features/connections/createOrganization.ts",
+      "src/features/connections/createOrganization.test.ts",
+      "src/features/connections/manifest.ts",
       "appcommander/comms/in-flight.jsonl",
       "appcommander/comms/carpenter-opinions.md",
       "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
     "tests_passing": true,
     "build_green": true,
-    "notes": "[P-001] Status answered: no multisig orgs live today — single-key org-mode shipped (5b-org-i..iv), multi-key path was pre-implementation. [P-002] FROST brief surfaced as overscoped relative to immediate product need; list-of-sigs brief authored as alternative (commit 0eab0e8). [P-003] Operator's Taproot-vs-list-of-sigs question surfaced the framing mismatch; honest answer led to pivot. [P-004] Tapscript-style leaf tree brief authored porting Taproot script-path shape to off-chain attestations on the shipped disclosureProof primitive (commit 9e58108). [P-005] PLAN.md Phase 8 rewritten twice to track the substrate evolution. [P-006] All four briefs preserved with explicit roles named (May 23 MuSig2, May 25 morning FROST, May 25 evening list-of-sigs as canonical-now-superseded; May 25 late-evening Tapscript-style as canonical). [P-007] Gates not applicable — doc-only session, no code changes. [FEEDBACK->Foreman]: Tapscript-style as the natural shape for off-chain org governance was discoverable only because the operator pushed back on the list-of-sigs framing; pattern-of-record: when a brief proposes a substrate, ask the operator to name what cryptographic shape they think it is BEFORE committing the brief, surface mismatches early."
+    "notes": "[P-001] AuthRule interface + internal encode/decode/build helpers added to createOrganization.ts. [P-002] selfDeclareOrganization gains optional authRules parameter; defaults to single routine_issuance rule with founder eligible. [P-003] findAuthRule + listAuthRules exported. [P-004] proveAuthorization exported, wraps disclosureProof from tapit-attest. [P-005] 15-test suite in createOrganization.test.ts: 5 validation throws, 5 auth-tree shape, 4 proveAuthorization (including cross-envelope tamper detection), 1 sentinel for empty-rules edge case. [P-006] connections/manifest.ts touches array + notes field updated. [P-007] All four gates green: typecheck clean, lint clean, 117/117 tests pass (15 new), build clean in 3.43s. [P-008] File-size warn flagged for next-cut planning: createOrganization.ts at 534 lines (over 400 soft warn, well under 800 hard limit); Phase B will push toward 650, recommend extraction into src/features/governance/authRule.ts. [FEEDBACK->Foreman]: cross-envelope binding test discipline for Phase B needs to cover all four forgery classes (leaf-value tampered = covered by Phase A; wrong-org-binding, tampered-path, tampered-meta = need dedicated fuzz tests in Phase B). Author a one-page Phase B test-scope brief proactively so the dispatch opens with a clear target."
   },
   "confidence": {
-    "score": 86,
-    "uncertainty": "Phase A through D of the Tapscript-style brief is sketched at a level the operator can authorize but has not yet been operator-approved; the brief itself flags one technical risk surface (the cross-envelope disclosure-proof binding has no existing test coverage because nothing in the wallet uses disclosure proofs cross-envelope today) that Phase B will need to fuzz specifically. The brief estimate of 4-6 sessions / 1.5-3 weeks tracks the list-of-sigs estimate because most of the new work is wallet-side UI plumbing on an already-shipped primitive, but the multi-rule UI (Phase C) and amendment-chain UX (Phase D) each have a real design surface that may warrant chip-form check-ins during the cut. The substrate decision is final pending operator approval; the prior briefs (MuSig2, FROST, list-of-sigs) are explicitly preserved as alternative substrates with documented roles, not deleted."
+    "score": 92,
+    "uncertainty": "Phase A is a primitive cut with no user-visible UI. The substrate is provably on disk and the disclosure-proof round-trip survives the leaf-value forgery test, but the other three forgery classes (wrong-org-binding, tampered sibling-hash path, tampered meta-fields) are Phase B's verifier surface and have no test coverage yet. The default-rules behaviour (always emit auth sub-branch even when caller omits authRules) means new self-declarations have a different envelope shape than pre-Phase-A ones — operator decision in the FROST brief explicitly noted no orgs formed yet on production wallets, so no migration debt. SettingsScreen.tsx still calls selfDeclareOrganization with the 4-arg signature; that path now produces self-declarations with the default-single-rule auth tree."
   },
   "ripple": [
-    "governance (new feature folder TBD at Phase A cut)",
-    "connections (createOrganization extension)",
-    "cosigning (CosignRequestModal multi-fanout in Phase C)",
-    "disclosure (disclosureProof primitive used cross-envelope for the first time in Phase B)",
-    "wallet-core (org-creation form gains the multi-rule editor in Phase C)"
+    "connections (Phase B verifyOrgAuthorization helper next)",
+    "governance (new feature folder pending if file-size extraction happens at Phase B)",
+    "cosigning (Phase C multi-fanout CosignRequestModal will read the rule's eligible list)",
+    "wallet-core (Phase C org-creation form gains multi-rule editor)",
+    "disclosure (primitive now used cross-envelope for the first time — Phase B verifier carries the cross-envelope binding risk)"
   ],
-  "next": "Operator authorizes Phase A -> cut AuthRule type + selfDeclareOrganization extension + proveAuthorization helper + tests in the next dispatch. About one session, zero tapit-attest changes. Before Phase A code lands, a cheap doctrine improvement worth absorbing: add a two-line 'SUPERSEDED BY: filename, REASON: ...' banner at the top of each superseded brief in the briefs folder so navigation is self-documenting. Operator should also read the Tapscript-style brief on a desktop (not iOS) — the table comparing Taproot script-path vs tapit-attest selective disclosure is the load-bearing exposition and reads better at width."
+  "next": "Operator authorizes Phase B (verifyOrgAuthorization helper + authorized_by leaf on credentials + four-class forgery fuzz tests) OR pauses for desktop read OR requests file-size extraction into src/features/governance/authRule.ts before Phase B. Recommend the chip-form next direction be exactly those three options. The branch sits four commits ahead of origin/main and is safe to merge or to continue from."
 }
