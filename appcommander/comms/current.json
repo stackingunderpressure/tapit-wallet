@@ -1,77 +1,54 @@
 {
-  "v": 1,
-  "ts": "2026-05-25T00:21:30Z",
-  "session_id": "chat-cut2b-2026-05-25-001",
   "who": {
-    "actor": "Carpenter (Claude)",
-    "feature_slug": "messaging"
+    "actor": "carpenter",
+    "feature_slug": "frost-phase-a"
   },
   "where": {
     "files": [
-      "src/features/messaging/manifest.ts",
-      "src/features/messaging/threadMessage.ts",
-      "src/features/messaging/bubbleFormat.ts",
-      "src/features/messaging/MessageBubble.tsx",
-      "src/features/messaging/MessageComposer.tsx",
-      "src/features/messaging/PeerThread.tsx",
-      "src/features/wallet-core/PeopleTabBody.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/WalletContext.ts",
-      "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/ClassicConnections.tsx",
-      "src/features/connections/FreshCrew.tsx",
-      "src/features-registry.ts",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-frost-first-and-charter-governance-roadmap.md",
+      "tapit-attest/package.json",
+      "tapit-attest/src/index.ts",
+      "tapit-attest/src/core/shamir.ts",
+      "tapit-attest/test/shamir.test.mjs",
       "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "People tab → tap a ConnectionCard or FreshCrew bubble → PeerThread opens with header (back / peer name / relationship chip / Tier P/R badge) + scrollable history with time-of-day dividers + composer pinned at bottom. Back button returns to the connections list."
+    "screen_path": "chat"
   },
-  "layer": "ui",
+  "layer": "doctrine",
   "when": {
-    "ts": "2026-05-25T00:21:30Z",
-    "session_id": "chat-cut2b-2026-05-25-001"
+    "ts": "2026-05-25T00:00:00Z",
+    "session_id": "2026-05-25-frost-phase-a-analysis"
   },
   "what": {
-    "action": "Per-peer chat sub-cut 2b — per-peer thread UI under People tab",
-    "summary": "The visible-magic delta from the chat arc lands. New messaging feature folder ships PeerThread + MessageBubble + MessageComposer + bubbleFormat helper + threadMessage type. WalletProvider gains chatThreadsByPeer state (in-memory Map per the architecture call) and sendChatMessage callback; the existing transport useEffect opens a TAPIT_CHAT_KIND subscription alongside the envelope inbox on the same connection. ConnectionCard gains optional onOpen prop; ClassicConnections + FreshCrew thread it through (FreshCrew bubble-tap now opens thread, fallback to scroll-to-card preserved). HomeScreen extracted into PeopleTabBody to stay under the 800-line hard limit after the chat routing was added. Bundle budgets bumped: WalletProvider 8KB→8.5KB, HomeScreen 16KB→16.5KB. All 60 tests pass, build clean."
+    "action": "evaluate-and-recommend",
+    "summary": "Analyzed four candidate paths for the FROST library decision that gates Phase A of the FROST-first quorum + charter-governance roadmap. Surfaced an internal contradiction in the 2026-05-25 brief: operator-locked decision #1 names Rust→WASM but the candidate table immediately below presents two pure-TS options and labels the choice 'deferred to Phase A.' Recommended Path 1 (@cmdcode/frost as pure-TS dep) if decision #1 is reopen-able, Path 2 (Rust→WASM zcash/frost-secp256k1) if it stands as written. Ruled out Path 3 (@frosts/secp256k1-tr — alpha) and Path 4 (vendor cmdcode/frost source — extra burden for no safety improvement vs Path 1). Closing with a chip-form question to lock the path."
   },
   "why": {
-    "text": "Operator said 'Recenter and continue on' after the prior session shipped the rebase + sub-cut 2a relationship-leaf. Sub-cut 2b is the per-peer thread UI that turns the People tab from a list of pubkeys into a place you actually talk to your people — the visible-magic delta the brief framed as the unlock. Architecture call (in-memory vs IDB-paged state) resolved Carpenter-side per the prior session's recommendation: in-memory state in WalletContext for 2b alone, IDB-paged when Cut 4's messagesStore lands. The relationship chip from sub-cut 2a pins into the thread header from this cut's first commit per the operator's earlier 'fix in' directive, not retrofit later.",
+    "text": "Operator asked for the best Phase A implementation path with full analysis of each option. The brief explicitly anticipates this evaluation as Phase A's first sub-task. The chip-form lock unblocks the actual cut.",
     "linked_pixel_id": null,
-    "linked_mission_id": "per-peer-chat-surface-roadmap-2026-05-24"
+    "linked_mission_id": "ACB-2026-05-25-FROST-PHASE-A-001"
   },
   "outcome": {
     "files_changed": [
-      "src/features/messaging/manifest.ts",
-      "src/features/messaging/threadMessage.ts",
-      "src/features/messaging/bubbleFormat.ts",
-      "src/features/messaging/MessageBubble.tsx",
-      "src/features/messaging/MessageComposer.tsx",
-      "src/features/messaging/PeerThread.tsx",
-      "src/features/wallet-core/PeopleTabBody.tsx",
-      "src/features/wallet-core/HomeScreen.tsx",
-      "src/features/wallet-core/WalletProvider.tsx",
-      "src/features/wallet-core/WalletContext.ts",
-      "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/ClassicConnections.tsx",
-      "src/features/connections/FreshCrew.tsx",
-      "src/features-registry.ts",
-      "scripts/bundle-budget.mjs"
+      "appcommander/comms/current.json",
+      "appcommander/comms/interactions.jsonl",
+      "appcommander/comms/in-flight.jsonl",
+      "appcommander/comms/carpenter-opinions.md",
+      "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
-    "tests_passing": true,
-    "build_green": true,
-    "notes": "[P-001] ✓ messaging feature folder created (manifest + threadMessage + bubbleFormat + MessageBubble + MessageComposer + PeerThread). [P-002] ✓ WalletContext gains chatThreadsByPeer + sendChatMessage. [P-003] ✓ WalletProvider opens chat-kind subscription alongside envelope inbox, dedupes by event id, optimistic local append on send, attaches eventId on settle. [P-004] ✓ ConnectionCard gains optional onOpen prop, renders as button when set. [P-005] ✓ FreshCrew bubble + card both open thread when onOpenThread set; fallback to scroll-to-card preserved. [P-006] ✓ ClassicConnections threads onOpenThread through. [P-007] ✓ PeopleTabBody extracted from HomeScreen owns selectedPeer state. [P-008] ✓ messaging registered in features-registry.ts. [P-009] ✓ formatBubbleHeader extracted to bubbleFormat.ts to satisfy react-refresh lint. [P-010] ✓ Bundle budgets bumped with dated comments. [P-011] ✓ All 4 gates green — typecheck, lint, 60/60 tests, build (4.34s). HomeScreen 775 lines (down from 824 after PeopleTabBody extract), WalletProvider 798 lines (2 below hard limit — next dispatch must plan extraction). [FEEDBACK→Foreman]: the file-size hard-limit trip + lint react-refresh warning both surfaced AFTER first attempt — pre-flight checks (line count + react-refresh sniff) before committing would have saved a round-trip; potential ergonomics improvement for the in-flight workflow."
+    "tests_passing": "UNVERIFIED",
+    "build_green": "UNVERIFIED",
+    "notes": "[P-001] read brief in full and traced operator-locked decisions. [P-002] surveyed live npm registry for FROST candidates (cmdcode, @frosts/secp256k1-tr, @toruslabs/tss-frost-client, @substrate-system/frost-dkg, @bcts/frost-hubert). [P-003] corrected brief's frostlib reference (does not exist on npm). [P-004] flagged internal contradiction between decision #1 prose and candidate table. [P-005] delivered four-path comparison with recommendation. [P-006] asked chip-form lock question per PFOR-019. Gates not run — no source-tree changes this session. [FEEDBACK→Foreman]: when a brief locks a decision in prose and re-opens it in a sub-table, the contradiction is invisible until someone reads to act on it. A brief-lint sweep that flags 'locked' + 'deferred' co-occurrence in the same section would catch this earlier."
   },
   "confidence": {
-    "score": 88,
-    "uncertainty": "Bundle-budget bumps are real but small (0.5KB each). The chat subscription block lives inline in WalletProvider's transport useEffect — at some point that effect needs extracting into its own hook for readability, but doing it now would have been scope creep. The chatThreadsByPeer Map is rebuilt on every state update via new Map(prev) — fine for hundreds of messages, becomes a perf concern in the thousands; IDB-paged refactor in Cut 4 handles that ceiling. PeerThread has no automated tests yet — UI render tests + the chat-thread integration test against a fake transport are the natural next cut. The Tier R remote-handshake path is the only place chat actually works end-to-end today: Tier P in-person handshakes do not exchange chat-capable pubkeys with the Mycelium transport enabled by default, so the chat surface is most useful to operators who have already enabled Mycelium and have at least one Tier R or Mycelium-active Tier P peer."
+    "value": 82,
+    "uncertainty": "Bundle-size estimate for @cmdcode/frost (40–60KB gz post-treeshake) is the brief's number, not a measured one. Confirming requires installing the package and running a probe build. Worth doing before Phase A's actual cut, not before the chip-form decision."
   },
   "ripple": [
-    "messaging",
+    "quorum",
+    "governance",
     "wallet-core",
-    "connections",
-    "transport (chat subscription consumer)",
-    "storage (future Cut 4 messagesStore.ts)"
+    "anchoring"
   ],
-  "next": "Sub-cut 2c — promote-to-envelope (plus-menu + long-press). Adds a + button in the MessageComposer and long-press on MessageBubble that opens a menu with: Save as journal entry, Mark presence with this person, Ask to witness an entry, Send cosign request, Share a held envelope, Disclose a proof of one leaf. Each target launches the existing modal pre-populated with the peer's pubkey and a quoted reference to the chat moment. Mostly wiring into existing modals via new optional prefill props; lighter than 2b despite being the most visible-magic piece. Followed by Cut 4 (local persistence + opt-in cloud backup via messagesStore) which closes the chat arc. Operator should also browser-verify the just-landed Cut 2a + Cut 2b stack against live Netlify+Supabase before the next dispatch lands."
+  "next": "Operator picks Path 1 / Path 2 / something else via the chip-form question. On lock, write a new decisions.md entry (D-12 or next available) recording the FROST library choice plus rationale, then cut Phase A's first commit: add the dep, scaffold the adapter, write the RFC 9591 vector test, bump tapit-attest version, run all four gates."
 }
