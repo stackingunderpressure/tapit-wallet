@@ -39,6 +39,13 @@ export function FreshOnboarding() {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  // Optional ISO date (YYYY-MM-DD). Empty string = operator
+  // declined; the leaf is omitted from the identity attestation
+  // and over-N Quick-share presets stay unavailable until they
+  // re-issue. Captured next to displayName because the brief's
+  // chip decision pairs it with the name step rather than
+  // adding a fifth step.
+  const [birthday, setBirthday] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
   const [email, setEmail] = useState('');
@@ -180,6 +187,7 @@ export function FreshOnboarding() {
       text,
       attachment,
       displayName: displayName.trim(),
+      birthday: birthday.trim() || undefined,
       passphrase,
     });
     const { error: err } = await supabase().auth.verifyOtp({
@@ -232,6 +240,8 @@ export function FreshOnboarding() {
         <NameStep
           displayName={displayName}
           onDisplayNameChange={setDisplayName}
+          birthday={birthday}
+          onBirthdayChange={setBirthday}
           onSubmit={submitName}
           onBack={() => setStep('compose')}
           error={error}
@@ -433,6 +443,8 @@ function ComposeStep(props: {
 function NameStep(props: {
   displayName: string;
   onDisplayNameChange: (v: string) => void;
+  birthday: string;
+  onBirthdayChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onBack: () => void;
   error: string | null;
@@ -460,6 +472,19 @@ function NameStep(props: {
           onChange={(e) => props.onDisplayNameChange(e.target.value)}
           className="mt-2 w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 text-base text-fresh-text-primary backdrop-blur-xl placeholder:text-fresh-text-tertiary focus:border-fresh-accent-primary focus:outline-none focus:ring-2 focus:ring-fresh-accent-primary/30"
           placeholder="Ada"
+        />
+      </label>
+      <label className="mt-4 block">
+        <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">
+          Birthday <span className="lowercase text-fresh-text-tertiary/70">(optional · enables one-tap age proofs)</span>
+        </span>
+        <input
+          type="date"
+          autoComplete="bday"
+          value={props.birthday}
+          onChange={(e) => props.onBirthdayChange(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+          className="mt-2 w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 text-base text-fresh-text-primary backdrop-blur-xl focus:border-fresh-accent-primary focus:outline-none focus:ring-2 focus:ring-fresh-accent-primary/30"
         />
       </label>
       <div className="mt-6 flex gap-3">

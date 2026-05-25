@@ -34,6 +34,14 @@ export interface OnboardingBundle {
   /** The display name the operator chose for their identity. */
   displayName: string;
   /**
+   * Optional ISO date (YYYY-MM-DD) the operator chose to put on
+   * their founding identity. Becomes a signed `birthday` leaf so
+   * future disclosure proofs can reveal it (or derive age-class
+   * claims off it). Empty string = operator declined; the leaf is
+   * omitted from the identity attestation.
+   */
+  birthday?: string;
+  /**
    * The passphrase the operator chose. Used once to create the
    * encrypted wallet snapshot and immediately discarded from
    * this holder; ends up in WalletProvider's passphraseRef

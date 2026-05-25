@@ -127,7 +127,10 @@ const BUDGETS = [
   // to absorb the AppearanceSection growth: theme radio + Fresh
   // extras toggle group (Memories + Streaks). Past 10KB the honest
   // next move is to lazy-load AppearanceSection itself.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 10_000, label: 'SettingsScreen' },
+  // 2026-05-25 birthday-leaf cut bumps 10KB -> 10.5KB to absorb
+  // the new over-18 / over-21 enumerator branches in
+  // quickSharePresets that QuickShareSection imports into Settings.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 10_500, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.

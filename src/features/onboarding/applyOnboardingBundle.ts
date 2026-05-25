@@ -39,6 +39,7 @@ export async function applyOnboardingBundle(
   await createIdentityAttestation(wallet, {
     displayName: bundle.displayName,
     declaration: FOUNDING_DECLARATION,
+    birthday: bundle.birthday,
   });
 
   // First journal entry — only if the operator actually composed
