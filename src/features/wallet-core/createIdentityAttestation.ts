@@ -17,6 +17,20 @@ export interface IdentityInput {
    *  goes on the founding record. */
   fullName?: string;
   /**
+   * Birthday as an ISO date string (YYYY-MM-DD). Optional — sits
+   * on the Merkle tree as its own leaf so a future disclosure
+   * proof can reveal the full date OR a derived age claim (over-N)
+   * without exposing other identity leaves. Captured in the
+   * IdentityCeremony name step.
+   */
+  birthday?: string;
+  /**
+   * Free-text location (city, state, region — operator's choice
+   * of granularity). Optional. Useful surface for future
+   * "is local" disclosure proofs.
+   */
+  location?: string;
+  /**
    * The exact declaration text the person affirmed. Passed in (not
    * hardcoded here) so the record stores precisely what the person
    * was shown and agreed to, even if FOUNDING_DECLARATION is later
@@ -50,6 +64,12 @@ export async function createIdentityAttestation(
   };
   if (input.fullName && input.fullName.trim().length > 0) {
     fields.full_name = input.fullName.trim();
+  }
+  if (input.birthday && input.birthday.trim().length > 0) {
+    fields.birthday = input.birthday.trim();
+  }
+  if (input.location && input.location.trim().length > 0) {
+    fields.location = input.location.trim();
   }
 
   const draft = identityAttestation({

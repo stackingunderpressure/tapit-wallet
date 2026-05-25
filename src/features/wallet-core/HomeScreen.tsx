@@ -17,6 +17,7 @@ import {
   isHandshake,
   peerNamesByPubkey,
   displayNameOf,
+  leafValue,
 } from '../connections/createHandshake.ts';
 import { MembershipModal } from '../connections/MembershipModal.tsx';
 import { MembershipCard } from '../connections/MembershipCard.tsx';
@@ -388,7 +389,12 @@ export function HomeScreen() {
               </p>
             </div>
           )}
-          <IdentityCard identity={wallet.identity} activeKey={wallet.publicKey} />
+          <IdentityCard
+            identity={wallet.identity}
+            activeKey={wallet.publicKey}
+            birthday={identity ? leafValue(identity, 'birthday') || undefined : undefined}
+            location={identity ? leafValue(identity, 'location') || undefined : undefined}
+          />
           {identity && <AttestationCard attestation={identity} />}
           {orgDeclaration && (
             <div className="pt-2">
@@ -755,7 +761,7 @@ export function HomeScreen() {
         }`}
       >
         <div
-          className={`max-w-md mx-auto px-5 pt-2 pb-3 flex rounded-none ${resolvedTheme === 'fresh' ? '' : ''}`}
+          className="max-w-md mx-auto px-5 pt-3 pb-5 flex rounded-none gap-1"
           role="tablist"
         >
           {TABS.map((t) => (
@@ -765,7 +771,7 @@ export function HomeScreen() {
               role="tab"
               aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
+              className={`flex-1 rounded-lg py-3 text-sm font-medium transition ${
                 resolvedTheme === 'fresh'
                   ? tab === t.id
                     ? 'bg-fresh-accent-secondary/20 text-fresh-text-primary ring-1 ring-fresh-accent-secondary/40'

@@ -84,7 +84,12 @@ const BUDGETS = [
   // absorb useChatPersistence hook import + call (IDB load on
   // unlock + debounce-save on update). messagesStore lives in
   // the storage chunk; this bump covers only the hook surface.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 9_000, label: 'WalletProvider' },
+  // 2026-05-25 race-fix bumped 9KB -> 9.5KB: hasLoaded gate
+  // added to useChatPersistence to stop the 400 ms debounce from
+  // overwriting disk before the PBKDF2 decrypt resolves. Extra
+  // useState plus the load-resolution path settles past the prior
+  // budget by ~150 bytes.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 9_500, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -102,7 +107,10 @@ const BUDGETS = [
   // (effective overage was 0.02KB — extracted PeopleTabBody into
   // wallet-core to keep HomeScreen under the 800-line file-size
   // limit; the new component sits in the HomeScreen import graph).
-  { pattern: /^HomeScreen-.*\.js$/, gz: 16_500, label: 'HomeScreen' },
+  // 2026-05-25 identity-leaves bumped 16.5KB -> 17KB: birthday +
+  // location threading from identity attestation + sticky-chrome
+  // touch-ups + promote-handler refactor put us at 16.17KB.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 17_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

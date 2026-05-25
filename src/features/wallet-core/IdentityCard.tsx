@@ -5,6 +5,23 @@ interface Props {
   identity: string;
   /** The currently-active signing key. Equals identity until the first rotation; diverges after. */
   activeKey: string;
+  /** Optional ISO birthday from the identity attestation. Renders as a leaf line when present. */
+  birthday?: string;
+  /** Optional free-text location from the identity attestation. */
+  location?: string;
+}
+
+function formatBirthday(iso: string): string {
+  // ISO YYYY-MM-DD → local-friendly display. Falls back to the raw
+  // string if parsing fails so a malformed leaf doesn't render
+  // "Invalid Date" — the wallet stays honest about what's stored.
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 // The single identity card on the home screen. Identity is the
@@ -20,7 +37,7 @@ interface Props {
 // the signed identity attestation. Phase 5e-vii's rotation UI made
 // this distinction load-bearing because labeling the active key
 // as "Your identity" after a rotation would be semantically wrong.
-export function IdentityCard({ identity, activeKey }: Props) {
+export function IdentityCard({ identity, activeKey, birthday, location }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -46,6 +63,22 @@ export function IdentityCard({ identity, activeKey }: Props) {
       >
         {copied ? 'Copied' : 'Copy full key'}
       </button>
+      {(birthday || location) && (
+        <dl className="mt-3 space-y-1 text-sm">
+          {birthday && (
+            <div className="flex gap-2">
+              <dt className="text-muted shrink-0">Birthday</dt>
+              <dd>{formatBirthday(birthday)}</dd>
+            </div>
+          )}
+          {location && (
+            <div className="flex gap-2">
+              <dt className="text-muted shrink-0">Location</dt>
+              <dd>{location}</dd>
+            </div>
+          )}
+        </dl>
+      )}
       {rotated && (
         <div className="mt-4 border-t border-ink/10 pt-3">
           <div className="text-xs uppercase tracking-wide text-muted">

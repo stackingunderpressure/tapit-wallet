@@ -225,6 +225,40 @@ html[data-theme='fresh'] .text-muted {
 html[data-theme='fresh'] [class*="text-ink/"] {
   color: var(--fresh-text-primary);
 }
+
+/* Classic primary buttons hardcode bg-ink + text-paper for the
+   dark CTA. Under Fresh the bg-ink hex (#0f1419) sits on the
+   fresh-surface-raised (#18161f) section bodies as a near-
+   identical near-black blob and the button visually disappears.
+   Operator: "Can't see the relay button plot." Flip bg-ink on
+   buttons / anchors / divs to the Fresh accent primary so the
+   CTA reads as the dark-on-lime button the Fresh design language
+   uses everywhere else; paired text-paper flips to inverse so
+   contrast follows. */
+html[data-theme='fresh'] :is(button, a, div)[class~="bg-ink"],
+html[data-theme='fresh'] :is(button, a, div)[class*="bg-ink/"] {
+  background-color: var(--fresh-accent-primary);
+}
+html[data-theme='fresh'] :is(button, a)[class~="text-paper"] {
+  color: var(--fresh-text-inverse);
+}
+
+/* Form inputs under Fresh inherit the light body color (set on
+   <body> in index.html via var(--ink) which Fresh flips to light)
+   but keep their Tailwind bg-white. Result: light text on a white
+   field = invisible. Operator: "Boxes on the settings page still
+   has white, and you can't see the letters." Inputs / textareas /
+   selects don't belong to the section-element override list so a
+   bg-white on them stays white; explicit rule below flips them to
+   the dark fresh-surface-base with light fresh-text-primary so
+   typing into Settings reads correctly. Border picks up the
+   shared fresh-surface-edge for visual consistency with cards. */
+html[data-theme='fresh'] :is(input, textarea, select)[class~="bg-white"],
+html[data-theme='fresh'] :is(input, textarea, select)[class*="bg-white/"] {
+  background-color: var(--fresh-surface-base);
+  color: var(--fresh-text-primary);
+  border-color: var(--fresh-surface-edge);
+}
 /* Classic text-accent (forest green #2d6a4f from tailwind.config)
    is the eyebrow / action-link colour on Classic surfaces. Under
    Fresh that hex literal renders as dim green on the dark body

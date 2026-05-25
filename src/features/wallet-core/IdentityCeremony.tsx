@@ -42,6 +42,8 @@ export function IdentityCeremony({ walletPubkey, onComplete }: Props) {
   const [step, setStep] = useState<Step>('welcome');
   const [displayName, setDisplayName] = useState('');
   const [fullName, setFullName] = useState('');
+  const [birthday, setBirthday] = useState('');
+  const [location, setLocation] = useState('');
   const [affirmed, setAffirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enrollBusy, setEnrollBusy] = useState(false);
@@ -86,6 +88,8 @@ export function IdentityCeremony({ walletPubkey, onComplete }: Props) {
         {
           displayName: displayName.trim(),
           fullName: fullName.trim() || undefined,
+          birthday: birthday.trim() || undefined,
+          location: location.trim() || undefined,
           declaration: FOUNDING_DECLARATION,
         },
         passkeyEnroll ?? undefined,
@@ -182,6 +186,36 @@ export function IdentityCeremony({ walletPubkey, onComplete }: Props) {
               <span className="mt-1 block text-xs text-muted">
                 Your full legal name, if you want it on the founding record.
               </span>
+            </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-medium">
+                Birthday{' '}
+                <span className="text-muted font-normal">(optional)</span>
+              </span>
+              <input
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+              <span className="mt-1 block text-xs text-muted">
+                Stored as its own leaf — a future disclosure proof can reveal
+                just "over 21" without exposing the full date.
+              </span>
+            </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-medium">
+                Location{' '}
+                <span className="text-muted font-normal">(optional)</span>
+              </span>
+              <input
+                type="text"
+                maxLength={80}
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                placeholder="City, state, region — your choice of granularity"
+              />
             </label>
             <div className="mt-6 flex gap-2">
               <button
