@@ -1,57 +1,70 @@
+import { encrypt, decrypt, type EncryptedBlob } from 'tapit-attest';
 import { idb } from '../../shared/lib/idb.ts';
 import type { ThreadMessage } from '../messaging/threadMessage.ts';
 
-// Local chat-thread persistence — sub-cut 2b had chat history live
-// only in WalletProvider state, which meant the operator's own sent
-// messages vanished on reload (the relay subscription filters for
-// events addressed to this wallet, so outbound messages were never
-// re-delivered). This module gives the in-memory map an IDB-backed
-// home so a page reload, a Mycelium toggle, or a wallet lock cycle
-// no longer loses the operator's words.
+// Local chat-thread persistence. Encrypted at rest with the wallet
+// passphrase via tapit-attest's encrypt/decrypt (PBKDF2-AES) — same
+// posture walletStore and mediaStore already use. The IndexedDB
+// blob is ciphertext only; a decrypt failure (wrong passphrase,
+// corrupt blob, version skew) returns an empty thread map rather
+// than throwing, so a missing-passphrase race during boot resolves
+// to "no history yet" instead of crashing the unlock surface.
 //
-// Local-only, keyed by ownerId. Plaintext at rest — the next polish
-// cut should encrypt with the wallet passphrase the same way the
-// wallet snapshot and media store do (both use tapit-attest's
-// encrypt/decrypt over PBKDF2-AES). Plaintext is acceptable as a
-// first step because (a) it matches prefsStore's posture, (b) the
-// IDB blob is same-origin and cannot leave the device through any
-// path the wallet itself doesn't open, and (c) the alternative —
-// gating the load on the passphrase being present — would have
-// blocked the bug fix the operator is waiting on. The encrypt-at-
-// rest follow-on is named in the messaging manifest.
-//
-// Cloud sync of chat history is explicitly NOT in this module — Cut
-// 4 of the per-peer chat surface brief calls for an opt-in cloud
-// backup toggle in Settings with the default OFF, and that lives
-// in a future cut, not here.
+// Local-only. Cloud-sync of chat history is explicitly NOT in this
+// module — Cut 4 of the per-peer chat surface brief calls for an
+// opt-in cloud-backup toggle in Settings (default OFF), and that
+// lives in a future cut, not here.
 
 const KEY = (ownerId: string) => `chat-threads:${ownerId}`;
 
-// Serialised shape on disk: one record per ownerId carrying every
-// per-peer thread as a plain object. Read back into a Map for the
-// in-memory consumer.
 type SerialisedThreads = Record<string, ThreadMessage[]>;
 
-export const messagesStore = {
-  async load(ownerId: string): Promise<Map<string, ThreadMessage[]>> {
-    const data = await idb.get<SerialisedThreads>(KEY(ownerId));
-    if (!data || typeof data !== 'object') return new Map();
-    const out = new Map<string, ThreadMessage[]>();
-    for (const [peer, msgs] of Object.entries(data)) {
+function encodeThreads(
+  threads: ReadonlyMap<string, readonly ThreadMessage[]>,
+): Uint8Array {
+  const obj: SerialisedThreads = {};
+  for (const [peer, msgs] of threads.entries()) {
+    obj[peer] = [...msgs];
+  }
+  return new TextEncoder().encode(JSON.stringify(obj));
+}
+
+function decodeThreads(bytes: Uint8Array): Map<string, ThreadMessage[]> {
+  const text = new TextDecoder().decode(bytes);
+  const parsed = JSON.parse(text) as SerialisedThreads;
+  const out = new Map<string, ThreadMessage[]>();
+  if (parsed && typeof parsed === 'object') {
+    for (const [peer, msgs] of Object.entries(parsed)) {
       if (Array.isArray(msgs)) out.set(peer, msgs);
     }
-    return out;
+  }
+  return out;
+}
+
+export const messagesStore = {
+  async load(
+    ownerId: string,
+    passphrase: string,
+  ): Promise<Map<string, ThreadMessage[]>> {
+    const blob = await idb.get<EncryptedBlob>(KEY(ownerId));
+    if (!blob) return new Map();
+    try {
+      const bytes = decrypt(blob, passphrase);
+      return decodeThreads(bytes);
+    } catch (err) {
+      console.warn('messagesStore.load decrypt failed — returning empty', err);
+      return new Map();
+    }
   },
 
   async save(
     ownerId: string,
+    passphrase: string,
     threads: ReadonlyMap<string, readonly ThreadMessage[]>,
   ): Promise<void> {
-    const obj: SerialisedThreads = {};
-    for (const [peer, msgs] of threads.entries()) {
-      obj[peer] = [...msgs];
-    }
-    await idb.put(KEY(ownerId), obj);
+    const bytes = encodeThreads(threads);
+    const blob = encrypt(bytes, passphrase);
+    await idb.put(KEY(ownerId), blob);
   },
 
   async clear(ownerId: string): Promise<void> {
