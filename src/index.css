@@ -263,15 +263,23 @@ html[data-theme='fresh'] [class*="text-ink/"] {
    fresh-surface-raised (#18161f) section bodies as a near-
    identical near-black blob and the button visually disappears.
    Operator: "Can't see the relay button plot." Flip bg-ink on
-   buttons / anchors / divs to the Fresh accent primary so the
-   CTA reads as the dark-on-lime button the Fresh design language
-   uses everywhere else; paired text-paper flips to inverse so
-   contrast follows. */
-html[data-theme='fresh'] :is(button, a, div)[class~="bg-ink"],
-html[data-theme='fresh'] :is(button, a, div)[class*="bg-ink/"] {
+   button elements to the Fresh accent primary so the CTA reads
+   as the dark-on-lime button the Fresh design language uses
+   everywhere else; paired text-paper flips to inverse so
+   contrast follows.
+
+   IMPORTANT — this rule is button-scoped (NOT div-scoped) on
+   purpose. Every modal in the wallet uses <div ... bg-ink/40>
+   as a backdrop overlay to darken the page; if div is included
+   here the modal backdrops all turn lime green and the modal
+   overlay becomes a neon flashbang instead of a darkening.
+   Operator screenshot showed exactly that: PromoteMenu open →
+   whole screen lime. Keep this rule on button-elements only. */
+html[data-theme='fresh'] button[class~="bg-ink"],
+html[data-theme='fresh'] button[class*="bg-ink/"] {
   background-color: var(--fresh-accent-primary);
 }
-html[data-theme='fresh'] :is(button, a)[class~="text-paper"] {
+html[data-theme='fresh'] button[class~="text-paper"] {
   color: var(--fresh-text-inverse);
 }
 

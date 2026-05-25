@@ -45,17 +45,23 @@ export function NostrIndicator({ status }: Props) {
   const tone =
     open === 0 ? 'offline' : open < total ? 'partial' : 'live';
 
+  // Live tone uses a true neon green (#39ff14) rather than
+  // emerald-500 — operator wanted the relay light unmistakable on
+  // the dark Fresh body, and the deeper emerald hex read as "dim
+  // dark green" against the surface-glass pill. Pairs with a
+  // matching RGB glow on Fresh so the pulse halo carries the same
+  // hue as the dot.
   const dotClass =
     tone === 'live'
-      ? 'bg-emerald-500'
+      ? 'bg-[#39ff14]'
       : tone === 'partial'
         ? 'bg-amber-500'
         : 'bg-zinc-400';
   const liveGlow =
     tone === 'live'
       ? isFresh
-        ? 'shadow-[0_0_8px_rgba(16,185,129,0.85)]'
-        : 'shadow-[0_0_6px_rgba(16,185,129,0.6)]'
+        ? 'shadow-[0_0_10px_rgba(57,255,20,0.9)]'
+        : 'shadow-[0_0_6px_rgba(57,255,20,0.6)]'
       : '';
 
   const label =
