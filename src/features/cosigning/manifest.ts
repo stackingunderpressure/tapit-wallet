@@ -15,7 +15,7 @@ export const manifest: FeatureManifest = {
     'src/features/cosigning/EnvelopePreview.tsx',
     'src/features/cosigning/createCustodyHandoff.ts',
   ],
-  depends_on: ['wallet-core', 'storage', 'journal'],
+  depends_on: ['wallet-core', 'storage', 'journal', 'connections', 'governance'],
   pause_safe: false,
   removal_safe: false,
   monetizable: false,

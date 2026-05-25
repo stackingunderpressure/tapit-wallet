@@ -301,6 +301,17 @@ const BUDGETS = [
   // multi-picker would be the natural polish).
   { pattern: /^OrgRulesEditor-.*\.js$/, gz: 3_000, label: 'OrgRulesEditor' },
 
+  // CosignRequestModal — co-sign request UI lazy-loaded from
+  // JournalDetail and PromoteRouter. Phase 8 Phase C cut 3 added
+  // optional org-action mode: when orgContext is provided the modal
+  // looks up the auth rule via findAuthRule, shows a banner with
+  // action/threshold/eligible-count, and renders an eligible-signers
+  // picker instead of the general PeerPicker. ~2.3KB gz today. Past
+  // 4KB the natural polish is multi-fanout (one-tap send-to-all-
+  // eligible with per-recipient send status) which would justify a
+  // bump and a sub-component extraction.
+  { pattern: /^CosignRequestModal-.*\.js$/, gz: 4_000, label: 'CosignRequestModal' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.

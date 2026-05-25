@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { PeerPicker } from '../connections/PeerPicker.tsx';
+import { isHandshake, readHandshake } from '../connections/createHandshake.ts';
+import { findAuthRule } from '../governance/authRule.ts';
 import {
   summarizePublish,
   type PublishStatusSummary,
@@ -21,6 +23,22 @@ interface Props {
    * detail-page flow that has no peer context.
    */
   prefillRecipient?: string;
+  /**
+   * Phase 8 Phase C cut 3 — org-action mode. When the operator is
+   * requesting co-signs for an org-issued envelope under a specific
+   * Tapscript-style authorization rule, this prop names the org's
+   * self-declaration and the action the credential is being issued
+   * under. The modal looks up the matching rule via findAuthRule,
+   * shows a banner naming the action and threshold, and replaces
+   * the general PeerPicker with a constrained picker showing only
+   * the rule's eligible signers (with handshake-derived names where
+   * the operator's roster carries them). Absent for non-org cosigns
+   * — modal falls back to the existing single-recipient flow.
+   */
+  orgContext?: {
+    orgSelfDecl: Attestation;
+    action: string;
+  };
 }
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
@@ -35,7 +53,12 @@ const HEX_64 = /^[0-9a-f]{64}$/i;
 // Uses canonicalEnvelope from tapit-attest for stable, deterministic
 // JSON serialization (envelopeId is over the same canonical bytes
 // the signer signs, so matching downstream is reliable).
-export function CosignRequestModal({ attestation, onClose, prefillRecipient }: Props) {
+export function CosignRequestModal({
+  attestation,
+  onClose,
+  prefillRecipient,
+  orgContext,
+}: Props) {
   const { wallet, holdings, prefs, sendEnvelope } = useWallet();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
@@ -47,6 +70,38 @@ export function CosignRequestModal({ attestation, onClose, prefillRecipient }: P
   const json = canonicalEnvelope(attestation);
   const recipientTrim = recipient.trim().toLowerCase();
   const recipientValid = HEX_64.test(recipientTrim);
+
+  // Phase 8 Phase C cut 3 — derive the org-action rule + a per-eligible
+  // display name from the operator's handshake roster. Returns null when
+  // org-context is absent OR the named action is not declared in the
+  // org's auth tree (the latter would be a caller bug; the modal degrades
+  // by falling back to the general PeerPicker rather than disabling
+  // sending entirely).
+  const orgRule = useMemo(() => {
+    if (!orgContext) return null;
+    const found = findAuthRule(orgContext.orgSelfDecl, orgContext.action);
+    if (!found) return null;
+    const nameByKey = new Map<string, string>();
+    for (const a of holdings) {
+      if (!isHandshake(a)) continue;
+      const v = readHandshake(a);
+      if (v.initiatorId && v.initiatorName) {
+        nameByKey.set(v.initiatorId.toLowerCase(), v.initiatorName);
+      }
+      if (v.responderId && v.responderName) {
+        nameByKey.set(v.responderId.toLowerCase(), v.responderName);
+      }
+    }
+    const eligibleDisplay = found.rule.eligible.map((pubkey) => {
+      const lower = pubkey.toLowerCase();
+      const name =
+        lower === wallet.identity.toLowerCase()
+          ? 'You (founder)'
+          : (nameByKey.get(lower) ?? null);
+      return { pubkey: lower, name };
+    });
+    return { rule: found.rule, eligibleDisplay };
+  }, [orgContext, holdings, wallet.identity]);
 
   async function copy() {
     await navigator.clipboard.writeText(json);
@@ -99,6 +154,20 @@ export function CosignRequestModal({ attestation, onClose, prefillRecipient }: P
             Close
           </button>
         </div>
+        {orgRule && orgContext && (
+          <div className="mt-3 rounded-md border border-accent/40 bg-accent/5 p-3 text-xs">
+            <div className="font-medium text-accent">
+              Org action: {orgContext.action}
+            </div>
+            <p className="mt-1 text-muted">
+              This envelope is being issued under the{' '}
+              <span className="font-medium">{orgContext.action}</span> rule.
+              Needs <span className="font-medium">{orgRule.rule.threshold}</span> of{' '}
+              <span className="font-medium">{orgRule.rule.eligible.length}</span>{' '}
+              signatures from the eligible set below.
+            </p>
+          </div>
+        )}
         <p className="mt-2 text-sm text-muted">
           Copy this entry and send it to the person you want to co-sign. They
           paste it into <span className="font-medium">Sign someone else's entry</span> on
@@ -127,12 +196,41 @@ export function CosignRequestModal({ attestation, onClose, prefillRecipient }: P
               them and delivered through your shared Nostr relays.
             </p>
             <div className="mt-2">
-              <PeerPicker
-                holdings={holdings}
-                myIdentity={wallet.identity}
-                value={recipient}
-                onChange={setRecipient}
-              />
+              {orgRule ? (
+                <ul className="space-y-1">
+                  {orgRule.eligibleDisplay.map((e) => {
+                    const selected = e.pubkey === recipientTrim;
+                    return (
+                      <li key={e.pubkey}>
+                        <button
+                          type="button"
+                          onClick={() => setRecipient(e.pubkey)}
+                          aria-pressed={selected}
+                          className={`w-full text-left rounded-md px-3 py-2 text-sm border ${
+                            selected
+                              ? 'bg-accent/10 border-accent text-ink'
+                              : 'bg-white border-ink/15 hover:bg-ink/5'
+                          }`}
+                        >
+                          <div className="font-medium">
+                            {e.name ?? 'Unknown peer'}
+                          </div>
+                          <div className="text-xs text-muted font-mono">
+                            {e.pubkey.slice(0, 8)}…{e.pubkey.slice(-4)}
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <PeerPicker
+                  holdings={holdings}
+                  myIdentity={wallet.identity}
+                  value={recipient}
+                  onChange={setRecipient}
+                />
+              )}
             </div>
             <button
               type="button"
