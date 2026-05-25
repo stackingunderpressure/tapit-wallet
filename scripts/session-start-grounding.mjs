@@ -1,16 +1,26 @@
 #!/usr/bin/env node
-// Cross-Carpenter grounding gate. Runs at SessionStart.
+// Cross-Carpenter grounding gate + tip-of-main hand-off inheritance.
+// Runs at SessionStart.
 //
-// Two parallel Carpenter sessions can be working in this repo at once
-// (one cutting code, one writing theory). Each works on its own branch
-// and is invisible to the other until commits land on origin/main —
-// main is the canonical handshake point between the two streams.
+// Two purposes layered together:
 //
-// This hook fires once at session start to detect drift: if origin/main
-// has moved past the merge-base of the current branch, another Carpenter
-// has shipped work and this session should ground against origin/main
-// (PLAN.md, comms/current.json, foreman-context/carpenter-state-for-foreman.md)
-// before assuming the local branch's view is current.
+// 1) DRIFT DETECTION. Two parallel Carpenter sessions can be working
+//    in this repo at once. Each works on its own branch and is invisible
+//    to the other until commits land on origin/main — main is the
+//    canonical handshake point between the streams. This hook detects
+//    whether origin/main has moved past the merge-base of the current
+//    branch so the new session knows to reconcile before acting.
+//
+// 2) CLOSED-LOOP HAND-OFF. Every meaningful session ends by writing
+//    CARPENTER_HANDOFF.md at the repo root, committing it, and pushing
+//    so tip-of-main always carries the prior carpenter's letter to
+//    whoever wakes up next. This hook reads that file from origin/main
+//    and injects it into the new session's context so no carpenter
+//    ever opens blind — they always inherit the prior carpenter's
+//    state-of-the-room: what just shipped, what's hot, what's
+//    land-mined, mood-read on the operator, recommended first move.
+//    The loop is self-sustaining: end-of-session push guarantees
+//    next-session read.
 //
 // Mechanism over prose. The doctrine in CLAUDE_ROOT.md says the rules
 // that matter are checks, not paragraphs. This is the check.
@@ -44,16 +54,35 @@ const branch = run('git rev-parse --abbrev-ref HEAD') || 'unknown';
 const mergeBase = run('git merge-base HEAD origin/main');
 const mainTip = run('git rev-parse origin/main');
 
+// Always try to read the tip-of-main hand-off letter, regardless of
+// drift state. The carpenter's first read on every wake-up.
+const handoffRaw = run('git show origin/main:CARPENTER_HANDOFF.md');
+const handoffBlock = handoffRaw
+  ? [
+      `PRIOR-CARPENTER HAND-OFF (from tip-of-main CARPENTER_HANDOFF.md):`,
+      ``,
+      handoffRaw,
+    ].join('\n')
+  : `PRIOR-CARPENTER HAND-OFF: no CARPENTER_HANDOFF.md on origin/main yet. This is either the seeding session or the prior carpenter forgot to write the close-out letter. Carry on without an inheritance this once; write one at session end.`;
+
 if (!mergeBase || !mainTip) {
   emit(
-    `CROSS-CARPENTER GROUNDING: branch '${branch}' — could not determine drift state (origin/main not reachable). Verify state manually before any cross-path action.`,
+    [
+      `CROSS-CARPENTER GROUNDING: branch '${branch}' — could not determine drift state (origin/main not reachable). Verify state manually before any cross-path action.`,
+      ``,
+      handoffBlock,
+    ].join('\n'),
   );
   process.exit(0);
 }
 
 if (mergeBase === mainTip) {
   emit(
-    `CROSS-CARPENTER GROUNDING: branch '${branch}' is current with origin/main. No drift detected — no other Carpenter has shipped to main since this branch was rooted.`,
+    [
+      `CROSS-CARPENTER GROUNDING: branch '${branch}' is current with origin/main. No drift detected — no other Carpenter has shipped to main since this branch was rooted.`,
+      ``,
+      handoffBlock,
+    ].join('\n'),
   );
   process.exit(0);
 }
@@ -94,6 +123,8 @@ const report = [
   `- git show origin/main:PLAN.md`,
   ``,
   `Doctrine: main is the cross-Carpenter handshake point. If it has moved, you have not. Reconcile before acting.`,
+  ``,
+  handoffBlock,
 ].join('\n');
 
 emit(report);

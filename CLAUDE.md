@@ -109,17 +109,53 @@ files. Reply: "Repo mismatch — brief declared `<lock>`, this repo
 is `<actual>`. Aborting." This is the safety net against accidental
 paste to the wrong repo.
 
+### Closed-Loop Hand-Off Protocol (CARPENTER_HANDOFF.md)
+
+The first read of every wake-up is the prior carpenter's letter,
+read from `origin/main:CARPENTER_HANDOFF.md` by the SessionStart
+hook (`scripts/session-start-grounding.mjs`) and injected as
+`additionalContext`. No carpenter ever opens blind. The cycle is
+self-sustaining: every meaningful session ends by overwriting
+`CARPENTER_HANDOFF.md` at the repo root, committing it as the
+final act of close-out, and pushing to main so the next session's
+SessionStart hook finds a fresh inheritance.
+
+The letter is point-in-time state, not a journal. Replace the
+"Latest letter" section in full at every close-out. The git
+history is the journal. Five required sub-sections in the
+"Latest letter": What just shipped; What's hot right now;
+Land-mines for the next carpenter; Operator mood-read;
+Recommended first move for the next session. Plain prose, full
+sentences, speech-friendly (the operator may listen via TTS).
+Format reference is preserved at the bottom of the file.
+
+The hand-off is the carpenter-to-carpenter channel. The
+AppCommander comms (`current.json`, `interactions.jsonl`,
+`carpenter-opinions.md`, `carpenter-state-for-foreman.md`,
+`in-flight.jsonl`) are the carpenter-to-operator-and-Foreman
+channel. Both are flushed ONCE per session at close-out — not
+on every commit, not on every push, not midway. The carpenter
+spends the full context window on real work and emits one
+concentrated dispatch at the end when there is actually
+something synthesized worth saying. Going to the maximum of
+context before quality drops is the rule; the close-out flush
+is the deliverable.
+
 ### Carpenter Comms Doctrine
 
 Every Claude Code session in this repo, including chat-only
 sessions, ends by writing a 10D record to:
 
-- `appcommander/comms/current.json` — replaced each interaction
-- `appcommander/comms/interactions.jsonl` — appended each interaction
+- `appcommander/comms/current.json` — replaced once at session end
+- `appcommander/comms/interactions.jsonl` — appended once at session end
 
-**No exceptions.** The cockpit reads `current.json` as its primary
-signal channel; webhooks and `ai_calls` become *corroboration only*.
-The Carpenter's last act before ending a session is to update them.
+**No exceptions, and no mid-session writes.** The cockpit reads
+`current.json` as its primary signal channel; webhooks and
+`ai_calls` become *corroboration only*. The Carpenter's last act
+before ending a session is to update them (along with
+`carpenter-opinions.md`, `carpenter-state-for-foreman.md`, the
+in-flight.jsonl close, and `CARPENTER_HANDOFF.md` — all five
+written in one close-out flush).
 
 The 10 dimensions: WHO (actor + feature_slug), WHERE (files +
 screen_path), LAYER (ui/logic/service/data/deploy/doctrine/other),
@@ -129,12 +165,13 @@ tests_passing + build_green + notes), CONFIDENCE (0-100 +
 optional uncertainty), RIPPLE (feature slugs that may be
 affected), NEXT (what should happen now).
 
-### Live-Comms Protocol
+### Live-Comms Protocol (deferred-flush variant)
 
-Every Carpenter session MUST also write to:
+Every Carpenter session writes the same six event types to:
 
 - `appcommander/comms/in-flight.jsonl` — append-only event stream
-  written AS the session runs
+  flushed in one batch at session-end (not per-event during the
+  session, per the Closed-Loop Hand-Off Protocol above)
 
 Event types (one JSON line each):
 
@@ -150,9 +187,14 @@ Event types (one JSON line each):
 6. **session_ended** — final event, with outcome
    (completed/aborted/error), summary, files_total, commits_total
 
-Append, don't rewrite. `>>` only. Stable session_id (uuid)
-across all events in the session. Write events in real time as
-they happen, not batched at the end.
+Buffer events in memory as the session runs (mental log or scratch
+file under `/tmp`); flush the full sequence to
+`appcommander/comms/in-flight.jsonl` once at session close-out via
+`>>` append. Stable session_id (uuid) across all events.
+Mid-session writes are explicitly NOT allowed under the new
+cadence — the deliverable is one rich considered batch at the end,
+not a stream of partial state the next reader has to stitch back
+together.
 
 ### Three-Section Report (PFOR-014 — fleet-wide standing order)
 
