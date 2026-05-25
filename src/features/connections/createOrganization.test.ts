@@ -11,13 +11,16 @@ import {
   decodeAuthorizedBy,
   encodeAuthorizedBy,
   findAuthRule,
-  isOrganizationSelfDeclaration,
   listAuthRules,
   proveAuthorization,
-  selfDeclareOrganization,
-  verifyOrgAuthorization,
   type AuthRule,
   type AuthorizedByPayload,
+} from '../governance/authRule.ts';
+import {
+  buildOrgSelfDeclarationDraft,
+  isOrganizationSelfDeclaration,
+  selfDeclareOrganization,
+  verifyOrgAuthorization,
 } from './createOrganization.ts';
 
 // Phase 8 Phase A — Tapscript-style authorization tree on the org
@@ -30,34 +33,24 @@ function freshWallet(): Wallet {
   return Wallet.generate();
 }
 
-// Mirror the auth-subtree encoding used inside selfDeclareOrganization
-// for tests that need to build a signed self-declaration inline
-// without touching the async hold/anchor pipeline (jsdom has no IDB).
+// Thin wrapper around the production buildOrgSelfDeclarationDraft pure
+// builder + a sign call. Lets tests exercise the envelope shape and
+// helpers without touching the async hold/anchor pipeline (jsdom has no
+// IDB). Calling the production builder directly removes the encoding-
+// duplication maintenance hazard flagged in Phase A's close-out
+// opinions.
 function inlineSelfDeclaration(
   wallet: Wallet,
   orgName: string,
   authRules: readonly AuthRule[],
   declaredAt?: string,
 ): Attestation {
-  const auth: Record<string, string> = {};
-  for (const r of authRules) {
-    const eligibleSorted = [...r.eligible].map((e) => e.trim().toLowerCase()).sort();
-    auth[r.action] = JSON.stringify({
-      threshold: r.threshold,
-      eligible: eligibleSorted,
-    });
-  }
-  const draft = credentialAttestation({
-    subject: wallet.identity,
-    tier: 'notable',
-    fields: {
-      credential_type: 'organization',
-      org_name: orgName,
-      pubkey: wallet.identity,
-      declared_at: declaredAt ?? new Date().toISOString(),
-      auth,
-    },
-  });
+  const draft = buildOrgSelfDeclarationDraft(
+    wallet.identity,
+    orgName,
+    authRules,
+    declaredAt,
+  );
   return wallet.sign(draft);
 }
 
