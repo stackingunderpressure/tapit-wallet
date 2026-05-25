@@ -1,5 +1,15 @@
-import type { Attestation, Wallet } from 'tapit-attest';
-import { credentialAttestation, envelopeId } from 'tapit-attest';
+import type {
+  Attestation,
+  DisclosureProofBundle,
+  FieldBranch,
+  FieldLeaf,
+  Wallet,
+} from 'tapit-attest';
+import {
+  credentialAttestation,
+  disclosureProof,
+  envelopeId,
+} from 'tapit-attest';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import { leafValue } from './createHandshake.ts';
@@ -61,21 +71,114 @@ export function findOwnOrgDeclaration(
   );
 }
 
+// Phase 8 Phase A — Tapscript-style authorization rules. Each rule
+// is { action, threshold, eligible[] } — "this action requires this
+// many signatures from this eligible set." Rules become field-tree
+// leaves under a sub-branch named `auth` in the org self-declaration's
+// claim tree. The shipped disclosureProof primitive then produces a
+// reveal-one-leaf proof that downstream envelopes carry as their
+// authorization, exactly the way a Taproot spend reveals one
+// Tapscript leaf from a Merkle tree of alternative spending
+// conditions — same Merkle shape, off-chain, with attestation leaves
+// instead of script leaves. See
+// project-memory/foreman-memory/projects/tapit-wallet/briefs/
+// 2026-05-25-tapscript-style-org-authorization-tree-roadmap.md.
+
+export interface AuthRule {
+  /** Action name (e.g. 'routine_issuance', 'expulsion'). Distinct per org. */
+  action: string;
+  /** Minimum eligible signatures required to authorize the action. */
+  threshold: number;
+  /** Pubkeys (x-only hex) whose signatures count toward the threshold. */
+  eligible: readonly string[];
+}
+
+/** Default rule applied when selfDeclareOrganization is called without
+ *  explicit authRules — preserves the "founder signs everything"
+ *  behaviour of pre-Phase-A orgs as an explicit single-rule charter. */
+function defaultAuthRules(orgIdentity: string): AuthRule[] {
+  return [{ action: 'routine_issuance', threshold: 1, eligible: [orgIdentity] }];
+}
+
+/** Canonical encoding of a rule's value-payload, sorted-eligible so
+ *  the same rule always hashes the same way regardless of input order. */
+function encodeAuthRuleValue(rule: AuthRule): string {
+  const eligibleSorted = [...rule.eligible]
+    .map((e) => e.trim().toLowerCase())
+    .sort();
+  return JSON.stringify({ threshold: rule.threshold, eligible: eligibleSorted });
+}
+
+/** Parse a rule out of its encoded leaf value. Returns null on any
+ *  shape mismatch — callers treat null as "this rule slot is malformed,
+ *  ignore it" rather than throwing into UI render paths. */
+function decodeAuthRuleValue(action: string, value: unknown): AuthRule | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const p = parsed as Record<string, unknown>;
+    if (typeof p.threshold !== 'number' || !Number.isFinite(p.threshold)) return null;
+    if (!Array.isArray(p.eligible)) return null;
+    const eligible: string[] = [];
+    for (const e of p.eligible) {
+      if (typeof e !== 'string') return null;
+      eligible.push(e);
+    }
+    return { action, threshold: p.threshold, eligible };
+  } catch {
+    return null;
+  }
+}
+
+/** Build the sub-object that becomes the `auth` branch in the claim
+ *  tree. Throws on duplicate action names, on threshold less than 1,
+ *  or on threshold exceeding the eligible-set size — all three would
+ *  produce an authorization rule that can never be satisfied or is
+ *  ambiguous, so we reject at creation time rather than at verify time. */
+function buildAuthSubtree(rules: readonly AuthRule[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const r of rules) {
+    if (out[r.action] !== undefined) {
+      throw new Error(`duplicate auth rule action: ${r.action}`);
+    }
+    if (!Number.isInteger(r.threshold) || r.threshold < 1) {
+      throw new Error(`auth rule threshold must be a positive integer: ${r.action}`);
+    }
+    if (r.eligible.length < r.threshold) {
+      throw new Error(
+        `auth rule threshold ${r.threshold} exceeds eligible count ${r.eligible.length}: ${r.action}`,
+      );
+    }
+    out[r.action] = encodeAuthRuleValue(r);
+  }
+  return out;
+}
+
 // Build, sign, hold, and anchor the org self-declaration. The
 // pubkey leaf must equal the subject so isOrganizationSelfDeclaration
 // recognizes it; both are signed into the Merkle tree so a verifier
 // can confirm the wallet actually declared itself rather than
 // someone else trying to declare it.
+//
+// Phase 8 Phase A: optional authRules parameter declares the
+// authorization tree at creation time. When omitted, a single
+// routine_issuance rule with the founder eligible is used — the
+// declaration always carries an auth sub-branch so the governance
+// structure is self-documenting in the envelope itself.
 export async function selfDeclareOrganization(
   wallet: Wallet,
   ownerId: string,
   anchorWorker: WorkerHandle | null,
   orgName: string,
+  authRules?: readonly AuthRule[],
 ): Promise<Attestation> {
   const trimmed = orgName.trim();
   if (trimmed.length === 0) {
     throw new Error('org name must not be empty');
   }
+  const rules = authRules ?? defaultAuthRules(wallet.identity);
+  const auth = buildAuthSubtree(rules);
   const draft = credentialAttestation({
     subject: wallet.identity,
     tier: 'notable',
@@ -84,6 +187,7 @@ export async function selfDeclareOrganization(
       org_name: trimmed,
       pubkey: wallet.identity,
       declared_at: new Date().toISOString(),
+      auth,
     },
   });
   const signed = wallet.sign(draft);
@@ -99,6 +203,70 @@ export async function selfDeclareOrganization(
   });
   if (anchorWorker) void anchorWorker.kick();
   return signed;
+}
+
+/** Locate the `auth` branch in a self-declaration's claim tree, or
+ *  null if the declaration predates Phase A and carries no auth tree. */
+function findAuthBranch(orgSelfDecl: Attestation): FieldBranch | null {
+  for (const child of orgSelfDecl.claim.children) {
+    if (child.node === 'branch' && child.name === 'auth') return child;
+  }
+  return null;
+}
+
+/**
+ * Look up one authorization rule by action name. Returns the rule
+ * plus the slash-delimited path inside the claim tree (e.g.
+ * `auth/routine_issuance`) so callers can pass that path straight
+ * to disclosureProof. Returns null if no auth tree is present, or
+ * if the named action is not declared, or if the leaf is malformed.
+ */
+export function findAuthRule(
+  orgSelfDecl: Attestation,
+  action: string,
+): { rule: AuthRule; path: string } | null {
+  const authBranch = findAuthBranch(orgSelfDecl);
+  if (!authBranch) return null;
+  for (const child of authBranch.children) {
+    if (child.node !== 'leaf' || child.name !== action) continue;
+    const leaf = child as FieldLeaf;
+    const rule = decodeAuthRuleValue(action, leaf.value);
+    if (!rule) return null;
+    return { rule, path: `auth/${action}` };
+  }
+  return null;
+}
+
+/** Enumerate every declared rule in the org's auth tree, in
+ *  field-tree order. Empty array for declarations with no auth tree
+ *  or a malformed one. Useful for governance-display UI in Phase C. */
+export function listAuthRules(orgSelfDecl: Attestation): AuthRule[] {
+  const authBranch = findAuthBranch(orgSelfDecl);
+  if (!authBranch) return [];
+  const out: AuthRule[] = [];
+  for (const child of authBranch.children) {
+    if (child.node !== 'leaf') continue;
+    const rule = decodeAuthRuleValue(child.name, (child as FieldLeaf).value);
+    if (rule) out.push(rule);
+  }
+  return out;
+}
+
+/**
+ * Produce a disclosure proof of one authorization rule from the org's
+ * self-declaration. Downstream envelopes carry this bundle as their
+ * authorization — the Phase B verifier will reconstruct the
+ * self-declaration's claim root from the proof and confirm the named
+ * action's rule is genuinely committed in the org's signed declaration.
+ * Returns null when the rule does not exist.
+ */
+export function proveAuthorization(
+  orgSelfDecl: Attestation,
+  action: string,
+): DisclosureProofBundle | null {
+  const found = findAuthRule(orgSelfDecl, action);
+  if (!found) return null;
+  return disclosureProof(orgSelfDecl, found.path);
 }
 
 // 5b-org-ii — officials roster. A second self-issued credential
