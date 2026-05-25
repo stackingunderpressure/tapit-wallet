@@ -115,7 +115,15 @@ const BUDGETS = [
   // (+ lazy CosignRequestModal + ShareProofModal in their own chunks).
   // Bumped 17KB -> 18KB to absorb the router + picker. Past 18KB the
   // honest next move is to lazy-load PromoteRouter itself.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 18_000, label: 'HomeScreen' },
+  // 2026-05-25 Phase 8 Phase C cut 1 (RatificationsBadge rule-name
+  // decoration): bumped 18KB -> 18.5KB to absorb decodeAuthorizedBy
+  // from governance/authRule.ts landing in the badge's import graph.
+  // The badge now appends "(rule: <action>)" when an envelope carries
+  // a Phase B authorized_by leaf, surfacing the Tapscript-style
+  // auth-tree branch a credential was issued under. Tree-shaking
+  // keeps the rest of governance/authRule out of this chunk; the
+  // ~22-byte gz delta is just the decode function + its type guard.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 18_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

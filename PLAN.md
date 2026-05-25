@@ -134,27 +134,29 @@ wallet of their own. Library work: `disclosureProof` +
 `metaHash` exported from `envelope.ts` so the verifier uses the
 same canonical hashing the signer used.
 
-## Phase 4.5 — Tabbed home + capture bridge (PWA-first) [NEXT]
+## Phase 4.5 — Tabbed home + capture bridge (PWA-first) [DONE]
 
 Decided 2026-05-22 (D-07, D-08). Two post-v1 pieces, both
-independent of Phase 5 and buildable now.
+independent of Phase 5 and buildable now. Both shipped — status
+reconciled 2026-05-25 after the section had drifted to [NEXT]
+while the actual code landed.
 
-**Tabbed home:** a broader information architecture — top-level
-tabs separating the kinds of things the wallet holds (Journal,
-Identity, People, Captured), above the diary's existing
-life-layer category tabs. The concrete tab structure is proposed
-and operator-approved before the cut.
+**Tabbed home:** shipped. `HomeScreen.tsx` renders four top-level
+tabs (Journal, Identity, Captured, People). `JournalTabs.tsx` +
+`JournalTabRouter.tsx` host the diary's life-layer category tabs
+nested under Journal. The Captured tab filters journal entries by
+`source=capture` so capture-bridge entries surface apart from the
+diary.
 
-**Capture bridge:** the "push" direction of Layer 2 — content
-sent TO the wallet from any app the user is already in, the
-everyday on-ramp the Phase 3 deeplink does not cover. Ships
-PWA-first. Tier 1 is the Web Share Target — a `share_target`
-entry in the manifest plus a `/capture` route that reuses the
-journal composer and the sign+anchor pipeline; Android one-tap,
-no `tapit-attest` change. Tier 2 (native share extension + App
-Store, the iOS path) and Tier 3 (desktop browser extension) are
-deferred to v1.5 — "coming soon". Sketch of record:
-`briefs/2026-05-22-capture-bridge-phase-sketch.md`.
+**Capture bridge (Tier 1):** shipped. `public/manifest.webmanifest`
+registers a `share_target` with `action: /capture, method: GET,
+params: {title, text, url}`. `src/App.tsx` lazy-mounts
+`CaptureScreen.tsx` at `/capture` inside the WalletProvider tree.
+A capture reuses the journal `createJournalEntry` pipeline; the
+data-model addition is the optional `source` leaf on JournalInput.
+Tier 2 (native share extension / iOS App Store) and Tier 3
+(desktop browser extension) remain deferred to v1.5. Sketch of
+record: `briefs/2026-05-22-capture-bridge-phase-sketch.md`.
 
 ## Phase 5 — Social recovery + Mycelium peer network
 
