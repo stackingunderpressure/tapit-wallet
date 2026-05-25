@@ -21,6 +21,16 @@ const QuickShareModal = lazy(() =>
 interface Props {
   attestation: Attestation;
   onClose: () => void;
+  /**
+   * Sub-cut 2c disclose-proof promote target — when present,
+   * the modal title surfaces "Send a proof to <peerLabel>"
+   * framing so the operator sees who the proof is intended for.
+   * The proof itself still travels through the existing Share /
+   * Copy / QR channels (the operator manually delivers it via
+   * whatever channel they pick); a future cut may add direct
+   * Mycelium delivery of the proof bundle.
+   */
+  peerLabel?: string;
 }
 
 type Step =
@@ -46,7 +56,7 @@ function asString(v: unknown): string {
   return '';
 }
 
-export function ShareProofModal({ attestation, onClose }: Props) {
+export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
   const { resolvedTheme } = useWallet();
   const leaves = useMemo(() => leafIndex(attestation.claim), [attestation]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -104,7 +114,9 @@ export function ShareProofModal({ attestation, onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Share a proof</h2>
+          <h2 className="text-base font-semibold">
+            {peerLabel ? `Send a proof to ${peerLabel}` : 'Share a proof'}
+          </h2>
           <button
             type="button"
             onClick={onClose}

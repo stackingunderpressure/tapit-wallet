@@ -4,7 +4,12 @@
 // cosign-request, share-held-envelope, disclose-proof) plug into
 // the same menu surface without restructuring.
 
-export type PromoteTarget = 'journal' | 'presence';
+export type PromoteTarget =
+  | 'journal'
+  | 'presence'
+  | 'witness'
+  | 'share'
+  | 'disclose';
 
 export interface PromoteTargetSpec {
   id: PromoteTarget;
@@ -22,6 +27,21 @@ export const PROMOTE_TARGETS: readonly PromoteTargetSpec[] = [
     id: 'presence',
     label: 'Mark presence with this person',
     hint: 'Record a signed Tier V presence event noting you and this person were here at this time.',
+  },
+  {
+    id: 'witness',
+    label: 'Ask them to witness an entry',
+    hint: "Pick one of your journal entries and ask them to co-sign as a witness.",
+  },
+  {
+    id: 'share',
+    label: 'Share a held envelope',
+    hint: 'Pick any attestation you hold and send it to them over Mycelium.',
+  },
+  {
+    id: 'disclose',
+    label: 'Disclose a proof of one leaf',
+    hint: 'Pick a record and reveal just one leaf as a verifiable proof.',
   },
 ];
 

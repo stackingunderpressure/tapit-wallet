@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
@@ -76,6 +76,7 @@ import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
 import { type InboxRouteAction } from '../transport/InboxPanel.tsx';
 import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promoteToJournalPrefill.ts';
 import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
+import { PromoteRouter, type PromoteRouterHandle } from '../messaging/PromoteRouter.tsx';
 import type { PromotePayload } from '../messaging/promoteTarget.ts';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -132,12 +133,11 @@ export function HomeScreen() {
   const [composerPrefill, setComposerPrefill] = useState<JournalPrefill | null>(null);
   const closeComposer = () => { setComposerOpen(false); setComposerPrefill(null); };
   const [presencePrefill, setPresencePrefill] = useState<PresencePrefill | null>(null);
+  const promoteRouterRef = useRef<PromoteRouterHandle>(null);
   const handlePromote = (payload: PromotePayload) => {
-    if (payload.target === 'journal') {
-      setComposerPrefill(promoteToJournalPrefill(payload)); setComposerOpen(true); setTab('journal');
-    } else if (payload.target === 'presence') {
-      setPresencePrefill(promoteToPresencePrefill(payload)); setPresenceOpen(true);
-    }
+    if (payload.target === 'journal') { setComposerPrefill(promoteToJournalPrefill(payload)); setComposerOpen(true); setTab('journal'); }
+    else if (payload.target === 'presence') { setPresencePrefill(promoteToPresencePrefill(payload)); setPresenceOpen(true); }
+    else { promoteRouterRef.current?.open(payload); }
   };
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
@@ -746,6 +746,8 @@ export function HomeScreen() {
           />
         </Suspense>
       )}
+
+      <PromoteRouter ref={promoteRouterRef} />
 
       {resolvedTheme === 'fresh' && tab === 'journal' && !composerOpen && (
         <Suspense fallback={null}><FreshComposeFAB onCompose={() => setComposerOpen(true)} onWitnessSign={() => setWitnessOpen(true)} /></Suspense>

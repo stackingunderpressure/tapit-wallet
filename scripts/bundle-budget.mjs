@@ -110,7 +110,12 @@ const BUDGETS = [
   // 2026-05-25 identity-leaves bumped 16.5KB -> 17KB: birthday +
   // location threading from identity attestation + sticky-chrome
   // touch-ups + promote-handler refactor put us at 16.17KB.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 17_000, label: 'HomeScreen' },
+  // 2026-05-25 promote-to-envelope cuts 3-5: HomeScreen statically
+  // imports PromoteRouter which statically imports HeldEnvelopePicker
+  // (+ lazy CosignRequestModal + ShareProofModal in their own chunks).
+  // Bumped 17KB -> 18KB to absorb the router + picker. Past 18KB the
+  // honest next move is to lazy-load PromoteRouter itself.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 18_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

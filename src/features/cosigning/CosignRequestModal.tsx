@@ -13,6 +13,14 @@ import {
 interface Props {
   attestation: Attestation;
   onClose: () => void;
+  /**
+   * Sub-cut 2c witness-an-entry promote target — when present,
+   * the recipient pubkey is pre-filled so the operator lands on
+   * the send-via-Mycelium step with their target peer already
+   * selected. Optional for back-compat with the existing tap-from-
+   * detail-page flow that has no peer context.
+   */
+  prefillRecipient?: string;
 }
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
@@ -27,11 +35,11 @@ const HEX_64 = /^[0-9a-f]{64}$/i;
 // Uses canonicalEnvelope from tapit-attest for stable, deterministic
 // JSON serialization (envelopeId is over the same canonical bytes
 // the signer signs, so matching downstream is reliable).
-export function CosignRequestModal({ attestation, onClose }: Props) {
+export function CosignRequestModal({ attestation, onClose, prefillRecipient }: Props) {
   const { wallet, holdings, prefs, sendEnvelope } = useWallet();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  const [recipient, setRecipient] = useState('');
+  const [recipient, setRecipient] = useState(prefillRecipient ?? '');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
