@@ -305,8 +305,14 @@ export function HomeScreen() {
   );
 
   return (
-    <div className="min-h-screen p-5 max-w-md mx-auto pb-24">
-      <header className="flex items-center justify-between py-2 gap-2">
+    <div className="min-h-screen p-5 max-w-md mx-auto pb-28">
+      <header
+        className={`sticky top-0 z-30 -mx-5 px-5 flex items-center justify-between py-2 gap-2 ${
+          resolvedTheme === 'fresh'
+            ? 'bg-fresh-surface-base/85 backdrop-blur-xl border-b border-fresh-surface-edge'
+            : 'bg-paper/95 backdrop-blur border-b border-ink/10'
+        }`}
+      >
         <h1 className="text-lg font-semibold flex items-center gap-2">
           {resolvedTheme === 'fresh' && <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-fresh-accent-secondary shadow-[0_0_14px_rgba(167,139,250,0.7)]" />}
           Tapit Wallet
@@ -344,32 +350,6 @@ export function HomeScreen() {
           {banner.text}
         </div>
       )}
-
-      <div
-        className={`mt-4 flex rounded-xl p-1 ${resolvedTheme === 'fresh' ? 'bg-fresh-accent-secondary/[0.06]' : 'bg-ink/5'}`}
-        role="tablist"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
-              resolvedTheme === 'fresh'
-                ? tab === t.id
-                  ? 'bg-fresh-accent-secondary/20 text-fresh-text-primary ring-1 ring-fresh-accent-secondary/40'
-                  : 'text-fresh-text-tertiary'
-                : tab === t.id
-                  ? 'bg-white text-ink shadow-sm'
-                  : 'text-muted'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {tab === 'journal' && (
         <section className="mt-5">
@@ -646,7 +626,7 @@ export function HomeScreen() {
             </div>
           </section>
         ) : resolvedTheme === 'fresh' ? null : (
-          <div className="fixed bottom-6 inset-x-0 flex items-center justify-center gap-3 px-5">
+          <div className="fixed bottom-20 inset-x-0 flex items-center justify-center gap-3 px-5 z-20">
             <button
               type="button"
               onClick={() => setWitnessOpen(true)}
@@ -769,6 +749,45 @@ export function HomeScreen() {
       {resolvedTheme === 'fresh' && tab === 'journal' && !composerOpen && (
         <Suspense fallback={null}><FreshComposeFAB onCompose={() => setComposerOpen(true)} onWitnessSign={() => setWitnessOpen(true)} /></Suspense>
       )}
+
+      {/* Tabs live at the bottom as a fixed bar — sticky-always per
+          operator directive. Mobile-app shape: header pinned top,
+          tab strip pinned bottom, content scrolls between. The bar
+          itself centers on max-w-md so the strip matches the page
+          column width on wider viewports. */}
+      <nav
+        className={`fixed bottom-0 left-0 right-0 z-30 ${
+          resolvedTheme === 'fresh'
+            ? 'bg-fresh-surface-base/85 backdrop-blur-xl border-t border-fresh-surface-edge'
+            : 'bg-paper/95 backdrop-blur border-t border-ink/10'
+        }`}
+      >
+        <div
+          className={`max-w-md mx-auto px-5 pt-2 pb-3 flex rounded-none ${resolvedTheme === 'fresh' ? '' : ''}`}
+          role="tablist"
+        >
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 rounded-lg py-2 text-sm font-medium transition ${
+                resolvedTheme === 'fresh'
+                  ? tab === t.id
+                    ? 'bg-fresh-accent-secondary/20 text-fresh-text-primary ring-1 ring-fresh-accent-secondary/40'
+                    : 'text-fresh-text-tertiary'
+                  : tab === t.id
+                    ? 'bg-white text-ink shadow-sm'
+                    : 'text-muted'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }

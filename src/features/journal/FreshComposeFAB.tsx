@@ -11,7 +11,8 @@ interface Props {
 // scroll-down to give the operator reading room, reappears on
 // scroll-up — the same pattern Twitter / Threads use.
 //
-// Position 24px (right-6) from bottom-right. Primary is 56x56px
+// Position 80px above viewport bottom (bottom-20) to clear the
+// fixed bottom tab bar; right-5 horizontally. Primary is 56x56px
 // (h-14 w-14) matching the brief. Press feedback uses the
 // fresh-press keyframe with motion-reduce fallback.
 //
@@ -22,7 +23,7 @@ export function FreshComposeFAB({ onCompose, onWitnessSign }: Props) {
 
   return (
     <div
-      className={`fixed bottom-6 right-5 z-30 flex flex-col items-end gap-3 transition-all duration-300 motion-reduce:transition-none ${
+      className={`fixed bottom-20 right-5 z-20 flex flex-col items-end gap-3 transition-all duration-300 motion-reduce:transition-none ${
         hidden
           ? 'pointer-events-none translate-y-24 opacity-0'
           : 'pointer-events-auto translate-y-0 opacity-100'
