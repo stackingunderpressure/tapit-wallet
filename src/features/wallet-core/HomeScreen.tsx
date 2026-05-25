@@ -75,6 +75,7 @@ const LatticePanel = lazy(() =>
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
 import { type InboxRouteAction } from '../transport/InboxPanel.tsx';
 import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promoteToJournalPrefill.ts';
+import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
 import type { PromotePayload } from '../messaging/promoteTarget.ts';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -130,11 +131,13 @@ export function HomeScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerPrefill, setComposerPrefill] = useState<JournalPrefill | null>(null);
   const closeComposer = () => { setComposerOpen(false); setComposerPrefill(null); };
+  const [presencePrefill, setPresencePrefill] = useState<PresencePrefill | null>(null);
   const handlePromote = (payload: PromotePayload) => {
-    if (payload.target !== 'journal') return;
-    setComposerPrefill(promoteToJournalPrefill(payload));
-    setComposerOpen(true);
-    setTab('journal');
+    if (payload.target === 'journal') {
+      setComposerPrefill(promoteToJournalPrefill(payload)); setComposerOpen(true); setTab('journal');
+    } else if (payload.target === 'presence') {
+      setPresencePrefill(promoteToPresencePrefill(payload)); setPresenceOpen(true);
+    }
   };
   const [witnessOpen, setWitnessOpen] = useState(false);
   const [handshakeOpen, setHandshakeOpen] = useState(false);
@@ -729,7 +732,7 @@ export function HomeScreen() {
 
       {presenceOpen && (
         <Suspense fallback={null}>
-          <MarkPresenceModal onClose={() => setPresenceOpen(false)} />
+          <MarkPresenceModal onClose={() => { setPresenceOpen(false); setPresencePrefill(null); }} prefill={presencePrefill ?? undefined} />
         </Suspense>
       )}
 

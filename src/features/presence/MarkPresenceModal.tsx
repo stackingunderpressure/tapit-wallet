@@ -20,6 +20,14 @@ import { leafValue } from '../connections/createHandshake.ts';
 
 interface Props {
   onClose: () => void;
+  /**
+   * Sub-cut 2c mark-presence promote target — when present, the
+   * captured presence event carries the peer's pubkey + display
+   * name as `with_peer_*` signed leaves, and the modal copy
+   * surfaces "with <peerName>" so the operator sees they're
+   * marking shared company, not solo presence.
+   */
+  prefill?: { peerPubkey: string; peerName: string };
 }
 
 type Step =
@@ -36,7 +44,7 @@ type Step =
 // ability" is surfaced inline so the operator is honest with
 // themselves about what Tier V proves.
 
-export function MarkPresenceModal({ onClose }: Props) {
+export function MarkPresenceModal({ onClose, prefill }: Props) {
   const { wallet, ownerId, holdings, identity, anchorWorker, save, syncEnvelope } = useWallet();
   const existingPasskey = findLatestDevicePasskey(holdings, wallet.identity);
   const [step, setStep] = useState<Step>({ kind: 'overview' });
@@ -82,6 +90,9 @@ export function MarkPresenceModal({ onClose }: Props) {
         anchorWorker,
         location,
         assertion,
+        prefill
+          ? { id: prefill.peerPubkey, name: prefill.peerName }
+          : undefined,
       );
       await save();
       void syncEnvelope(presence).catch(() => undefined);
@@ -96,7 +107,11 @@ export function MarkPresenceModal({ onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Mark presence (Tier V)</h2>
+          <h2 className="text-base font-semibold">
+            {prefill
+              ? `Mark presence with ${prefill.peerName || 'them'}`
+              : 'Mark presence (Tier V)'}
+          </h2>
           <button
             type="button"
             onClick={onClose}

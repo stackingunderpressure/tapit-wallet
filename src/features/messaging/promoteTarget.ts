@@ -4,7 +4,7 @@
 // cosign-request, share-held-envelope, disclose-proof) plug into
 // the same menu surface without restructuring.
 
-export type PromoteTarget = 'journal';
+export type PromoteTarget = 'journal' | 'presence';
 
 export interface PromoteTargetSpec {
   id: PromoteTarget;
@@ -17,6 +17,11 @@ export const PROMOTE_TARGETS: readonly PromoteTargetSpec[] = [
     id: 'journal',
     label: 'Save as journal entry',
     hint: 'Sign and Bitcoin-anchor this moment as a permanent diary entry.',
+  },
+  {
+    id: 'presence',
+    label: 'Mark presence with this person',
+    hint: 'Record a signed Tier V presence event noting you and this person were here at this time.',
   },
 ];
 

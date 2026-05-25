@@ -161,23 +161,36 @@ export async function holdPresenceEvent(
   anchorWorker: WorkerHandle | null,
   location: FreshLocation,
   assertion: AssertResult,
+  withPeer?: { id: string; name: string },
 ): Promise<Attestation> {
+  const fields: Record<string, string> = {
+    credential_type: 'tier-v-presence',
+    latitude: String(location.latitude),
+    longitude: String(location.longitude),
+    accuracy_meters: String(location.accuracyMeters),
+    fixed_at: location.fixedAt,
+    signed_at: new Date().toISOString(),
+    passkey_credential_id: assertion.credentialIdBase64Url,
+    passkey_authenticator_data: assertion.authenticatorDataBase64Url,
+    passkey_client_data: assertion.clientDataJsonBase64Url,
+    passkey_signature: assertion.signatureBase64Url,
+    passkey_challenge: assertion.challengeBase64Url,
+  };
+  // 2026-05-25 mark-presence promote target — when the operator
+  // marks presence in the context of a chat with a specific peer
+  // (e.g. "we were both here at this time"), the peer's pubkey
+  // and display name ride along as signed leaves. The peer hasn't
+  // signed anything; this is operator-attested company. If the
+  // peer independently marks their own presence at the same time
+  // and place, the two events corroborate cryptographically.
+  if (withPeer && withPeer.id) {
+    fields.with_peer_id = withPeer.id;
+    if (withPeer.name) fields.with_peer_name = withPeer.name;
+  }
   const draft = credentialAttestation({
     subject: wallet.identity,
     tier: 'notable',
-    fields: {
-      credential_type: 'tier-v-presence',
-      latitude: String(location.latitude),
-      longitude: String(location.longitude),
-      accuracy_meters: String(location.accuracyMeters),
-      fixed_at: location.fixedAt,
-      signed_at: new Date().toISOString(),
-      passkey_credential_id: assertion.credentialIdBase64Url,
-      passkey_authenticator_data: assertion.authenticatorDataBase64Url,
-      passkey_client_data: assertion.clientDataJsonBase64Url,
-      passkey_signature: assertion.signatureBase64Url,
-      passkey_challenge: assertion.challengeBase64Url,
-    },
+    fields,
   });
   const signed = wallet.sign(draft);
   await wallet.hold(signed);
