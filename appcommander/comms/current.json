@@ -1,59 +1,57 @@
 {
   "v": 1,
-  "ts": "2026-05-25T02:35:00Z",
-  "session_id": "tapscript-auth-tree-phase-a-2026-05-25-001",
+  "ts": "2026-05-25T03:15:00Z",
+  "session_id": "open-joining-brief-2026-05-25-001",
   "who": {
     "actor": "Carpenter (Claude)",
-    "feature_slug": "connections"
+    "feature_slug": "governance"
   },
   "where": {
     "files": [
-      "src/features/connections/createOrganization.ts",
-      "src/features/connections/createOrganization.test.ts",
-      "src/features/connections/manifest.ts",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md",
+      "PLAN.md",
       "appcommander/comms/in-flight.jsonl",
       "appcommander/comms/carpenter-opinions.md",
       "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
-    "screen_path": "n/a — Phase A is a primitive cut. No new UI; SettingsScreen.tsx org-creation form still calls selfDeclareOrganization with the 4-arg signature unchanged, defaults to single routine_issuance rule with founder eligible. Phase C will surface multi-rule editor UI."
+    "screen_path": "n/a — doc-only session. Operator's surfaces unchanged."
   },
-  "layer": "logic",
+  "layer": "doctrine",
   "when": {
-    "ts": "2026-05-25T02:35:00Z",
-    "session_id": "tapscript-auth-tree-phase-a-2026-05-25-001"
+    "ts": "2026-05-25T03:15:00Z",
+    "session_id": "open-joining-brief-2026-05-25-001"
   },
   "what": {
-    "action": "Phase 8 Phase A landed — Tapscript-style authorization tree primitives on the org self-declaration (commit 4eaeba8).",
-    "summary": "selfDeclareOrganization extended with optional authRules parameter that emits an auth sub-branch in the claim tree. Each rule is one field-tree leaf carrying canonical JSON of {threshold, eligible}, eligible normalized to sorted-lowercased. Validation throws synchronously on duplicate action / threshold < 1 / non-integer threshold / threshold > eligible-set size. New exported helpers findAuthRule + listAuthRules + proveAuthorization; proveAuthorization wraps the shipped disclosureProof from tapit-attest/src/core/field-tree.ts to produce a DisclosureProofBundle that Phase B's verifier will consume. Zero new cryptographic code in tapit-attest; no library version bump. New test file ships 15 tests across three describe blocks; the load-bearing one forges a leaf-value in a proof bundle and confirms verifyDisclosureProof rejects it, proving the carried signature binds the proof to the original claim digest."
+    "action": "Authored 2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md (commit eab7743) — the canonical brief for the membership-acquisition axis of org governance, extending MYCELIUM_NETWORK_SPEC §6 with member-initiated joining.",
+    "summary": "Operator surfaced a new product direction in chat: anyone can start an org, anyone can join, no email required, roster shows founder first then chronological joiners. Two chips locked the architecture: configurable-per-org abuse-resistance posture (joining policy lives in each org's auth tree) and substrate-decision deferred (operator will pick between three substrates after reading the brief). Brief lays out all three substrates side by side (Option 1 org auto-publishes roster / Option 2 org pre-signs open policy / Option 3 hybrid) with honest trade-offs. Adds a Phase E (5-7 sessions, ~2-3 weeks) to PLAN.md Phase 8 alongside the existing A-D arc from the canonical Tapscript brief, framed as a NEW axis (membership-acquisition) parallel to the existing org-control axis. Zero new cryptography; Phase E1 extends the AuthRule discriminated union with a new join-rule kind, the rest reuses the shipped disclosureProof primitive and the Phase B verifier (when it lands)."
   },
   "why": {
-    "text": "Operator authorized Phase A with 'Yes a please' after the prior session committed the canonical Tapscript-style brief. Phase A is the substrate-on-disk step — not yet a user-visible feature, but the load-bearing proof that the architectural argument from the brief compiles, type-checks, verifies its own cryptography under tamper, and integrates cleanly with the shipped disclosure-proof primitive. Every subsequent phase builds on a substrate that no longer has to be argued for from theory.",
+    "text": "Operator's chat framing ('Can we make where any one can start an org and anyone can join one no need email required') named three properties at once. Two were already shipped (anyone can start, no separate login needed) and the brief confirms that explicitly. The third (anyone can join) is a NEW direction extending MYCELIUM_NETWORK_SPEC §6 along an axis the spec did not previously cover. Authoring the brief tonight while the architectural context is fresh produces a cleaner artifact than batching it for tomorrow.",
     "linked_pixel_id": null,
-    "linked_mission_id": "tapscript-auth-tree-phase-a-2026-05-25"
+    "linked_mission_id": "open-joining-membership-policy-2026-05-25"
   },
   "outcome": {
     "files_changed": [
-      "src/features/connections/createOrganization.ts",
-      "src/features/connections/createOrganization.test.ts",
-      "src/features/connections/manifest.ts",
+      "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md",
+      "PLAN.md",
       "appcommander/comms/in-flight.jsonl",
       "appcommander/comms/carpenter-opinions.md",
       "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
     "tests_passing": true,
     "build_green": true,
-    "notes": "[P-001] AuthRule interface + internal encode/decode/build helpers added to createOrganization.ts. [P-002] selfDeclareOrganization gains optional authRules parameter; defaults to single routine_issuance rule with founder eligible. [P-003] findAuthRule + listAuthRules exported. [P-004] proveAuthorization exported, wraps disclosureProof from tapit-attest. [P-005] 15-test suite in createOrganization.test.ts: 5 validation throws, 5 auth-tree shape, 4 proveAuthorization (including cross-envelope tamper detection), 1 sentinel for empty-rules edge case. [P-006] connections/manifest.ts touches array + notes field updated. [P-007] All four gates green: typecheck clean, lint clean, 117/117 tests pass (15 new), build clean in 3.43s. [P-008] File-size warn flagged for next-cut planning: createOrganization.ts at 534 lines (over 400 soft warn, well under 800 hard limit); Phase B will push toward 650, recommend extraction into src/features/governance/authRule.ts. [FEEDBACK->Foreman]: cross-envelope binding test discipline for Phase B needs to cover all four forgery classes (leaf-value tampered = covered by Phase A; wrong-org-binding, tampered-path, tampered-meta = need dedicated fuzz tests in Phase B). Author a one-page Phase B test-scope brief proactively so the dispatch opens with a clear target."
+    "notes": "[P-001] Brief authored at canonical filename matching the existing naming convention. [P-002] Three substrate options laid out side by side with honest trade-offs; no recommendation made (operator chose deferred). [P-003] Per-org configurable abuse-resistance posture locked in the brief and reflected in PLAN.md. [P-004] Phase E1-E4 implementation arc described, dependencies on Phase A (shipped) and Phase B (verifier) flagged. [P-005] PLAN.md Phase 8 extended with Phase E description; operator-locked decisions paragraph updated to include the deep-evening session's decisions. [P-006] Gates not applicable — doc-only session, no code changes. [FEEDBACK->Foreman]: brief navigation is becoming a real problem — five 2026-05-25 org-governance briefs in the folder, only two canonical, navigation depends on reading PLAN.md. Recommend a SUPERSEDED-BY banner pass across the three superseded briefs before any Phase B or Phase E1 code lands. Tractable proactive task for an autonomous Foreman cycle."
   },
   "confidence": {
-    "score": 92,
-    "uncertainty": "Phase A is a primitive cut with no user-visible UI. The substrate is provably on disk and the disclosure-proof round-trip survives the leaf-value forgery test, but the other three forgery classes (wrong-org-binding, tampered sibling-hash path, tampered meta-fields) are Phase B's verifier surface and have no test coverage yet. The default-rules behaviour (always emit auth sub-branch even when caller omits authRules) means new self-declarations have a different envelope shape than pre-Phase-A ones — operator decision in the FROST brief explicitly noted no orgs formed yet on production wallets, so no migration debt. SettingsScreen.tsx still calls selfDeclareOrganization with the 4-arg signature; that path now produces self-declarations with the default-single-rule auth tree."
+    "score": 88,
+    "uncertainty": "The three substrate options are honestly summarized but each has design-decision surface area that only surfaces during implementation — Option 1's roster-publication frequency, Option 2's verifier-side directory problem, Option 3's precedence rule when both proofs exist. Phase E4's UI design under Option 2 or 3 is non-trivial because there's no canonical roster artifact to display. Phase E1 (join-rule shape) is independent of substrate choice and could ship first. Phase B (verifier) is a hard prerequisite for Phase E4 and should land first to avoid duplicating verifier work."
   },
   "ripple": [
-    "connections (Phase B verifyOrgAuthorization helper next)",
-    "governance (new feature folder pending if file-size extraction happens at Phase B)",
-    "cosigning (Phase C multi-fanout CosignRequestModal will read the rule's eligible list)",
-    "wallet-core (Phase C org-creation form gains multi-rule editor)",
-    "disclosure (primitive now used cross-envelope for the first time — Phase B verifier carries the cross-envelope binding risk)"
+    "governance (new feature folder pending at Phase E1 cut time if file-size headroom on createOrganization.ts runs short)",
+    "connections (createOrganization extension for join-rule shape)",
+    "transport (Mycelium routing of incoming self-membership envelopes in Phase E2)",
+    "wallet-core (Phase E4 UI for join-flow + membership policy picker)",
+    "disclosure (cross-envelope authorization proofs reused for join-rule disclosure)"
   ],
-  "next": "Operator authorizes Phase B (verifyOrgAuthorization helper + authorized_by leaf on credentials + four-class forgery fuzz tests) OR pauses for desktop read OR requests file-size extraction into src/features/governance/authRule.ts before Phase B. Recommend the chip-form next direction be exactly those three options. The branch sits four commits ahead of origin/main and is safe to merge or to continue from."
+  "next": "Operator reads the open-joining brief on a desktop and picks the substrate via chip. In parallel or before, decides whether to authorize Phase B (verifier) as the next code cut. Phase E1 (join-rule shape) is the cheapest forward-progress option and is independent of both decisions; could be cut anytime after Phase A landed. Recommend Phase B before Phase E1 to avoid doubling the verifier test matrix at the security-critical layer."
 }
