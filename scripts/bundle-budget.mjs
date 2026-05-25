@@ -292,6 +292,15 @@ const BUDGETS = [
   // will plug into the same data-driven menu in later cuts.
   { pattern: /^PeerThread-.*\.js$/, gz: 4_000, label: 'PeerThread' },
 
+  // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org
+  // creation UI lazy-loaded from SettingsScreen when the operator
+  // opens the org-declaration form. Self-contained component with
+  // rule list rendering, add-rule mini-form, and validation. ~1.9KB
+  // gz today. Past 3KB the next move is to extract the eligible-
+  // signers picker into its own sub-component (a peer-roster
+  // multi-picker would be the natural polish).
+  { pattern: /^OrgRulesEditor-.*\.js$/, gz: 3_000, label: 'OrgRulesEditor' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.

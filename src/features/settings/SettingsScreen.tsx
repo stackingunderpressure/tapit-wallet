@@ -20,6 +20,10 @@ import {
   readOrganizationName,
   selfDeclareOrganization,
 } from '../connections/createOrganization.ts';
+import { defaultAuthRules, type AuthRule } from '../governance/authRule.ts';
+const OrgRulesEditor = lazy(() =>
+  import('./OrgRulesEditor.tsx').then((m) => ({ default: m.OrgRulesEditor })),
+);
 import { AppearanceSection } from './AppearanceSection.tsx';
 import { QuickShareSection } from './QuickShareSection.tsx';
 
@@ -120,22 +124,46 @@ export function SettingsScreen() {
 
   // Org-mode state. The declaration is one envelope held by this
   // wallet about itself; once present, the wallet flips to org-mode.
+  // Phase 8 Phase C cut 2 — orgRules state lets the operator add
+  // governance rules beyond the default routine_issuance one before
+  // signing the declaration. Initialized lazily to defaultAuthRules
+  // so the wallet identity is available when state is first computed.
   const existingOrgDeclaration = findOwnOrgDeclaration(holdings, wallet.identity);
   const [orgFormOpen, setOrgFormOpen] = useState(false);
   const [orgName, setOrgName] = useState('');
+  const [orgRules, setOrgRules] = useState<AuthRule[]>(() =>
+    defaultAuthRules(wallet.identity),
+  );
   const [orgBusy, setOrgBusy] = useState(false);
   const [orgError, setOrgError] = useState<string | null>(null);
+
+  function openOrgForm() {
+    setOrgRules(defaultAuthRules(wallet.identity));
+    setOrgFormOpen(true);
+  }
+
+  function closeOrgForm() {
+    setOrgFormOpen(false);
+    setOrgName('');
+    setOrgRules(defaultAuthRules(wallet.identity));
+    setOrgError(null);
+  }
 
   async function declareAsOrganization(e: React.FormEvent) {
     e.preventDefault();
     setOrgError(null);
     setOrgBusy(true);
     try {
-      await selfDeclareOrganization(wallet, ownerId, anchorWorker, orgName);
+      await selfDeclareOrganization(
+        wallet,
+        ownerId,
+        anchorWorker,
+        orgName,
+        orgRules,
+      );
       await save();
       await refresh();
-      setOrgFormOpen(false);
-      setOrgName('');
+      closeOrgForm();
     } catch (err) {
       setOrgError(err instanceof Error ? err.message : 'declaration failed');
     } finally {
@@ -483,7 +511,7 @@ export function SettingsScreen() {
             </p>
             <button
               type="button"
-              onClick={() => setOrgFormOpen(true)}
+              onClick={openOrgForm}
               className="mt-3 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
             >
               Declare this wallet as an organization
@@ -503,10 +531,25 @@ export function SettingsScreen() {
                 className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
               />
             </label>
-            <p className="mt-2 text-xs text-muted">
+            <Suspense
+              fallback={
+                <p className="mt-3 text-xs text-muted">Loading rules editor…</p>
+              }
+            >
+              <OrgRulesEditor
+                founder={wallet.identity}
+                value={orgRules}
+                onChange={setOrgRules}
+              />
+            </Suspense>
+            <p className="mt-3 text-xs text-muted">
               You are about to sign one attestation that says "this wallet is{' '}
-              {orgName.trim() || 'this organization'}." It is permanent and
-              anchored to Bitcoin the same way your other entries are.
+              {orgName.trim() || 'this organization'}" and commits to{' '}
+              {orgRules.length === 1
+                ? 'the default governance rule'
+                : `${orgRules.length} governance rules`}
+              . It is permanent and anchored to Bitcoin the same way your other
+              entries are.
             </p>
             <div className="mt-3 flex gap-2">
               <button
@@ -518,11 +561,7 @@ export function SettingsScreen() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setOrgFormOpen(false);
-                  setOrgName('');
-                  setOrgError(null);
-                }}
+                onClick={closeOrgForm}
                 className="rounded-md border border-ink/15 px-4 py-2 text-sm"
               >
                 Cancel
