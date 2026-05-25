@@ -36,7 +36,8 @@ import { applyOnboardingBundle } from '../onboarding/applyOnboardingBundle.ts';
 // the operator opts into the Mycelium network. Type-only import here
 // is free.
 import type { WalletConnection } from '../transport/connectWallet.ts';
-import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
+import type { InboxChatMessage, InboxEnvelope } from '../transport/encryptedInbox.ts';
+import type { ThreadMessage } from '../messaging/threadMessage.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -76,6 +77,13 @@ export function WalletProvider({ children }: Props) {
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
+  // Per-peer chat threads (sub-cut 2b). In-memory only this cut;
+  // Cut 4 will refactor to IDB-paged via messagesStore. Stored as a
+  // Map so React state-update creates a new Map reference; per-peer
+  // entries are immutable arrays the messaging components consume.
+  const [chatThreadsByPeer, setChatThreadsByPeer] = useState<
+    ReadonlyMap<string, readonly ThreadMessage[]>
+  >(() => new Map());
   // Mycelium transport relay-status snapshot. Null when the operator
   // has not opted into the network — UI uses this to hide the live
   // indicator entirely for non-Mycelium users. Subscribed from the
@@ -88,6 +96,9 @@ export function WalletProvider({ children }: Props) {
   // Holds the relay-status unsubscribe so the effect cleanup can call
   // it before closing the transport.
   const statusUnsubRef = useRef<(() => void) | null>(null);
+  // Holds the chat-kind subscription handle so the effect cleanup
+  // can close it before tearing down the transport.
+  const chatSubRef = useRef<{ close(): void } | null>(null);
   // Stable content-keyed string for the relay list so the transport
   // effect re-runs when the list content changes (not its reference).
   const relaysKey = useMemo(
@@ -342,6 +353,37 @@ export function WalletProvider({ children }: Props) {
         setRelayStatus(statuses);
       });
       statusUnsubRef.current = unsubStatus;
+      // Sub-cut 2b — chat-kind subscription rides the same transport.
+      // Independent kind filter (TAPIT_CHAT_KIND) means chat events
+      // do not collide with the envelope inbox above. Inbound
+      // messages append to the per-peer thread, deduped by Nostr
+      // event id so a relay re-delivering the same event is a no-op.
+      void import('../transport/encryptedInbox.ts').then(({ subscribeChatMessages }) => {
+        if (cancelled || !conn) return;
+        const chatSub = subscribeChatMessages(
+          conn.transport,
+          wallet,
+          (item: InboxChatMessage) => {
+            const incoming: ThreadMessage = {
+              direction: 'in',
+              text: item.payload.text,
+              ts: item.receivedAt,
+              peerPubkey: item.senderPubkey,
+              eventId: item.eventId,
+            };
+            setChatThreadsByPeer((prev) => {
+              const existing = prev.get(item.senderPubkey) ?? [];
+              if (existing.some((m) => m.eventId === item.eventId)) {
+                return prev;
+              }
+              const next = new Map(prev);
+              next.set(item.senderPubkey, [...existing, incoming]);
+              return next;
+            });
+          },
+        );
+        chatSubRef.current = chatSub;
+      });
     });
     return () => {
       cancelled = true;
@@ -349,9 +391,14 @@ export function WalletProvider({ children }: Props) {
         statusUnsubRef.current();
         statusUnsubRef.current = null;
       }
+      if (chatSubRef.current) {
+        chatSubRef.current.close();
+        chatSubRef.current = null;
+      }
       if (conn) conn.close();
       transportRef.current = null;
       setInboxEnvelopes([]);
+      setChatThreadsByPeer(new Map());
       setRelayStatus(null);
     };
     // relaysKey is a stable string derived from prefs.nostrRelays;
@@ -405,6 +452,64 @@ export function WalletProvider({ children }: Props) {
       );
       const result = await sendEnvelopeToSelf(transport, envelope, phase.wallet);
       return result.publish;
+    },
+    [phase],
+  );
+
+  const sendChatMessage = useCallback(
+    async (recipientPubkey: string, text: string) => {
+      const transport = transportRef.current;
+      if (!transport) {
+        throw new Error(
+          'Mycelium network is not connected — enable it in Settings.',
+        );
+      }
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        throw new Error('wallet must be unlocked');
+      }
+      const trimmed = text.trim();
+      if (trimmed.length === 0) return;
+      // Optimistic local append before publish so the composer
+      // clears instantly and the operator sees their message in
+      // the thread. Publish result attaches the event id below.
+      const localTs = Math.floor(Date.now() / 1000);
+      setChatThreadsByPeer((prev) => {
+        const existing = prev.get(recipientPubkey) ?? [];
+        const next = new Map(prev);
+        next.set(recipientPubkey, [
+          ...existing,
+          { direction: 'out', text: trimmed, ts: localTs, peerPubkey: recipientPubkey },
+        ]);
+        return next;
+      });
+      const { sendChatMessageTo } = await import(
+        '../transport/encryptedInbox.ts'
+      );
+      const result = await sendChatMessageTo(
+        transport,
+        { text: trimmed },
+        recipientPubkey,
+        phase.wallet,
+        { created_at: localTs },
+      );
+      // Attach the event id to the optimistic record so subsequent
+      // re-arrivals from relay history dedupe correctly. Match by
+      // ts + text + direction since the optimistic record had no id.
+      const eventId = result.event.id;
+      setChatThreadsByPeer((prev) => {
+        const existing = prev.get(recipientPubkey) ?? [];
+        const updated = existing.map((m) =>
+          m.direction === 'out' &&
+          m.ts === localTs &&
+          m.text === trimmed &&
+          !m.eventId
+            ? { ...m, eventId }
+            : m,
+        );
+        const next = new Map(prev);
+        next.set(recipientPubkey, updated);
+        return next;
+      });
     },
     [phase],
   );
@@ -616,6 +721,8 @@ export function WalletProvider({ children }: Props) {
       updatePrefs,
       refresh,
       resolvedTheme,
+      chatThreadsByPeer,
+      sendChatMessage,
     };
   }, [
     phase,
@@ -633,6 +740,8 @@ export function WalletProvider({ children }: Props) {
     sendEnvelope,
     syncEnvelope,
     resolvedTheme,
+    chatThreadsByPeer,
+    sendChatMessage,
   ]);
 
   if (!ownerId || phase.kind === 'checking') {

@@ -6,6 +6,14 @@ interface Props {
   attestation: Attestation;
   /** The viewing wallet's identity, used to name the OTHER party. */
   myIdentity: string;
+  /**
+   * Optional tap handler — when set, the card renders as a button
+   * and fires this on tap with the peer's pubkey + display name.
+   * Sub-cut 2b uses this to open the per-peer chat thread; cards
+   * without a handler (older callers, future contexts) stay
+   * non-interactive.
+   */
+  onOpen?: (peer: { pubkey: string; name: string }) => void;
 }
 
 // One connection on the People tab. A handshake names both parties;
@@ -13,12 +21,14 @@ interface Props {
 // (Tier P "In person" or Tier R "Remote" per D-09), and the date. Two
 // signatures means the handshake completed; one means the other
 // side's co-signature is still outstanding.
-export function ConnectionCard({ attestation, myIdentity }: Props) {
+export function ConnectionCard({ attestation, myIdentity, onOpen }: Props) {
   const { resolvedTheme } = useWallet();
   const isFresh = resolvedTheme === 'fresh';
   const hs = readHandshake(attestation);
   const peerName =
     hs.initiatorId === myIdentity ? hs.responderName : hs.initiatorName;
+  const peerPubkey =
+    hs.initiatorId === myIdentity ? hs.responderId : hs.initiatorId;
   const cosigned = attestation.signatures.length >= 2;
   const parsed = new Date(hs.handshakeAt);
   const when = Number.isNaN(parsed.getTime())
@@ -42,8 +52,15 @@ export function ConnectionCard({ attestation, myIdentity }: Props) {
     ? 'bg-fresh-accent-primary/15 text-fresh-accent-primary border border-fresh-accent-primary/30'
     : 'bg-ink/[0.06] text-ink border border-ink/15';
 
-  return (
-    <div className={`rounded-2xl p-4 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10 shadow-sm'}`}>
+  const cardClass = `rounded-2xl p-4 border w-full text-left ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10 shadow-sm'}`;
+  const interactiveClass = onOpen
+    ? isFresh
+      ? ' hover:bg-fresh-surface-glass transition'
+      : ' hover:bg-ink/[0.02] transition'
+    : '';
+
+  const body = (
+    <>
       <div className="flex items-center justify-between gap-2">
         <div className={`font-medium truncate ${isFresh ? 'text-fresh-text-primary' : ''}`}>{peerName || 'Unknown'}</div>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}>
@@ -61,6 +78,19 @@ export function ConnectionCard({ attestation, myIdentity }: Props) {
           {!cosigned && ' · awaiting their co-signature'}
         </span>
       </div>
-    </div>
+    </>
   );
+
+  if (onOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpen({ pubkey: peerPubkey, name: peerName })}
+        className={cardClass + interactiveClass}
+      >
+        {body}
+      </button>
+    );
+  }
+  return <div className={cardClass}>{body}</div>;
 }

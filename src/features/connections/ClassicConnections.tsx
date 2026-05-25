@@ -6,6 +6,8 @@ interface Props {
   myIdentity: string;
   onNewHandshake: () => void;
   onScanEnvelope: () => void;
+  /** Sub-cut 2b — tap a card to open the per-peer chat thread. */
+  onOpenThread?: (peer: { pubkey: string; name: string }) => void;
 }
 
 // The Classic People-tab body — Action buttons + connection cards
@@ -19,6 +21,7 @@ export function ClassicConnections({
   myIdentity,
   onNewHandshake,
   onScanEnvelope,
+  onOpenThread,
 }: Props) {
   return (
     <>
@@ -59,6 +62,7 @@ export function ClassicConnections({
               key={i}
               attestation={a}
               myIdentity={myIdentity}
+              onOpen={onOpenThread}
             />
           ))}
         </div>

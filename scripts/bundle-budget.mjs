@@ -76,7 +76,11 @@ const BUDGETS = [
   // pendingOnboarding holder and applyOnboardingBundle helper
   // sit inside the WalletProvider chunk because the consumer
   // path runs at first-login and cannot reasonably defer.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 8_000, label: 'WalletProvider' },
+  // 2026-05-25 per-peer-chat sub-cut 2b bumped 8KB -> 8.5KB to
+  // absorb chatThreadsByPeer state + sendChatMessage callback +
+  // the chat-kind subscription block running alongside the
+  // existing inbox subscription on the same transport handle.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 8_500, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -90,7 +94,11 @@ const BUDGETS = [
   // colourway branches inlined into HomeScreen's import graph;
   // structural rethink (extract per-tab sections) is the next move
   // past 16KB.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 16_000, label: 'HomeScreen' },
+  // 2026-05-25 per-peer-chat sub-cut 2b bumped 16KB -> 16.5KB
+  // (effective overage was 0.02KB — extracted PeopleTabBody into
+  // wallet-core to keep HomeScreen under the 800-line file-size
+  // limit; the new component sits in the HomeScreen import graph).
+  { pattern: /^HomeScreen-.*\.js$/, gz: 16_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

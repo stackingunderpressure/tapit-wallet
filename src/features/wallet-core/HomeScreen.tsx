@@ -12,8 +12,7 @@ import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
-import { ClassicConnections } from '../connections/ClassicConnections.tsx';
-const FreshCrew = lazy(() => import('../connections/FreshCrew.tsx').then((m) => ({ default: m.FreshCrew })));
+import { PeopleTabBody } from './PeopleTabBody.tsx';
 import {
   isHandshake,
   peerNamesByPubkey,
@@ -73,7 +72,7 @@ const LatticePanel = lazy(() =>
   })),
 );
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
-import { InboxPanel, type InboxRouteAction } from '../transport/InboxPanel.tsx';
+import { type InboxRouteAction } from '../transport/InboxPanel.tsx';
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
@@ -608,31 +607,17 @@ export function HomeScreen() {
       )}
 
       {tab === 'people' && (
-        <section className="mt-5">
-          <InboxPanel
-            envelopes={inboxEnvelopes}
-            peerNames={peerNames}
-            onDismiss={dismissInboxEnvelope}
-            onOpen={routeInbox}
-          />
-          {resolvedTheme === 'fresh' ? (
-            <Suspense fallback={null}>
-              <FreshCrew
-                connectionEntries={connectionEntries}
-                myIdentity={wallet.identity}
-                onNewHandshake={() => setHandshakeOpen(true)}
-                onScanEnvelope={() => setScanEnvelopeOpen(true)}
-              />
-            </Suspense>
-          ) : (
-            <ClassicConnections
-              connectionEntries={connectionEntries}
-              myIdentity={wallet.identity}
-              onNewHandshake={() => setHandshakeOpen(true)}
-              onScanEnvelope={() => setScanEnvelopeOpen(true)}
-            />
-          )}
-        </section>
+        <PeopleTabBody
+          connectionEntries={connectionEntries}
+          myIdentity={wallet.identity}
+          inboxEnvelopes={inboxEnvelopes}
+          peerNames={peerNames}
+          dismissInboxEnvelope={dismissInboxEnvelope}
+          routeInbox={routeInbox}
+          onNewHandshake={() => setHandshakeOpen(true)}
+          onScanEnvelope={() => setScanEnvelopeOpen(true)}
+          resolvedTheme={resolvedTheme}
+        />
       )}
 
       {tab === 'lattice' && (

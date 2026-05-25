@@ -5,6 +5,7 @@ import type { SaveOutcome } from '../storage/walletStore.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 import type { PublishResult, RelayStatus } from '../transport/transport.ts';
+import type { ThreadMessage } from '../messaging/threadMessage.ts';
 
 export interface WalletContextValue {
   wallet: Wallet;
@@ -70,6 +71,22 @@ export interface WalletContextValue {
    * the single owner of the effect that applies it to the document.
    */
   resolvedTheme: 'classic' | 'fresh';
+  /**
+   * Per-peer chat thread state (sub-cut 2b of the per-peer chat
+   * surface roadmap). Keyed by peer pubkey; value is the
+   * chronological list of inbound + outbound Tier 1 messages
+   * exchanged with that peer this session. In-memory only — Cut 4
+   * will refactor to IDB-paged via messagesStore.
+   */
+  chatThreadsByPeer: ReadonlyMap<string, readonly ThreadMessage[]>;
+  /**
+   * Send a Tier 1 chat message to a peer over the Mycelium
+   * transport. Optimistically appends to the local thread before
+   * publish settles; on publish failure the message stays in the
+   * thread (a future polish cut will mark it as undelivered).
+   * Throws if the network is not connected.
+   */
+  sendChatMessage: (peerPubkey: string, text: string) => Promise<void>;
 }
 
 // Pulled into its own module so react-refresh fast-refresh works in

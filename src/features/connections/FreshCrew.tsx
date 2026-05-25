@@ -11,6 +11,13 @@ interface Props {
   myIdentity: string;
   onNewHandshake: () => void;
   onScanEnvelope: () => void;
+  /**
+   * Sub-cut 2b — tap a bubble OR a card to open that peer's chat
+   * thread. Replaces the prior scroll-to-card behaviour on the
+   * bubble row since both gestures now mean "I want to talk to
+   * this person." Optional for back-compat.
+   */
+  onOpenThread?: (peer: { pubkey: string; name: string }) => void;
 }
 
 interface Peer {
@@ -43,6 +50,7 @@ export function FreshCrew({
   myIdentity,
   onNewHandshake,
   onScanEnvelope,
+  onOpenThread,
 }: Props) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -51,8 +59,14 @@ export function FreshCrew({
     [connectionEntries, myIdentity],
   );
 
-  function scrollToPeer(pubkey: string) {
-    const el = cardRefs.current.get(pubkey);
+  // Bubble tap: open the thread when sub-cut 2b is wired up; fall
+  // back to scroll-to-card otherwise so older callers stay correct.
+  function handleBubbleTap(peer: Peer) {
+    if (onOpenThread) {
+      onOpenThread({ pubkey: peer.pubkey, name: peer.name });
+      return;
+    }
+    const el = cardRefs.current.get(peer.pubkey);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
@@ -98,7 +112,7 @@ export function FreshCrew({
                 <button
                   key={peer.pubkey}
                   type="button"
-                  onClick={() => scrollToPeer(peer.pubkey)}
+                  onClick={() => handleBubbleTap(peer)}
                   className="shrink-0 flex flex-col items-center gap-1"
                   aria-label={peer.name || peer.pubkey.slice(0, 8)}
                 >
@@ -127,7 +141,7 @@ export function FreshCrew({
                   else cardRefs.current.delete(peer.pubkey);
                 }}
               >
-                <ConnectionCard attestation={peer.attestation} myIdentity={myIdentity} />
+                <ConnectionCard attestation={peer.attestation} myIdentity={myIdentity} onOpen={onOpenThread} />
               </div>
             ))}
           </div>

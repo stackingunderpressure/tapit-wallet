@@ -17,6 +17,7 @@ import { manifest as presence } from './features/presence/manifest.ts';
 import { manifest as recovery } from './features/recovery/manifest.ts';
 import { manifest as theme } from './features/theme/manifest.ts';
 import { manifest as onboarding } from './features/onboarding/manifest.ts';
+import { manifest as messaging } from './features/messaging/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online.
@@ -43,6 +44,7 @@ export const features: readonly FeatureManifest[] = [
   recovery,
   theme,
   onboarding,
+  messaging,
   persona,
   snapshotBuilder,
   suggestedQuestions,
