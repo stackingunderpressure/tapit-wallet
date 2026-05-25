@@ -213,6 +213,18 @@ html[data-theme='fresh'] .text-ink {
 html[data-theme='fresh'] .text-muted {
   color: var(--fresh-text-secondary);
 }
+/* Tailwind opacity variants (text-ink/70, text-ink/75, ...) are
+   distinct class names from .text-ink and were not caught by the
+   bare-class override above. Result: WalletGuide and other Classic
+   surfaces that lean on text-ink/75 for body prose rendered as
+   dark-with-alpha text on the Fresh dark body — effectively
+   invisible. Operator surfaced this directly: "Guide text is not
+   visible it has a bug." The substring match below catches every
+   text-ink/N variant; the opacity gets collapsed to the solid
+   --fresh-text-primary, which is the right trade for readability. */
+html[data-theme='fresh'] [class*="text-ink/"] {
+  color: var(--fresh-text-primary);
+}
 /* Classic text-accent (forest green #2d6a4f from tailwind.config)
    is the eyebrow / action-link colour on Classic surfaces. Under
    Fresh that hex literal renders as dim green on the dark body
