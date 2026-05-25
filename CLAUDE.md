@@ -357,6 +357,36 @@ a heading, or a structured comparison, the carve-out applies and
 structure returns for that reply, then the next reply reverts to
 one-block default unless the operator extends the override.
 
+### OPERATOR-DIRECTION QUESTIONS — Chip-Form Required (PFOR-019)
+
+When the carpenter needs to ask the operator a directional
+question — "scope this as A or B?", "which preset?", "ship now
+or wait?", "this approach or that approach?" — use the
+AskUserQuestion tool (chip-form interactive buttons) rather
+than asking in prose and expecting the operator to type or
+paste an answer back. The operator surfaced this directly:
+"Questions for me for direction is easier in chips form here
+not me going and reading some file and pasting answers here."
+Chip-form questions render as tappable options the operator
+can pick with one touch from the device they are field-testing
+on; prose questions force them to switch contexts, read, type,
+and paste. The chip-form path is structurally easier for an
+operator who is mostly on iPhone watching the wallet behave.
+Scope: when the carpenter genuinely needs the operator to
+choose between options or answer a clarifying question with a
+bounded set of acceptable answers, prefer AskUserQuestion. Use
+two-to-four options per question, mark the recommended one as
+"(Recommended)" and put it first, write each option's
+description so the operator understands the implication of
+picking it. Carve-out: free-form authorship requests where
+chips cannot enumerate the answer space (e.g. "what is Sage's
+voice?", "what should this entry's title be?") stay as prose
+asks. Carve-out also for status questions the operator is
+asking the carpenter — those are answered, not asked back. The
+PFOR-018 one-block prose rule still governs the SURROUNDING
+narrative reply; AskUserQuestion is a tool call alongside the
+prose, not a replacement for it.
+
 ### LIVING-IDEAS DOCTRINE — Nothing Gets Lost
 
 Every meaningful idea the operator surfaces — in chat, voice,
