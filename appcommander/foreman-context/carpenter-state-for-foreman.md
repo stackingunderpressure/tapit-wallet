@@ -1,47 +1,59 @@
-# carpenter-state-for-foreman — Phase 8 Phase B landed (verifier on disk)
+# carpenter-state-for-foreman — Merged to main + governance extraction landed
 
-> PFOR-012 structured operational state. Written 2026-05-25 deep evening / into the night immediately after committing a319ad6 on `claude/multisig-orgs-status-jiLwm`. Branch sits seven commits ahead of `origin/main`: brief commits 0eab0e8 / 9e58108 / 7d76cbd, Phase A code 4eaeba8 + close-out eea0542, open-joining brief eab7743 + close-out 5c3c7f7, and now Phase B code a319ad6. All four gates green for both code commits; the brief/close-out commits are doc-only.
+> PFOR-012 structured operational state. Written 2026-05-25 into the night immediately after pushing the governance extraction commit d27974e on `claude/multisig-orgs-status-jiLwm`. Main was advanced earlier in the session (`d1c4fda..af58299`) via the PFOR-016 doctrine-compliant branch:main push form. Dispatch branch now sits ONE commit ahead of main (the extraction itself; not yet pushed to main).
 
-**Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS. Session was triggered by operator picking Option 1 for the open-joining substrate AND delegating the next-cut decision to the Carpenter with "you can start cutting in best spot for you." The Carpenter picked Phase B verifier per the prior session's recommendation, which the open-joining brief had also flagged as a hard prerequisite for Phase E4.
+**Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS. Session was triggered by "Merge and continue" which the Carpenter interpreted as two actions: (1) merge current branch state to main with pre-push gate verification, (2) continue cutting with the best-spot pick — which per the prior session's opinions was the governance-folder extraction as the load-bearing prerequisite for Phase C UI work.
 
 ## WHAT-CHANGED-RECENTLY
 
-Commit a319ad6 — "Phase 8 Phase B — verifyOrgAuthorization + authorized_by leaf" — four files touched:
+Merge to main: nine commits moved onto main (`d1c4fda..af58299`) carrying the brief-authoring arc (list-of-sigs → Tapscript-style → open-joining), Phase A code, Phase B verifier, and all their close-outs. Pre-push gates ran one more time before the push and were all green (typecheck, lint, 136/136 tests, build clean in 4.41s).
 
-`src/features/connections/createOrganization.ts` (modified, now 726 lines): added `AuthorizedByPayload` interface; `encodeAuthorizedBy` / `decodeAuthorizedBy` / `buildAuthorizedByPayload` helpers; `OrgAuthorizationResult` interface; `verifyOrgAuthorization(envelope, knownOrgs)` verifier. The verifier is a seven-step pipeline: read authorized_by leaf, decode payload, look up org self-declaration in knownOrgs, run `verifyDisclosureProof`, confirm cross-envelope binding via `proofResult.digest === envelopeId(orgSelfDecl)`, confirm disclosed leaf name matches claimed action, decode rule, count distinct eligible signers against threshold. Imports `verifyDisclosureProof` from tapit-attest (new import).
+Commit d27974e — "Extract Tapscript auth-rule substrate to src/features/governance/" — seven files touched:
 
-`src/features/connections/createOrganization.test.ts` (modified): 19 new tests across 5 describe blocks bringing the file to 34 tests total. Headline block is the four-forgery-class fuzz coverage: leaf-value tampered, wrong-org-binding via same-subject-different-digest, tampered sibling-hash path, tampered meta-fields. Plus action-claim mismatch, plus encode/decode round-trips, plus buildAuthorizedByPayload null cases, plus happy-path / missing-org / malformed / threshold-not-met / ineligible-signer refusal cases.
+`src/features/governance/manifest.ts` (new): feature manifest for the new governance feature folder. depends_on: ['wallet-core'] only — governance is org-agnostic substrate and intentionally does not depend on connections.
 
-`src/features/connections/manifest.ts` (modified): notes field extended with the Phase 8 Phase B paragraph.
+`src/features/governance/authRule.ts` (new, ~220 lines): hosts the entire extracted Phase A + Phase B substrate. AuthRule type + defaultAuthRules + encodeAuthRuleValue + decodeAuthRuleValue + buildAuthSubtree (now exported, fixing the test-side encoding duplication) + findAuthBranch (internal) + findAuthRule + listAuthRules + proveAuthorization + AuthorizedByPayload + encodeAuthorizedBy + decodeAuthorizedBy + buildAuthorizedByPayload + OrgAuthorizationResult interface. Zero new cryptographic code; entire module is wallet-side plumbing on the shipped disclosureProof primitive.
 
-`appcommander/comms/in-flight.jsonl` (modified): session_started + three file_touched + one gate_passed event.
+`src/features/connections/createOrganization.ts` (modified, now 534 lines from 726): removed the extracted code; added re-exports of governance primitives for back-compat with existing import sites; added a new pure `buildOrgSelfDeclarationDraft` helper following the `buildHandshakeDraft` pattern in createHandshake.ts; refactored selfDeclareOrganization to wrap the new builder; verifyOrgAuthorization stays but imports decodeAuthorizedBy + decodeAuthRuleValue from governance/authRule.ts.
+
+`src/features/connections/createOrganization.test.ts` (modified): imports auth-rule helpers from governance/authRule.ts; the test's inlineSelfDeclaration helper now calls the new pure builder + wallet.sign instead of duplicating the encoding logic inline. 136/136 tests still pass — clean signal that the move preserved behaviour.
+
+`src/features-registry.ts` (modified): registered the new governance feature in the manifest list.
+
+`src/features/connections/manifest.ts` (modified): depends_on gained 'governance'; notes field extended with the extraction summary.
+
+`appcommander/comms/in-flight.jsonl` (modified): session_started + commit_pushed-for-main + six file_touched + one gate_passed event.
 
 ## WHAT'S-PENDING
 
-Phase C of the canonical Tapscript brief: UI for multi-rule org creation + per-action signing flow. Extends the existing `SettingsScreen.tsx` org-creation form to let the operator declare multiple rules at creation time, generalizes `CosignRequestModal` to multi-fanout-by-rule, extends `RatificationsBadge` to render the rule name inline. About one to two sessions. Operator authorization required.
+The substrate is now in its final structural shape. Three natural next moves:
 
-Phase E1 of the open-joining brief: extend `AuthRule` to a discriminated union including the join-rule kind (open / allow-list / requires-handshake / requires-credential / requires-vouch). Independent of Phase C; can run in parallel. One session.
+Phase C of the canonical Tapscript brief — multi-rule org creation UI in `SettingsScreen.tsx` + multi-fanout generalization of `CosignRequestModal` + `RatificationsBadge` extension to render rule names inline. Now lands cleanly against the 534-line createOrganization.ts with full headroom. About one to two sessions.
 
-Phase D and Phase E2-E4 are downstream of the above and can be scheduled after the immediate next move is chosen.
+Phase E1 of the open-joining brief — extend AuthRule in `governance/authRule.ts` to a discriminated union including the join-rule kind (open / allow-list / requires-handshake / requires-credential / requires-vouch). Updates to encodeAuthRuleValue / decodeAuthRuleValue / buildAuthSubtree to recognize the new shape. One session, independent of Phase C, prerequisite for Phase E2-E4.
 
-Operator has not yet authorized Phase C, Phase E1, or any specific next move. Natural next chip is a three-way: Phase C / Phase E1 / pause to merge to main.
+Push the extraction commit (d27974e) to main. The branch is one commit ahead; the operator can signal a second branch:main push whenever they want it on main.
+
+Operator has not yet authorized any next move past the extraction. Natural next chip is the three-way: Phase C / Phase E1 / push-current-extraction-to-main.
 
 ## WHAT-TO-FLAG
 
-File-size warn is now the loudest issue on the board. createOrganization.ts is at 726 lines, 74 below the 800-line hard limit. Phase C will push it over. The extraction to `src/features/governance/authRule.ts` is no longer optional — it MUST be the first work item of Phase C, before any UI code lands, or the file-size gate will fail CI. Recommend the next dispatched session's brief explicitly state this as work item one. The extraction is also the right moment to fix the Phase A test-side encoding duplication (the test file's `inlineSelfDeclaration` helper duplicates `buildAuthSubtree` inline rather than importing it) — factor a pure `buildOrgSelfDeclarationDraft` helper following the `buildHandshakeDraft` pattern that `createHandshake.ts` already uses, and have production code and tests both import it.
+The connections/manifest.ts depends_on now lists governance, which is structurally correct but counter-intuitive at first read (governance is the SUBSTRATE, connections is the consumer — most readers would expect the opposite direction). The notes field has the extraction summary but does not have an explicit one-sentence "why governance is below" explanation. Recommend adding that sentence in a follow-up cut so future auditors don't have to reverse-engineer the direction.
 
-The brief navigation problem from prior sessions remains. Five 2026-05-25 org-governance briefs in the folder, two canonical (Tapscript-style + open-joining), three superseded (May 23 MuSig2, May 25 morning FROST, May 25 evening list-of-sigs). The SUPERSEDED-BY banner pass recommendation from two prior opinions has not been actioned. Cheapest forward-progress task for an autonomous Foreman cycle.
+The re-exports from createOrganization.ts are back-compat shims. Phase C UI work that touches the auth-rule helpers should import them DIRECTLY from `../governance/authRule.ts`, not from `./createOrganization.ts`. The Phase C brief should state this explicitly so the new direct-import pattern becomes the default going forward and the re-exports can eventually be deleted.
 
-One small ergonomic gap surfaced during Phase B that's worth noting for Phase C planning: `verifyOrgAuthorization(envelope, knownOrgs)` requires the caller to pre-filter holdings down to org self-declarations. In production code paths the caller will usually have the full holdings array. Recommend adding a `verifyOrgAuthorizationFromHoldings(envelope, holdings)` adapter as a tiny pre-Phase-C cut — five lines, filters holdings via `isOrganizationSelfDeclaration`, calls the existing verifier. Not shipping today because the brief didn't name it.
+createOrganization.ts is at 534 lines — still over the 400 soft warn (file-size noise will keep firing every test run). A future cut could extract the officials-roster section (~75 lines) into a sibling `officialsRoster.ts` to drop the file closer to the soft warn. Not urgent; flagging for whenever the file is next touched substantially.
+
+The brief navigation problem from prior sessions remains unaddressed. Five 2026-05-25 org-governance briefs in the folder; SUPERSEDED-BY banner pass is still the cheapest forward-progress autonomous task.
 
 ## RECOMMENDED-NEXT-MOVES
 
-For the operator: optionally pull the branch and run `npm test -- createOrganization` to see all 34 tests green; the four-forgery tests in particular are worth reading as the security argument made concrete. Then decide via chip-form: Phase C (governance-folder extraction + multi-rule org creation UI), Phase E1 (join-rule shape), or pause to merge to main before continuing the arc.
+For the operator: optionally pull the extraction locally and run `npm test` to confirm 136/136 still pass against the new file structure. Then decide via chip-form: Phase C UI work (multi-rule org creation), Phase E1 (join-rule kind extension), push-current-to-main (the extraction by itself), or pause.
 
-For the Foreman: the SUPERSEDED-BY banner pass across the three historical briefs is still the cheapest high-value autonomous task. Alternatively, a one-page Phase C pre-brief that names "governance-folder extraction is work item one" non-negotiably would prevent the file-size gate from biting at Phase C dispatch time.
+For the Foreman: SUPERSEDED-BY banner pass across the three superseded briefs is still the cheapest high-value autonomous task. Alternatively, a Phase C pre-brief that names "import auth-rule helpers from governance/authRule.ts not from connections/createOrganization.ts" non-negotiably would set the right import pattern from the start.
 
-For both: the Tapscript substrate is now complete in producer-and-consumer form. Phase C / D / E1+ all build ON TOP of the substrate rather than INTO it. The architectural milestone of "governance vocabulary as a sturdy primitive" is locked. Recommend treating the next cuts as configurations of the existing substrate rather than as new substrate work.
+For both: the substrate-cleanup arc is now structurally complete. Phase A primitives, Phase B verifier, governance folder extraction, encoding-duplication fix, test-side cleanup, file-size headroom restored — all four debts the prior opinions kept naming are paid down on commit d27974e. Future cuts extend the substrate rather than reshape it.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Trusting the Carpenter to pick the right next cut and shipping fast. "You can start cutting in best spot for you" was a clean delegation that produced a clean execution. The pace remains sustainable — three substrate decisions + two code phases + two architectural briefs across one night without any debt being kicked down the road that hadn't been explicitly flagged. The operator can sleep on Phase B's landing with confidence that the four-forgery test coverage actually defends the substrate's load-bearing security property. Phase C is the largest remaining piece of work, and it's UI-heavy rather than substrate-heavy — different texture than tonight's cuts, but the substrate beneath it is ready.
+Trusting delegation continues to produce clean execution. "Merge and continue" turned into a textbook two-action session: merge cleanly via the doctrine-compliant push form, extract into governance to pay down the file-size and encoding-duplication debts in one commit, leave the substrate in its final structural shape for Phase C and beyond. The operator should sleep well — main is current, the branch is one commit ahead, the substrate is shaped right for what comes next. The pace remains sustainable. The architectural shape is locked.

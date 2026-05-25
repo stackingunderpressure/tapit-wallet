@@ -1,59 +1,65 @@
 {
   "v": 1,
-  "ts": "2026-05-25T03:55:00Z",
-  "session_id": "tapscript-auth-tree-phase-b-2026-05-25-001",
+  "ts": "2026-05-25T04:30:00Z",
+  "session_id": "governance-extraction-2026-05-25-001",
   "who": {
     "actor": "Carpenter (Claude)",
-    "feature_slug": "connections"
+    "feature_slug": "governance"
   },
   "where": {
     "files": [
+      "src/features/governance/manifest.ts",
+      "src/features/governance/authRule.ts",
       "src/features/connections/createOrganization.ts",
       "src/features/connections/createOrganization.test.ts",
       "src/features/connections/manifest.ts",
+      "src/features-registry.ts",
       "appcommander/comms/in-flight.jsonl",
       "appcommander/comms/carpenter-opinions.md",
       "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
-    "screen_path": "n/a — Phase B is a verifier cut, no new UI. The verifier becomes consumable by Phase C/D/E UI when those land."
+    "screen_path": "n/a — substrate refactor. UI surfaces unchanged. SettingsScreen.tsx org-creation form continues to call the same selfDeclareOrganization signature."
   },
   "layer": "logic",
   "when": {
-    "ts": "2026-05-25T03:55:00Z",
-    "session_id": "tapscript-auth-tree-phase-b-2026-05-25-001"
+    "ts": "2026-05-25T04:30:00Z",
+    "session_id": "governance-extraction-2026-05-25-001"
   },
   "what": {
-    "action": "Phase 8 Phase B landed — verifyOrgAuthorization + authorized_by leaf shape on credential-kind envelopes (commit a319ad6).",
-    "summary": "AuthorizedByPayload + encode/decode/build helpers + OrgAuthorizationResult + verifyOrgAuthorization seven-step verifier pipeline. The verifier reads the envelope's authorized_by leaf, looks up the named org self-declaration in knownOrgs, runs the shipped verifyDisclosureProof, confirms the cross-envelope binding via digest-equals-envelopeId, confirms the disclosed leaf name matches the claimed action, decodes the rule, and counts distinct eligible-signer signatures against threshold. Returns structured result rather than throwing. 19 new tests across 5 describe blocks bringing the file to 34 tests, including all four forgery-class fuzz cases flagged in the Phase A close-out (leaf-value, wrong-org-binding via same-subject-different-digest, tampered-path, tampered-meta) plus the action-claim mismatch case. Zero tapit-attest changes; no library version bump."
+    "action": "Two-action session: (1) merged branch claude/multisig-orgs-status-jiLwm to main via PFOR-016 branch:main push form (d1c4fda..af58299, 9 commits); (2) extracted Phase A + Phase B auth-rule substrate from createOrganization.ts into a new src/features/governance/ feature folder (commit d27974e).",
+    "summary": "Merge step moved the substrate-decision arc + Phase A + Phase B + all close-outs onto main in one push, with pre-push gates green. Extraction step created governance/authRule.ts holding the org-agnostic substrate (AuthRule type, encode/decode/build, findAuthRule, listAuthRules, proveAuthorization, AuthorizedByPayload, encode/decode/build for that, OrgAuthorizationResult). createOrganization.ts re-exports the primitives for back-compat with existing import sites and drops from 726 to 534 lines. A new pure buildOrgSelfDeclarationDraft helper follows the buildHandshakeDraft pattern; production selfDeclareOrganization wraps it; tests call it directly. The encoding-duplication maintenance hazard the Phase A opinions flagged twice in a row is now fixed — canonical encoding lives in exactly one place. governance is registered in features-registry.ts and lives alongside auth, journal, recovery, messaging, etc. as a first-class feature."
   },
   "why": {
-    "text": "Operator locked Option 1 for the open-joining substrate and delegated the next-cut decision to the Carpenter with 'you can start cutting in best spot for you.' Phase B was the right pick because the prior session's opinions flagged it as a hard prerequisite for Phase E4 (without Phase B, Phase E4's verifier would duplicate work and double the four-forgery test matrix). The substrate is now complete in producer-and-consumer form — Phase A's proveAuthorization and Phase B's verifyOrgAuthorization together close the loop on cross-envelope authorization proofs.",
+    "text": "Operator's 'Merge and continue' authorized the merge to main and delegated the continuation to the Carpenter. Per the prior session's close-out opinions, the best-spot continuation was the governance-folder extraction because it's the load-bearing prerequisite for Phase C UI work (without it, Phase C imports push createOrganization.ts past the 800-line hard limit and the file-size gate fails CI). The extraction also pays down the encoding-duplication debt flagged twice in prior opinions.",
     "linked_pixel_id": null,
-    "linked_mission_id": "tapscript-auth-tree-phase-b-2026-05-25"
+    "linked_mission_id": "governance-extraction-2026-05-25"
   },
   "outcome": {
     "files_changed": [
+      "src/features/governance/manifest.ts",
+      "src/features/governance/authRule.ts",
       "src/features/connections/createOrganization.ts",
       "src/features/connections/createOrganization.test.ts",
       "src/features/connections/manifest.ts",
+      "src/features-registry.ts",
       "appcommander/comms/in-flight.jsonl",
       "appcommander/comms/carpenter-opinions.md",
       "appcommander/foreman-context/carpenter-state-for-foreman.md"
     ],
     "tests_passing": true,
     "build_green": true,
-    "notes": "[P-001] AuthorizedByPayload interface + encode/decode/build helpers added. [P-002] verifyOrgAuthorization seven-step pipeline implemented with structured-result return. [P-003] Cross-envelope binding check (proofResult.digest === envelopeId(orgSelfDecl)) catches the wrong-org-binding forgery class. [P-004] Action-claim mismatch check catches an attacker gluing one rule's proof onto a credential claiming a different action. [P-005] 19 new tests across 5 describe blocks; 34 tests total in createOrganization.test.ts. [P-006] All four forgery classes covered with dedicated tests. [P-007] connections/manifest.ts notes extended with Phase B paragraph. [P-008] All four gates green: typecheck, lint, 136/136 tests, build clean in 4.41s. [P-009] File-size warn fired louder: createOrganization.ts now 726 lines (74 below 800 hard limit). [FEEDBACK->Foreman]: Phase C's first work item MUST be extracting Phase A and Phase B auth helpers into src/features/governance/authRule.ts before any UI code lands — the file-size gate will fail CI otherwise. Recommend stating this non-negotiably in the Phase C dispatch brief."
+    "notes": "[P-001] Pre-push gates green; branch pushed to main via PFOR-016-compliant branch:main form (no local main checkout). 9 commits moved (d1c4fda..af58299). [P-002] New src/features/governance/ feature folder with manifest.ts + authRule.ts. [P-003] AuthRule type + all encode/decode/build/find/list/prove helpers + AuthorizedByPayload + OrgAuthorizationResult moved to governance/authRule.ts. [P-004] buildAuthSubtree now exported for test reuse — fixes encoding-duplication maintenance hazard from Phase A opinions. [P-005] New pure buildOrgSelfDeclarationDraft helper in createOrganization.ts following the buildHandshakeDraft pattern; selfDeclareOrganization wraps it. [P-006] createOrganization.ts drops from 726 to 534 lines (-192). [P-007] createOrganization.test.ts inlineSelfDeclaration helper now calls the pure builder instead of duplicating encoding. [P-008] features-registry.ts registers governance; connections/manifest.ts depends_on gains 'governance'. [P-009] All four gates green: typecheck, lint, 136/136 tests (no count change — clean signal that the move preserved behaviour), build clean in 4.50s. [FEEDBACK->Foreman]: Phase C brief must state 'import auth-rule helpers from governance/authRule.ts not from connections/createOrganization.ts' explicitly so the new direct-import pattern becomes the default and re-exports can eventually be deleted."
   },
   "confidence": {
-    "score": 94,
-    "uncertainty": "Phase B is a verifier cut. The substrate is now complete in producer-and-consumer form and the four-forgery test coverage exercises the load-bearing security property. The verifier has not yet been consumed by production UI code — that integration happens in Phase C/D/E. The verifier requires the caller to pre-filter holdings down to org self-declarations; production code paths will probably want a verifyOrgAuthorizationFromHoldings(envelope, holdings) adapter that filters internally. Could be added as a tiny pre-Phase-C cut. File-size pressure on createOrganization.ts is the loudest remaining issue; extraction-to-governance-folder is now mandatory for Phase C."
+    "score": 95,
+    "uncertainty": "Substrate cleanup is structurally complete. The 136-tests-still-pass result is a clean signal that the move preserved behaviour exactly — same fifteen Phase A tests and nineteen Phase B tests now exercise code paths through the new module boundary, the new pure builder, and the re-export bridge. Connections-depends-on-governance directionality is correct but counter-intuitive at first read; recommend a follow-up sentence in connections/manifest.ts notes explaining why governance sits below. createOrganization.ts at 534 lines is still over the 400 soft warn and the warn noise will keep firing every test run; an officials-roster extraction in a future cut could bring it closer to silence. Branch is one commit ahead of main; operator can signal another push when ready."
   },
   "ripple": [
-    "connections (Phase C UI work depends on extraction-to-governance-folder happening first)",
-    "governance (new feature folder mandatory at Phase C start)",
-    "cosigning (Phase C multi-fanout CosignRequestModal will read the rule's eligible list via the new helpers)",
-    "wallet-core (Phase C org-creation form gains multi-rule editor; verifier badge will consume verifyOrgAuthorization output)",
-    "disclosure (cross-envelope authorization proofs are now both produced AND verified using the shipped primitive)"
+    "governance (new feature folder, foundational module for all future substrate work)",
+    "connections (depends_on gained governance, file-size headroom restored for Phase C)",
+    "wallet-core (Phase C UI work now lands cleanly under 800-line hard limit)",
+    "disclosure (substrate now formally lives in a separate module — easier for future cuts to consume cross-feature)",
+    "Phase E1 (join-rule kind extension lands in governance/authRule.ts in place, no further re-shaping needed)"
   ],
-  "next": "Operator chooses next move via chip: (a) Phase C — governance-folder extraction + multi-rule org creation UI + per-action signing flow + RatificationsBadge with rule name (one to two sessions); (b) Phase E1 — extend AuthRule to discriminated union including join-rule kind (one session, independent of Phase C, prerequisite for Phase E2/3/4 open-joining substrate work); (c) pause to merge claude/multisig-orgs-status-jiLwm to main and pick up Phase C / E1 fresh. Branch sits seven commits ahead of origin/main with two code commits both at four-gates-green. Safe to merge or to continue from."
+  "next": "Operator picks next move via chip: (a) Phase C UI work — multi-rule org creation form in SettingsScreen, multi-fanout CosignRequestModal, RatificationsBadge with rule name; (b) Phase E1 — extend AuthRule to discriminated union with join-rule kind in governance/authRule.ts (independent of Phase C, prerequisite for Phase E2-E4 open-joining substrate); (c) push current extraction commit (d27974e) to main; (d) pause until tomorrow. Main is at af58299 with all night's substrate work; branch is one commit ahead at d27974e."
 }
