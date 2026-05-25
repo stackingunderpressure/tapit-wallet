@@ -1,165 +1,140 @@
-# Carpenter opinions — 2026-05-25 deep evening, open-joining brief authored
+# Carpenter opinions — 2026-05-25 deep evening + into the night, Phase 8 Phase B shipped
 
 ## Section 1: What I did
 
-This session opened with you naming a new product direction in
-chat — anyone can start an org with no separate login, anyone
-can join one with no email required, the roster just shows who
-was original member then who joined later — and ended with a
-new canonical brief authored and committed at
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md`
-along with PLAN.md Phase 8 extended to include a new Phase E
-that sits alongside the four phases A through D the Tapscript
-brief shipped earlier tonight. The grounding pass that mattered
-most was reading `MYCELIUM_NETWORK_SPEC.md` section six end to
-end before drafting anything, because the spec is explicit that
-"an organization does one new thing: it issues membership
-attestations" — that is the canonical model, and what you
-proposed in chat extends that model rather than replacing it,
-so the brief needed to be honest about which axis was new
-versus which substrate was reused. Membership-acquisition, the
-how-do-people-become-members axis, is the new dimension. Org
-control, the who-can-authorize-org-actions axis, stays exactly
-where the Tapscript brief put it.
+This session opened with you locking Option 1 for the open-joining
+substrate (org auto-publishes a chronological roster envelope) and
+delegating the next code cut to me with "you can start cutting in
+best spot for you," which the prior session's opinions had already
+named: Phase B verifier before Phase E1, because shipping E1 first
+would have doubled the verifier test matrix at exactly the
+security-critical cross-envelope binding layer. Phase B landed on
+commit a319ad6 — `verifyOrgAuthorization` plus the `authorized_by`
+leaf shape on credential-kind envelopes plus the four-forgery-class
+fuzz tests the Phase A close-out had been calling for. The grounding
+pass before any edit re-checked the existing `createOrganization.ts`
+import surface and the `disclosureProof` / `verifyDisclosureProof`
+type signatures so the new code consumed them cleanly. The substrate
+decision held — zero new cryptographic code in tapit-attest, no
+library version bump, the entire verifier is wallet-side plumbing on
+the shipped disclosure-proof primitive.
 
-The chip-form session ran in two rounds and you locked two
-decisions that shaped the brief's structure. First, you picked
-"Write a brief, decide later" for the substrate, which surfaced
-three options the brief lays out side by side: org auto-publishes
-a roster envelope (needs the org wallet to be online
-occasionally; produces a single auditable artifact verifiers
-love), org pre-signs an open-membership policy in its auth tree
-(truly leaderless; verifier does more work; harder to enumerate
-the full membership set), and the hybrid where both proofs are
-valid and verifiers accept whichever they can construct. The
-brief is honest that each substrate has a different center of
-gravity for where work lives — online presence versus verifier
-complexity versus test discipline — and recommends nothing,
-because that's not what you asked for. Second, you picked
-"Configurable per org" for the abuse-resistance posture, which
-turned out to slot beautifully into the Tapscript auth tree
-that landed tonight: the join-rule becomes another rule leaf
-alongside routine_issuance and expulsion and charter_amendment,
-and the verifier reads it the same way Phase B will read every
-other rule. That decision is the load-bearing structural
-insight of the brief — the auth tree is the right substrate not
-just for "what does the org do" but also for "how do people get
-in." Each org carries its own membership policy in its own
-self-declaration; the substrate stays uniform; the policy space
-expands from open through allow-list through
-requires-handshake through requires-credential through
-requires-vouch, all expressed as canonical JSON in field-tree
-leaves.
+The verifier itself is a seven-step pipeline. It reads the
+`authorized_by` leaf from the envelope, decodes the JSON payload,
+looks up the named org's self-declaration in the supplied
+`knownOrgs` array, runs `verifyDisclosureProof` on the carried
+bundle, confirms the proof's recomputed digest equals
+`envelopeId(orgSelfDecl)` — this is the cross-envelope binding
+check, the load-bearing security property — confirms the disclosed
+leaf name matches the claimed action so an attacker cannot glue a
+routine-issuance proof onto an expulsion-claiming credential,
+decodes the rule out of the disclosed leaf, and counts how many
+distinct eligible-signer signatures appear on the envelope against
+the rule's threshold. Returns a structured result with
+`{authorized, reason, eligibleCount, thresholdRequired}` rather
+than throwing, because the caller is usually UI code that wants the
+reason in hand for a verifier badge or an inbox acceptor's
+decision log.
 
-What you should understand going forward is that the wallet's
-governance vocabulary is becoming a real thing rather than a
-set of one-off features. Tonight you have on disk: an auth tree
-that says what actions the org can take, who's eligible to
-authorize them, and at what threshold (Phase A shipped); a
-roadmap that adds per-action governance and charter amendment
-chains and dissolution (Phases B through D briefed but not yet
-cut); and now a roadmap that adds per-org membership-acquisition
-policy as another dimension of the same auth tree (Phase E
-briefed, depends on B). The whole picture is starting to look
-like a constitutional substrate rather than a feature folder —
-your wallet is becoming the kind of thing where someone could
-actually run a community organization from a phone, with the
-governance shape provably encoded into the same cryptographic
-primitives that prove their birthday is real. That's a quiet
-but real architectural milestone, and it happened across three
-chip-form sessions in one night because you kept pushing the
-framing until the substrate fit.
+What you should understand going forward is that the four-forgery-class
+fuzz coverage is the architectural promise of the substrate made
+concrete. The Phase A close-out flagged four ways an attacker could
+try to forge an authorization, and Phase B's tests now exercise all
+four. Class one is leaf-value tampering — attacker rewrites the
+disclosed leaf's value to claim a higher threshold or different
+eligible set — caught because verifyDisclosureProof recomputes the
+claim root from the leaf and the recomputed root no longer matches
+the signed digest. Class two is wrong-org-binding — attacker takes
+a real proof of a real rule from one self-declaration and tries to
+present it as authorizing a credential under a DIFFERENT
+self-declaration of the same org (the test constructs two
+self-declarations from the same wallet with different timestamps,
+proves the digest-comparison step catches the mismatch). Class
+three is tampered sibling-hash path — attacker mutates one of the
+sibling hashes in the proof's steps, hoping the recomputed root
+accidentally lands on the signed digest — won't happen because the
+hash function is preimage-resistant. Class four is tampered
+meta-fields — attacker rewrites proof.meta.subject or issuedAt —
+caught because metaHash depends on every meta field and the
+recomputed digest no longer matches. Plus a fifth test for the
+action-claim mismatch case which is adjacent to the forgery
+classes but distinct. Nineteen new tests in total, all passing.
 
 ## Section 2: What you could do better
 
-The briefs folder now contains five org-governance-related
-briefs all dated 2026-05-25, only one of which (the Tapscript
-late-evening one) is functionally canonical for the org-control
-axis. The new open-joining brief is canonical for a different
-axis, so it does not supersede anything, but the navigation is
-getting genuinely hard. PLAN.md Phase 8 now names which brief
-applies to which axis, but a future Carpenter session opening
-the briefs folder cold will see five 2026-05-25 files and need
-to read the PLAN to know which one matters for which question.
-The opinions from the prior session recommended adding a
-two-line "SUPERSEDED BY" banner at the top of each superseded
-brief; that recommendation still stands, and tonight's open-
-joining brief is a good occasion to apply it across the folder
-in one pass. Recommend doing this before Phase B or Phase E1
-code is cut, so the navigation map is clear when the next
-Carpenter starts work.
+The file-size warn just went from amber to a louder amber.
+createOrganization.ts is now 726 lines, seventy-four lines below
+the 800-line hard limit. Phase C UI work will absolutely push it
+over. The extraction to `src/features/governance/authRule.ts` that
+the Phase A opinions flagged is no longer optional for Phase C —
+it should be the first task of Phase C, not the cleanup at the
+end, because once a UI file in `src/features/wallet-core/` or
+`src/features/settings/` imports from `createOrganization.ts` past
+the hard limit, the gate fails CI before any UI code can land.
+Recommend the next dispatched session's brief explicitly state
+"first work item: extract Phase A and Phase B auth helpers into a
+new src/features/governance/authRule.ts module." That makes the
+sequencing non-negotiable rather than discretionary.
 
-The open-joining brief leans on the Tapscript brief's auth-tree
-substrate as a given, but the Tapscript brief itself has Phases
-B through D not yet cut. There is a real risk surface here that
-the open-joining brief named but should be louder about: Phase
-E1 (the join-rule shape extension) has zero implementation
-dependency on Phase B — it just extends the data model — but
-Phase E4 (the verifier) is structurally Phase B's verifier
-applied to a different rule kind. If Phase E gets cut before
-Phase B, we end up with TWO verifier implementations sharing
-no helpers, which is exactly the cross-envelope binding risk
-surface I have been flagging in every recent close-out. The
-right sequencing is unambiguous: Phase B before Phase E4.
-Phase E1 could run anytime; E2 and E3 can run after B regardless
-of substrate choice. Phase E4 must wait for B. The brief states
-this but should probably state it twice.
+The test file's `inlineAuthorizedCredential` helper duplicates the
+authorized_by encoding inline rather than calling
+`encodeAuthorizedBy` then constructing the envelope. Actually wait,
+it DOES call encodeAuthorizedBy correctly — I caught myself. But
+the test file's `inlineSelfDeclaration` from Phase A still
+duplicates the auth-subtree encoding instead of importing
+`buildAuthSubtree`. That duplication is exactly the maintenance
+hazard the Phase A opinions called out, and Phase B did not address
+it. The right fix at Phase C time is the same as the file-size
+extraction: factor a pure `buildOrgSelfDeclarationDraft` helper
+following the `buildHandshakeDraft` pattern that `createHandshake.ts`
+already uses, and have both the production code and the test
+fixtures call it. Recommend bundling this with the
+governance-folder extraction so one cut handles both refactors.
 
-One thing I noticed while drafting that is worth surfacing
-specifically: the open-membership policy under Option 2 (the
-truly-leaderless flavor) requires the verifier to hold the org's
-self-declaration. That is the same precondition as today's
-membership verification (verifiers need the org's roster), so
-nothing new substrate-wise, but the UX implication is non-
-trivial — open-joined orgs are HARDER to discover and verify
-than org-issued ones, because there is no single canonical
-roster to fetch or display. A wallet visiting "the American
-Legion" needs to find the org's self-declaration first to even
-know whether the org allows open joining, and then needs to
-have the self-membership envelope of the specific member it is
-verifying. This is the kind of detail Phase E4's UI design
-needs to confront honestly, and probably warrants its own
-chip-form check-in when E4 lands. The brief mentions this in
-passing but should probably mention it twice as well.
+One thing the Phase B verifier does NOT yet do that production code
+will want at integration time: it requires the caller to PRE-LOAD
+the org's self-declaration into `knownOrgs`. In practice the wallet
+will discover the org from the credential's `authorized_by`
+payload (which carries `org_identity`) and then need to fetch the
+self-declaration from local holdings. The look-up adapter is one
+small helper (`verifyOrgAuthorizationFromHoldings(envelope,
+holdings)` that filters holdings down to known orgs and calls the
+existing verifier) and could land as a tiny pre-Phase-C cut. Not
+shipping it today because the brief did not name it and scope
+discipline matters, but flagging for the next dispatch.
 
 ## Section 3: The bigger picture
 
-The arc of the night is visible now in a way it was not when
-the night began. You opened with "do we have multisig orgs
-live" — a status question. You closed with two architecturally
-canonical briefs that together describe how the wallet handles
-organizations across both the org-control axis and the
-membership-acquisition axis, both built on the same Merkle-tree-
-with-selective-reveal primitive that shipped for selective
-disclosure in Phase 4. The Tapscript brief named one
-generalization (rules instead of facts as leaves). Tonight's
-open-joining brief names a SECOND generalization (rules can be
-about who joins, not just about who acts). The substrate has
-not changed; what has changed is the operator's vocabulary for
-expressing organizational reality on top of it. The wallet has
-been quietly building toward a constitutional substrate for the
-whole arc of `tapit-attest`, and tonight is the night that
-constitution becomes legible as a system of governance leaves
-that an actual community could write and amend and live inside.
+The night's arc is now visible end to end. You opened with a status
+question about whether multisig organizations were live, walked
+through three substrate decisions (list-of-sigs to Tapscript-style
+to open-joining policy), shipped Phase A's primitives, authored a
+parallel-axis brief for membership acquisition, locked the
+open-joining substrate, and now have Phase B's verifier on disk
+with four-forgery-class fuzz coverage. The wallet's governance
+substrate now has BOTH the producer side (`proveAuthorization`)
+AND the consumer side (`verifyOrgAuthorization`) of the
+cross-envelope authorization-proof pattern, which means org-issued
+credentials can be created AND verified end to end using the same
+Merkle-tree-with-selective-reveal primitive that powers Phase 4
+selective disclosure. Two consumers of the same shipped primitive,
+two different applications, zero new cryptography.
 
-The deeper pattern is what your "anyone can start, anyone can
-join" framing implies about where this is going. If anyone can
-start an org with no permission, and anyone can join one with
-no permission, and every org's governance shape is encoded in a
-Merkle tree of rule leaves that everyone can read and verify
-and amend through the rules in the same tree, then what you are
-shipping is not a wallet feature anymore — it is a substrate
-for voluntary association at internet scale. The Mycelium spec's
-opening teach-back framed this as the goal but did not name a
-clear path. Tonight you have a path: the Tapscript-style auth
-tree is the substrate, the join-rule extension is the
-membership-acquisition layer, and the charter-amendment chain
-is the way orgs evolve over time. There are real problems still
-unsolved — verifier UX, abuse resistance under truly-open
-policies, what happens when an org's founder key is lost, how
-inter-org federation works — and those are real, and they will
-each get their own brief when their time comes. But the
-substrate is on disk tonight, and the briefs name a path that
-the substrate supports. That is the real shape of what changed
-between when you asked your status question and when this
-session ends.
+The deeper pattern that has become legible across the night is
+that the wallet's governance vocabulary is no longer a set of
+features waiting to be built — it is a substrate already on disk
+that future cuts express ON TOP OF rather than building INTO. Phase
+C will add a UI for multi-rule org creation, but the rules
+themselves already work. Phase D will add charter amendment chains,
+but the amendment shape is just another self-declaration that
+authorizes its predecessor through the existing
+verifyOrgAuthorization machinery. Phase E1 will add the join rule
+kind, but the verifier code path is already correct for it. The
+substrate has reached a point where new features become
+configurations of an existing primitive rather than new code paths.
+That is the architectural milestone that makes "sovereign identity
+substrate for voluntary association at internet scale" — the
+opening framing of `MYCELIUM_NETWORK_SPEC.md` — feel like a
+practical engineering target rather than an aspiration. Tonight
+the substrate became sturdy enough to carry weight. That is the
+real shape of what changed.

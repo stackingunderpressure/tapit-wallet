@@ -1,53 +1,47 @@
-# carpenter-state-for-foreman — Open-joining brief authored (Phase E added to PLAN Phase 8)
+# carpenter-state-for-foreman — Phase 8 Phase B landed (verifier on disk)
 
-> PFOR-012 structured operational state. Written 2026-05-25 deep evening immediately after committing eab7743 on `claude/multisig-orgs-status-jiLwm`. Branch sits five commits ahead of `origin/main`: 0eab0e8 (list-of-sigs brief), 9e58108 (Tapscript-style brief), 7d76cbd (close-out for brief session), 4eaeba8 (Phase A code), eea0542 (close-out for Phase A), and now eab7743 (open-joining brief). All gates remain green from the Phase A landing; this session's commit is doc-only so no new gate runs needed.
+> PFOR-012 structured operational state. Written 2026-05-25 deep evening / into the night immediately after committing a319ad6 on `claude/multisig-orgs-status-jiLwm`. Branch sits seven commits ahead of `origin/main`: brief commits 0eab0e8 / 9e58108 / 7d76cbd, Phase A code 4eaeba8 + close-out eea0542, open-joining brief eab7743 + close-out 5c3c7f7, and now Phase B code a319ad6. All four gates green for both code commits; the brief/close-out commits are doc-only.
 
-**Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS. This session was triggered by the operator surfacing a new product direction in chat — "Can we make where any one can start an org and anyone can join one no need email required" — which turned into a chip-form decision session that locked configurable-per-org as the abuse-resistance posture and deferred the substrate decision to brief-then-decide.
+**Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS. Session was triggered by operator picking Option 1 for the open-joining substrate AND delegating the next-cut decision to the Carpenter with "you can start cutting in best spot for you." The Carpenter picked Phase B verifier per the prior session's recommendation, which the open-joining brief had also flagged as a hard prerequisite for Phase E4.
 
 ## WHAT-CHANGED-RECENTLY
 
-Commit eab7743 — "Brief — open-joining + per-org configurable membership policy" — three files touched:
+Commit a319ad6 — "Phase 8 Phase B — verifyOrgAuthorization + authorized_by leaf" — four files touched:
 
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md` (new, 431 lines): Authored the canonical brief for the membership-acquisition axis. Extends `MYCELIUM_NETWORK_SPEC.md` §6 with member-initiated joining (the spec today names only org-issued memberships). Per-org configurable join-policy expressed as a `join` rule in the Tapscript-style auth tree shipped in Phase A. Three substrate options laid out side by side (org auto-publishes roster / org pre-signs open policy / hybrid) without locking one — operator will pick via chip after reading. Phase E1-E4 implementation arc, 5-7 sessions, ~2-3 weeks total.
+`src/features/connections/createOrganization.ts` (modified, now 726 lines): added `AuthorizedByPayload` interface; `encodeAuthorizedBy` / `decodeAuthorizedBy` / `buildAuthorizedByPayload` helpers; `OrgAuthorizationResult` interface; `verifyOrgAuthorization(envelope, knownOrgs)` verifier. The verifier is a seven-step pipeline: read authorized_by leaf, decode payload, look up org self-declaration in knownOrgs, run `verifyDisclosureProof`, confirm cross-envelope binding via `proofResult.digest === envelopeId(orgSelfDecl)`, confirm disclosed leaf name matches claimed action, decode rule, count distinct eligible signers against threshold. Imports `verifyDisclosureProof` from tapit-attest (new import).
 
-`PLAN.md` (modified): Extended the Phase 8 section with a new Phase E description naming the open-joining axis. Updated the operator-locked decisions paragraph to include the deep-evening session's locks (per-org configurable policy, substrate deferred).
+`src/features/connections/createOrganization.test.ts` (modified): 19 new tests across 5 describe blocks bringing the file to 34 tests total. Headline block is the four-forgery-class fuzz coverage: leaf-value tampered, wrong-org-binding via same-subject-different-digest, tampered sibling-hash path, tampered meta-fields. Plus action-claim mismatch, plus encode/decode round-trips, plus buildAuthorizedByPayload null cases, plus happy-path / missing-org / malformed / threshold-not-met / ineligible-signer refusal cases.
 
-`appcommander/comms/in-flight.jsonl` (modified): logged session_started + two file_touched events.
+`src/features/connections/manifest.ts` (modified): notes field extended with the Phase 8 Phase B paragraph.
+
+`appcommander/comms/in-flight.jsonl` (modified): session_started + three file_touched + one gate_passed event.
 
 ## WHAT'S-PENDING
 
-Two parallel decision tracks waiting on the operator:
+Phase C of the canonical Tapscript brief: UI for multi-rule org creation + per-action signing flow. Extends the existing `SettingsScreen.tsx` org-creation form to let the operator declare multiple rules at creation time, generalizes `CosignRequestModal` to multi-fanout-by-rule, extends `RatificationsBadge` to render the rule name inline. About one to two sessions. Operator authorization required.
 
-Track 1 — Phase B of the Tapscript brief (verifier). Needs to ship before any Phase E verifier work (E4) can land, otherwise we end up with two verifier implementations and the cross-envelope binding risk surface flagged repeatedly in prior opinions. Phase B is one session, no substrate dependency, ready to cut on operator authorization.
+Phase E1 of the open-joining brief: extend `AuthRule` to a discriminated union including the join-rule kind (open / allow-list / requires-handshake / requires-credential / requires-vouch). Independent of Phase C; can run in parallel. One session.
 
-Track 2 — Open-joining substrate choice (Option 1 / 2 / 3) from the newly-authored brief. Operator should read the brief on a desktop and pick the substrate via chip. The choice gates Phase E3's scope: Option 1 makes E3 heavy, Option 2 makes E3 mostly skippable, Option 3 keeps both with shared helpers.
+Phase D and Phase E2-E4 are downstream of the above and can be scheduled after the immediate next move is chosen.
 
-Phase E1 (join-rule shape extension in the auth tree) is independent of both tracks — it could be cut anytime after Phase A landed and adds no new verifier surface. It's the smallest discrete piece of forward progress available right now if the operator wants something concrete to land without resolving either track first.
+Operator has not yet authorized Phase C, Phase E1, or any specific next move. Natural next chip is a three-way: Phase C / Phase E1 / pause to merge to main.
 
 ## WHAT-TO-FLAG
 
-Brief navigation is genuinely getting hard. The briefs folder now contains five 2026-05-25-dated org-governance briefs:
+File-size warn is now the loudest issue on the board. createOrganization.ts is at 726 lines, 74 below the 800-line hard limit. Phase C will push it over. The extraction to `src/features/governance/authRule.ts` is no longer optional — it MUST be the first work item of Phase C, before any UI code lands, or the file-size gate will fail CI. Recommend the next dispatched session's brief explicitly state this as work item one. The extraction is also the right moment to fix the Phase A test-side encoding duplication (the test file's `inlineSelfDeclaration` helper duplicates `buildAuthSubtree` inline rather than importing it) — factor a pure `buildOrgSelfDeclarationDraft` helper following the `buildHandshakeDraft` pattern that `createHandshake.ts` already uses, and have production code and tests both import it.
 
-- 2026-05-23-quorum-org-keys-roadmap.md — MuSig2-first, historical
-- 2026-05-25-frost-first-and-charter-governance-roadmap.md — FROST-first, future signer-anonymity tier
-- 2026-05-25-simple-multisig-orgs-roadmap.md — list-of-sigs, simpler fallback
-- 2026-05-25-tapscript-style-org-authorization-tree-roadmap.md — canonical for org-control axis
-- 2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md — canonical for membership-acquisition axis
+The brief navigation problem from prior sessions remains. Five 2026-05-25 org-governance briefs in the folder, two canonical (Tapscript-style + open-joining), three superseded (May 23 MuSig2, May 25 morning FROST, May 25 evening list-of-sigs). The SUPERSEDED-BY banner pass recommendation from two prior opinions has not been actioned. Cheapest forward-progress task for an autonomous Foreman cycle.
 
-PLAN.md Phase 8 names the role of each, but a future Carpenter opening the folder cold has to read PLAN to navigate. The "SUPERSEDED BY" banner recommendation from the prior opinions still applies and is now even more important. Recommend adding the banners across all three superseded briefs in one pass before any Phase B or Phase E1 code lands; it's a five-minute job that saves real navigation cost long-term.
-
-Phase E1 versus Phase B sequencing risk: Phase E1 extends the `AuthRule` discriminated union with a new kind for join rules. If Phase E1 is cut FIRST (before B), the verifier in Phase B then has to handle BOTH the org-action rule shape AND the join rule shape, which doubles the test matrix at exactly the security-critical layer. If Phase B is cut FIRST, Phase E1 inherits the verifier's discipline and just adds a new rule kind to an already-tested machine. Recommend Phase B before Phase E1 even though E1 is technically independent — the test-discipline cost is much lower in that order.
-
-Verifier UX under Option 2 (truly-leaderless open-membership policy) is non-trivial. The brief mentions it but it deserves chip-form check-in when Phase E4 lands. Specifically: an open-joined org has no canonical roster envelope to fetch, so "show me the members of the American Legion" is unanswerable without a directory layer that the substrate does not provide. This is a real UX problem that Phase E4 will have to confront if Option 2 or 3 is chosen.
+One small ergonomic gap surfaced during Phase B that's worth noting for Phase C planning: `verifyOrgAuthorization(envelope, knownOrgs)` requires the caller to pre-filter holdings down to org self-declarations. In production code paths the caller will usually have the full holdings array. Recommend adding a `verifyOrgAuthorizationFromHoldings(envelope, holdings)` adapter as a tiny pre-Phase-C cut — five lines, filters holdings via `isOrganizationSelfDeclaration`, calls the existing verifier. Not shipping today because the brief didn't name it.
 
 ## RECOMMENDED-NEXT-MOVES
 
-For the operator: read the open-joining brief on a desktop (the substrate-comparison and the discriminated-union type sketch are the load-bearing exposition and read better at width than on iOS). After reading, pick the substrate via chip. In parallel or beforehand, decide whether to authorize Phase B as the next code cut.
+For the operator: optionally pull the branch and run `npm test -- createOrganization` to see all 34 tests green; the four-forgery tests in particular are worth reading as the security argument made concrete. Then decide via chip-form: Phase C (governance-folder extraction + multi-rule org creation UI), Phase E1 (join-rule shape), or pause to merge to main before continuing the arc.
 
-For the Foreman: the SUPERSEDED-BY banner pass across the three historical briefs is a tractable proactive task that doesn't need operator direction. If you have an autonomous cycle to spend, that's the cheapest high-value use of it tonight. Alternative: a Phase B test-discipline pre-brief covering the four forgery classes (leaf-value, wrong-org-binding, tampered-path, tampered-meta) so the eventual Phase B dispatch opens with a clear test target.
+For the Foreman: the SUPERSEDED-BY banner pass across the three historical briefs is still the cheapest high-value autonomous task. Alternatively, a one-page Phase C pre-brief that names "governance-folder extraction is work item one" non-negotiably would prevent the file-size gate from biting at Phase C dispatch time.
 
-For both: the FROST brief in the drawer remains framed as "the upgrade path the day an org needs signer-anonymity." Nothing in tonight's session changed that, but the open-joining direction does suggest a future-trigger: an org with an open-membership policy might want signer-anonymity for SENSITIVE actions even while it's open to joining. That's a real intersection worth a living-ideas entry per the new doctrine.
+For both: the Tapscript substrate is now complete in producer-and-consumer form. Phase C / D / E1+ all build ON TOP of the substrate rather than INTO it. The architectural milestone of "governance vocabulary as a sturdy primitive" is locked. Recommend treating the next cuts as configurations of the existing substrate rather than as new substrate work.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Architecturally generative. Three substrate decisions in one night (list-of-sigs → Tapscript-style → open-joining policy axis), each one pushing the wallet's governance vocabulary further toward "constitutional substrate" rather than "feature folder." The pace feels sustainable; the operator's questions keep being the right architectural questions ("Taproot multisig correct? So our leaves theory holds up?") and the chips keep producing better answers than either party had at the start of each round. Recommend the operator sleep on this — three briefs and one code commit in one night is a lot of architectural work to absorb. Phase B and Phase E1 are both ready to cut fresh tomorrow. Phase A is on disk and verified by 15 passing tests.
+Trusting the Carpenter to pick the right next cut and shipping fast. "You can start cutting in best spot for you" was a clean delegation that produced a clean execution. The pace remains sustainable — three substrate decisions + two code phases + two architectural briefs across one night without any debt being kicked down the road that hadn't been explicitly flagged. The operator can sleep on Phase B's landing with confidence that the four-forgery test coverage actually defends the substrate's load-bearing security property. Phase C is the largest remaining piece of work, and it's UI-heavy rather than substrate-heavy — different texture than tonight's cuts, but the substrate beneath it is ready.
