@@ -141,17 +141,19 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Sign someone else's entry</h2>
+    <div className="fixed inset-0 z-50 bg-paper overflow-y-auto">
+      <div className="w-full max-w-md mx-auto p-5">
+        <div className="flex items-center justify-between mb-3 -mx-5 px-5 py-2 sticky top-0 bg-paper/95 backdrop-blur z-10">
           <button
             type="button"
             onClick={onClose}
             className="text-sm text-muted hover:text-ink"
+            aria-label="Back"
           >
-            Close
+            ← Back
           </button>
+          <h2 className="text-base font-semibold">Sign someone else's entry</h2>
+          <div className="w-12" aria-hidden />
         </div>
 
         {step.kind === 'paste' && (

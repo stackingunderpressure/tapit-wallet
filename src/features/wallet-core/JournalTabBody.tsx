@@ -11,12 +11,18 @@ interface Props {
 }
 
 // Journal-tab compose surface. When composerOpen is true the
-// JournalComposer renders inline (carrying any prefill from a
-// chat-promote moment); otherwise Classic shows the bottom action
-// row (Sign someone else's entry / + New entry) and Fresh shows
-// nothing here since FreshComposeFAB lives at the HomeScreen
-// root. Extracted from HomeScreen to keep that file under the
-// 800-line hard limit after sub-cut 2c added composer prefill state.
+// JournalComposer renders as a full-screen page (fixed inset-0)
+// with a back button at the top — operator: "When you click on
+// new entry or witness it needs to be its own screen with back
+// not hybrid with what's above." Otherwise Classic shows the
+// bottom action row and Fresh shows nothing here since
+// FreshComposeFAB lives at the HomeScreen root.
+//
+// The full-screen overlay uses bg-paper, which the Fresh CSS
+// sweep flips to fresh-surface-raised on the dark body — so the
+// page swap is theme-aware without per-theme JSX. z-40 sits
+// above the sticky header and bottom nav (z-30) but below modals
+// (z-50) like QrScanModal which can still open on top of it.
 export function JournalTabBody({
   composerOpen,
   composerPrefill,
@@ -27,16 +33,27 @@ export function JournalTabBody({
 }: Props) {
   if (composerOpen) {
     return (
-      <section className="mt-6 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-        <h2 className="text-base font-semibold">New entry</h2>
-        <div className="mt-3">
+      <div className="fixed inset-0 z-40 bg-paper overflow-y-auto">
+        <div className="max-w-md mx-auto p-5">
+          <header className="flex items-center justify-between mb-5 -mx-5 px-5 py-2 sticky top-0 bg-paper/95 backdrop-blur z-10">
+            <button
+              type="button"
+              onClick={onCloseComposer}
+              className="text-sm text-muted hover:text-ink"
+              aria-label="Back"
+            >
+              ← Back
+            </button>
+            <h2 className="text-base font-semibold">New entry</h2>
+            <div className="w-12" aria-hidden />
+          </header>
           <JournalComposer
             onCreated={onCloseComposer}
             onCancel={onCloseComposer}
             prefill={composerPrefill ?? undefined}
           />
         </div>
-      </section>
+      </div>
     );
   }
   if (resolvedTheme === 'fresh') return null;
