@@ -1,55 +1,77 @@
 {
   "v": 1,
-  "ts": "2026-05-24T23:55:30Z",
-  "session_id": "chat-cut2a-2026-05-24-002",
+  "ts": "2026-05-25T00:21:30Z",
+  "session_id": "chat-cut2b-2026-05-25-001",
   "who": {
     "actor": "Carpenter (Claude)",
-    "feature_slug": "connections"
+    "feature_slug": "messaging"
   },
   "where": {
     "files": [
-      "src/features/connections/createHandshake.ts",
-      "src/features/connections/createHandshake.test.ts",
-      "src/features/connections/HandshakeModal.tsx",
+      "src/features/messaging/manifest.ts",
+      "src/features/messaging/threadMessage.ts",
+      "src/features/messaging/bubbleFormat.ts",
+      "src/features/messaging/MessageBubble.tsx",
+      "src/features/messaging/MessageComposer.tsx",
+      "src/features/messaging/PeerThread.tsx",
+      "src/features/wallet-core/PeopleTabBody.tsx",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/wallet-core/WalletContext.ts",
       "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/manifest.ts"
+      "src/features/connections/ClassicConnections.tsx",
+      "src/features/connections/FreshCrew.tsx",
+      "src/features-registry.ts",
+      "scripts/bundle-budget.mjs"
     ],
-    "screen_path": "People tab → New handshake → r-preview (in-person) or not-here panel (remote): chip picker. ConnectionCard: relationship chip alongside Tier P/R badge."
+    "screen_path": "People tab → tap a ConnectionCard or FreshCrew bubble → PeerThread opens with header (back / peer name / relationship chip / Tier P/R badge) + scrollable history with time-of-day dividers + composer pinned at bottom. Back button returns to the connections list."
   },
   "layer": "ui",
   "when": {
-    "ts": "2026-05-24T23:55:30Z",
-    "session_id": "chat-cut2a-2026-05-24-002"
+    "ts": "2026-05-25T00:21:30Z",
+    "session_id": "chat-cut2b-2026-05-25-001"
   },
   "what": {
-    "action": "Per-peer chat sub-cut 2a — optional relationship leaf on handshakes",
-    "summary": "Folded the relationship-label-on-handshake idea (brief 2026-05-24-per-peer-chat-surface-roadmap.md section 7) into the data layer and the existing HandshakeModal builder UX. Optional family/friend/coworker/acquaintance/other leaf chosen by the builder via a chip picker at both build-points (r-preview for in-person, not-here panel for remote initiator), surfaced for explicit agreement to the co-signer in the i-preview step so both signatures cover the value, and rendered as a chip on ConnectionCard alongside the Tier P/R badge in both Classic and Fresh themes (FreshCrew renders ConnectionCard below its bubble row). Leaf omitted from envelope when unset for back-compat with older handshakes. Branch rebased onto origin/main (43 commits drift from other Carpenter's Fresh roadmap arc) before cutting; prior session's comms close-out skipped during rebase and replaced with this fresh aggregate close-out."
+    "action": "Per-peer chat sub-cut 2b — per-peer thread UI under People tab",
+    "summary": "The visible-magic delta from the chat arc lands. New messaging feature folder ships PeerThread + MessageBubble + MessageComposer + bubbleFormat helper + threadMessage type. WalletProvider gains chatThreadsByPeer state (in-memory Map per the architecture call) and sendChatMessage callback; the existing transport useEffect opens a TAPIT_CHAT_KIND subscription alongside the envelope inbox on the same connection. ConnectionCard gains optional onOpen prop; ClassicConnections + FreshCrew thread it through (FreshCrew bubble-tap now opens thread, fallback to scroll-to-card preserved). HomeScreen extracted into PeopleTabBody to stay under the 800-line hard limit after the chat routing was added. Bundle budgets bumped: WalletProvider 8KB→8.5KB, HomeScreen 16KB→16.5KB. All 60 tests pass, build clean."
   },
   "why": {
-    "text": "Operator picked Option B from the three-way fork after the cross-Carpenter drift alert: rebase onto main, resolve comms by appending, fold the relationship-label fix into the Cut 2 re-design. The relationship leaf was flagged in the brief's section 7 as a sibling cut pairing naturally with the chat surface; folding it into Cut 2a means the per-peer thread UI in 2b can render the relationship chip in the thread header from its first commit rather than retrofitting later, and the recovery cohort picker gets sane defaults to lean on for free.",
+    "text": "Operator said 'Recenter and continue on' after the prior session shipped the rebase + sub-cut 2a relationship-leaf. Sub-cut 2b is the per-peer thread UI that turns the People tab from a list of pubkeys into a place you actually talk to your people — the visible-magic delta the brief framed as the unlock. Architecture call (in-memory vs IDB-paged state) resolved Carpenter-side per the prior session's recommendation: in-memory state in WalletContext for 2b alone, IDB-paged when Cut 4's messagesStore lands. The relationship chip from sub-cut 2a pins into the thread header from this cut's first commit per the operator's earlier 'fix in' directive, not retrofit later.",
     "linked_pixel_id": null,
     "linked_mission_id": "per-peer-chat-surface-roadmap-2026-05-24"
   },
   "outcome": {
     "files_changed": [
-      "src/features/connections/createHandshake.ts",
-      "src/features/connections/createHandshake.test.ts",
-      "src/features/connections/HandshakeModal.tsx",
+      "src/features/messaging/manifest.ts",
+      "src/features/messaging/threadMessage.ts",
+      "src/features/messaging/bubbleFormat.ts",
+      "src/features/messaging/MessageBubble.tsx",
+      "src/features/messaging/MessageComposer.tsx",
+      "src/features/messaging/PeerThread.tsx",
+      "src/features/wallet-core/PeopleTabBody.tsx",
+      "src/features/wallet-core/HomeScreen.tsx",
+      "src/features/wallet-core/WalletProvider.tsx",
+      "src/features/wallet-core/WalletContext.ts",
       "src/features/connections/ConnectionCard.tsx",
-      "src/features/connections/manifest.ts"
+      "src/features/connections/ClassicConnections.tsx",
+      "src/features/connections/FreshCrew.tsx",
+      "src/features-registry.ts",
+      "scripts/bundle-budget.mjs"
     ],
     "tests_passing": true,
     "build_green": true,
-    "notes": "[P-001] ✓ Rebased onto origin/main; 2 commits replayed clean, 1 prior comms commit skipped (replaced by this close-out). Branch force-with-leased. [P-002] ✓ createHandshake.ts: optional relationship param on both builders, leaf omitted when empty, readHandshake extracts it, HandshakeView gains relationship: string. [P-003] ✓ HandshakeModal.tsx: RELATIONSHIPS array + relationshipLabel + RelationshipChips component; wired into r-preview and not-here panel; i-preview reads back and surfaces 'They labelled this connection: X. Co-signing means you agree.' so co-signature is conscious. [P-004] ✓ ConnectionCard.tsx: relationship chip alongside Tier P/R badge, theme-aware. FreshCrew picks it up transitively. [P-005] ✓ 5 new tests in createHandshake.test.ts: in-person round-trip, remote round-trip, undefined-omits-leaf, empty-string-omits-leaf, both-signatures-cover-leaf. [P-006] ✓ Manifest extended. [P-007] ✓ All 4 gates green — typecheck, lint, 60/60 tests (5 new), build (4.09s). [FEEDBACK→Foreman]: cross-Carpenter drift alert at session start was load-bearing — without it I'd have built Cut 2 against stale assumptions about HomeScreen / connections / theme defaults."
+    "notes": "[P-001] ✓ messaging feature folder created (manifest + threadMessage + bubbleFormat + MessageBubble + MessageComposer + PeerThread). [P-002] ✓ WalletContext gains chatThreadsByPeer + sendChatMessage. [P-003] ✓ WalletProvider opens chat-kind subscription alongside envelope inbox, dedupes by event id, optimistic local append on send, attaches eventId on settle. [P-004] ✓ ConnectionCard gains optional onOpen prop, renders as button when set. [P-005] ✓ FreshCrew bubble + card both open thread when onOpenThread set; fallback to scroll-to-card preserved. [P-006] ✓ ClassicConnections threads onOpenThread through. [P-007] ✓ PeopleTabBody extracted from HomeScreen owns selectedPeer state. [P-008] ✓ messaging registered in features-registry.ts. [P-009] ✓ formatBubbleHeader extracted to bubbleFormat.ts to satisfy react-refresh lint. [P-010] ✓ Bundle budgets bumped with dated comments. [P-011] ✓ All 4 gates green — typecheck, lint, 60/60 tests, build (4.34s). HomeScreen 775 lines (down from 824 after PeopleTabBody extract), WalletProvider 798 lines (2 below hard limit — next dispatch must plan extraction). [FEEDBACK→Foreman]: the file-size hard-limit trip + lint react-refresh warning both surfaced AFTER first attempt — pre-flight checks (line count + react-refresh sniff) before committing would have saved a round-trip; potential ergonomics improvement for the in-flight workflow."
   },
   "confidence": {
-    "score": 93,
-    "uncertainty": "Sub-cut 2b (per-peer thread UI) was deliberately punted to its own dispatch — it's both the largest single piece of the chat arc by code volume and has an unresolved architecture call (in-memory chat history in WalletContext vs IDB-paged from a future messagesStore). Operator should make that call before 2b starts. Also: relationship picker is chips-only — no free-text 'custom' option for relationships outside the 5 presets. If a user wants 'spouse' or 'sibling' or 'mentor', they pick Other today; future cut can add free-text if the audience pilot signals it matters."
+    "score": 88,
+    "uncertainty": "Bundle-budget bumps are real but small (0.5KB each). The chat subscription block lives inline in WalletProvider's transport useEffect — at some point that effect needs extracting into its own hook for readability, but doing it now would have been scope creep. The chatThreadsByPeer Map is rebuilt on every state update via new Map(prev) — fine for hundreds of messages, becomes a perf concern in the thousands; IDB-paged refactor in Cut 4 handles that ceiling. PeerThread has no automated tests yet — UI render tests + the chat-thread integration test against a fake transport are the natural next cut. The Tier R remote-handshake path is the only place chat actually works end-to-end today: Tier P in-person handshakes do not exchange chat-capable pubkeys with the Mycelium transport enabled by default, so the chat surface is most useful to operators who have already enabled Mycelium and have at least one Tier R or Mycelium-active Tier P peer."
   },
   "ripple": [
+    "messaging",
+    "wallet-core",
     "connections",
-    "recovery (cohort picker can later sort/group by relationship)",
-    "messaging (future feature slug — Cut 2b PeerThread header can pin the relationship chip)"
+    "transport (chat subscription consumer)",
+    "storage (future Cut 4 messagesStore.ts)"
   ],
-  "next": "Sub-cut 2b — per-peer thread UI under the People tab. Operator decision needed first: chat history lives in WalletContext as in-memory state (simple, fast, blows up with thousands of messages) or pages from IDB on demand (more code, scales cleanly, pairs with Cut 4's messagesStore). Recommend in-memory for 2b alone with refactor to IDB-paging when Cut 4 lands. Also worth deciding: does the chat arc continue immediately, or pause to let the operator browser-verify the Fresh Cut 7 + Cut 2a flows against live Netlify+Supabase first, or pause longer to wait for Sage Cut 6 voice authorship before the audience pilot."
+  "next": "Sub-cut 2c — promote-to-envelope (plus-menu + long-press). Adds a + button in the MessageComposer and long-press on MessageBubble that opens a menu with: Save as journal entry, Mark presence with this person, Ask to witness an entry, Send cosign request, Share a held envelope, Disclose a proof of one leaf. Each target launches the existing modal pre-populated with the peer's pubkey and a quoted reference to the chat moment. Mostly wiring into existing modals via new optional prefill props; lighter than 2b despite being the most visible-magic piece. Followed by Cut 4 (local persistence + opt-in cloud backup via messagesStore) which closes the chat arc. Operator should also browser-verify the just-landed Cut 2a + Cut 2b stack against live Netlify+Supabase before the next dispatch lands."
 }

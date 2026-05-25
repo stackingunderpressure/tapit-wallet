@@ -1,89 +1,91 @@
-# carpenter-state-for-foreman — chat-arc rebase + relationship leaf sub-cut 2a
+# carpenter-state-for-foreman — chat-arc through sub-cut 2b (thread UI shipped)
 
-> PFOR-012 structured operational state. Written 2026-05-24 immediately after committing 8563b66 on `claude/families-feature-review-8DbXs`. Aggregates the prior chat-arc session (brief + Cut 1) and this session (rebase onto main + sub-cut 2a) against the main-state baseline left by the other Carpenter's Fresh roadmap Cut 7.
+> PFOR-012 structured operational state. Written 2026-05-25 immediately after committing 1bcaeb1 on `claude/families-feature-review-8DbXs`. Aggregates the full chat-arc to date (brief + Cut 1 + sub-cut 2a + sub-cut 2b) against the main-state baseline left by the other Carpenter's Fresh roadmap Cut 7. Branch sits five commits ahead of `origin/main` awaiting merge.
 
 **Operator-mode note:** AppCommander down. Operator running manual against live Netlify + Supabase deploy. Dual-surface comms active. v1 is shipped. Operator is on iOS.
 
-**Two-Carpenter workflow note:** Two parallel Claude sessions, main is the handshake point. The `claude/wallet-implementation-questions-umXHh` arc shipped Fresh roadmap Cuts 1-5, 7-9 plus handshake-flow overhaul plus several bug fixes to main between 2026-05-24 earlier today and the close-out at `de5a797`. The `claude/families-feature-review-8DbXs` arc opened with an audit question that matured into the per-peer chat surface roadmap brief plus its Cut 1 wire-format scaffolding, then in this session rebased onto main and shipped sub-cut 2a (relationship leaf on handshakes). Branch is currently four commits ahead of `origin/main` (brief at `00a9027`, chat Cut 1 at `02e3493`, sub-cut 2a at `8563b66`, plus this comms close-out which is about to land).
+**Two-Carpenter workflow note:** Two parallel Claude sessions, main is the handshake point. The `claude/wallet-implementation-questions-umXHh` arc shipped Fresh roadmap Cuts 1-5, 7-9 plus handshake-flow overhaul plus several bug fixes to main between 2026-05-24 morning and the close-out at `de5a797`. The `claude/families-feature-review-8DbXs` arc opened with an audit question, matured into the per-peer chat surface roadmap brief, then shipped Cut 1 (wire format), sub-cut 2a (relationship leaf), and sub-cut 2b (per-peer thread UI). The chat surface now has data layer + builder UX + thread destination — sub-cut 2c (promote-to-envelope) and Cut 4 (persistence) remain.
 
 ## WHAT-CHANGED-RECENTLY
 
-**Per-peer chat surface arc, this branch (`00a9027` → `02e3493` → `8563b66` + comms close-out)**
+**Per-peer chat arc, this branch (cumulative on top of `de5a797`):**
 
-- `00a9027` Brief — per-peer chat surface + promote-to-envelope roadmap. Lives at `project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-24-per-peer-chat-surface-roadmap.md`. Ten sections; four phased cuts; locks the operator's four chip-question decisions; suggestions-not-orders format.
-- `02e3493` Per-peer chat Cut 1 — TAPIT_CHAT_KIND + send/subscribe helpers. New event kind 9574 adjacent to TAPIT_ENVELOPE_KIND 9573. `sendChatMessageTo` + `subscribeChatMessages` in `encryptedInbox.ts` mirror the envelope path (Schnorr signature, NIP-44 v2 wrap, recipient `p` tag) but carry a `ChatPayload` JSON object instead of a serialized Attestation. `parseChatPayload` defensively drops non-JSON and shape-wrong payloads silently. 7 new round-trip tests; transport suite 17 → 24 tests. Wire-format scaffolding only; no UI.
-- `8563b66` Per-peer chat sub-cut 2a — optional relationship leaf on handshakes. Folded brief section 7's sibling cut into the data layer and the existing HandshakeModal builder UX. Optional family / friend / coworker / acquaintance / other leaf chosen by the builder via a chip picker at both build-points (r-preview for in-person, not-here panel for remote initiator). Surfaced for explicit agreement to the co-signer in the i-preview step so both signatures cover the value. Rendered as a chip on ConnectionCard alongside the Tier P/R badge in both Classic and Fresh themes (FreshCrew renders ConnectionCard below its bubble row). Leaf omitted from envelope when unset for back-compat with older handshakes. 5 new tests in `createHandshake.test.ts`.
+- `00a9027` Brief — per-peer chat surface + promote-to-envelope roadmap. Lives at `project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-24-per-peer-chat-surface-roadmap.md`. Ten sections; four phased cuts.
+- `02e3493` Per-peer chat Cut 1 — TAPIT_CHAT_KIND + send/subscribe helpers. New event kind 9574 adjacent to envelope kind 9573. `sendChatMessageTo` + `subscribeChatMessages` mirror the envelope path; 7 round-trip tests in `transport.test.ts`.
+- `8563b66` Per-peer chat sub-cut 2a — optional relationship leaf on handshakes. family / friend / coworker / acquaintance / other chip picker at both build-points in HandshakeModal; co-signer agreement surface in i-preview; chip rendered on ConnectionCard across both themes. 5 new tests in `createHandshake.test.ts`.
+- `af0a042` Comms close-out for the rebase + sub-cut 2a session.
+- `1bcaeb1` Per-peer chat sub-cut 2b — per-peer thread UI under People tab. New `messaging` feature folder (manifest + threadMessage + bubbleFormat + MessageBubble + MessageComposer + PeerThread). WalletContext gains `chatThreadsByPeer` + `sendChatMessage`. WalletProvider opens TAPIT_CHAT_KIND subscription alongside envelope inbox; optimistic local append on send. ConnectionCard / FreshCrew / ClassicConnections wire tap-to-open. PeopleTabBody extracted from HomeScreen to stay under 800-line hard limit. Bundle budgets +0.5KB each on WalletProvider + HomeScreen.
 
-**Prior main-state baseline carried forward (from `de5a797`):**
-
-The other Carpenter's `claude/wallet-implementation-questions-umXHh` arc shipped Fresh roadmap Cuts 1, 2, 3, 4, 5, 7, 8, 9 to main plus the handshake-flow overhaul plus several bug fixes plus the Fresh default theme flip. The Fresh young-adult-friendly skin is structurally complete pending Sage Cut 6 voice authorship. All details in their session's carpenter-state which my rebase reconciled against — see commit `322a40d` and the chain that followed it for the full enumeration. Their `WHAT'S-PENDING` carries forward.
+**Prior main-state baseline carried forward (from `de5a797`):** the other Carpenter's `claude/wallet-implementation-questions-umXHh` arc shipped Fresh roadmap Cuts 1, 2, 3, 4, 5, 7, 8, 9 to main plus the handshake-flow overhaul plus several bug fixes plus the Fresh default theme flip. Fresh young-adult-friendly skin structurally complete pending Sage Cut 6 voice authorship.
 
 ## Gates at session end
 
 - typecheck ✓ clean
-- lint ✓ clean
-- test ✓ 60/60 (transport 24/24 from Cut 1; 5 new createHandshake tests from sub-cut 2a)
-- build ✓ clean — 4.09s build, bundle budgets not affected (sub-cut 2a is a small additive UI change inside existing components + a small data layer change)
+- lint ✓ clean (after extracting `formatBubbleHeader` into `bubbleFormat.ts` to satisfy react-refresh)
+- test ✓ 60/60 (transport 24/24 from Cut 1; createHandshake 5/5 from sub-cut 2a; no new tests this cut)
+- build ✓ clean in 4.34s; bundle budgets bumped on WalletProvider (8KB → 8.5KB) + HomeScreen (16KB → 16.5KB) with dated comments
 
-File-size note: `HandshakeModal.tsx` grew from 559 → 685 lines with the RelationshipChips component + state + UI wiring. Still 115 lines below the 800-line hard limit. Future cuts that add UI to this modal should plan to extract the AccordionPanel + RelationshipChips helpers to their own file before crossing the limit.
+File-size watch: `HomeScreen.tsx` 775 lines (extracted PeopleTabBody to stay under 800), `WalletProvider.tsx` 798 lines (TWO LINES BELOW the hard limit — next dispatch must plan extraction before touching it), `HandshakeModal.tsx` 685, `RecoveryInitiatorModal.tsx` 800 (at the limit), `FreshOnboarding.tsx` 751, `SettingsScreen.tsx` 750, `WalletGuide.tsx` 710.
 
 ## WHAT'S-PENDING
 
-1. **Per-peer chat sub-cut 2b — per-peer thread UI under People tab.** The largest single piece of the chat arc by code volume, and it has an unresolved architecture call (in-memory state in WalletContext vs IDB-paged from a future messagesStore). New `messaging` feature folder + `manifest.ts`, `PeerThread.tsx` + `MessageBubble.tsx` + `MessageComposer.tsx` components, `HomeScreen.tsx` wiring so a tap on `ConnectionCard` (Classic) or a FreshCrew bubble (Fresh) opens the thread, `WalletProvider.tsx` extended to expose recent chat messages per peer. Thread header pins the relationship chip from sub-cut 2a from its first commit. Operator decision needed: in-memory vs IDB-paged. Recommend in-memory for 2b alone with refactor to IDB-paging when Cut 4 lands.
+1. **Per-peer chat sub-cut 2c — promote-to-envelope (plus-menu + long-press).** Adds a `+` button in MessageComposer and long-press on MessageBubble that opens a menu with template targets: Save as journal entry, Mark presence with this person, Ask to witness an entry, Send cosign request, Share a held envelope, Disclose a proof of one leaf. Each target launches the existing modal pre-populated with the peer's pubkey and a quoted reference to the chat moment. Mostly wiring into existing modals via optional `prefill` props; lighter than 2b despite being the most visible-magic piece. Critical doctrine moment — the soft chat layer meets the deliberate-hand signed-life-history layer.
 
-2. **Per-peer chat Cut 3 — promote-to-envelope (plus-menu + long-press).** Wiring from chat moments into the existing journal composer, MarkPresenceModal, CosignRequestModal, share-held-envelope flow, disclosure-proof flow via optional `prefill` props. Mostly wiring; lighter than 2b.
+2. **Per-peer chat Cut 4 — local persistence + opt-in cloud backup.** New `storage/messagesStore.ts` keyed by `(ownerId, peerPubkey)`. `walletStore.ts` snapshot schema extension. Settings toggle "Include chat history in cloud backup" default OFF with inline explainer. First-time-thread-open modal surfacing the choice. Chat-attached media reuses existing `mediaStore`. Closes the chat arc.
 
-3. **Per-peer chat Cut 4 — local persistence + opt-in cloud backup.** New `storage/messagesStore.ts`, `walletStore.ts` snapshot schema extension, Settings toggle "Include chat history in cloud backup" default OFF with inline explainer, first-time-thread-open modal surfacing the choice. Chat-attached media reuses existing `mediaStore`.
+3. **Messaging UI tests** — PeerThread render tests + the chat-thread integration test against a fake transport (mirror the `transport.test.ts` pattern). Flagged as a polish follow-on; not blocking sub-cut 2c.
 
-4. **Fresh roadmap Cut 6 — Sage persona activation.** Carried forward from the other Carpenter's handoff. Blocked on operator-authored Sage voice (name, register, tone, personality). The brief flagged this as operator-mode authorship. Until this lands the Fresh roadmap is at 8/9 cuts and the audience pilot has one structural blocker.
+4. **WalletProvider extraction** — file is at 798 lines, two below the 800 hard limit. The transport useEffect is the natural extraction target; pull it into its own hook (`useTransportConnection` or similar) so future cuts that touch the transport effect don't immediately trip the file-size test. Half a session.
 
-5. **Phase 5e-vii peer co-sign UI** — carried forward. Library shipped earlier; self-signed half auto-emits on recovery. Remaining is RecoverySuccessionModal initiator + peer-side responder + envelope-route wiring.
+5. **Fresh roadmap Cut 6 — Sage persona activation.** Carried forward from the other Carpenter's handoff. Blocked on operator-authored Sage voice. Until this lands the Fresh roadmap is at 8/9 cuts and the audience pilot has one structural blocker.
 
-6. **Rotation resilience cuts 2 + 3** — carried forward. Cut 1 shipped (auto-rebuild subscription on rotation). Cuts 2 + 3 broadcast rotation announcements + handle share-refresh on receive.
+6. **Phase 5e-vii peer co-sign UI** — carried forward. Library shipped; self-signed half auto-emits on recovery. Remaining is RecoverySuccessionModal initiator + peer-side responder + envelope-route wiring.
 
-7. **Document signing for medical/legal — hash-attestation flow** — carried forward. Smallest first cut needs no new crypto.
+7. **Rotation resilience cuts 2 + 3** — carried forward. Cut 1 shipped. Cuts 2 + 3 broadcast rotation announcements + handle share-refresh on receive.
 
-8. **Birthday leaf on founding identity** — surfaced in the other Carpenter's handoff during Cut 7. Enables the over-18 / over-21 Quick-share presets. Optional structural change to the founding identity; new wallets only; existing wallets see "add birthday to enable this" placeholders. No urgency unless audience pilot signals age-verification as a top job.
+8. **Document signing for medical/legal — hash-attestation flow** — carried forward.
 
-9. **Operator field tests still load-bearing.** /verify wife-test, Cut 7 share-card flow on real device, two-device 5c stack against real Nostr relays, two-device blended distribute + recovery, Tier V presence on a real device, first real-device key rotation walk, and now the new Cut 2a relationship-label flow end-to-end.
+9. **Birthday leaf on founding identity** — surfaced from Cut 7. Enables over-18 / over-21 Quick-share presets. No urgency unless audience pilot signals.
 
-10. **Latent items unchanged.** Wallet-side K_data integration test, cohort-peer key-rotation NIP-44 verification, HEIC/WebP re-encode, OTS fixture restoration, `Tap-it-Attest-main.zip` cleanup.
+10. **Operator field tests still load-bearing.** /verify wife-test, Cut 7 share-card flow on real device, two-device 5c stack against real Nostr relays, two-device blended distribute + recovery, Tier V presence on a real device, first real-device key rotation walk, the new sub-cut 2a relationship-label flow, and now the sub-cut 2b per-peer thread flow.
+
+11. **Latent items unchanged.** Wallet-side K_data integration test, cohort-peer key-rotation NIP-44 verification, HEIC/WebP re-encode, OTS fixture restoration, `Tap-it-Attest-main.zip` cleanup.
 
 ## WHAT-TO-FLAG
 
-**Sub-cut 2b has an architecture decision the operator should make before code lands.** In-memory chat history in WalletContext is simple and fast but scales poorly past thousands of messages per peer. IDB-paged from a `messagesStore` scales cleanly but is more code and requires Cut 4 to land first. Recommended path is in-memory for 2b alone with refactor to IDB-paging when Cut 4 ships, but the operator should be the one to make the call.
+**WalletProvider is at 798 lines (two below hard limit).** Any future touch on this file must extract first. Natural target: the transport useEffect (lines ~250-380) lifted into `useTransportConnection.ts` as its own hook. Would also clean up the chatSubRef / statusUnsubRef / transportRef trio that currently lives in WalletProvider's top-level state.
 
-**The chat-arc vs Sage-Cut-6 priority is a real fork.** With Fresh at 8/9 and the wallet described as ready for the young-adult-audience pilot pending Sage's voice, continuing the chat arc immediately means the pilot waits. Pausing the chat arc to ship Sage means the chat surface waits. Both are valid. The operator should name the priority before the next dispatch.
+**Sub-cut 2b ships no automated UI tests.** PeerThread render tests + the chat-thread end-to-end integration against a fake transport are the natural follow-on. Mirror `transport.test.ts`'s FakeTransport pattern. Half a cut.
 
-**Relationship picker is chip-only.** Five presets (family / friend / coworker / acquaintance / other). No free-text custom option. If the audience pilot signals the five labels feel too narrow (someone wants 'spouse' or 'sibling' or 'mentor' as their own chip), additive change: add a "Custom…" chip that reveals an input. Not urgent; flagging as a potential pilot-driven follow-on.
+**Chat surface usefulness depends on Mycelium being enabled.** Tier P in-person handshakes don't auto-route the chat-capable pubkey through the relay unless Mycelium is opted in via Settings. Operators field-testing should enable Mycelium first and confirm relay status is green before expecting the chat surface to feel alive. Worth surfacing in the explainer copy in a future polish cut.
 
-**File-size warning carries forward.** `HandshakeModal.tsx` is now 685 lines. `WalletProvider.tsx` is 689 (other Carpenter's growth). `HomeScreen.tsx` is 790. `FreshOnboarding.tsx` is 751. `SettingsScreen.tsx` is 750. The wallet has a lot of files within 100 lines of the 800-line hard limit; the next round of cuts to any of these files should plan extraction proactively.
+**Bundle-budget bumps are real but small.** +0.5KB on each of WalletProvider and HomeScreen. The bumps absorb the chat state + subscription + the PeopleTabBody indirection. The HomeScreen overage was technically only 0.02KB but the budget check rejected; bumped to give modest headroom rather than land exactly at the line.
 
-**The relationship leaf is plumbing the rest of the wallet can lean on for free.** Recovery cohort picker can surface family chips first as default keyholder candidates. Journal composer's subject picker can suggest family members when you're writing about them. The chat thread header (Cut 2b) pins the relationship chip. All these are downstream affordances that get easier because the leaf exists; none required a new attestation kind or library change.
+**The relationship chip from sub-cut 2a now shows up in three places** — ConnectionCard (in both themes), and PeerThread header. Recovery cohort picker is the natural next consumer (sort family chips first as default keyholder candidates); journal composer subject-picker can later surface family members as quick-pick subjects. Both are zero-new-crypto adds whenever the operator wants them.
 
 ## RECOMMENDED-NEXT-MOVES
 
-In order of value-per-effort, considering all live arcs:
+In order of value-per-effort:
 
-1. **Operator decision on chat-arc vs Sage-Cut-6 priority + the sub-cut 2b architecture call.** Both are five-minute decisions. Cheap to ask, expensive to retrofit.
-2. **If continuing the chat arc:** sub-cut 2b — per-peer thread UI under People tab. One full session.
-3. **If pausing the chat arc:** Sage Cut 6 voice authorship from the operator, then a Carpenter dispatch to wire the dormant `src/features/persona` scaffolding as a context-aware nudge layer. Cut 6 brief lives in the Fresh roadmap brief's open-questions section.
-4. **Operator browser-verifies the just-landed pieces against live Netlify+Supabase:** Cut 7 share-card flow (Settings → Appearance pick Fresh → Quick share → screenshot a card → paste URL into another tab → verifier turns green); and the new Cut 2a relationship-label flow (New handshake → pick a chip → confirm the chip persists on the resulting ConnectionCard).
-5. **Per-peer chat Cut 3** — promote-to-envelope plus-menu and long-press. Half to one session.
-6. **Per-peer chat Cut 4** — local persistence + opt-in cloud backup. Closes the chat arc.
-7. **Carry-forward items** — Phase 5e-vii peer co-sign UI, rotation resilience 2+3, hash-attestation doc-signing, birthday leaf.
+1. **Operator browser-verifies the just-landed Cut 2a + Cut 2b stack against live Netlify+Supabase.** Pick a Tier R peer, open a handshake with the relationship chip, confirm it lands; tap the resulting ConnectionCard, watch PeerThread open with the relationship chip in the header; send a chat message, watch it appear optimistically then settle with the eventId; on the other device, watch the message arrive in the thread.
+2. **Per-peer chat sub-cut 2c — promote-to-envelope plus-menu and long-press.** The unlock that ties the soft chat surface back to the signed-life-history thesis. One full session.
+3. **WalletProvider extraction (`useTransportConnection`).** Half a session. Unblocks future sub-cut 2c / Cut 4 / rotation-resilience cuts that touch the transport effect.
+4. **Per-peer chat Cut 4 — local persistence + opt-in cloud backup.** Closes the chat arc.
+5. **Messaging UI tests** — PeerThread + chat-integration. Polish.
+6. **Sage Cut 6** — operator-authored voice → Carpenter persona activation. Unblocks the audience pilot.
+7. **Carry-forward items.** Phase 5e-vii peer co-sign UI, rotation resilience 2+3, hash-attestation doc-signing, birthday leaf.
 
 ## OPERATOR'S-CURRENT-VIBE
 
-Operator authorized Option B mid-truncation ("B yes add fix in") trusting the Carpenter to read the room. The cross-Carpenter drift was caught by the SessionStart hook and surfaced honestly before any action; the operator stayed engaged through the reconciliation and authorized the rebase + folded-fix cleanly. The session shape was: drift alert → ground against main → propose three options → operator picks B → rebase → cut sub-cut 2a → gates → comms close-out. Operator listens via TTS; one-block prose format respected throughout chat replies. Maximum-leverage-per-dispatch mode — the rebase + sub-cut 2a + comms close-out + handoff aggregation all landed inside one session by sizing the cut deliberately and punting sub-cut 2b honestly rather than overreaching. The wallet's structural complete-ness is becoming visible (Fresh 8/9, chat-arc 2/4 with 2a folded in, pre-pilot polish phase deepening); the question of where to spend the next dispatch is now squarely operator-mode.
+Operator authorised the next cut with a minimal "Recenter and continue on" after the prior session's chat-arc close-out, trusting the Carpenter to read the room on the architecture call. The session shape was: ground against main → confirm no drift → cut sub-cut 2b → hit file-size + lint walls → extract PeopleTabBody + bubbleFormat → cut again → all gates green → push. Operator listens via TTS; one-block prose format respected throughout chat replies. Momentum mode — three chat-arc cuts shipped across two sessions, the People tab now functionally a place to talk to your people rather than a list of pubkeys. The visible-magic delta is real and field-testable as soon as the operator wants to walk it. The chat-arc has two more cuts (2c promote + 4 persist) to feel complete; Sage Cut 6 is a parallel arc the operator owns the authorship for.
 
 ## Ideas ready to revisit
 
 All prior entries hold. New since the previous handoff:
 
-- **2026-05-24 — Chat arc sub-cut 2b**: per-peer thread UI under People tab. In-memory state vs IDB-paged decision pending. PeerThread header pins relationship chip from sub-cut 2a.
-- **2026-05-24 — Recovery cohort sane defaults via relationship leaf**: future cut. Cohort editor sorts family chips first, friends second, treats coworkers/acquaintances as lower-trust pool. Zero new crypto.
-- **2026-05-24 — Journal subject-picker suggests family members**: future cut. When the operator writes a journal entry, the subject picker reads the relationship leaves and suggests the family chips at the top. Zero new crypto.
-- **2026-05-24 — Custom-text relationship chip**: if audience pilot signals the five presets feel too narrow, add a Custom… chip that reveals a free-text input. Smallest additive cut.
-- **2026-05-24 — Anchored chat (Tier 2 of chat taxonomy)**: one-toggle "Bitcoin-anchor this message" affordance. Lands as part of Cut 3 or its own micro-cut after Cut 4.
-- **2026-05-24 — Share-an-existing-attestation-with-a-peer affordance**: inverse of inbox-receive path. Lives inside Cut 3's promote-menu.
+- **2026-05-25 — Chat arc sub-cut 2c**: promote-to-envelope plus-menu + long-press. The deliberate-hand layer on top of today's soft chat layer. Critical doctrine moment — collapses friction between casual conversation and signed life-history.
+- **2026-05-25 — Messaging UI tests**: PeerThread render tests + chat-thread integration against a fake transport. Mirror the existing transport.test.ts FakeTransport pattern. Half a cut.
+- **2026-05-25 — useTransportConnection hook**: extract the transport useEffect from WalletProvider into its own hook before the next touch trips the 800-line hard limit. Pulls the chatSubRef / statusUnsubRef / transportRef trio with it.
+- **2026-05-25 — Chat-surface Mycelium-on hint copy**: when the operator opens an empty thread and Mycelium is off, the empty-state explainer should name "Turn on Mycelium in Settings to start messaging" rather than just saying "no messages yet." Tiny polish; lands as part of sub-cut 2c or its own micro-cut.
+- **2026-05-25 — Recovery cohort sane defaults via relationship leaf**: cohort editor sorts family chips first, friends second, treats coworkers / acquaintances as lower-trust pool. Zero new crypto. (Carried from prior; now twice as desirable since the relationship chip is a daily-visible element.)
+- **2026-05-25 — Journal subject-picker family suggestions**: when the operator writes a journal entry, the subject picker reads the relationship leaves and suggests family chips at the top. Zero new crypto. (Carried; same elevation.)
