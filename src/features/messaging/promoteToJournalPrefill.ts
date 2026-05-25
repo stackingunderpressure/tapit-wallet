@@ -1,3 +1,4 @@
+import { isFamilyRelationship } from '../connections/createHandshake.ts';
 import type { PromotePayload } from './promoteTarget.ts';
 
 // Map a promote-to-envelope payload from PeerThread into the
@@ -6,11 +7,11 @@ import type { PromotePayload } from './promoteTarget.ts';
 // mark-presence, witness-ask, cosign-request, share-held-envelope,
 // and disclose-proof, each living next to this helper.
 //
-// Family-relationship handshakes pre-pick the Family journal
-// category so the operator writing about Mom lands in the Family
-// tab without an extra tap. Other relationship leaves don't map
-// 1:1 to the journal category set, so they leave the category
-// undefined and JournalComposer defaults.
+// Any family-classified relationship (spouse / child / parent /
+// sibling / family) pre-picks the Family journal category so the
+// operator writing about Mom — or their spouse, kid, sibling —
+// lands in the Family tab without an extra tap. Other relationship
+// leaves leave the category undefined and JournalComposer defaults.
 
 export interface JournalPrefill {
   text: string;
@@ -22,6 +23,6 @@ export function promoteToJournalPrefill(payload: PromotePayload): JournalPrefill
   return {
     text: payload.sourceText,
     subjectLabel: payload.peerName,
-    category: payload.relationship === 'family' ? 'Family' : undefined,
+    category: isFamilyRelationship(payload.relationship) ? 'Family' : undefined,
   };
 }

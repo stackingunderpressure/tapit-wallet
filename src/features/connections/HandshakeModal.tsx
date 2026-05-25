@@ -57,7 +57,19 @@ const primaryBtn =
 // capitalised for the operator's eyes. Empty string means the
 // operator chose not to label the bond — the leaf is omitted from
 // the attestation, which round-trips as relationship: '' on read.
+// Immediate-family options surface first so the attested
+// relationship can be specific where it matters most (spouse +
+// child were operator-named must-haves; parent + sibling round
+// out the immediate set). 'family' stays as the catch-all for
+// extended relatives. Order matters — the chip picker renders in
+// declaration order, and family-shaped bonds clustering at the
+// top is the right discoverability default for the families-first
+// pilot the wallet is targeting.
 const RELATIONSHIPS: { value: string; label: string }[] = [
+  { value: 'spouse', label: 'Spouse' },
+  { value: 'child', label: 'Child' },
+  { value: 'parent', label: 'Parent' },
+  { value: 'sibling', label: 'Sibling' },
   { value: 'family', label: 'Family' },
   { value: 'friend', label: 'Friend' },
   { value: 'coworker', label: 'Coworker' },

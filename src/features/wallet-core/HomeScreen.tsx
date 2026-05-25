@@ -316,7 +316,7 @@ export function HomeScreen() {
   );
 
   return (
-    <div className="min-h-screen p-5 max-w-md mx-auto pb-28">
+    <div className="min-h-screen p-5 max-w-md mx-auto pb-32">
       <header
         className={`sticky top-0 z-30 -mx-5 px-5 flex items-center justify-between py-2 gap-2 ${
           resolvedTheme === 'fresh'
@@ -761,7 +761,7 @@ export function HomeScreen() {
         }`}
       >
         <div
-          className="max-w-md mx-auto px-5 pt-3 pb-5 flex rounded-none gap-1"
+          className="max-w-md mx-auto px-5 pt-4 pb-8 flex rounded-none gap-1"
           role="tablist"
         >
           {TABS.map((t) => (

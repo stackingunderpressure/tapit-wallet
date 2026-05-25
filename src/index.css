@@ -54,7 +54,14 @@
   --fresh-text-secondary: #a1a1aa;
   --fresh-text-tertiary: #71717a;
   --fresh-text-inverse: #0b0c0f;
-  --fresh-accent-primary: #c0fc4d;
+  /* 2026-05-25 polish: tone the accent primary down a notch from
+     the brilliant #c0fc4d (neon yellow-green) toward #9be63d
+     (clearer bright green, less aggressive). Operator surfaced
+     the lime CTAs as "too bright" — slightly cooler hue + lower
+     yellow content keeps the energy without dominating the
+     screen. The dark-on-lime button language stays intact since
+     fresh-text-inverse remains the paired text color. */
+  --fresh-accent-primary: #9be63d;
   --fresh-accent-secondary: #a78bfa;
   --fresh-accent-warning: #fbbf24;
   --fresh-accent-danger: #f87171;
@@ -280,16 +287,23 @@ html[data-theme='fresh'] .text-accent {
    the user sees the visual viewport — the result is a modal that
    appears off-center or clipped at the screen edge.
 
-   The !important is load-bearing: Tailwind's text-xs / text-sm
-   utilities are class selectors at specificity (0,0,1,0), which
-   beats a bare element selector at (0,0,0,1). Without !important
-   this rule loses to any text-xs on a textarea and the auto-zoom
-   trip stays armed. Preventing the entire page from zooming on
-   every form-field tap outranks any per-input font-size choice,
-   so !important is the right move here. */
+   The !important alone is NOT enough — Tailwind's `.text-sm`
+   readability rule below also carries !important AND has higher
+   specificity (0,0,1,0) than a bare element selector (0,0,0,1).
+   When both rules carry !important, normal specificity is the
+   tie-breaker, and `.text-sm` wins, leaving textareas tagged
+   text-sm at 15 px — under the 16 px zoom threshold. Operator
+   surfaced this directly: "When you type in text box for messages
+   it resizes whole screen. Have to rezoom after." The compound
+   `input[class], textarea[class], select[class]` selectors bump
+   our specificity to (0,0,1,1), beating `.text-sm` (0,0,1,0)
+   while still preventing the zoom on bare-element form fields. */
 input,
 textarea,
-select {
+select,
+input[class],
+textarea[class],
+select[class] {
   font-size: 16px !important;
 }
 

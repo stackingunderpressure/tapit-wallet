@@ -38,12 +38,19 @@ export function NostrIndicator({ status }: Props) {
   const tone =
     open === 0 ? 'offline' : open < total ? 'partial' : 'live';
 
+  // The offline-tone dot used bg-ink/20 which under Fresh evaluates
+  // to near-black-with-low-alpha on the dark fresh-surface body —
+  // invisible. bg-zinc-400 is mid-gray, visible against either the
+  // Classic paper bg or the Fresh dark bg, so the offline state
+  // surfaces honestly regardless of theme. Live + partial keep
+  // their saturated emerald / amber which are already visible in
+  // both themes.
   const dotClass =
     tone === 'live'
       ? 'bg-emerald-500'
       : tone === 'partial'
         ? 'bg-amber-500'
-        : 'bg-ink/20';
+        : 'bg-zinc-400';
 
   const label =
     tone === 'live'

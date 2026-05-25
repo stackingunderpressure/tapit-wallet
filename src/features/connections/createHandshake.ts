@@ -28,6 +28,27 @@ export function isHandshake(att: Attestation): boolean {
   return att.kind === 'relationship' && leafValue(att, 'verification').length > 0;
 }
 
+/**
+ * Relationship leaves that classify as family for downstream
+ * affordances — journal-category pre-pick, future recovery-cohort
+ * sensible-default ordering, and family-tab grouping. Operator
+ * surfaced immediate family as the granularity that matters:
+ * spouse + child + parent + sibling are the immediate set, plus
+ * 'family' as the catch-all for extended relatives.
+ */
+export const FAMILY_RELATIONSHIPS: readonly string[] = [
+  'spouse',
+  'child',
+  'parent',
+  'sibling',
+  'family',
+];
+
+/** True when a relationship leaf value classifies as family. */
+export function isFamilyRelationship(relationship: string): boolean {
+  return FAMILY_RELATIONSHIPS.includes(relationship);
+}
+
 export interface HandshakeView {
   initiatorId: string;
   initiatorName: string;

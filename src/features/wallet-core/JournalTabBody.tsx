@@ -41,7 +41,7 @@ export function JournalTabBody({
   }
   if (resolvedTheme === 'fresh') return null;
   return (
-    <div className="fixed bottom-20 inset-x-0 flex items-center justify-center gap-3 px-5 z-20">
+    <div className="fixed bottom-24 inset-x-0 flex items-center justify-center gap-3 px-5 z-20">
       <button
         type="button"
         onClick={onWitness}

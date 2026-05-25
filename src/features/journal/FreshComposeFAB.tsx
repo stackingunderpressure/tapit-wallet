@@ -23,7 +23,7 @@ export function FreshComposeFAB({ onCompose, onWitnessSign }: Props) {
 
   return (
     <div
-      className={`fixed bottom-20 right-5 z-20 flex flex-col items-end gap-3 transition-all duration-300 motion-reduce:transition-none ${
+      className={`fixed bottom-24 right-5 z-20 flex flex-col items-end gap-3 transition-all duration-300 motion-reduce:transition-none ${
         hidden
           ? 'pointer-events-none translate-y-24 opacity-0'
           : 'pointer-events-auto translate-y-0 opacity-100'
