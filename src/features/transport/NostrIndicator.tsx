@@ -1,3 +1,4 @@
+import { useWallet } from '../wallet-core/useWallet.ts';
 import type { RelayStatus } from './transport.ts';
 
 interface Props {
@@ -24,11 +25,17 @@ interface Props {
 // Mycelium). The header chrome stays clean for users who never
 // touch the network.
 //
-// The wallet's existing copy treats "Mycelium" as the user-facing
-// name for the peer network and "Nostr" as the transport substrate
-// (per the doctrine of swappable transports). The indicator labels
-// match — short for the chip itself, expanded in the hover/title.
+// Theme-aware via useWallet because operator reported the indicator
+// was "not working" under Fresh — the prior bg-ink/[0.04] pill is
+// barely visible on the dark Fresh body and the bg-ink/20 offline
+// dot was invisible. Under Fresh the pill picks up the glass surface
+// + lavender-tinted edge that every other Fresh chip uses, and the
+// dot gets a tiny outer glow on live state so the green pulse is
+// unmistakable against the dark body.
 export function NostrIndicator({ status }: Props) {
+  const { resolvedTheme } = useWallet();
+  const isFresh = resolvedTheme === 'fresh';
+
   if (status === null) return null;
   if (status.length === 0) return null;
 
@@ -38,19 +45,18 @@ export function NostrIndicator({ status }: Props) {
   const tone =
     open === 0 ? 'offline' : open < total ? 'partial' : 'live';
 
-  // The offline-tone dot used bg-ink/20 which under Fresh evaluates
-  // to near-black-with-low-alpha on the dark fresh-surface body —
-  // invisible. bg-zinc-400 is mid-gray, visible against either the
-  // Classic paper bg or the Fresh dark bg, so the offline state
-  // surfaces honestly regardless of theme. Live + partial keep
-  // their saturated emerald / amber which are already visible in
-  // both themes.
   const dotClass =
     tone === 'live'
       ? 'bg-emerald-500'
       : tone === 'partial'
         ? 'bg-amber-500'
         : 'bg-zinc-400';
+  const liveGlow =
+    tone === 'live'
+      ? isFresh
+        ? 'shadow-[0_0_8px_rgba(16,185,129,0.85)]'
+        : 'shadow-[0_0_6px_rgba(16,185,129,0.6)]'
+      : '';
 
   const label =
     tone === 'live'
@@ -66,15 +72,19 @@ export function NostrIndicator({ status }: Props) {
         ? `Mycelium connected to ${open} of ${total} relays. The rest are reconnecting in the background.`
         : 'No Mycelium relays connected right now. The transport is retrying with backoff.';
 
+  const pillClass = isFresh
+    ? 'inline-flex items-center gap-1.5 rounded-full bg-fresh-surface-glass border border-fresh-surface-edge backdrop-blur px-2.5 py-1 text-xs text-fresh-text-secondary'
+    : 'inline-flex items-center gap-1.5 rounded-full bg-ink/[0.06] border border-ink/10 px-2.5 py-1 text-xs text-muted';
+
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full bg-ink/[0.04] px-2 py-1 text-xs text-muted"
+      className={pillClass}
       title={title}
       aria-label={title}
       role="status"
     >
       <span
-        className={`h-2 w-2 rounded-full ${dotClass} ${tone === 'live' ? 'animate-pulse' : ''}`}
+        className={`h-2.5 w-2.5 rounded-full ${dotClass} ${liveGlow} ${tone === 'live' ? 'animate-pulse' : ''}`}
         aria-hidden="true"
       />
       {label}

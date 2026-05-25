@@ -187,27 +187,52 @@ html[data-theme='fresh'] [class*="border-ink"] {
    low-alpha tint so they read as tinted dark cards rather than
    bright pastel lozenges on the dark body. The matching border
    colors swap to a matching alpha so the banner edge stays
-   visible. */
+   visible. 2026-05-25 polish: text colors dropped from the
+   -300 pastels (#6ee7b7 / #fcd34d / #fca5a5) to the -200 paler
+   tones — operator surfaced the original values as "way too
+   bright for text colors" on the Presence Detail surface. The
+   -200 tones keep semantic identity (clearly green / amber /
+   red) but read calmly on the dark body. */
 html[data-theme='fresh'] [class*="bg-amber-50"] {
   background-color: rgba(245, 158, 11, 0.10);
-  color: #fcd34d;
+  color: #fde68a;
 }
 html[data-theme='fresh'] [class*="border-amber-200"] {
   border-color: rgba(245, 158, 11, 0.35);
 }
 html[data-theme='fresh'] [class*="bg-emerald-50"] {
   background-color: rgba(34, 197, 94, 0.10);
-  color: #6ee7b7;
+  color: #a7f3d0;
 }
 html[data-theme='fresh'] [class*="border-emerald-200"] {
   border-color: rgba(34, 197, 94, 0.35);
 }
 html[data-theme='fresh'] [class*="bg-red-50"] {
   background-color: rgba(220, 38, 38, 0.10);
-  color: #fca5a5;
+  color: #fecaca;
 }
 html[data-theme='fresh'] [class*="border-red-200"] {
   border-color: rgba(220, 38, 38, 0.35);
+}
+
+/* Explicit text-emerald-N / text-amber-N / text-red-N classes
+   (used throughout PresenceDetailModal, MarkPresenceModal, and
+   the anchor/error-state badges across the wallet) carry Tailwind
+   hex literals like emerald-900 #064e3b that are dark-on-dark and
+   barely visible under Fresh. Operator: "Presence still way too
+   bright for text colors." Map every variant to the same calm
+   -200 paler tone the inherited bg-color cascade uses above so a
+   tinted banner stays internally consistent: bg-emerald-50 + a
+   text-emerald-800 child both render as the same #a7f3d0 instead
+   of one inherited bright pastel and one explicit dark-on-dark. */
+html[data-theme='fresh'] [class*="text-emerald-"] {
+  color: #a7f3d0;
+}
+html[data-theme='fresh'] [class*="text-amber-"] {
+  color: #fde68a;
+}
+html[data-theme='fresh'] [class*="text-red-"] {
+  color: #fecaca;
 }
 
 /* Classic text colours. text-ink (near-black) and text-muted
