@@ -9,6 +9,7 @@ import {
   credentialAttestation,
   disclosureProof,
   envelopeId,
+  verifyDisclosureProof,
 } from 'tapit-attest';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
@@ -267,6 +268,197 @@ export function proveAuthorization(
   const found = findAuthRule(orgSelfDecl, action);
   if (!found) return null;
   return disclosureProof(orgSelfDecl, found.path);
+}
+
+// Phase 8 Phase B — Authorized envelope shape + verifier. An
+// org-issued credential carries its authorization as a top-level
+// `authorized_by` leaf whose canonical-JSON value is
+// {org_identity, action, proof}. The proof is the Phase A
+// DisclosureProofBundle for the rule the action is authorized
+// under. Putting the payload INSIDE the envelope's claim tree
+// means the envelope's own signature covers the proof too — a
+// caller cannot detach the proof, swap it for a different one,
+// and present the new combination as still-signed.
+//
+// verifyOrgAuthorization defends against four classes of forgery
+// (Phase A's tamper-detection test covered the first; Phase B
+// covers the other three explicitly):
+//
+//   1. Leaf-value tampered — verifyDisclosureProof catches this
+//      because the recomputed root no longer matches the signed
+//      digest.
+//   2. Wrong-org-binding — the proof's recomputed digest is
+//      compared to the named org self-declaration's envelopeId;
+//      gluing a real org-A proof onto an org-B claim fails this.
+//   3. Tampered sibling-hash path — same root-mismatch failure
+//      mode as #1, but exercised via a different mutation.
+//   4. Tampered meta-fields — verifyDisclosureProof recomputes
+//      the digest from meta + claimRoot, so any meta drift breaks
+//      the signature check.
+//
+// All four classes are exercised in createOrganization.test.ts.
+
+/** The shape carried inside the `authorized_by` leaf of an org-issued envelope. */
+export interface AuthorizedByPayload {
+  /** Hex pubkey of the org whose self-declaration this proof comes from. */
+  org_identity: string;
+  /** Action name claimed; must match the disclosed leaf's name. */
+  action: string;
+  /** Disclosure proof of the auth-rule leaf from the org's self-declaration. */
+  proof: DisclosureProofBundle;
+}
+
+/** Encode an AuthorizedByPayload as a canonical-JSON string for use as a field-tree leaf value. */
+export function encodeAuthorizedBy(payload: AuthorizedByPayload): string {
+  return JSON.stringify(payload);
+}
+
+/** Parse the `authorized_by` leaf value back into a payload, or null on any shape mismatch. */
+export function decodeAuthorizedBy(value: unknown): AuthorizedByPayload | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const p = parsed as Record<string, unknown>;
+    if (typeof p.org_identity !== 'string') return null;
+    if (typeof p.action !== 'string') return null;
+    if (!p.proof || typeof p.proof !== 'object') return null;
+    // The proof's deep shape is validated by verifyDisclosureProof at verify
+    // time; this decoder only confirms the outer envelope of fields is present.
+    return {
+      org_identity: p.org_identity,
+      action: p.action,
+      proof: p.proof as DisclosureProofBundle,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Bundle the org's self-declaration + an action into an AuthorizedByPayload ready
+ *  to inline as the `authorized_by` leaf of a child credential. Returns null when
+ *  the action is not declared in the org's auth tree. */
+export function buildAuthorizedByPayload(
+  orgSelfDecl: Attestation,
+  action: string,
+): AuthorizedByPayload | null {
+  const proof = proveAuthorization(orgSelfDecl, action);
+  if (!proof) return null;
+  return {
+    org_identity: orgSelfDecl.subject,
+    action,
+    proof,
+  };
+}
+
+export interface OrgAuthorizationResult {
+  /** True iff the envelope carries a valid cross-envelope authorization proof
+   *  from the named org AND meets the disclosed rule's eligible-signature threshold. */
+  authorized: boolean;
+  /** Human-readable reason; meaningful whether authorized or not. */
+  reason: string;
+  /** When authorized, how many eligible signatures were counted on the envelope. */
+  eligibleCount?: number;
+  /** When authorized, the threshold the rule required. */
+  thresholdRequired?: number;
+}
+
+/**
+ * Verify the cross-envelope authorization of an org-issued credential. The
+ * envelope must carry an `authorized_by` top-level leaf whose payload names the
+ * authorizing org, the action the credential claims to be issued under, and a
+ * disclosure proof of the matching auth-rule from the org's self-declaration.
+ *
+ * Authorization holds iff:
+ *   - the org's self-declaration is present in `knownOrgs`
+ *   - the disclosure proof verifies under verifyDisclosureProof
+ *   - the proof's recomputed digest equals the org self-declaration's envelopeId
+ *     (i.e. the proof was made against THIS specific self-declaration)
+ *   - the disclosed leaf's name matches the claimed action
+ *   - at least `rule.threshold` of the envelope's signatures come from pubkeys
+ *     in the disclosed rule's `eligible` set
+ *
+ * Returns a structured result rather than throwing because the caller is usually
+ * UI code (a verifier badge, an inbox acceptor) that wants the reason in hand.
+ */
+export function verifyOrgAuthorization(
+  envelope: Attestation,
+  knownOrgs: readonly Attestation[],
+): OrgAuthorizationResult {
+  const rawLeaf = leafValue(envelope, 'authorized_by');
+  if (!rawLeaf) {
+    return { authorized: false, reason: 'envelope has no authorized_by leaf' };
+  }
+  const payload = decodeAuthorizedBy(rawLeaf);
+  if (!payload) {
+    return { authorized: false, reason: 'authorized_by leaf is malformed' };
+  }
+
+  const orgIdLower = payload.org_identity.toLowerCase();
+  const orgSelfDecl = knownOrgs.find(
+    (o) =>
+      isOrganizationSelfDeclaration(o) &&
+      o.subject.toLowerCase() === orgIdLower,
+  );
+  if (!orgSelfDecl) {
+    return {
+      authorized: false,
+      reason: `org self-declaration not held locally for ${payload.org_identity}`,
+    };
+  }
+
+  const proofResult = verifyDisclosureProof(payload.proof);
+  if (!proofResult.valid) {
+    return {
+      authorized: false,
+      reason: `disclosure proof invalid: ${proofResult.errors.join('; ') || 'no valid signature'}`,
+    };
+  }
+
+  const expectedDigest = envelopeId(orgSelfDecl);
+  if (proofResult.digest.toLowerCase() !== expectedDigest.toLowerCase()) {
+    return {
+      authorized: false,
+      reason: 'proof binds to a different attestation than the named org self-declaration',
+    };
+  }
+
+  if (payload.proof.leaf.name !== payload.action) {
+    return {
+      authorized: false,
+      reason: `proof discloses rule '${payload.proof.leaf.name}' but action claims '${payload.action}'`,
+    };
+  }
+
+  const rule = decodeAuthRuleValue(payload.action, payload.proof.leaf.value);
+  if (!rule) {
+    return { authorized: false, reason: 'disclosed rule leaf is malformed' };
+  }
+
+  const eligibleSet = new Set(rule.eligible.map((e) => e.toLowerCase()));
+  const matchedSigners = new Set<string>();
+  for (const sig of envelope.signatures) {
+    const signerLower = sig.signer.toLowerCase();
+    if (eligibleSet.has(signerLower)) {
+      matchedSigners.add(signerLower);
+    }
+  }
+
+  if (matchedSigners.size < rule.threshold) {
+    return {
+      authorized: false,
+      reason: `threshold not met: ${matchedSigners.size} eligible signatures present, ${rule.threshold} required`,
+      eligibleCount: matchedSigners.size,
+      thresholdRequired: rule.threshold,
+    };
+  }
+
+  return {
+    authorized: true,
+    reason: `${matchedSigners.size} of ${rule.threshold} required eligible signatures present`,
+    eligibleCount: matchedSigners.size,
+    thresholdRequired: rule.threshold,
+  };
 }
 
 // 5b-org-ii — officials roster. A second self-issued credential
