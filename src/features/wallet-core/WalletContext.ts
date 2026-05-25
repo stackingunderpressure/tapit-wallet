@@ -82,11 +82,19 @@ export interface WalletContextValue {
   /**
    * Send a Tier 1 chat message to a peer over the Mycelium
    * transport. Optimistically appends to the local thread before
-   * publish settles; on publish failure the message stays in the
-   * thread (a future polish cut will mark it as undelivered).
-   * Throws if the network is not connected.
+   * publish settles. Returns `{}` on full success, `{ warning }`
+   * when no relay acknowledged before the publish timeout but at
+   * least one is still pending (the message MAY still land via a
+   * slow relay), and THROWS when every relay rejected outright
+   * with the optimistic record ripped out of the thread. The UI
+   * surfaces `warning` as a soft inline note distinct from the
+   * red-error path so the operator can tell "in-flight" from
+   * "outright failed."
    */
-  sendChatMessage: (peerPubkey: string, text: string) => Promise<void>;
+  sendChatMessage: (
+    peerPubkey: string,
+    text: string,
+  ) => Promise<{ warning?: string }>;
 }
 
 // Pulled into its own module so react-refresh fast-refresh works in

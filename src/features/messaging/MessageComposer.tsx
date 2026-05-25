@@ -1,8 +1,16 @@
 import { useState } from 'react';
 
 interface Props {
-  /** Sends the text and resolves on publish settlement. Throws on failure. */
-  onSend: (text: string) => Promise<void>;
+  /**
+   * Sends the text and resolves on publish settlement. Returns
+   * `{}` on full success, `{ warning }` when no relay acknowledged
+   * before the publish timeout (message may still land via slow
+   * relays — soft amber inline note), and THROWS when every relay
+   * rejected outright (hard red error). The two surfaces are
+   * deliberately distinct so the operator can tell "in-flight"
+   * from "outright failed."
+   */
+  onSend: (text: string) => Promise<{ warning?: string }>;
   isFresh: boolean;
   placeholder?: string;
   /**
@@ -23,15 +31,18 @@ export function MessageComposer({ onSend, isFresh, placeholder, onOpenPromote }:
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   async function handleSend() {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
     setSending(true);
     setError(null);
+    setWarning(null);
     try {
-      await onSend(trimmed);
+      const result = await onSend(trimmed);
       setText('');
+      if (result?.warning) setWarning(result.warning);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send.');
     } finally {
@@ -64,6 +75,11 @@ export function MessageComposer({ onSend, isFresh, placeholder, onOpenPromote }:
       {error && (
         <p className="px-4 pt-2 text-xs text-red-600" role="alert">
           {error}
+        </p>
+      )}
+      {!error && warning && (
+        <p className="px-4 pt-2 text-xs text-amber-600" role="status">
+          {warning}
         </p>
       )}
       <div className="flex items-end gap-2 p-3">

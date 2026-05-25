@@ -100,7 +100,7 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
   }
 
   async function handleSend(text: string) {
-    await sendChatMessage(peerPubkey, text);
+    return sendChatMessage(peerPubkey, text);
   }
 
   function openPromote(sourceText: string) {

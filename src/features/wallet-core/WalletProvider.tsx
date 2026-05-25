@@ -379,7 +379,7 @@ export function WalletProvider({ children }: Props) {
         throw new Error('wallet must be unlocked');
       }
       const trimmed = text.trim();
-      if (trimmed.length === 0) return;
+      if (trimmed.length === 0) return {};
       // Optimistic local append before publish so the composer
       // clears instantly and the operator sees their message in
       // the thread. Publish result attaches the event id below.
@@ -453,6 +453,15 @@ export function WalletProvider({ children }: Props) {
         next.set(recipientPubkey, updated);
         return next;
       });
+      // 'pending' = at least one relay still might land it, but no
+      // acks before timeout. Surface a soft warning so the operator
+      // sees the message is in-flight rather than confirmed-sent.
+      // Operator chip-decision 2026-05-25: amber non-blocking
+      // signal distinct from the red 'fail' path.
+      if (summary.tone === 'pending') {
+        return { warning: summary.detail };
+      }
+      return {};
     },
     [phase],
   );
