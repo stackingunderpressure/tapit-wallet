@@ -186,15 +186,50 @@ grandchild eventually absorbs the thread into their own keypair
 when they get one. That lighter model already ships in Phase 2.6.
 Full-keypair custody is now optional, not required for v1.
 
-## Phase 7+ — explicit non-goals for v1
+## Phase 8 — FROST-first quorum + charter governance [PLANNED]
+
+Promoted from Phase 7+ non-goal to active future phase per
+operator direction 2026-05-25 ("Frost looks ripe then org
+governance structure"). Brief of record:
+`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-frost-first-and-charter-governance-roadmap.md`.
+Supersedes the 2026-05-23 quorum brief's MuSig2-first ordering
+because charter governance needs different thresholds for
+different actions, which MuSig2's N-of-N model cannot express.
+
+Four phases:
+
+- **Phase A** — FROST primitives in `tapit-attest` (vendored
+  Rust-via-WASM build, library selection chip-locked in
+  Phase A's first sub-task). RFC 9591 reference-vector
+  compliance gate. Library version bump to `0.2.0-wallet.0`.
+- **Phase B** — Wallet quorum scaffolding. New `quorum`
+  feature folder with DKG ceremony, signing ceremony,
+  encrypted-share persistence, inbox routing for DKG /
+  signing rounds (decision locked: DKG rounds surface in
+  inbox so live operators see they're holding up a key
+  generation).
+- **Phase C** — Quorum-controlled organizations as a creation-
+  time choice alongside the existing single-key org tier. No
+  migration path needed (no orgs formed yet on production
+  wallets); single-key orgs stay as the simpler tier.
+- **Phase D** — Charter governance. Charter attestation with
+  per-action thresholds, silent-objection admission with
+  Bitcoin-block-anchored deadlines via OpenTimestamps, charter
+  amendment via meta-governance at whatever threshold the
+  charter itself declares.
+
+Operator-locked decisions (2026-05-25 chip session): vendored
+FROST library, Bitcoin-block-anchored objection deadlines,
+DKG rounds in inbox, dual-tier org creation (no migration),
+charters amendable via meta-governance.
+
+## Phase 9+ — explicit non-goals for v1
 
 - Wallet bot (conversational guide). Dormant scaffolding is
   preserved in `src/features/{persona,snapshot-builder,suggested-questions,temporal}/`
   with `pause_safe: true` manifests, awaiting this launch.
 - Mycelium peer network (Layer 3) — wallet-to-wallet contact
   discovery, transitive trust weighting. Spec-first.
-- Group keys with FROST / MuSig2 quorums.
-- Charter governance, silent-objection admission.
 - Nostr NIP-46 transport (deeplink only in v1; NIP-46 swaps in
   the same SignRequest/SignGrant shapes when it lands).
 - NFC tap-to-cosign and tap-to-bump-for-recovery (D24, D25).
