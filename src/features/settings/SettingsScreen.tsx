@@ -15,15 +15,8 @@ const CohortEditorModal = lazy(() =>
     default: m.CohortEditorModal,
   })),
 );
-import {
-  findOwnOrgDeclaration,
-  readOrganizationName,
-  selfDeclareOrganization,
-} from '../connections/createOrganization.ts';
-import { defaultAuthRules, type AuthRuleForOrgAction } from '../governance/authRule.ts';
-const OrgRulesEditor = lazy(() =>
-  import('./OrgRulesEditor.tsx').then((m) => ({ default: m.OrgRulesEditor })),
-);
+import { findOwnOrgDeclaration } from '../connections/createOrganization.ts';
+import { OrgDeclarationSection } from './OrgDeclarationSection.tsx';
 import { AppearanceSection } from './AppearanceSection.tsx';
 import { QuickShareSection } from './QuickShareSection.tsx';
 
@@ -122,54 +115,13 @@ export function SettingsScreen() {
     relayParse.ok.length !== prefs.nostrRelays.length ||
     relayParse.ok.some((url, i) => url !== prefs.nostrRelays[i]);
 
-  // Org-mode state. The declaration is one envelope held by this
-  // wallet about itself; once present, the wallet flips to org-mode.
-  // Phase 8 Phase C cut 2 — orgRules state lets the operator add
-  // governance rules beyond the default routine_issuance one before
-  // signing the declaration. Initialized lazily to defaultAuthRules
-  // so the wallet identity is available when state is first computed.
+  // Org-mode declaration. Findable via findOwnOrgDeclaration on this
+  // wallet's holdings; once present, the wallet has flipped to org-mode
+  // and the OrgDeclarationSection renders the post-declaration summary.
+  // The form + state machine for the unconfirmed path lives inside that
+  // sibling component so SettingsScreen stays under the 800-line hard
+  // limit.
   const existingOrgDeclaration = findOwnOrgDeclaration(holdings, wallet.identity);
-  const [orgFormOpen, setOrgFormOpen] = useState(false);
-  const [orgName, setOrgName] = useState('');
-  const [orgRules, setOrgRules] = useState<AuthRuleForOrgAction[]>(() =>
-    defaultAuthRules(wallet.identity),
-  );
-  const [orgBusy, setOrgBusy] = useState(false);
-  const [orgError, setOrgError] = useState<string | null>(null);
-
-  function openOrgForm() {
-    setOrgRules(defaultAuthRules(wallet.identity));
-    setOrgFormOpen(true);
-  }
-
-  function closeOrgForm() {
-    setOrgFormOpen(false);
-    setOrgName('');
-    setOrgRules(defaultAuthRules(wallet.identity));
-    setOrgError(null);
-  }
-
-  async function declareAsOrganization(e: React.FormEvent) {
-    e.preventDefault();
-    setOrgError(null);
-    setOrgBusy(true);
-    try {
-      await selfDeclareOrganization(
-        wallet,
-        ownerId,
-        anchorWorker,
-        orgName,
-        orgRules,
-      );
-      await save();
-      await refresh();
-      closeOrgForm();
-    } catch (err) {
-      setOrgError(err instanceof Error ? err.message : 'declaration failed');
-    } finally {
-      setOrgBusy(false);
-    }
-  }
 
   // Re-sync the editor when prefs.nostrRelays changes outside the form
   // (e.g. first load after a fresh sign-in).
@@ -483,98 +435,14 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-        <div className="font-medium">Organization mode</div>
-        {existingOrgDeclaration ? (
-          <>
-            <p className="mt-1 text-sm text-muted">
-              This wallet is declared as an organization —{' '}
-              <span className="font-medium">
-                {readOrganizationName(existingOrgDeclaration) || 'unnamed'}
-              </span>
-              . The Identity tab on Home shows the people you have admitted as
-              members.
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              Declaration is one-way in this version. If you need to undo it,
-              start a fresh wallet for the person-side identity.
-            </p>
-          </>
-        ) : !orgFormOpen ? (
-          <>
-            <p className="mt-1 text-sm text-muted">
-              Declare this wallet as an organization — a hunting club, a
-              church, a town. The wallet keeps its keypair; the declaration
-              just tells the UI (and any verifier) that this identity
-              represents a collective, so memberships you issue render
-              correctly on both sides.
-            </p>
-            <button
-              type="button"
-              onClick={openOrgForm}
-              className="mt-3 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
-            >
-              Declare this wallet as an organization
-            </button>
-          </>
-        ) : (
-          <form onSubmit={declareAsOrganization} className="mt-2">
-            <label className="block text-sm">
-              <span className="text-muted">Organization name</span>
-              <input
-                type="text"
-                required
-                autoFocus
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                placeholder="Acme Hunting Club"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-            <Suspense
-              fallback={
-                <p className="mt-3 text-xs text-muted">Loading rules editor…</p>
-              }
-            >
-              <OrgRulesEditor
-                founder={wallet.identity}
-                value={orgRules}
-                onChange={setOrgRules}
-              />
-            </Suspense>
-            <p className="mt-3 text-xs text-muted">
-              You are about to sign one attestation that says "this wallet is{' '}
-              {orgName.trim() || 'this organization'}" and commits to{' '}
-              {orgRules.length === 1
-                ? 'the default governance rule'
-                : `${orgRules.length} governance rules`}
-              . It is permanent and anchored to Bitcoin the same way your other
-              entries are.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="submit"
-                disabled={orgBusy || orgName.trim().length === 0}
-                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
-              >
-                {orgBusy ? 'Declaring…' : 'Declare'}
-              </button>
-              <button
-                type="button"
-                onClick={closeOrgForm}
-                className="rounded-md border border-ink/15 px-4 py-2 text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-            {orgError && (
-              <p className="mt-2 text-sm text-red-600" role="alert">
-                {orgError}
-              </p>
-            )}
-          </form>
-        )}
-      </section>
+      <OrgDeclarationSection
+        wallet={wallet}
+        ownerId={ownerId}
+        anchorWorker={anchorWorker}
+        existingOrgDeclaration={existingOrgDeclaration}
+        save={save}
+        refresh={refresh}
+      />
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="font-medium">Recovery cohort</div>

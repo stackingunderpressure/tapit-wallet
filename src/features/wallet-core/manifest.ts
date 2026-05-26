@@ -22,6 +22,7 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/useIdleLock.ts',
     'src/features/wallet-core/RotateKeySection.tsx',
     'src/features/wallet-core/OrgIdentitySections.tsx',
+    'src/features/wallet-core/useOpenMemberRosterControls.ts',
   ],
   depends_on: ['auth', 'storage'],
   pause_safe: false,

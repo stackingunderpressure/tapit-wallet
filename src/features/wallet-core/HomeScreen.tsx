@@ -59,8 +59,14 @@ import {
   findLatestOfficialsRoster,
   readOfficials,
 } from '../connections/officialsRoster.ts';
+import { useOpenMemberRosterControls } from './useOpenMemberRosterControls.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
+const JoinOrgModal = lazy(() =>
+  import('../connections/JoinOrgModal.tsx').then((m) => ({
+    default: m.JoinOrgModal,
+  })),
+);
 // 5d Tier V — MarkPresenceModal is lazy-loaded so the webauthn +
 // geolocation + presence code only ships when the operator actually
 // opens the flow. Keeps HomeScreen bundle within budget.
@@ -150,6 +156,7 @@ export function HomeScreen() {
   const [handshakeOpen, setHandshakeOpen] = useState(false);
   const [scanEnvelopeOpen, setScanEnvelopeOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
+  const [joinOrgOpen, setJoinOrgOpen] = useState(false);
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
   const [presenceOpen, setPresenceOpen] = useState(false);
@@ -337,6 +344,18 @@ export function HomeScreen() {
     () => (officialsRoster ? readOfficials(officialsRoster) : []),
     [officialsRoster],
   );
+  // Phase 8 Phase E4 cut 3 — open-joined membership surface for the
+  // org-mode Identity tab. The custom hook computes the chronological
+  // joined-members list, the pending-delta, a publishing flag, and the
+  // publish callback that signs + holds + anchors a fresh roster.
+  // Empty arrays + no-op publish when the wallet has not self-declared
+  // as an org.
+  const {
+    joinedMembers,
+    pendingMembers,
+    publishing: publishingRoster,
+    publish: handlePublishRoster,
+  } = useOpenMemberRosterControls(orgDeclaration !== null);
   // 5d Tier V — held presence events, newest first. The Identity
   // tab gets a small section listing them by date + accuracy so the
   // operator can see what presence record they have for what time.
@@ -441,20 +460,33 @@ export function HomeScreen() {
             <OrgIdentitySections
               officials={officials}
               issuedMemberships={issuedMemberships}
+              joinedMembers={joinedMembers}
+              pendingMembers={pendingMembers}
+              publishing={publishingRoster}
               onOpenOfficials={() => setOfficialsOpen(true)}
               onOpenMembership={() => setMembershipOpen(true)}
+              onPublishRoster={() => void handlePublishRoster()}
             />
           )}
           <div className="pt-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-muted">Memberships</h2>
-              <button
-                type="button"
-                onClick={() => setMembershipOpen(true)}
-                className="text-xs font-medium text-accent hover:underline"
-              >
-                + Membership
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setJoinOrgOpen(true)}
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  + Join an org
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMembershipOpen(true)}
+                  className="text-xs font-medium text-accent hover:underline"
+                >
+                  + Membership
+                </button>
+              </div>
             </div>
             {membershipEntries.length === 0 ? (
               <p className="mt-2 text-sm text-muted">
@@ -681,6 +713,12 @@ export function HomeScreen() {
       {membershipOpen && (
         <Suspense fallback={null}>
           <MembershipModal onClose={() => setMembershipOpen(false)} />
+        </Suspense>
+      )}
+
+      {joinOrgOpen && (
+        <Suspense fallback={null}>
+          <JoinOrgModal onClose={() => setJoinOrgOpen(false)} />
         </Suspense>
       )}
 

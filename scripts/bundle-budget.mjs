@@ -59,7 +59,13 @@ const BUDGETS = [
   // bg-paper / border-ink / text-ink surface routed through one
   // rule set) plus the accent dial-up (body radial bloom, lavender
   // edge tint, h2 dot prefix, plum-tinted elevation shadow).
-  { pattern: /^index-.*\.css$/, gz: 7_500, label: 'css' },
+  // 2026-05-26 Phase 8 Phase E4 cut 3 bumps 7.5KB -> 8KB to absorb
+  // the new Tailwind utility classes the JoinPolicyPicker per-kind
+  // sub-forms + the JoinOrgModal multi-step layout + the
+  // OrgIdentitySections joined-members section + the publish-roster
+  // amber chip introduced into the content scanner. Measured 7.34KB
+  // gz post-cut, +16 bytes over the prior budget.
+  { pattern: /^index-.*\.css$/, gz: 8_000, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
@@ -123,7 +129,16 @@ const BUDGETS = [
   // auth-tree branch a credential was issued under. Tree-shaking
   // keeps the rest of governance/authRule out of this chunk; the
   // ~22-byte gz delta is just the decode function + its type guard.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 18_500, label: 'HomeScreen' },
+  // 2026-05-26 Phase 8 Phase E4 cut 3 (UI wiring) bumped 18.5KB ->
+  // 19.5KB to absorb the openMemberRoster static imports
+  // (acceptedSelfMemberships + pendingSelfMemberships +
+  // publishOpenMemberRoster) feeding the Identity-tab Members view +
+  // publish-roster button, plus the joined-members + pending-delta
+  // useMemos + handlePublishRoster callback, plus the JoinOrgModal
+  // React.lazy declaration. The modal itself is lazy-loaded so its
+  // body is not in this chunk; only the trigger button + the
+  // openMemberRoster helpers land statically.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 19_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
@@ -143,7 +158,13 @@ const BUDGETS = [
   // 2026-05-25 birthday-leaf cut bumps 10KB -> 10.5KB to absorb
   // the new over-18 / over-21 enumerator branches in
   // quickSharePresets that QuickShareSection imports into Settings.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 10_500, label: 'SettingsScreen' },
+  // 2026-05-26 Phase 8 Phase E4 cut 3 bumps 10.5KB -> 11KB to absorb
+  // the OrgDeclarationSection extraction landing in SettingsScreen's
+  // static import graph (the form moved out of SettingsScreen but the
+  // JoinPolicyPicker-lazy wrapper + the rule-count-with-join-policy
+  // prose + the new Suspense boundary all ride this chunk). Measured
+  // 10.31KB gz post-extraction, +57 bytes over the prior budget.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 11_000, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
@@ -301,6 +322,23 @@ const BUDGETS = [
   // multi-picker would be the natural polish).
   { pattern: /^OrgRulesEditor-.*\.js$/, gz: 3_000, label: 'OrgRulesEditor' },
 
+  // JoinPolicyPicker (Phase 8 Phase E4 cut 3) — sibling to
+  // OrgRulesEditor in the same SettingsScreen lazy-load pattern. Owns
+  // the join-policy half of the org's auth tree (kind-tagged policy
+  // payload, six policy kinds with per-kind sub-forms). Self-contained;
+  // only imports the JoinPolicy type from governance/authRule. Past
+  // 3KB the natural polish is per-kind sub-component extraction.
+  { pattern: /^JoinPolicyPicker-.*\.js$/, gz: 3_000, label: 'JoinPolicyPicker' },
+
+  // openMemberRoster (Phase 8 Phase E3 cut 2 + Phase E4 cut 3) — the
+  // org-side roster substrate (acceptedSelfMemberships +
+  // pendingSelfMemberships + publishOpenMemberRoster +
+  // findLatestOpenMemberRoster + readOpenMemberRoster). Hoists into
+  // its own chunk once HomeScreen statically imports the producer
+  // helpers alongside OrgIdentitySections rendering the consumer
+  // side. Tight budget because the file is pure substrate (no UI).
+  { pattern: /^openMemberRoster-.*\.js$/, gz: 2_500, label: 'openMemberRoster helpers' },
+
   // CosignRequestModal — co-sign request UI lazy-loaded from
   // JournalDetail and PromoteRouter. Phase 8 Phase C cut 3 added
   // optional org-action mode: when orgContext is provided the modal
@@ -329,6 +367,21 @@ const BUDGETS = [
   // chunk only loads when the operator taps "+ Membership" or
   // "+ Admit member" on the Identity tab.
   { pattern: /^MembershipModal-.*\.js$/, gz: 4_000, label: 'MembershipModal' },
+
+  // JoinOrgModal (Phase 8 Phase E4 cut 3) — the any-wallet join-an-org
+  // flow React.lazy from HomeScreen Identity tab. Owns paste-or-scan
+  // of an org's self-declaration, plain-language policy rendering,
+  // proof-picker step (requires_handshake / requires_credential),
+  // self-membership envelope signing, and QR + Mycelium delivery.
+  // The novel piece of cut 3 because it introduces a new
+  // disclosure-proof-construction UI flow at the joiner's end.
+  // Pulls QrShow + QrScanModal + parseEnvelope + disclosureProof
+  // (the last shared with QuickShareModal / ShareProofModal so it
+  // tree-shares into existing chunks) plus buildSelfMembershipDraft
+  // + the proof-picker helpers. Past 6KB the natural polish is
+  // extracting the policy-description renderer + the per-kind step
+  // bodies into sub-components.
+  { pattern: /^JoinOrgModal-.*\.js$/, gz: 6_000, label: 'JoinOrgModal' },
 
   // 2026-05-26 bundle-budget hygiene sweep — every chunk that was
   // previously bucketed under the catch-all gets an explicit named
