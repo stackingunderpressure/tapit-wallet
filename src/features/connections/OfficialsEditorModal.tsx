@@ -5,7 +5,7 @@ import {
   readOfficials,
   findLatestOfficialsRoster,
   type Official,
-} from './createOrganization.ts';
+} from './officialsRoster.ts';
 
 interface Props {
   onClose: () => void;

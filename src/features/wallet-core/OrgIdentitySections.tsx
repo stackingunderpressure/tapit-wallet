@@ -1,7 +1,7 @@
 import type { Attestation } from 'tapit-attest';
 import { readMembership } from '../connections/createMembership.ts';
 import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
-import type { Official } from '../connections/createOrganization.ts';
+import type { Official } from '../connections/officialsRoster.ts';
 
 // Extracted from HomeScreen.tsx at Phase C close-out so the Identity-
 // tab org-mode sections (Officials roster + Members-issued list) live

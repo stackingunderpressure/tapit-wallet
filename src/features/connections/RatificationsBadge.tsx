@@ -1,5 +1,5 @@
 import type { Attestation } from 'tapit-attest';
-import { countRatifications, type Official } from './createOrganization.ts';
+import { countRatifications, type Official } from './officialsRoster.ts';
 import { leafValue } from './createHandshake.ts';
 import { decodeAuthorizedBy } from '../governance/authRule.ts';
 

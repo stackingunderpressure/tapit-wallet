@@ -52,11 +52,13 @@ const PresenceDetailModal = lazy(() =>
   })),
 );
 import {
-  findLatestOfficialsRoster,
   findOwnOrgDeclaration,
-  readOfficials,
   readOrganizationName,
 } from '../connections/createOrganization.ts';
+import {
+  findLatestOfficialsRoster,
+  readOfficials,
+} from '../connections/officialsRoster.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
 // 5d Tier V — MarkPresenceModal is lazy-loaded so the webauthn +

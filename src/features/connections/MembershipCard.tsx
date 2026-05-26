@@ -1,7 +1,7 @@
 import type { Attestation } from 'tapit-attest';
 import { readMembership } from './createMembership.ts';
 import { RatificationsBadge } from './RatificationsBadge.tsx';
-import type { Official } from './createOrganization.ts';
+import type { Official } from './officialsRoster.ts';
 
 interface Props {
   attestation: Attestation;
