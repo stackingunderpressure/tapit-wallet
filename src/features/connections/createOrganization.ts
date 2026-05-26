@@ -11,6 +11,7 @@ import {
   decodeAuthRuleValue,
   decodeAuthorizedBy,
   defaultAuthRules,
+  isOrgActionRule,
   type AuthRule,
   type OrgAuthorizationResult,
 } from '../governance/authRule.ts';
@@ -241,6 +242,17 @@ export function verifyOrgAuthorization(
   const rule = decodeAuthRuleValue(payload.action, payload.proof.leaf.value);
   if (!rule) {
     return { authorized: false, reason: 'disclosed rule leaf is malformed' };
+  }
+  // verifyOrgAuthorization is the signer-side verifier for actions
+  // the org takes (issuance, expulsion, charter amendment); joiner-
+  // side verification (Phase E4) runs through a separate primitive
+  // because the threshold-of-signatures model does not apply to
+  // self-claim membership envelopes.
+  if (!isOrgActionRule(rule)) {
+    return {
+      authorized: false,
+      reason: `action '${payload.action}' is not a signer-side org-action rule`,
+    };
   }
 
   const eligibleSet = new Set(rule.eligible.map((e) => e.toLowerCase()));

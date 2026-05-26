@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AuthRule } from '../governance/authRule.ts';
+import type { AuthRuleForOrgAction } from '../governance/authRule.ts';
 
 // Phase 8 Phase C cut 2 — multi-rule org creation UI. Renders the
 // current list of authorization rules, with the default
@@ -26,8 +26,8 @@ interface Props {
   /** The org's own identity hex (always pre-populated as an eligible signer for a new rule). */
   founder: string;
   /** Current rules list; the parent owns this state. */
-  value: readonly AuthRule[];
-  onChange: (next: AuthRule[]) => void;
+  value: readonly AuthRuleForOrgAction[];
+  onChange: (next: AuthRuleForOrgAction[]) => void;
 }
 
 interface DraftRule {
@@ -72,7 +72,7 @@ function parseEligible(text: string): { ok: string[]; bad: string[] } {
 function validateDraft(
   draft: DraftRule,
   existingActions: readonly string[],
-): { rule: AuthRule | null; error: string | null } {
+): { rule: AuthRuleForOrgAction | null; error: string | null } {
   const action = draft.action.trim();
   if (action.length === 0) return { rule: null, error: 'Action name required.' };
   if (!/^[a-z0-9_]+$/.test(action)) {

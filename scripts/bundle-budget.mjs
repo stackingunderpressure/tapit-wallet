@@ -312,6 +312,14 @@ const BUDGETS = [
   // bump and a sub-component extraction.
   { pattern: /^CosignRequestModal-.*\.js$/, gz: 4_000, label: 'CosignRequestModal' },
 
+  // authRule — governance helpers (Phase 8 Phase A/B/E1) hoisted into
+  // their own chunk once multiple consumers (createOrganization,
+  // CosignRequestModal, MembershipModal, OrgRulesEditor, SettingsScreen,
+  // RatificationsBadge) import from them. ~1.4KB gz at Phase E1 cut;
+  // budget carries headroom for the Phase E2 self-membership decoder
+  // and Phase D charter-amendment helpers that will join the file.
+  { pattern: /^authRule-.*\.js$/, gz: 3_000, label: 'authRule (governance helpers)' },
+
   // MembershipModal — org-issuance modal React.lazy from HomeScreen
   // (Phase 8 Phase C close-out: HomeScreen was three lines from the
   // 800-line hard limit, so lazying this off the cold path frees

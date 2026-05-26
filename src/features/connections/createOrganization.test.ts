@@ -11,6 +11,7 @@ import {
   decodeAuthorizedBy,
   encodeAuthorizedBy,
   findAuthRule,
+  isOrgActionRule,
   listAuthRules,
   proveAuthorization,
   type AuthRule,
@@ -143,9 +144,11 @@ describe('auth tree shape — inline signed envelopes', () => {
     expect(isOrganizationSelfDeclaration(decl)).toBe(true);
     const all = listAuthRules(decl);
     expect(all).toHaveLength(1);
-    expect(all[0]?.action).toBe('routine_issuance');
-    expect(all[0]?.threshold).toBe(1);
-    expect(all[0]?.eligible).toEqual([w.identity.toLowerCase()]);
+    const first = all[0];
+    expect(first?.action).toBe('routine_issuance');
+    if (!first || !isOrgActionRule(first)) throw new Error('expected org-action rule');
+    expect(first.threshold).toBe(1);
+    expect(first.eligible).toEqual([w.identity.toLowerCase()]);
   });
 
   it('multi-rule declaration exposes every rule via listAuthRules', () => {
@@ -165,8 +168,9 @@ describe('auth tree shape — inline signed envelopes', () => {
       'routine_issuance',
     ]);
     const expulsion = all.find((r) => r.action === 'expulsion');
-    expect(expulsion?.threshold).toBe(2);
-    expect(expulsion?.eligible).toHaveLength(3);
+    if (!expulsion || !isOrgActionRule(expulsion)) throw new Error('expected expulsion org-action rule');
+    expect(expulsion.threshold).toBe(2);
+    expect(expulsion.eligible).toHaveLength(3);
   });
 
   it('findAuthRule returns null for an action not in the auth tree', () => {
@@ -209,7 +213,8 @@ describe('auth tree shape — inline signed envelopes', () => {
     const decl = inlineSelfDeclaration(w, 'Acme', rules);
     const found = findAuthRule(decl, 'routine_issuance');
     expect(found).not.toBeNull();
-    const eligible = found?.rule.eligible ?? [];
+    if (!found || !isOrgActionRule(found.rule)) throw new Error('expected routine_issuance org-action rule');
+    const eligible = found.rule.eligible;
     // After decode, eligible is in sorted-lowercased order.
     expect([...eligible]).toEqual([...eligible].sort());
     expect(eligible.every((e) => e === e.toLowerCase())).toBe(true);

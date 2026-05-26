@@ -20,7 +20,7 @@ import {
   readOrganizationName,
   selfDeclareOrganization,
 } from '../connections/createOrganization.ts';
-import { defaultAuthRules, type AuthRule } from '../governance/authRule.ts';
+import { defaultAuthRules, type AuthRuleForOrgAction } from '../governance/authRule.ts';
 const OrgRulesEditor = lazy(() =>
   import('./OrgRulesEditor.tsx').then((m) => ({ default: m.OrgRulesEditor })),
 );
@@ -131,7 +131,7 @@ export function SettingsScreen() {
   const existingOrgDeclaration = findOwnOrgDeclaration(holdings, wallet.identity);
   const [orgFormOpen, setOrgFormOpen] = useState(false);
   const [orgName, setOrgName] = useState('');
-  const [orgRules, setOrgRules] = useState<AuthRule[]>(() =>
+  const [orgRules, setOrgRules] = useState<AuthRuleForOrgAction[]>(() =>
     defaultAuthRules(wallet.identity),
   );
   const [orgBusy, setOrgBusy] = useState(false);

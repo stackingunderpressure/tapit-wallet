@@ -6,7 +6,7 @@ import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { PeerPicker } from '../connections/PeerPicker.tsx';
 import { isHandshake, readHandshake } from '../connections/createHandshake.ts';
-import { findAuthRule } from '../governance/authRule.ts';
+import { findAuthRule, isOrgActionRule } from '../governance/authRule.ts';
 import {
   summarizePublish,
   type PublishStatusSummary,
@@ -80,7 +80,13 @@ export function CosignRequestModal({
   const orgRule = useMemo(() => {
     if (!orgContext) return null;
     const found = findAuthRule(orgContext.orgSelfDecl, orgContext.action);
-    if (!found) return null;
+    // CosignRequestModal is the signer-side co-sign UI; join rules
+    // (joiner-side) are surfaced through a different flow and would
+    // not make sense here. Narrow to AuthRuleForOrgAction and fall
+    // back to the general PeerPicker if a caller ever hands us a
+    // join-action context by mistake.
+    if (!found || !isOrgActionRule(found.rule)) return null;
+    const rule = found.rule;
     const nameByKey = new Map<string, string>();
     for (const a of holdings) {
       if (!isHandshake(a)) continue;
@@ -92,7 +98,7 @@ export function CosignRequestModal({
         nameByKey.set(v.responderId.toLowerCase(), v.responderName);
       }
     }
-    const eligibleDisplay = found.rule.eligible.map((pubkey) => {
+    const eligibleDisplay = rule.eligible.map((pubkey) => {
       const lower = pubkey.toLowerCase();
       const name =
         lower === wallet.identity.toLowerCase()
@@ -100,7 +106,7 @@ export function CosignRequestModal({
           : (nameByKey.get(lower) ?? null);
       return { pubkey: lower, name };
     });
-    return { rule: found.rule, eligibleDisplay };
+    return { rule, eligibleDisplay };
   }, [orgContext, holdings, wallet.identity]);
 
   async function copy() {

@@ -15,7 +15,8 @@ import { findOwnOrgDeclaration } from './createOrganization.ts';
 import {
   buildAuthorizedByPayload,
   findAuthRule,
-  type AuthRule,
+  isOrgActionRule,
+  type AuthRuleForOrgAction,
 } from '../governance/authRule.ts';
 import {
   summarizePublish,
@@ -93,9 +94,11 @@ export function MembershipModal({ onClose }: Props) {
     () => findOwnOrgDeclaration(holdings, wallet.identity),
     [holdings, wallet.identity],
   );
-  const issuanceRule: AuthRule | null = useMemo(() => {
+  const issuanceRule: AuthRuleForOrgAction | null = useMemo(() => {
     if (!ownOrg) return null;
-    return findAuthRule(ownOrg, ROUTINE_ISSUANCE)?.rule ?? null;
+    const found = findAuthRule(ownOrg, ROUTINE_ISSUANCE)?.rule ?? null;
+    if (!found || !isOrgActionRule(found)) return null;
+    return found;
   }, [ownOrg]);
 
   async function sendMembershipViaNostr() {
