@@ -18,5 +18,5 @@ export const manifest: FeatureManifest = {
   removal_safe: false,
   monetizable: false,
   notes:
-    'Per DESIGN.md §6 the wallet defaults to cloud sync ON (most users are forgetful). Settings is where they can flip it off for a sovereign setup.',
+    "Per DESIGN.md §6 the wallet defaults to cloud sync ON (most users are forgetful). Settings is where they can flip it off for a sovereign setup. Governance direction: Phase 8 Phase C cut 2 added OrgRulesEditor as a React.lazy section that lets the operator declare multi-rule Tapscript-style auth trees at org-self-declaration time — each rule names an action (routine_issuance, expulsion, charter_amendment, etc.) plus a threshold and an eligible-signers list, with validation running at submit time per buildAuthSubtree's contract in src/features/governance/authRule.ts; AppearanceSection separately holds the Fresh-theme radio + the Fresh-extras toggles (Memories strip, Streak indicator) that gate the Today-tab Fresh embellishments.",
 };

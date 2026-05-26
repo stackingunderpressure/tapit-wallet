@@ -20,5 +20,5 @@ export const manifest: FeatureManifest = {
   removal_safe: false,
   monetizable: false,
   notes:
-    "Signing happens locally; only public envelopes cross the wire. Keys-never-leave preserved. Uses tapit-attest's envelopeId for matching, canonicalEnvelope for display-safe serialization, signEnvelope for the witness signature, verifyEnvelope for incoming-envelope validation, assertWellFormed for paste-input safety.",
+    "Signing happens locally; only public envelopes cross the wire. Keys-never-leave preserved. Uses tapit-attest's envelopeId for matching, canonicalEnvelope for display-safe serialization, signEnvelope for the witness signature, verifyEnvelope for incoming-envelope validation, assertWellFormed for paste-input safety. Governance direction: Phase 8 Phase C cut 3 added an optional orgContext mode to CosignRequestModal — when the operator is requesting co-signs for an org-issued credential under a specific Tapscript-style authorization rule, the modal reads the rule via findAuthRule from src/features/governance/authRule.ts, shows a banner naming the action and required threshold, and replaces the general PeerPicker with an eligible-signers picker scoped to the rule's eligible set so the operator can only fan out to signers whose signatures will count toward the threshold.",
 };
