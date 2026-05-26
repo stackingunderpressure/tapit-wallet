@@ -312,6 +312,16 @@ const BUDGETS = [
   // bump and a sub-component extraction.
   { pattern: /^CosignRequestModal-.*\.js$/, gz: 4_000, label: 'CosignRequestModal' },
 
+  // MembershipModal — org-issuance modal React.lazy from HomeScreen
+  // (Phase 8 Phase C close-out: HomeScreen was three lines from the
+  // 800-line hard limit, so lazying this off the cold path frees
+  // headroom for Phase D/E surface still to come). Pulls in
+  // findOwnOrgDeclaration + findAuthRule + buildAuthorizedByPayload
+  // from governance plus its own lazy CosignRequestModal import. The
+  // chunk only loads when the operator taps "+ Membership" or
+  // "+ Admit member" on the Identity tab.
+  { pattern: /^MembershipModal-.*\.js$/, gz: 4_000, label: 'MembershipModal' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.

@@ -13,13 +13,18 @@ import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
+import { OrgIdentitySections } from './OrgIdentitySections.tsx';
 import {
   isHandshake,
   peerNamesByPubkey,
   displayNameOf,
   leafValue,
 } from '../connections/createHandshake.ts';
-import { MembershipModal } from '../connections/MembershipModal.tsx';
+const MembershipModal = lazy(() =>
+  import('../connections/MembershipModal.tsx').then((m) => ({
+    default: m.MembershipModal,
+  })),
+);
 import { MembershipCard } from '../connections/MembershipCard.tsx';
 import {
   isMembership,
@@ -53,7 +58,6 @@ import {
 } from '../connections/createOrganization.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
-import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
 // 5d Tier V — MarkPresenceModal is lazy-loaded so the webauthn +
 // geolocation + presence code only ships when the operator actually
 // opens the flow. Keeps HomeScreen bundle within budget.
@@ -400,91 +404,12 @@ export function HomeScreen() {
           />
           {identity && <AttestationCard attestation={identity} />}
           {orgDeclaration && (
-            <div className="pt-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted">
-                  Officials ({officials.length})
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setOfficialsOpen(true)}
-                  className="text-xs font-medium text-accent hover:underline"
-                >
-                  {officials.length === 0 ? '+ Add officials' : 'Edit'}
-                </button>
-              </div>
-              {officials.length === 0 ? (
-                <p className="mt-2 text-sm text-muted">
-                  No officials published yet. Officials are the people
-                  whose signatures count as ratification of memberships
-                  the organization issues — add them and the rest of the
-                  governance UI starts surfacing ratification status.
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {officials.map((o) => (
-                    <li
-                      key={o.pubkey}
-                      className="rounded-2xl bg-white border border-ink/10 p-3"
-                    >
-                      <div className="font-medium truncate">
-                        {o.name || '(no name)'}
-                      </div>
-                      <div className="mt-1 text-xs text-muted font-mono">
-                        {o.pubkey.slice(0, 8)}…{o.pubkey.slice(-4)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          {orgDeclaration && (
-            <div className="pt-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-muted">
-                  Members ({issuedMemberships.length})
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setMembershipOpen(true)}
-                  className="text-xs font-medium text-accent hover:underline"
-                >
-                  + Admit member
-                </button>
-              </div>
-              {issuedMemberships.length === 0 ? (
-                <p className="mt-2 text-sm text-muted">
-                  No members yet. Tap Admit member to issue a membership —
-                  the recipient holds the signed envelope; they appear here
-                  on this wallet too.
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-2">
-                  {issuedMemberships.map((a, i) => {
-                    const m = readMembership(a);
-                    const parsed = new Date(m.issuedAt);
-                    const when = Number.isNaN(parsed.getTime())
-                      ? m.issuedAt
-                      : parsed.toLocaleDateString();
-                    return (
-                      <li
-                        key={i}
-                        className="rounded-2xl bg-white border border-ink/10 p-3"
-                      >
-                        <div className="font-medium truncate">
-                          {m.memberName || 'Unknown member'}
-                        </div>
-                        <div className="mt-1 text-xs text-muted">
-                          Admitted {when}
-                        </div>
-                        <RatificationsBadge envelope={a} officials={officials} />
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+            <OrgIdentitySections
+              officials={officials}
+              issuedMemberships={issuedMemberships}
+              onOpenOfficials={() => setOfficialsOpen(true)}
+              onOpenMembership={() => setMembershipOpen(true)}
+            />
           )}
           <div className="pt-2">
             <div className="flex items-center justify-between">
@@ -719,7 +644,11 @@ export function HomeScreen() {
         </Suspense>
       )}
 
-      {membershipOpen && <MembershipModal onClose={() => setMembershipOpen(false)} />}
+      {membershipOpen && (
+        <Suspense fallback={null}>
+          <MembershipModal onClose={() => setMembershipOpen(false)} />
+        </Suspense>
+      )}
 
       {officialsOpen && <OfficialsEditorModal onClose={() => setOfficialsOpen(false)} />}
 
