@@ -19,11 +19,13 @@ import type { AuthRule } from '../governance/authRule.ts';
 // proof path runs; (b) the roster path accepts a joiner whose
 // self-membership envelopeId appears in a signed org roster; (c) the
 // auth-tree path accepts the list-checking policies (open / allow /
-// deny) per the evaluator's contract; (d) the auth-tree path defers
-// the proof-required policies (handshake / credential / vouch) to
-// Phase E4 cut 2 with reason names preserved; (e) hybrid precedence
-// works — roster path checked first, auth-tree path is the fallback,
-// both rejecting yields a consolidated reason.
+// deny) per the evaluator's contract; (d) the auth-tree path rejects
+// proof-required policies (handshake / credential / vouch) when the
+// joiner did not attach the matching proof leaf — Phase E4 cut 2
+// flipped these from "deferred to Phase E4" to a concrete
+// "no proof leaf attached" reject on the envelope-only path; (e)
+// hybrid precedence works — roster path checked first, auth-tree
+// path is the fallback, both rejecting yields a consolidated reason.
 
 function signedIdentity(w: Wallet, name: string): Attestation {
   return w.sign(
@@ -175,7 +177,7 @@ describe('verifyOpenJoinedMembership — auth-tree path (Option 2)', () => {
     expect(result.reason).toMatch(/deny-list/);
   });
 
-  it('rejects requires_handshake with reason naming Phase E4', () => {
+  it('rejects requires_handshake when the envelope carries no handshake_proof leaf', () => {
     const org = Wallet.generate();
     const joiner = Wallet.generate();
     const orgDecl = signedOrgSelfDecl(org, [
@@ -185,10 +187,10 @@ describe('verifyOpenJoinedMembership — auth-tree path (Option 2)', () => {
     const result = verifyOpenJoinedMembership(env, orgDecl);
     expect(result.valid).toBe(false);
     expect(result.proofPath).toBe('none');
-    expect(result.reason).toMatch(/Phase E4/);
+    expect(result.reason).toMatch(/no handshake_proof leaf/);
   });
 
-  it('rejects requires_credential with reason naming Phase E4', () => {
+  it('rejects requires_credential when the envelope carries no credential_proof leaf', () => {
     const org = Wallet.generate();
     const joiner = Wallet.generate();
     const orgDecl = signedOrgSelfDecl(org, [
@@ -200,10 +202,10 @@ describe('verifyOpenJoinedMembership — auth-tree path (Option 2)', () => {
     const env = signedSelfMembership(joiner, org.identity, 'Org');
     const result = verifyOpenJoinedMembership(env, orgDecl);
     expect(result.valid).toBe(false);
-    expect(result.reason).toMatch(/Phase E4/);
+    expect(result.reason).toMatch(/no credential_proof leaf/);
   });
 
-  it('rejects requires_vouch with reason naming Phase E4', () => {
+  it('rejects requires_vouch on the verifier-side path with no holdings to derive members from', () => {
     const org = Wallet.generate();
     const joiner = Wallet.generate();
     const orgDecl = signedOrgSelfDecl(org, [
@@ -212,7 +214,7 @@ describe('verifyOpenJoinedMembership — auth-tree path (Option 2)', () => {
     const env = signedSelfMembership(joiner, org.identity, 'Org');
     const result = verifyOpenJoinedMembership(env, orgDecl);
     expect(result.valid).toBe(false);
-    expect(result.reason).toMatch(/Phase E4/);
+    expect(result.reason).toMatch(/no known members/);
   });
 
   it('rejects when the org has no join rule in its auth tree', () => {

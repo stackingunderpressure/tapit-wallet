@@ -1,4 +1,4 @@
-import type { Attestation, Wallet } from 'tapit-attest';
+import type { Attestation, DisclosureProofBundle, Wallet } from 'tapit-attest';
 import { credentialAttestation } from 'tapit-attest';
 import { displayNameOf, holdAndAnchor, leafValue } from './createHandshake.ts';
 import {
@@ -170,6 +170,38 @@ export function readSelfMembership(att: Attestation): SelfMembershipView {
   };
 }
 
+/** Phase 8 Phase E4 cut 2 — optional joiner-side proof attachments.
+ *  Each field is a DisclosureProofBundle the builder JSON-stringifies
+ *  into a top-level leaf on the self-membership envelope so the
+ *  joiner's own signature covers the proof (it cannot be detached or
+ *  swapped after signing). The org-side evaluator + verifier read
+ *  these leaves to satisfy the proof-required policy kinds:
+ *
+ *   - `handshake_proof` — a disclosureProof of the `verification` leaf
+ *     of a co-signed handshake envelope the joiner already holds. The
+ *     verifier confirms proof.meta.kind is `relationship`, the proof
+ *     verifies cryptographically, and the carried signatures include
+ *     both the joiner and at least one pubkey from the org's declared
+ *     `requires_handshake.with_any_of` set. Satisfies
+ *     `requires_handshake` policy.
+ *
+ *   - `credential_proof` — a disclosureProof of the `credential_type`
+ *     leaf of a credential the joiner holds. The verifier confirms
+ *     proof.meta.kind is `credential`, proof.meta.subject is the
+ *     joiner, the disclosed leaf value matches the policy's
+ *     `credential_type`, and (when the policy names an issuer) the
+ *     carried signatures include that issuer. Satisfies
+ *     `requires_credential` policy.
+ *
+ *  Vouch needs no new leaf — voucher cosignatures ride
+ *  envelope.signatures[] alongside the joiner's own signature; the
+ *  evaluator counts them against `requires_vouch.from_any_member_count`
+ *  and confirms each voucher is in the org's known-member set. */
+export interface SelfMembershipProofs {
+  handshake_proof?: DisclosureProofBundle;
+  credential_proof?: DisclosureProofBundle;
+}
+
 // Build the unsigned self-membership credential. The JOINER's wallet
 // calls this — it holds the joiner's own identity attestation and
 // knows the org's pubkey + display name (typically from a prior
@@ -185,23 +217,72 @@ export function readSelfMembership(att: Attestation): SelfMembershipView {
 // the joiner was accepted, which can be later than `requested_at`;
 // the joiner's signed `requested_at` claim is preserved as the
 // joiner's intent. Phase E3/E4 sharpen this distinction in code.
+//
+// Phase 8 Phase E4 cut 2 — optional `proofs` parameter bakes
+// joiner-side proof leaves (handshake_proof / credential_proof) so
+// the org's proof-required join policies can be satisfied at receive
+// time. Vouch needs no new leaf because the cosignatures already
+// ride signatures[]. Omitted parameter preserves the five-field
+// envelope shape Phase E2 + E3 callers already emit.
 export function buildSelfMembershipDraft(
   joinerIdentity: Attestation,
   orgId: string,
   orgName: string,
+  proofs?: SelfMembershipProofs,
 ): Attestation {
   const now = new Date().toISOString();
+  const fields: Record<string, string> = {
+    credential_type: 'self_membership',
+    org_id: orgId,
+    org_name: orgName,
+    joined_at: now,
+    requested_at: now,
+  };
+  if (proofs?.handshake_proof) {
+    fields.handshake_proof = JSON.stringify(proofs.handshake_proof);
+  }
+  if (proofs?.credential_proof) {
+    fields.credential_proof = JSON.stringify(proofs.credential_proof);
+  }
   return credentialAttestation({
     subject: joinerIdentity.subject,
     tier: 'notable',
-    fields: {
-      credential_type: 'self_membership',
-      org_id: orgId,
-      org_name: orgName,
-      joined_at: now,
-      requested_at: now,
-    },
+    fields,
   });
+}
+
+/** Read a `handshake_proof` leaf off a self-membership envelope and
+ *  parse it back into a DisclosureProofBundle. Returns null when the
+ *  leaf is absent or malformed; the cryptographic check is
+ *  verifyDisclosureProof, which runs inside the evaluator. */
+export function readHandshakeProof(att: Attestation): DisclosureProofBundle | null {
+  return decodeProofLeaf(leafValue(att, 'handshake_proof'));
+}
+
+/** Read a `credential_proof` leaf off a self-membership envelope and
+ *  parse it back into a DisclosureProofBundle. Returns null when the
+ *  leaf is absent or malformed. */
+export function readCredentialProof(att: Attestation): DisclosureProofBundle | null {
+  return decodeProofLeaf(leafValue(att, 'credential_proof'));
+}
+
+function decodeProofLeaf(raw: string): DisclosureProofBundle | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const p = parsed as Record<string, unknown>;
+    // Lightweight shape check; verifyDisclosureProof does the deep
+    // structural + cryptographic validation downstream.
+    if (typeof p.v !== 'number') return null;
+    if (!p.meta || typeof p.meta !== 'object') return null;
+    if (!p.leaf || typeof p.leaf !== 'object') return null;
+    if (!Array.isArray(p.steps)) return null;
+    if (!Array.isArray(p.signatures)) return null;
+    return parsed as DisclosureProofBundle;
+  } catch {
+    return null;
+  }
 }
 
 // Phase E3 cut 1 — org-side acceptor for an incoming self-membership
