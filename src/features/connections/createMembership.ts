@@ -1,7 +1,13 @@
 import type { Attestation, Wallet } from 'tapit-attest';
 import { credentialAttestation } from 'tapit-attest';
 import { displayNameOf, holdAndAnchor, leafValue } from './createHandshake.ts';
-import { encodeAuthorizedBy, type AuthorizedByPayload } from '../governance/authRule.ts';
+import {
+  encodeAuthorizedBy,
+  findAuthRule,
+  isJoinRule,
+  type AuthorizedByPayload,
+} from '../governance/authRule.ts';
+import { evaluateJoinPolicy } from '../governance/evaluateJoinPolicy.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 // Phase 5b — organizations and membership. An organization is a
@@ -198,26 +204,48 @@ export function buildSelfMembershipDraft(
   });
 }
 
-// Phase E2 acceptor PLACEHOLDER for an incoming self-membership
-// envelope. wallet.hold internally verifies the joiner's signature
-// so the call is the authoritative integrity check; after holding,
-// the OpenTimestamps queue picks up the digest the same way it does
-// for handshakes and memberships. Phase E3 replaces this placeholder
-// with the real org-side acceptor: look up the org's declared
-// join-policy via findAuthRule, evaluate the joiner's claim against
-// it (open / allow_list / requires_handshake / etc.), and either add
-// the envelope to the pending-roster buffer or reject it. Throws if
-// the envelope is not a self-membership so callers can route by
-// envelope shape without relying on UI-side dispatch guarantees.
+// Phase E3 cut 1 — org-side acceptor for an incoming self-membership
+// envelope. Three structural gates run before the envelope reaches
+// holdings:
+//   1. Envelope shape — must be a self-membership credential.
+//   2. Org self-declaration — the receiving wallet must hold a
+//      self-declaration with a `join` rule in its auth tree. An org
+//      that never declared a join policy implicitly does not accept
+//      open joins; the request is rejected with reason.
+//   3. Join-policy evaluation — the `evaluateJoinPolicy` helper runs
+//      the policy against the envelope's joiner pubkey (and, in
+//      Phase E4, against attached proof). Reject reasons surface
+//      verbatim so a future UI can show the operator why a join
+//      request did not land.
+// Past the gates, wallet.hold internally verifies the joiner's
+// signature (the authoritative integrity check) and the
+// OpenTimestamps queue picks up the digest the same way it does for
+// handshakes and memberships. Phase E3 cut 2 layers the pending-
+// roster buffer and roster-publication envelope on top; the gate
+// here decides whether the envelope is buffer-eligible in the first
+// place.
 export async function receiveSelfMembership(input: {
   wallet: Wallet;
   ownerId: string;
   anchorWorker: WorkerHandle | null;
   attestation: Attestation;
+  orgSelfDecl: Attestation;
+  holdings: readonly Attestation[];
 }): Promise<void> {
-  const { wallet, ownerId, anchorWorker, attestation } = input;
+  const { wallet, ownerId, anchorWorker, attestation, orgSelfDecl, holdings } = input;
   if (!isSelfMembership(attestation)) {
     throw new Error('not a self-membership credential');
+  }
+  const found = findAuthRule(orgSelfDecl, 'join');
+  if (!found) {
+    throw new Error('org has not declared a join policy in its auth tree');
+  }
+  if (!isJoinRule(found.rule)) {
+    throw new Error("auth rule at slot 'join' is not a join rule");
+  }
+  const verdict = evaluateJoinPolicy(found.rule.policy, attestation, holdings);
+  if (!verdict.accepted) {
+    throw new Error(`self-membership rejected by join policy: ${verdict.reason}`);
   }
   await holdAndAnchor(wallet, ownerId, anchorWorker, attestation);
 }

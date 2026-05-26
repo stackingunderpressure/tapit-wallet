@@ -236,16 +236,25 @@ export function HomeScreen() {
     }
   }
 
-  // Phase E2 placeholder. Holds the incoming self-membership locally
-  // and queues anchoring; Phase E3 layers join-policy evaluation +
-  // pending-roster buffer on top of this same hook.
+  // Phase E3 cut 1. receiveSelfMembership now gates on the org's
+  // declared join-policy in its auth tree — the wallet must hold its
+  // own org self-declaration (computed below via findOwnOrgDeclaration
+  // in the orgDeclaration useMemo). A wallet that has not declared
+  // itself as an org has no business accepting open joins, so we
+  // short-circuit with a warn rather than calling into the rejector.
   async function acceptSelfMembership(envelope: Attestation) {
+    if (!orgDeclaration) {
+      console.warn('self-membership routed to a wallet without an org declaration; ignoring');
+      return;
+    }
     try {
       await receiveSelfMembership({
         wallet,
         ownerId,
         anchorWorker,
         attestation: envelope,
+        orgSelfDecl: orgDeclaration,
+        holdings,
       });
       await save();
       await refresh();

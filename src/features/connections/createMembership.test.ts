@@ -246,14 +246,16 @@ describe('readSelfMembership', () => {
   });
 });
 
-describe('receiveSelfMembership placeholder acceptor', () => {
-  // The placeholder calls wallet.hold (signature integrity check)
-  // and queues anchoring; Phase E3 layers join-policy evaluation on
-  // top. Storage round-trip belongs to Phase E3's integration tests
-  // (anchorQueue.upsert hits IndexedDB which jsdom does not ship);
-  // here we cover the synchronous integrity gate and prove the
-  // produced envelope is independently hold-able by any wallet —
-  // both signatures the production receive-path depends on.
+describe('receiveSelfMembership acceptor — Phase E3 cut 1 gates', () => {
+  // Three structural gates: envelope shape, org has a join rule,
+  // join-policy accepts. Storage round-trip belongs to a later
+  // integration test (anchorQueue.upsert hits IndexedDB which jsdom
+  // does not ship); here we cover the synchronous gates plus the
+  // accept path's lookup contract. The accept path itself short-
+  // circuits before holdAndAnchor by stubbing the rejected verdict
+  // through a deny_list policy that names the joiner — that gate
+  // throws BEFORE wallet.hold runs, so we can assert the throw
+  // without exercising the IndexedDB-bound code path.
 
   it('throws when the envelope is not a self-membership', async () => {
     const org = Wallet.generate();
@@ -262,6 +264,7 @@ describe('receiveSelfMembership placeholder acceptor', () => {
     const orgIdent = signedIdentity(org, 'Org');
     const memberIdent = signedIdentity(member, 'Pat');
     const orgMembership = org.sign(buildMembershipDraft(orgIdent, memberIdent));
+    const orgDecl = declareOrg(org, 'Org', [{ action: 'join', policy: { kind: 'open' } }]);
 
     await expect(
       receiveSelfMembership({
@@ -269,8 +272,84 @@ describe('receiveSelfMembership placeholder acceptor', () => {
         ownerId: orgHost.identity,
         anchorWorker: null,
         attestation: orgMembership,
+        orgSelfDecl: orgDecl,
+        holdings: [],
       }),
     ).rejects.toThrow(/not a self-membership/);
+  });
+
+  it('throws when the org self-declaration has no join rule', async () => {
+    const joiner = Wallet.generate();
+    const org = Wallet.generate();
+    const orgHost = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const signed = joiner.sign(buildSelfMembershipDraft(joinerIdent, org.identity, 'Org'));
+    // Org declared without a join rule — pre-Phase-E1 shape via
+    // defaultAuthRules (a single routine_issuance rule).
+    const orgDecl = declareOrg(org, 'Org', [
+      { action: 'routine_issuance', threshold: 1, eligible: [org.identity] },
+    ]);
+
+    await expect(
+      receiveSelfMembership({
+        wallet: orgHost,
+        ownerId: orgHost.identity,
+        anchorWorker: null,
+        attestation: signed,
+        orgSelfDecl: orgDecl,
+        holdings: [],
+      }),
+    ).rejects.toThrow(/has not declared a join policy/);
+  });
+
+  it('throws when the join policy rejects the joiner — reason surfaces in error', async () => {
+    const joiner = Wallet.generate();
+    const org = Wallet.generate();
+    const orgHost = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const signed = joiner.sign(buildSelfMembershipDraft(joinerIdent, org.identity, 'Org'));
+    // deny_list policy that names this joiner — rejected before
+    // the wallet.hold step the IndexedDB layer would otherwise
+    // need to back.
+    const orgDecl = declareOrg(org, 'Org', [
+      { action: 'join', policy: { kind: 'deny_list', pubkeys: [joiner.identity] } },
+    ]);
+
+    await expect(
+      receiveSelfMembership({
+        wallet: orgHost,
+        ownerId: orgHost.identity,
+        anchorWorker: null,
+        attestation: signed,
+        orgSelfDecl: orgDecl,
+        holdings: [],
+      }),
+    ).rejects.toThrow(/rejected by join policy.*deny-list/);
+  });
+
+  it('throws with Phase E4 reason when the policy requires joiner-side proof', async () => {
+    const joiner = Wallet.generate();
+    const org = Wallet.generate();
+    const orgHost = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const signed = joiner.sign(buildSelfMembershipDraft(joinerIdent, org.identity, 'Org'));
+    const orgDecl = declareOrg(org, 'Org', [
+      {
+        action: 'join',
+        policy: { kind: 'requires_credential', credential_type: 'voter_id' },
+      },
+    ]);
+
+    await expect(
+      receiveSelfMembership({
+        wallet: orgHost,
+        ownerId: orgHost.identity,
+        anchorWorker: null,
+        attestation: signed,
+        orgSelfDecl: orgDecl,
+        holdings: [],
+      }),
+    ).rejects.toThrow(/Phase E4/);
   });
 
   it('produces a signed self-membership that any wallet can hold', async () => {
