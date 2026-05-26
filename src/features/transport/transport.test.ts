@@ -1,15 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { Wallet, identityAttestation } from 'tapit-attest';
+import {
+  Wallet,
+  encryptTo as nip44EncryptTo,
+  generateKeypair,
+  identityAttestation,
+  signDigest as schnorrSignDigest,
+} from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 
 import {
-  TAPIT_CHAT_KIND,
   TAPIT_ENVELOPE_KIND,
   buildEvent,
   verifyEvent,
   type TransportEvent,
   type TransportFilter,
 } from './nostrEvent.ts';
+import { NIP17_GIFT_WRAP_KIND } from './nip17.ts';
 import { NostrTransport } from './nostrTransport.ts';
 import {
   sendChatMessageTo,
@@ -249,7 +255,7 @@ describe('encrypted inbox round-trip', () => {
   });
 });
 
-describe('chat-message round-trip (Cut 1 — TAPIT_CHAT_KIND)', () => {
+describe('chat-message round-trip (NIP-17 gift-wrapped, kind 1059)', () => {
   it('delivers a signed chat payload from Alice to Bob through a transport', async () => {
     const alice = newWalletAs('Alice');
     const bob = newWalletAs('Bob');
@@ -270,7 +276,7 @@ describe('chat-message round-trip (Cut 1 — TAPIT_CHAT_KIND)', () => {
     expect(received[0]!.senderPubkey).toBe(alice.wallet.publicKey);
   });
 
-  it('uses TAPIT_CHAT_KIND and addresses the recipient in a p tag', async () => {
+  it('uses NIP-17 gift-wrap kind 1059 and addresses the recipient in a p tag with an EPHEMERAL pubkey (not the real sender)', async () => {
     const alice = newWalletAs('Alice');
     const bob = newWalletAs('Bob');
     const transport = new FakeTransport();
@@ -285,8 +291,12 @@ describe('chat-message round-trip (Cut 1 — TAPIT_CHAT_KIND)', () => {
     await flush();
     expect(captured).not.toBeNull();
     const ev = captured as unknown as TransportEvent;
-    expect(ev.kind).toBe(TAPIT_CHAT_KIND);
+    expect(ev.kind).toBe(NIP17_GIFT_WRAP_KIND);
     expect(ev.tags.some((t) => t[0] === 'p' && t[1] === bob.wallet.publicKey)).toBe(true);
+    // Privacy property: the gift wrap's outer pubkey MUST be the
+    // ephemeral wrapper, NOT Alice's real pubkey. The relay never
+    // sees the real sender.
+    expect(ev.pubkey).not.toBe(alice.wallet.publicKey);
   });
 
   it('the chat subscription does not see envelope-kind events and vice versa', async () => {
@@ -363,20 +373,27 @@ describe('chat-message round-trip (Cut 1 — TAPIT_CHAT_KIND)', () => {
     expect(seen).toHaveLength(0);
   });
 
-  it('drops a malformed payload silently — non-JSON plaintext', async () => {
-    const alice = newWalletAs('Alice');
+  it('drops a malformed gift wrap silently — kind 1059 with non-JSON inner ciphertext', async () => {
     const bob = newWalletAs('Bob');
     const transport = new FakeTransport();
     const seen: InboxChatMessage[] = [];
     subscribeChatMessages(transport, bob.wallet, (item) => { seen.push(item); });
-    // Hand-roll an event with valid crypto but garbage plaintext —
-    // proves the parseChatPayload defense, not just MAC validation.
-    const ciphertext = alice.wallet.nip44EncryptTo('not json at all', bob.wallet.publicKey);
+    // Hand-roll a kind-1059 event whose ephemeral signature verifies
+    // and whose outer NIP-44 layer decrypts cleanly — but the inner
+    // plaintext is not valid JSON. Bob's unwrapGiftWrap should fail
+    // at the seal-JSON-parse step and silently drop.
+    const ephemeral = generateKeypair();
+    const garbageInner = 'not json at all';
+    const wrapCiphertext = nip44EncryptTo(
+      garbageInner,
+      bob.wallet.publicKey,
+      ephemeral.privateKey,
+    );
     const event = await buildEvent({
-      pubkey: alice.wallet.publicKey,
-      sign: (d) => alice.wallet.signDigest(d),
-      kind: TAPIT_CHAT_KIND,
-      content: ciphertext,
+      pubkey: ephemeral.publicKey,
+      sign: (d) => schnorrSignDigest(d, ephemeral.privateKey),
+      kind: NIP17_GIFT_WRAP_KIND,
+      content: wrapCiphertext,
       tags: [['p', bob.wallet.publicKey]],
     });
     await transport.publish(event);
@@ -384,21 +401,25 @@ describe('chat-message round-trip (Cut 1 — TAPIT_CHAT_KIND)', () => {
     expect(seen).toHaveLength(0);
   });
 
-  it('drops a payload with the wrong shape silently — JSON but no text field', async () => {
-    const alice = newWalletAs('Alice');
+  it('drops a gift wrap whose decrypted seal has the wrong shape — JSON but missing kind/sig fields', async () => {
     const bob = newWalletAs('Bob');
     const transport = new FakeTransport();
     const seen: InboxChatMessage[] = [];
     subscribeChatMessages(transport, bob.wallet, (item) => { seen.push(item); });
-    const ciphertext = alice.wallet.nip44EncryptTo(
+    // Inner plaintext is valid JSON but does not resemble a kind-13
+    // seal event (no kind, no sig, no pubkey). Bob's unwrapGiftWrap
+    // should fail at the narrowToTransportEvent step and drop.
+    const ephemeral = generateKeypair();
+    const wrapCiphertext = nip44EncryptTo(
       JSON.stringify({ unexpected: 'shape' }),
       bob.wallet.publicKey,
+      ephemeral.privateKey,
     );
     const event = await buildEvent({
-      pubkey: alice.wallet.publicKey,
-      sign: (d) => alice.wallet.signDigest(d),
-      kind: TAPIT_CHAT_KIND,
-      content: ciphertext,
+      pubkey: ephemeral.publicKey,
+      sign: (d) => schnorrSignDigest(d, ephemeral.privateKey),
+      kind: NIP17_GIFT_WRAP_KIND,
+      content: wrapCiphertext,
       tags: [['p', bob.wallet.publicKey]],
     });
     await transport.publish(event);

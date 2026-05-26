@@ -1,12 +1,18 @@
 import type { Attestation, Wallet } from 'tapit-attest';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import {
-  TAPIT_CHAT_KIND,
   TAPIT_ENVELOPE_KIND,
   buildEvent,
   verifyEvent,
   type TransportEvent,
 } from './nostrEvent.ts';
+import {
+  buildGiftWrap,
+  unwrapGiftWrap,
+  NIP17_CHAT_RUMOR_KIND,
+  NIP17_GIFT_WRAP_KIND,
+  type ChatRumor,
+} from './nip17.ts';
 import type {
   PublishResult,
   Subscription,
@@ -153,20 +159,25 @@ async function handleIncoming(
   });
 }
 
-// ─── Cut 1 — TAPIT_CHAT_KIND ──────────────────────────────────────
-// A chat message is the casual, non-attestation sibling of an
-// envelope: same Schnorr signature, same NIP-44 v2 encrypted wrap,
-// same recipient-addressed `p` tag, but the plaintext carries a
-// ChatPayload JSON object rather than a serialized Attestation. The
-// wire crypto is identical to the envelope path — the "lightness" is
-// purely that no attestation kind is invoked and no anchoring is
-// implied. Promotion to a full envelope happens at the UI layer.
+// ─── NIP-17 gift-wrapped chat ─────────────────────────────────────
+// Chat now rides NIP-17 (kind 1059 gift wrap → kind 13 seal → kind
+// 14 rumor) instead of the previous custom kind 9574 — see nip17.ts
+// for the wire-format details. Rationale: every modern Nostr relay
+// stores kind 1059 events for offline retrieval (Nostr-standard
+// kind), whereas custom kinds in the 9000s are accepted-but-not-
+// persisted by many public relays, which was the root cause of the
+// operator-reported "messages are not being received by the other
+// person" bug. Privacy bonus: the relay no longer sees the real
+// sender's pubkey — only the per-message ephemeral wrapper does.
+// The recipient's pubkey is still tagged on the gift wrap so the
+// recipient's subscription filter can find their inbox.
 
 /**
- * Payload format for TAPIT_CHAT_KIND events. JSON-shaped from the
- * start so future fields (attachments, replyTo, etc.) are additive
- * without a wire-format change. Cut 1 ships text-only; later cuts
- * add the optional fields.
+ * Plaintext payload exposed to chat callers. Cut 1 ships text-only;
+ * future cuts may extend with structured payloads inside the rumor
+ * content. Public shape is stable across the kind-9574 → kind-1059
+ * migration so the WalletProvider sendChatMessage caller and the
+ * PeerThread render layer continue to work unchanged.
  */
 export interface ChatPayload {
   /** UTF-8 message body. Empty string allowed for attachment-only messages later. */
@@ -179,11 +190,17 @@ export interface SendChatResult {
 }
 
 /**
- * Encrypt a ChatPayload to the recipient's x-only pubkey and publish
- * the resulting Nostr event under TAPIT_CHAT_KIND. The payload is
- * serialized as canonical JSON before encryption — the recipient
- * recovers it with JSON.parse + the defensive shape check in
- * handleIncomingChat. Returns the wire event + publish result.
+ * Build a NIP-17 gift-wrapped chat message for the recipient and
+ * publish it through the transport. The gift wrap (kind 1059) is
+ * what lands on the relay — it carries the sealed rumor inside two
+ * NIP-44 encryption layers, signed by an ephemeral key so the
+ * sender's real pubkey never appears at the wire level.
+ *
+ * The optional `options.created_at` is used as the rumor's real
+ * timestamp — the seal and gift wrap each randomize their own
+ * `created_at` within the past two days per NIP-17 to hide send
+ * time from the relay. Tests pin the rumor timestamp for
+ * deterministic assertions.
  */
 export async function sendChatMessageTo(
   transport: Transport,
@@ -192,18 +209,16 @@ export async function sendChatMessageTo(
   sender: Wallet,
   options: SendOptions = {},
 ): Promise<SendChatResult> {
-  const plaintext = JSON.stringify(payload);
-  const ciphertext = sender.nip44EncryptTo(plaintext, recipientPubkey);
-  const event = await buildEvent({
+  const rumor: ChatRumor = {
     pubkey: sender.publicKey,
-    sign: (digest) => sender.signDigest(digest),
-    kind: TAPIT_CHAT_KIND,
-    content: ciphertext,
+    created_at: options.created_at ?? Math.floor(Date.now() / 1000),
+    kind: NIP17_CHAT_RUMOR_KIND,
     tags: [['p', recipientPubkey]],
-    created_at: options.created_at,
-  });
-  const publish = await transport.publish(event);
-  return { event, publish };
+    content: payload.text,
+  };
+  const giftWrap = await buildGiftWrap(rumor, recipientPubkey, sender);
+  const publish = await transport.publish(giftWrap);
+  return { event: giftWrap, publish };
 }
 
 export interface InboxChatMessage {
@@ -216,12 +231,17 @@ export interface InboxChatMessage {
 export type ChatMessageHandler = (item: InboxChatMessage) => void;
 
 /**
- * Subscribe to encrypted chat messages addressed to the wallet's
- * pubkey. Mirrors subscribeInbox in shape — verify, decrypt, parse,
- * silently drop anything malformed — but filters for TAPIT_CHAT_KIND
- * and yields ChatPayload objects rather than Attestations. The
- * envelope subscription and the chat subscription are independent;
- * a wallet that wants both opens both.
+ * Subscribe to NIP-17 gift-wrapped chat messages addressed to the
+ * wallet's pubkey. Mirrors subscribeInbox in shape — every event is
+ * verified, decrypted, unwrapped twice, and shape-checked; any
+ * failure path silently drops the event. Yields InboxChatMessage
+ * objects whose `senderPubkey` is the REAL sender (recovered from
+ * the inner seal's signed pubkey field), not the gift wrap's
+ * ephemeral pubkey, so chat threads track the right peer.
+ *
+ * The envelope subscription (kind TAPIT_ENVELOPE_KIND) and the chat
+ * subscription (kind NIP17_GIFT_WRAP_KIND) are independent — a
+ * wallet that wants both opens both.
  */
 export function subscribeChatMessages(
   transport: Transport,
@@ -234,7 +254,7 @@ export function subscribeChatMessages(
   };
   return transport.subscribe(
     {
-      kinds: [TAPIT_CHAT_KIND],
+      kinds: [NIP17_GIFT_WRAP_KIND],
       '#p': [recipient.publicKey],
       ...(options.since !== undefined ? { since: options.since } : {}),
     },
@@ -247,32 +267,12 @@ async function handleIncomingChat(
   recipient: Wallet,
   onMessage: ChatMessageHandler,
 ): Promise<void> {
-  if (!(await verifyEvent(event))) return;
-  let plaintext: string;
-  try {
-    plaintext = recipient.nip44DecryptFrom(event.content, event.pubkey);
-  } catch {
-    return;
-  }
-  const payload = parseChatPayload(plaintext);
-  if (!payload) return;
+  const unwrapped = await unwrapGiftWrap(event, recipient);
+  if (!unwrapped) return;
   onMessage({
-    payload,
-    senderPubkey: event.pubkey,
-    receivedAt: event.created_at,
+    payload: { text: unwrapped.text },
+    senderPubkey: unwrapped.senderPubkey,
+    receivedAt: unwrapped.sentAt,
     eventId: event.id,
   });
-}
-
-function parseChatPayload(plaintext: string): ChatPayload | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(plaintext);
-  } catch {
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const obj = parsed as Record<string, unknown>;
-  if (typeof obj.text !== 'string') return null;
-  return { text: obj.text };
 }

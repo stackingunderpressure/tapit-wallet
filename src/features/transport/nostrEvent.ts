@@ -17,21 +17,14 @@ import { verifySignature } from 'tapit-attest';
  * ciphertext. Sits in the regular-event range (1000–9999), so relays
  * persist it for async delivery. NIP-46 is reserved for the separate
  * app-to-wallet sign pathway (D-11c).
+ *
+ * Chat messages used to ride a sibling custom kind 9574 but migrated
+ * to NIP-17 gift-wrapped messages (kind 1059) for cross-relay
+ * reliability — see src/features/transport/nip17.ts. The envelope
+ * path stays on the custom kind because envelopes are inherently
+ * Tapit-shaped and never need cross-Nostr-client interop.
  */
 export const TAPIT_ENVELOPE_KIND = 9573;
-
-/**
- * Custom event kind for a casual chat message between two wallets —
- * Cut 1 of the per-peer chat surface roadmap. Same NIP-44 v2 wrap and
- * Schnorr signature as TAPIT_ENVELOPE_KIND; the content is a small
- * ChatPayload JSON object (text + optional attachments + optional
- * replyTo) instead of a serialized Attestation. Lives adjacent to
- * 9573 in the regular-event range so relays persist it. Tier 1 of
- * the three-tier message taxonomy in the brief — signed and
- * encrypted but not an attestation and not anchored. Promotion to a
- * full envelope happens at the UI layer via plus-menu / long-press.
- */
-export const TAPIT_CHAT_KIND = 9574;
 
 export type Tag = readonly string[];
 
