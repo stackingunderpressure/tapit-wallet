@@ -243,7 +243,19 @@ Four phases:
   session.
 - **Phase C** — Multi-rule org creation UI + per-action
   signing flow. `RatificationsBadge` extended to render the
-  rule name inline. About one to two sessions.
+  rule name inline. About one to two sessions. **[DONE
+  2026-05-26]** Cut 1 shipped the rule-name decoration on
+  `RatificationsBadge`; cut 2 shipped `OrgRulesEditor` and
+  threaded `orgRules` from `SettingsScreen` into
+  `selfDeclareOrganization`; cut 3 shipped the org-action
+  mode on `CosignRequestModal` and (this session) wired
+  `MembershipModal` to bake the `authorized_by` leaf via
+  `buildAuthorizedByPayload` and surface the "Request
+  co-signs from eligible signers" button when the
+  `routine_issuance` rule has threshold > 1. The post-
+  declaration `RulesEditorModal` deferred from Phase C
+  belongs to Phase D's charter-amendment chain and is
+  tracked there.
 - **Phase D** — Charter amendment chain
   (`walkCharterChain` / `findActiveCharter`) + dissolution
   endpoint. Each new self-declaration must be authorized by

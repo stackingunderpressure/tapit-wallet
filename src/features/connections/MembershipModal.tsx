@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
@@ -11,10 +11,33 @@ import {
   isMembership,
   readMembership,
 } from './createMembership.ts';
+import { findOwnOrgDeclaration } from './createOrganization.ts';
+import {
+  buildAuthorizedByPayload,
+  findAuthRule,
+  type AuthRule,
+} from '../governance/authRule.ts';
 import {
   summarizePublish,
   type PublishStatusSummary,
 } from '../transport/publishStatus.ts';
+
+// Phase 8 Phase C cut 3 caller-wiring: the co-sign request modal is
+// only needed when the operator's org has a multi-eligible
+// routine_issuance rule. Lazy-loaded so its surface (and the QR
+// helpers it pulls in) stays out of MembershipModal's static chunk;
+// the same lazy chunk JournalDetail + PromoteRouter already share.
+const CosignRequestModal = lazy(() =>
+  import('../cosigning/CosignRequestModal.tsx').then((m) => ({
+    default: m.CosignRequestModal,
+  })),
+);
+
+// The single action the operator's org issues memberships under today.
+// Phase D will surface a chip-form action picker when an org has more
+// than one issuance-capable rule; until then routine_issuance is the
+// only rule the org-side membership flow can author against.
+const ROUTINE_ISSUANCE = 'routine_issuance';
 
 const ACCENT_BLOCK =
   'mt-4 rounded-md bg-accent/5 border border-accent/30 p-3';
@@ -40,7 +63,8 @@ const primaryBtn =
   'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40';
 
 export function MembershipModal({ onClose }: Props) {
-  const { wallet, ownerId, identity, anchorWorker, prefs, sendEnvelope, save } = useWallet();
+  const { wallet, ownerId, identity, anchorWorker, prefs, sendEnvelope, save, holdings } =
+    useWallet();
   const [step, setStep] = useState<Step>('role');
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,6 +74,29 @@ export function MembershipModal({ onClose }: Props) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
+  const [cosignOpen, setCosignOpen] = useState(false);
+
+  // Phase 8 Phase C cut 3 caller-wiring. When the operator's wallet has
+  // self-declared as an org, look up the routine_issuance rule on the
+  // declaration. If present and well-formed we bake the disclosure
+  // proof of that rule into the membership envelope as an
+  // authorized_by leaf at draft time (so the org's signature covers
+  // it). If the rule's threshold > 1 we surface a "Request co-signs"
+  // button on the issue-show step that opens CosignRequestModal in
+  // orgContext mode to gather the remaining signatures from the
+  // rule's eligible set. Operators whose wallet has not self-declared
+  // as an org, or whose declaration predates Phase A and has no auth
+  // tree, fall back to the pre-Phase-8 single-sig membership shape
+  // (no authorized_by leaf, no cosign-request button) — same flow as
+  // before this cut.
+  const ownOrg = useMemo(
+    () => findOwnOrgDeclaration(holdings, wallet.identity),
+    [holdings, wallet.identity],
+  );
+  const issuanceRule: AuthRule | null = useMemo(() => {
+    if (!ownOrg) return null;
+    return findAuthRule(ownOrg, ROUTINE_ISSUANCE)?.rule ?? null;
+  }, [ownOrg]);
 
   async function sendMembershipViaNostr() {
     if (!membership) return;
@@ -89,7 +136,10 @@ export function MembershipModal({ onClose }: Props) {
           'That code is not an identity — ask them to show their identity code.',
         );
       }
-      const draft = buildMembershipDraft(identity, att);
+      const authorizedBy = ownOrg
+        ? (buildAuthorizedByPayload(ownOrg, ROUTINE_ISSUANCE) ?? undefined)
+        : undefined;
+      const draft = buildMembershipDraft(identity, att, authorizedBy);
       const signed = wallet.sign(draft);
       setMembership(signed);
       setPeerName(displayNameOf(att));
@@ -201,6 +251,29 @@ export function MembershipModal({ onClose }: Props) {
                 label="Membership"
               />
             )}
+            {ownOrg && issuanceRule && issuanceRule.threshold > 1 && membership && (
+              <div className={`${ACCENT_BLOCK} border-amber-400/40 bg-amber-50`}>
+                <div className="text-xs font-medium text-amber-900">
+                  Needs co-signs to satisfy {ROUTINE_ISSUANCE}
+                </div>
+                <p className="mt-1 text-xs text-amber-900/80">
+                  Your signature alone is one of{' '}
+                  <span className="font-medium">{issuanceRule.threshold}</span>{' '}
+                  required from{' '}
+                  <span className="font-medium">{issuanceRule.eligible.length}</span>{' '}
+                  eligible signers. Send this draft to the rest of the
+                  eligible set; the membership becomes verifiable once the
+                  threshold is met.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCosignOpen(true)}
+                  className="mt-2 w-full rounded-md border border-amber-500/60 bg-white py-2 text-xs font-medium text-amber-900"
+                >
+                  Request co-signs from eligible signers
+                </button>
+              </div>
+            )}
             {prefs.nostrTransportEnabled && membership && (
               <div className={ACCENT_BLOCK}>
                 <div className="text-xs font-medium text-accent">
@@ -306,6 +379,15 @@ export function MembershipModal({ onClose }: Props) {
       </div>
       {scanning && (
         <QrScanModal onScanned={handleScan} onClose={() => setScanning(false)} />
+      )}
+      {cosignOpen && membership && ownOrg && (
+        <Suspense fallback={null}>
+          <CosignRequestModal
+            attestation={membership}
+            orgContext={{ orgSelfDecl: ownOrg, action: ROUTINE_ISSUANCE }}
+            onClose={() => setCosignOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

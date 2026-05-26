@@ -1,6 +1,7 @@
 import type { Attestation, Wallet } from 'tapit-attest';
 import { credentialAttestation } from 'tapit-attest';
 import { displayNameOf, holdAndAnchor, leafValue } from './createHandshake.ts';
+import { encodeAuthorizedBy, type AuthorizedByPayload } from '../governance/authRule.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 // Phase 5b — organizations and membership. An organization is a
@@ -86,20 +87,36 @@ export async function receiveMembership(input: {
 // The subject is the recipient's canonical identity; the issuing
 // organization's id and name are signed leaves so the recipient's
 // Identity tab can name the organization.
+//
+// Phase 8 Phase C cut 3 caller-wiring: optional `authorizedBy` bakes
+// a top-level `authorized_by` leaf carrying the disclosure proof of
+// the auth rule the membership is issued under. The envelope's
+// signature covers that leaf so the proof cannot be detached and
+// swapped; verifyOrgAuthorization downstream reads it to confirm
+// threshold and eligible-signer set match the org's declared rule.
+// Omitted for pre-Phase-8 orgs (no auth tree) — draft falls back to
+// the original five-field shape and verifyOrgAuthorization on the
+// resulting envelope returns `authorized: false, reason: "envelope
+// has no authorized_by leaf"`, which is the honest answer.
 export function buildMembershipDraft(
   orgIdentity: Attestation,
   memberIdentity: Attestation,
+  authorizedBy?: AuthorizedByPayload,
 ): Attestation {
+  const fields: Record<string, string> = {
+    credential_type: 'membership',
+    org_id: orgIdentity.subject,
+    org_name: displayNameOf(orgIdentity),
+    member_id: memberIdentity.subject,
+    member_name: displayNameOf(memberIdentity),
+    issued_at: new Date().toISOString(),
+  };
+  if (authorizedBy) {
+    fields.authorized_by = encodeAuthorizedBy(authorizedBy);
+  }
   return credentialAttestation({
     subject: memberIdentity.subject,
     tier: 'notable',
-    fields: {
-      credential_type: 'membership',
-      org_id: orgIdentity.subject,
-      org_name: displayNameOf(orgIdentity),
-      member_id: memberIdentity.subject,
-      member_name: displayNameOf(memberIdentity),
-      issued_at: new Date().toISOString(),
-    },
+    fields,
   });
 }
