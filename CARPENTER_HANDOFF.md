@@ -10,189 +10,224 @@
 > the bits the next carpenter would otherwise have to reverse-engineer
 > from commits.
 
-## Latest letter — 2026-05-26 early morning (Phase C cut 3 caller-wiring — org-issuance loop closes end-to-end)
+## Latest letter — 2026-05-26 morning (HomeScreen lazy-load + Phase E1 substrate)
 
 ### What just shipped
 
-One commit landed on the dispatch branch this session — `d0283b4` —
-and it was the close-out of the Phase 8 Phase C arc. The prior
-carpenter's letter explicitly named caller-wiring for the new
-`CosignRequestModal` `orgContext` mode as the recommended first
-move and flagged the prop as dead code until a caller constructs
-it. I took that as the cut. The natural caller is `MembershipModal`
-because that's where the operator's wallet — acting as an
-organization — actually signs a membership envelope, so that's the
-point where authorized_by needs to be baked in and the threshold
-needs to be checked for further co-signs. The cut had two halves
-that depend on each other.
+Two commits landed on the dispatch branch this session, both load-
+bearing for clearing the next axis of work. The first was `09926a1`
+— the safety-and-extraction cut the prior letter named as required
+before any substantive new surface lands. `MembershipModal` is now
+React.lazy from `HomeScreen` instead of a static import, the same
+pattern `OrgRulesEditor` uses from `SettingsScreen`, and its lazy
+chunk arrived at 2.84KB gz on the first build with a 4KB named
+budget in `scripts/bundle-budget.mjs` to cover Phase D / E surface
+growth. The lazy wrapper alone added about seven source lines to
+HomeScreen, which would have pushed the file past the 800-line hard
+limit, so the same commit extracted the Identity-tab Officials
+roster + Members-issued sections into a new sibling component
+`src/features/wallet-core/OrgIdentitySections.tsx`. The Organization
+banner above IdentityCard stayed inline because it shares vertical
+layout with the IdentityCard and AttestationCard right below it; only
+the two below-IdentityCard sub-sections moved out. The extraction
+took HomeScreen from 796 lines down to 725 and the HomeScreen chunk
+from about 17.8KB gz down to 17.22KB gz at cold start. `wallet-core
+/manifest.ts` touches list extended with the new file.
 
-The first half was `src/features/connections/createMembership.ts`:
-`buildMembershipDraft` gained an optional third parameter,
-`authorizedBy`, of type `AuthorizedByPayload` from
-`governance/authRule.ts`. When supplied, the draft adds a top-level
-`authorized_by` leaf encoded via `encodeAuthorizedBy` before being
-handed off to the signer; the org's signature then covers that
-leaf, so a downstream attacker cannot detach the disclosure proof,
-swap in a different one, and present the new combination as
-still-signed. Omitted, the draft falls back to the original
-five-field shape and pre-Phase-8 orgs (whose self-declarations
-predate the auth tree) continue issuing memberships exactly as
-before. Back-compat is structural rather than a flag.
+The second commit was `9989bc0` — Phase 8 Phase E1 from the open-
+joining brief. `AuthRule` in `src/features/governance/authRule.ts`
+is now a discriminated union of two kinds. `AuthRuleForOrgAction`
+preserves the existing `{action, threshold, eligible}` shape and
+covers signer-side rules (issuance, expulsion, charter amendment,
+dissolution, anything the org itself takes action on); the encoded
+leaf-value JSON shape is unchanged, so pre-E1 declarations decode
+identically. `AuthRuleForJoin` is net-new and carries
+`{action: 'join', policy: JoinPolicy}` where `JoinPolicy` is a
+six-kind discriminated union covering the abuse-resistance postures
+named in the brief: `open` (anyone with a wallet), `allow_list`,
+`deny_list`, `requires_handshake` (must hold a Tier P or R handshake
+with one of these pubkeys), `requires_credential` (must hold a
+specific credential type, optionally issued by a named issuer), and
+`requires_vouch` (existing members can vouch via co-signature).
+Dispatch happens by action name in `encodeAuthRuleValue` /
+`decodeAuthRuleValue` / `buildAuthSubtree` so a leaf whose name is
+literally `join` takes the new policy path and any other leaf name
+takes the existing `{threshold, eligible}` path. Type guards
+`isOrgActionRule` and `isJoinRule` let consumers narrow the union
+safely; the brief's Phase E1 scope is data-model only so no verifier
+and no UI for join rules ship yet.
 
-The second half was `MembershipModal.tsx`: the modal now reads
-`holdings` from `useWallet`, derives `ownOrg` via
-`findOwnOrgDeclaration(holdings, wallet.identity)` in a useMemo,
-derives the `routine_issuance` rule via `findAuthRule(ownOrg,
-'routine_issuance')` in a second useMemo, builds the
-`AuthorizedByPayload` via `buildAuthorizedByPayload(ownOrg,
-'routine_issuance')` inside `onScanIdentity`, and threads it into
-the existing `buildMembershipDraft` call right before `wallet.sign`.
-The `routine_issuance` constant lives at the top of the file with
-a comment naming the Phase D follow-up that will add a chip-form
-action picker when an org has more than one issuance-capable rule.
-When the rule's threshold is greater than one, the issue-show step
-renders a new amber banner under the QR titled "Needs co-signs to
-satisfy routine_issuance" with a "Request co-signs from eligible
-signers" button. The button opens a lazy-loaded `CosignRequestModal`
-via `lazy(() => import('../cosigning/CosignRequestModal.tsx')...)`
-with `orgContext={orgSelfDecl: ownOrg, action: 'routine_issuance'}`
-passed as the second prop. The lazy chunk is the same one
-`JournalDetail` and `PromoteRouter` already share, so the
-MembershipModal's static surface in the HomeScreen chunk gained
-maybe 400-600 bytes gz and rode in comfortably under the existing
-18.5KB budget without a bump.
+The narrowing cascade was the part I treated most carefully because
+existing rule consumers read `rule.threshold` and `rule.eligible`
+directly. `defaultAuthRules`'s return type tightened to
+`AuthRuleForOrgAction[]` (it never returns join rules — it's the
+founder-signs-everything fallback), which cascaded cleanly into
+`SettingsScreen`'s orgRules state and `OrgRulesEditor`'s
+value/onChange prop types both tightening to `AuthRuleForOrgAction`,
+reflecting the editor's actual scope. Three lookup-boundary sites
+narrow via `isOrgActionRule`: `MembershipModal`'s issuance-rule
+useMemo refuses to bake `authorized_by` if the `routine_issuance`
+leaf isn't org-action shape; `CosignRequestModal`'s orgRule useMemo
+falls back to the general PeerPicker when handed a join-action
+context; `verifyOrgAuthorization` in `createOrganization.ts` returns
+`authorized: false` with an honest "not a signer-side org-action
+rule" reason when the disclosed leaf is a join rule (joiner-side
+verifier ships in Phase E4 as a sibling primitive). The
+`createOrganization.test.ts` assertions narrowed via the same guard
+at the three sites that read threshold/eligible directly.
 
-`createMembership.test.ts` is new and ships four round-trip tests
-that exercise the producer-verifier loop end-to-end:
-back-compat draft has no `authorized_by` leaf; threshold-one
-founder-only happy path returns `verifyOrgAuthorization` =
-`authorized: true` with `eligibleCount: 1, thresholdRequired: 1`;
-threshold-two single-sig refusal returns `authorized: false` with
-the reason containing "threshold not met"; threshold-two dual-sig
-acceptance returns `authorized: true` with `eligibleCount: 2` once
-the second eligible signer co-signs the same envelope. That fourth
-test is the one that proves the closed loop works under genuine
-multi-sig conditions, not just the trivial single-eligible case.
-`PLAN.md` Phase 8 Phase C bullet is now marked `[DONE 2026-05-26]`
-with a one-paragraph rollup of cuts 1, 2, 3 and an explicit note
-that the deferred `RulesEditorModal` belongs to Phase D's
-charter-amendment chain rather than to a Phase C follow-up.
-`connections/manifest.ts` notes extended with one final paragraph
-documenting the new wiring + the four round-trip tests; touches
-list adds `createMembership.test.ts`. All four gates green:
-typecheck clean, eslint clean, 140/140 tests, build clean in ~3.3s
-with bundle-budget audit OK across every named chunk.
+New test file `src/features/governance/authRule.test.ts` ships 22
+tests covering: each of the six `JoinPolicy` kinds round-tripping
+encode → decode unchanged; pubkey lists getting sorted+lowercased
+inside the policy payload exactly the way org-action eligible lists
+already do; decode rejecting malformed payloads (missing policy,
+unknown kind, non-array pubkeys, empty credential_type, non-positive
+vouch count); `buildAuthSubtree` accepting a mixed rule set
+(org-action + join), rejecting duplicate action names, enforcing
+kind-specific validation; and backward compat (pre-E1 leaf values
+still decode under non-join action names). The governance manifest
+gained a paragraph documenting the discriminated union and the new
+tests file in touches. A new bundle-budget entry for the `authRule`
+chunk landed at 3KB gz; the chunk currently rides at 1.38KB gz, so
+plenty of headroom for the Phase E2 self-membership decoder and
+Phase D charter-amendment helpers that will join the file later.
+All four gates green across both commits: typecheck clean, eslint
+clean, 162 of 162 tests (was 140; 22 new), build OK with bundle
+budgets passing across every named chunk.
 
 ### What's hot right now
 
 Nothing. The working tree is clean, the dispatch branch
-`claude/multisig-orgs-status-jiLwm` is at `d0283b4`, the close-out
-flush you are reading is the deliverable for this session, and
-main remains at `1ca0059` (the prior carpenter's close-out merge)
+`claude/multisig-orgs-status-jiLwm` is at `9989bc0`, the close-out
+flush you are reading is the deliverable for this session, and main
+remains at `1ca0059` (still the prior carpenter's close-out merge)
 until the operator merges the branch from the cockpit. The next
-carpenter inherits a clean shared base with no half-finished cuts.
-Phase C as briefed is complete — the org-control axis spans
-producer (Phase A), verifier (Phase B), creation UI (cut 2),
-request UI (cut 3 modal), and caller wiring (this session).
+carpenter inherits a clean shared base with no half-finished cuts
+and one whole open axis (Phase E2-E4) ready to start.
 
 ### Land-mines for the next carpenter
 
-`HomeScreen.tsx` is at 797 lines, three lines under the 800-line
-hard limit that fails `npm test` (the file-size test FAILS past
-800, doesn't just WARN). Phase D will almost certainly add to
-either HomeScreen or `MembershipModal.tsx` or both. The honest
-move when the file is next touched substantively is to lazy-load
-`MembershipModal` from `HomeScreen` (the same pattern
-`OrgRulesEditor` uses in `SettingsScreen`). That frees ~0.5KB
-from the HomeScreen chunk and pushes the new `CosignRequestModal`
-lazy import one layer further from the cold-start path. Not
-urgent today but the margin is genuinely thin.
+`src/features/governance/authRule.ts` is at 430 lines — over the
+400-line soft-warn that fires loudly every test run. Not a hard
+failure (the 800-line limit is what fails the file-size test) but
+worth flagging. Phase E2 will add a self-membership decoder
+(`buildSelfMembershipDraft`, `isSelfMembership`, `readSelfMembership`
+helpers) that could land in this file or in a sibling
+`createSelfMembership.ts`. If it lands here, the file pushes ~500
+lines and the extraction question gets sharper. The natural split
+when it earns extraction is into `authRule.ts` (the org-action +
+join-rule primitives and the field-tree encoding/decoding) and
+`authorizedBy.ts` (the `AuthorizedByPayload` + encode/decode/build
+helpers for the cross-envelope authorization proof), because those
+two surfaces are coherent and consumed independently.
 
-`MembershipModal.tsx` hard-codes `'routine_issuance'` as the only
-issuance action via a `ROUTINE_ISSUANCE` constant at the top of
-the file. The comment names the Phase D follow-up that will add
-a chip-form action picker on the `issue-scan` step when the
-operator's org has more than one issuance-capable rule. Acceptable
-today because the canonical brief says routine issuance is the
-only issuance-capable rule until Phase D adds explicit per-action
-chips, but flagged so future cuts don't miss it.
+`src/features/connections/createOrganization.ts` grew from 534 to
+546 lines during this session because `verifyOrgAuthorization`
+gained a narrow-by-type-guard branch. Still over the 400 soft warn,
+still well under the 800 hard limit, but the officials-roster
+extraction (~75 lines into a sibling `officialsRoster.ts`) the
+prior letter named is still the obvious next move and would drop
+this file under the warn. Re-exports of governance primitives from
+`createOrganization.ts` are back-compat shims; new code should
+import directly from `governance/authRule.ts` per the convention
+the prior governance-extraction session named.
 
-The three-manifest governance-direction notes sentence sweep is
-still pending from the prior letter. `connections/manifest.ts`,
-`cosigning/manifest.ts`, and `settings/manifest.ts` all depend on
-`governance` without explaining why the dependency direction
-reads upside-down on first inspection. A five-minute autonomous
-cut adding "governance is the substrate primitive; this feature
-consumes it" to each notes field would be cheap and would close
-the most pickable thread the prior letter flagged. I held off
-this session because cut-3 caller-wiring was the load-bearing
-work and one focused commit was the right shape.
+`src/features/settings/SettingsScreen.tsx` is at 789 lines now.
+Still under the hard limit but close. The org-mode section is the
+obvious extraction when Phase E4 adds the join-policy picker chip
+to org-creation; that whole section becomes its own
+`OrgModeSection.tsx` and SettingsScreen drops back into comfortable
+range. Don't pre-extract — wait for Phase E4 to give it the
+right shape and the right reason.
 
-`createOrganization.ts` still sits at 534 lines over the 400
-soft-warn threshold; the file-size warning fires loudly every
-test run. The prior letter named officials-roster extraction
-(~75 lines into a sibling `officialsRoster.ts`) as the obvious
-future cut to drop the file under the warn. Still applies.
-`SettingsScreen.tsx` at ~765 lines is in the same shape — under
-the hard limit, well over the soft warn, and the next Phase D
-cut that adds to the org-mode section should extract that
-section into a sibling `OrgModeSection.tsx`.
+`MembershipModal.tsx` still hard-codes `'routine_issuance'` as the
+only issuance action via the `ROUTINE_ISSUANCE` constant at the
+top of the file. The comment there names the Phase D / E4 follow-up
+that will add a chip-form action picker on the `issue-scan` step
+when the operator's org has more than one issuance-capable rule.
+Acceptable today; flagged so future cuts don't miss it. Phase E4 is
+the natural home because that's when `findActiveCharter` exists to
+enumerate the currently-active rules across the charter chain.
+
+The three-manifest governance-direction notes sentence sweep that
+the prior carpenter flagged twice now is STILL pending. I held off
+again this session because the two cuts I took were both load-
+bearing and I wanted to ship clean focused commits rather than a
+mixed grab-bag. The sweep is `connections/manifest.ts`,
+`cosigning/manifest.ts`, and `settings/manifest.ts` all gaining a
+one-sentence "governance is the substrate primitive; this feature
+consumes it" explanation so future auditors don't have to reverse-
+engineer the dependency direction. Cheap and pickable as a low-
+energy autonomous cut.
+
+The bundle-budget script's catch-all currently buckets 11 unnamed
+JS chunks (was 12 before I added a named budget for `authRule`).
+Each is small (under 3KB gz, hence the catch-all pass) but the
+script's stated intent is for every chunk to carry an explicit named
+budget. Pre-existing hygiene debt — not load-bearing, but a cheap
+follow-on cut if a session has spare context.
 
 ### Operator mood-read
 
-Direct and trusting. The operator's prompt was one sentence —
-"Cut what is next on list take as big of a chunk as you can
-handle safely" — handed off to the SessionStart-injected
-inheritance letter which explicitly named caller-wiring as the
-recommended first move. No chip-form direction asks were needed
-because the next move was unambiguous in the inheritance and
-the operator's prompt explicitly authorized "as big of a chunk
-as you can handle safely". The session ran one focused commit,
-all four gates each pass, and closed at the natural arc boundary
-when Phase C went from three-of-four-cuts-done to done. First
-time the closed-loop hook substrate has fired both ends in
-production — the prior session pushed `CARPENTER_HANDOFF.md` to
-main as the final act of close-out, this session's SessionStart
-hook read it from origin/main and injected it as the first
-context, and the recommended first move proved to be exactly
-the cut to take. The loop validated structurally on the second
-invocation of its existence, which is worth noting because
-future carpenters reading the protocol benefit from knowing
-it's been validated under real conditions and not just specified.
+Sharp and trusting in a hurry. The operator's prompt was the open
+invitation to cut as much as I could safely handle, but the
+SessionStart-injected handoff was the prior carpenter's `1ca0059`
+letter from main rather than the fresher `8cf5af2` letter on the
+dispatch branch — origin/main still doesn't carry the Phase C cut 3
+caller-wiring close-out because the operator merges from the
+cockpit, not from carpenters, and that merge hasn't happened yet.
+I read the stale-on-main handoff and started planning the work the
+prior prior letter had specified, then caught myself via the
+grounding gate by reading the actual files in the branch and
+noticing the caller-wiring was already done. I called the handoff
+"stale" in my re-orientation reply and the operator corrected me
+mid-action with "He didn't push to main lnuckle head" — a sharp
+pointed correction that the prior carpenter had pushed correctly
+per the dispatched-session branch-isolation protocol; the absence
+on main is structural, not a bug. I acknowledged the correction
+immediately and continued. Tonally the operator was efficient —
+they want the carpenter to figure out the next work and execute it,
+they care about precise framing, and they don't want the carpenter
+to waste words. The chip-form direction question I asked after
+re-orientation was answered "HomeScreen lazy-load + Phase E1
+(Recommended)" with no hesitation, which is the largest of the four
+options and matched the operator's stated appetite for chunky cuts.
 
 ### Recommended first move for the next session
 
-Browser-test the closed loop against the live Netlify+Supabase
-deploy before doing anything else. Walk: log in, open Settings,
-declare the wallet as a multi-rule org with the founder plus one
-peer eligible and threshold 2 for routine_issuance, confirm the
-rule renders correctly in `OrgRulesEditor`; close Settings, open
-Connections > Membership > Issue a membership, scan a recipient's
-identity QR, confirm the amber "Needs co-signs to satisfy
-routine_issuance" banner appears on the issue-show step, tap the
-"Request co-signs from eligible signers" button, confirm
-`CosignRequestModal` opens with the action banner and the
-constrained eligible-signers picker rendering one-tap rows for
-the founder and the peer. If every step holds, Phase C is
-verified end-to-end in production and the next chip is genuinely
-an axis-pick rather than a within-axis pick.
+Phase E2 — joiner-side self-membership and Mycelium transport. The
+data-model substrate just shipped; the next natural cut is the
+producer side of the open-joining axis. Concretely: add a new
+helper to `src/features/connections/createMembership.ts` (or a
+sibling `createSelfMembership.ts` if the file-size headroom argues
+for it) named `buildSelfMembershipDraft(joiner, orgId, orgName)`
+that produces an unsigned credential-kind attestation with
+`credential_type: 'self_membership'` and a top-level
+`org_id` / `org_name` / `joined_at` / `requested_at` leaf set. The
+joiner signs it locally via `wallet.sign`. Add `isSelfMembership`
+and `readSelfMembership` predicates alongside. Extend the Phase
+5c-i-ε inbox routing in `src/features/transport/envelopeRoute.ts`
+to recognize incoming self-membership envelopes and route them to
+a new acceptor handler placeholder (the actual acceptor logic
+ships in Phase E3). About one focused session. Brief of record:
+`project-memory/foreman-memory/projects/tapit-wallet/briefs/
+2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md`
+under `### Phase E2`.
 
-After verification, the natural axes are: Phase D (charter
-amendment chain via `walkCharterChain` and `findActiveCharter`
-plus the dissolution endpoint and the `RulesEditorModal`
-deferred from Phase C; one to two sessions; continues the
-org-control axis); Phase E1 (extend `AuthRule` in
-`governance/authRule.ts` to a discriminated union with the
-join-rule kind opening the membership-acquisition axis; one
-focused session; brief of record
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md`);
-or the three-manifest governance-direction notes sentence sweep
-as a low-energy autonomous polish session. Either of the first
-two would benefit from the `MembershipModal` lazy-load from
-`HomeScreen` as the load-bearing first cut before adding new
-surface, because the HomeScreen chunk is three lines from the
-hard limit. Brief of record for Phase C+D:
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md`.
+Alternative first moves: Phase D (charter amendment chain via
+`walkCharterChain` and `findActiveCharter` plus the dissolution
+endpoint and the `RulesEditorModal` deferred from Phase C; continues
+the org-control axis; one to two sessions); the three-manifest
+governance-direction notes sentence sweep as a low-energy autonomous
+polish session; or the bundle-budget script unnamed-chunk hygiene
+sweep that names budgets for the 11 catch-all chunks. The operator
+also still has the Phase C end-to-end browser verification on their
+plate from the prior letter (declare a multi-rule org via Settings,
+issue a membership, confirm the amber Request co-signs banner +
+constrained eligible-signers picker fires) — that's their call to
+make, not a carpenter task. Operator may chip-pick between Phase E2,
+Phase D, the notes sweep, and the bundle hygiene sweep on session
+start.
 
 If the SessionStart hook injected something that contradicts what's
 above, trust the SessionStart hook — it reads from origin/main and
