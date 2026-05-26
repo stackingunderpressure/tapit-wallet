@@ -4,6 +4,12 @@ import { createQrDetector, isBarcodeDetectorSupported } from './barcodeDetector.
 interface Props {
   onScanned: (text: string) => void;
   onClose: () => void;
+  /** Force a starting mode. 'paste' skips the camera spin-up so a
+   *  caller who already knows the operator can't or won't use the
+   *  camera (desktop, denied permission, fallback button) lands
+   *  directly on the paste affordances. Default is platform-aware:
+   *  iOS PWA standalone → paste; otherwise camera. */
+  initialMode?: 'camera' | 'paste';
 }
 
 type State =
@@ -35,7 +41,11 @@ function isIosPwaStandalone(): boolean {
   return isApple && (standalone || legacyIosStandalone);
 }
 
-function initialState(): State {
+function initialState(initialMode?: 'camera' | 'paste'): State {
+  // Caller-forced paste mode wins over platform detection — the
+  // HandshakeModal exposes a "📋 Paste their identity instead"
+  // entry that wants to skip the camera spin-up unconditionally.
+  if (initialMode === 'paste') return { kind: 'paste' };
   if (isIosPwaStandalone()) return { kind: 'paste' };
   if (!isBarcodeDetectorSupported()) return { kind: 'unsupported' };
   return { kind: 'starting' };
@@ -58,13 +68,52 @@ function initialState(): State {
 // The video stream is stopped on unmount; the detect-loop uses
 // requestAnimationFrame and a cancelled flag so a slow detector
 // can't keep running after the user closes.
-export function QrScanModal({ onScanned, onClose }: Props) {
+export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<State>(initialState);
+  const [state, setState] = useState<State>(() => initialState(initialMode));
   const [pasted, setPasted] = useState('');
   const [pickError, setPickError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  // Clipboard-paste affordance — primary friction-killer when the
+  // camera is not in play. Operator: "Anything we can do to make it
+  // feel like there's not a giant text blob that we're copying
+  // back-and-forth each time would help if it didn't show the
+  // blah." This path reads the clipboard via the user-gesture-gated
+  // navigator.clipboard.readText() and fires onScanned with the
+  // result so the host parses + previews via its normal handler;
+  // the operator never sees the JSON in this modal.
+  const [clipboardError, setClipboardError] = useState<string | null>(null);
+  const [clipboardBusy, setClipboardBusy] = useState(false);
+
+  async function pasteFromClipboard() {
+    setClipboardError(null);
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.readText) {
+      setClipboardError(
+        "This browser doesn't allow reading the clipboard. Paste the text manually below.",
+      );
+      return;
+    }
+    setClipboardBusy(true);
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (trimmed.length === 0) {
+        setClipboardError(
+          "Clipboard is empty. Copy the other person's QR text first, then try again.",
+        );
+        return;
+      }
+      onScanned(trimmed);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'clipboard read failed';
+      setClipboardError(
+        `Couldn't read the clipboard (${msg}). Paste the text manually below.`,
+      );
+    } finally {
+      setClipboardBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (state.kind !== 'starting') return;
@@ -251,6 +300,24 @@ export function QrScanModal({ onScanned, onClose }: Props) {
                 e.target.value = '';
               }}
             />
+            <button
+              type="button"
+              onClick={() => void pasteFromClipboard()}
+              disabled={clipboardBusy}
+              className="mt-3 w-full rounded-md bg-ink py-2.5 text-paper text-sm font-medium hover:bg-ink/90 disabled:opacity-40"
+            >
+              {clipboardBusy ? 'Reading clipboard…' : '📋 Paste from clipboard'}
+            </button>
+            <p className="mt-1.5 text-xs text-muted">
+              The fastest path — copy their QR text into your clipboard
+              first, then tap this. The wallet handles the rest; you
+              won't see the raw text.
+            </p>
+            {clipboardError && (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {clipboardError}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}

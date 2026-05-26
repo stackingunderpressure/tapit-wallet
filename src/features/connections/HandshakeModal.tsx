@@ -86,6 +86,15 @@ export function HandshakeModal({ onClose }: Props) {
   const { wallet, ownerId, holdings, identity, anchorWorker, prefs, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>('role');
   const [scanning, setScanning] = useState(false);
+  // Track which entry point opened the scan modal so QrScanModal
+  // can skip the camera spin-up when the operator explicitly chose
+  // the paste-first path. Operator field-test feedback: "if the
+  // camera doesn't work, it needs to fall back to copy and paste
+  // the text, easy, easy button and easy transfer." The paste-first
+  // button on the "If they're with you" panel sets this to 'paste'.
+  const [scanInitialMode, setScanInitialMode] = useState<'camera' | 'paste'>(
+    'camera',
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [handshake, setHandshake] = useState<Attestation | null>(null);
@@ -371,10 +380,23 @@ export function HandshakeModal({ onClose }: Props) {
               )}
               <button
                 type="button"
-                onClick={() => setScanning(true)}
+                onClick={() => {
+                  setScanInitialMode('camera');
+                  setScanning(true);
+                }}
                 className={`mt-3 ${primaryBtn}`}
               >
                 Scan their code →
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setScanInitialMode('paste');
+                  setScanning(true);
+                }}
+                className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+              >
+                📋 Paste their identity instead
               </button>
             </AccordionPanel>
 
@@ -604,7 +626,11 @@ export function HandshakeModal({ onClose }: Props) {
         )}
       </div>
       {scanning && (
-        <QrScanModal onScanned={handleScan} onClose={() => setScanning(false)} />
+        <QrScanModal
+          onScanned={handleScan}
+          onClose={() => setScanning(false)}
+          initialMode={scanInitialMode}
+        />
       )}
     </div>
   );
