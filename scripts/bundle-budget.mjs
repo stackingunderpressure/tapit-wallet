@@ -330,6 +330,69 @@ const BUDGETS = [
   // "+ Admit member" on the Identity tab.
   { pattern: /^MembershipModal-.*\.js$/, gz: 4_000, label: 'MembershipModal' },
 
+  // 2026-05-26 bundle-budget hygiene sweep — every chunk that was
+  // previously bucketed under the catch-all gets an explicit named
+  // budget so growth is monitored per-chunk rather than averaged
+  // away. Headroom is ~40-50% above the current measured size; tight
+  // budgets where the chunk is structurally small (tiny constants,
+  // single-export helpers) and looser where the chunk has feature
+  // surface that may grow with polish. Phase E4 UI work landing the
+  // membership-policy picker, Members view, publish-roster button,
+  // and join-an-org flow will emerge under their own named budgets
+  // alongside these entries rather than disappearing into the
+  // catch-all.
+
+  // Fresh theme surface chunks — React.lazy from FreshLoginShell /
+  // FreshHomeShell so the Classic surface never pays for them.
+  // FreshComposeFAB sits on the Today tab as the floating compose
+  // button; FreshCrew is the People-tab Fresh treatment that swaps
+  // out the Classic ConnectionCard layout; FreshMemoriesStrip and
+  // FreshStreakIndicator are tiny Today-tab Fresh embellishments
+  // gated by the appearance-tab Fresh-extras toggle; FreshTodayCarousel
+  // is the biggest of the bunch — a swipe-paginated Today-tab card
+  // stack rendering the latest journal entries with Fresh tokens.
+  { pattern: /^FreshComposeFAB-.*\.js$/, gz: 1_500, label: 'FreshComposeFAB' },
+  { pattern: /^FreshCrew-.*\.js$/, gz: 3_000, label: 'FreshCrew' },
+  { pattern: /^FreshMemoriesStrip-.*\.js$/, gz: 2_000, label: 'FreshMemoriesStrip' },
+  { pattern: /^FreshStreakIndicator-.*\.js$/, gz: 1_500, label: 'FreshStreakIndicator' },
+  { pattern: /^FreshTodayCarousel-.*\.js$/, gz: 4_000, label: 'FreshTodayCarousel' },
+
+  // QuickShareModal — React.lazy from HomeScreen Identity tab; opens
+  // the over-18 / over-21 / quick-share-preset flow that emits a
+  // ProofForShare envelope. Carries the preset enumeration + the
+  // disclosure-proof builder import. Past 3.5KB the natural polish
+  // is extracting the preset list into its own data module.
+  { pattern: /^QuickShareModal-.*\.js$/, gz: 3_500, label: 'QuickShareModal' },
+
+  // ShareProofModal — React.lazy from JournalDetail / PromoteRouter
+  // when the operator chooses to share an envelope as a disclosure
+  // proof rather than send it directly. Renders the proof preview
+  // and the QR/copy-to-clipboard surface.
+  { pattern: /^ShareProofModal-.*\.js$/, gz: 3_500, label: 'ShareProofModal' },
+
+  // createPresence — Tier V (5d) helper hoisted into its own chunk
+  // once MarkPresenceModal and HomeScreen both import predicate +
+  // builder. ~0.85KB gz today.
+  { pattern: /^createPresence-.*\.js$/, gz: 1_500, label: 'createPresence helpers' },
+
+  // normalizeImage — image-scaling helper hoisted once both the
+  // journal composer and the capture bridge import it. Single
+  // single-function module that downsamples + re-encodes to JPEG.
+  { pattern: /^normalizeImage-.*\.js$/, gz: 1_000, label: 'normalizeImage helper' },
+
+  // pendingOnboarding — tiny holder constant for the Fresh
+  // onboarding-bundle handoff between LoginPage and WalletProvider.
+  // Stays under 0.5KB; growth here would mean the holder grew API
+  // surface and needs scrutiny.
+  { pattern: /^pendingOnboarding-.*\.js$/, gz: 500, label: 'pendingOnboarding holder' },
+
+  // webauthn — Face ID / passkey helper hoisted once Tier V
+  // presence flow and the identity-ceremony enrollment both import
+  // create + assert wrappers around navigator.credentials. ~0.85KB
+  // gz today; budget carries headroom for the recovery-flow
+  // passkey-bind cut still pending.
+  { pattern: /^webauthn-.*\.js$/, gz: 1_500, label: 'webauthn helpers' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.
