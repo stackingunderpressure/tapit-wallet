@@ -10,286 +10,294 @@
 > the bits the next carpenter would otherwise have to reverse-engineer
 > from commits.
 
-## Latest letter — 2026-05-26 evening (Phase E4 cut 2 + officials extraction + dedicated test file)
+## Latest letter — 2026-05-26 late evening (Phase E4 cut 3 full UI wiring — closes Phase E arc)
 
 ### What just shipped
 
-Three substantive commits landed this session plus this close-out
-flush. The operator opened with the same full-chunk delegation
-pattern the last three sessions ran under — "Fire up and take the
-next chunk of code to progress things the way you see fit fill up
-context enough to stop hook clean" — and the prior letter named
-Phase E4 cut 2 (proof-required policy evaluators) as the recommended
-first move with one design choice flagged as worth chipping up front.
-That chip was the right move. The proof-attachment shape question
-locks the on-wire envelope shape for every future open-joined-with-
-proof self-membership in the codebase, and silently picking would
-have left the operator stuck with that choice without seeing the
-trade-off. Carpenter surfaced the four options as a chip-form
-question (DisclosureProof+cosigs recommended / full attestation as
-leaf / hybrid by kind / pause cut 2); operator picked the recommended
-DisclosureProof option. From there cut 2 was concrete substrate work
-with no further ambiguity.
+One substantive commit landed this session plus this close-out flush.
+The operator opened with the same full-chunk delegation pattern the
+last four sessions ran under — "Fire up and continue wherever the
+other guy left off and fill up your contacts till you're done. Find
+a good stopping point sounds delicious." — and the prior letter
+named Phase E4 cut 3 as the recommended first move with one chip-form
+question explicitly pre-written: how wide to scope the cut. Per
+PFOR-019 and the prior letter's guidance the carpenter surfaced that
+chip on session-start with four options (full cut 3, just the
+org-creation picker, just the join-org modal, picker plus members
+view skipping the join modal). Operator picked the recommended
+"Full cut 3 (all three)" option, which committed the session to
+landing all three interlocking threads in one commit. The cut closes
+the Phase E arc end to end — substrate from cuts 1 and 2 was fully
+landed by prior sessions, and cut 3 was purely about exposing it to
+operator-visible surfaces.
 
-Commit 695b631 shipped Phase 8 Phase E4 cut 2 itself. Builder:
-buildSelfMembershipDraft in src/features/connections/createMembership.
-ts gained an optional fourth `proofs` parameter (SelfMembershipProofs
-= {handshake_proof?, credential_proof?}); each supplied
-DisclosureProofBundle is JSON-stringified into a top-level leaf on
-the self-membership envelope so the joiner's own signature covers
-the proof leaf — it cannot be detached or swapped after signing,
-same Tapscript-style discipline the Phase A/B authorized_by leaf
-established but on the joiner side. Two paired reader helpers
-(readHandshakeProof + readCredentialProof) JSON.parse the leaf back
-with a lightweight shape gate returning null on absent or malformed
-leaves rather than throwing into UI render paths. Vouch needs no
-new leaf because cosignatures already ride envelope.signatures[].
-Evaluator: evaluateJoinPolicy in src/features/governance/
-evaluateJoinPolicy.ts flipped the three Phase-E3-deferred returns
-into real verification. Handshake reads handshake_proof, runs
-verifyDisclosureProof, asserts meta.kind=relationship and the leaf
-is the non-empty verification leaf isHandshake checks for, and
-confirms carried signatures include the joiner AND one pubkey from
-policy.with_any_of. Credential reads credential_proof, runs
-verifyDisclosureProof, asserts meta.kind=credential and meta.subject
-=joiner, confirms the disclosed credential_type matches policy.
-credential_type, and when policy names an issuer confirms signatures
-include them. Vouch derives the org's known-member set inline from
-holdings (subjects of self-memberships whose org_id matches this
-org + member_id leaves of memberships issued by this org —
-predicate logic duplicated here rather than reverse-importing from
-connections so governance stays free of consumer dependencies),
-counts known-member cosigners minus joiner against policy.
-from_any_member_count. The verifyOpenJoinedMembership public
-signature stayed stable per the prior letter's guidance; cut 2 work
-was entirely internal to the evaluator. Tests grew across three
-files for +18 net (221→239): evaluateJoinPolicy.test.ts 13→21
-covering missing-proof-leaf rejects, malformed-JSON rejects, happy-
-path acceptance for handshake/credential/vouch, wrong-envelope-kind
-rejects, wrong-credential-type rejects, wrong-subject rejects,
-wrong-issuer rejects, insufficient-voucher-count rejects;
-createMembership.test.ts 18→22 covering the builder + readers +
-back-compat shape + receiveSelfMembership happy-path on
-requires_credential; verifyOpenJoinedMembership.test.ts three
-Phase-E4-deferred tests flipped to assert new concrete reject
-reasons (no handshake_proof leaf / no credential_proof leaf / no
-known members in holdings on the verifier-side path).
+Commit d0ebc55 shipped Phase 8 Phase E4 cut 3 itself. Eleven files
+changed: four new files plus seven modifications. Thread one shipped
+src/features/settings/JoinPolicyPicker.tsx as a React.lazy sibling
+to the existing OrgRulesEditor in the same SettingsScreen lazy-load
+section pattern. The AuthRule discriminated union splits two ways
+at the type level — AuthRuleForOrgAction carries threshold and
+eligible, AuthRuleForJoin carries a kind-tagged policy payload — and
+giving the join half its own UI surface that owns the kind-specific
+sub-forms for each of the six policy kinds (open / allow_list /
+deny_list / requires_handshake / requires_credential /
+requires_vouch) was cleaner than trying to generalize OrgRulesEditor.
+The picker tracks per-kind draft fields separately from the committed
+JoinPolicy so half-typed pubkey lists preserve in-progress text. SettingsScreen tracks the join policy as a separate state slot from
+the org-action rules, and folds both halves into one AuthRule array
+at submit time so buildAuthSubtree gets a single canonical input.
+Per-kind validation mirrors what buildAuthSubtree would throw at
+declaration time, but at form-input time so the operator never gets
+a confusing failure toast for a structural issue the form could
+have caught.
 
-Commit 7f4cffa shipped the prior-letter-named officials-roster
-extraction that five consecutive close-out letters had named as
-worth doing. Symbols moved from createOrganization.ts to a new
-src/features/connections/officialsRoster.ts sibling: Official,
-RatificationSummary, isOfficialsRoster, readOfficials,
-findLatestOfficialsRoster, countRatifications, publishOfficialsRoster
-plus internal HEX_64, sortOfficials, uniqueByPubkey helpers. 198
-lines in the new file. createOrganization.ts drops from 546 to 368
-lines — back under the 400-line soft warn band. Five consumer
-sites updated to import directly from the new module rather than
-from a back-compat re-export on createOrganization: HomeScreen.tsx,
-OrgIdentitySections.tsx, MembershipCard.tsx, RatificationsBadge.tsx,
-OfficialsEditorModal.tsx. The officials-vs-open-member parallel is
-now legible at the filesystem level: officialsRoster owns who runs
-the org, openMemberRoster owns who joined the org, createOrganization
-owns the declaration pointing to both. Five-file churn was bounded
-so direct imports won over back-compat re-exports.
+Thread two extended src/features/wallet-core/OrgIdentitySections.tsx
+with a Joined-members section plus a publish-roster button. The
+substrate was already there from Phase E3 cut 2 —
+acceptedSelfMemberships pulls every accepted self-membership in
+chronological join order, pendingSelfMemberships returns the delta
+against the latest published roster, and publishOpenMemberRoster
+signs and holds and anchors a fresh snapshot. The UI just had to
+render the list and surface the pending-delta as an amber chip on
+the button, calling publishOpenMemberRoster on tap.
 
-Commit 66d8aed shipped officialsRoster.test.ts with 16 focused
-tests closing a long-standing coverage gap — the officials roster
-code had zero dedicated tests under either name, even back when it
-lived in createOrganization.ts. Covers: isOfficialsRoster predicate
-both polarities; readOfficials (round-trip canonical JSON, drops
-malformed pubkey entries individually, empty on missing leaf, empty
-on non-JSON leaf, lowercases pubkeys on read); findLatestOfficialsRoster
-(latest-by-issued_at selection in either input order, null on no-
-org-match, skips rosters the org never signed, null on no-rosters);
-countRatifications (quorum count with named officials, null on
-empty officials list, pubkey-prefix fallback when an official has
-no name); publishOfficialsRoster's validation gate (throws on non-
-hex pubkey BEFORE the IndexedDB layer that jsdom does not back).
-publishOfficialsRoster's storage round-trip stays unverified for
-the same reason openMemberRoster's does — anchorQueue.upsert is
-IndexedDB-bound and jsdom does not ship it; tests deliberately stop
-one method-call earlier in the chain exercising the same envelope
-shape the production path produces. 239→255 tests passing (+16).
+Thread three was the novel piece — the new
+src/features/connections/JoinOrgModal.tsx. The any-wallet join-an-org
+flow takes an org self-declaration as input via paste or scan, parses
+it via parseEnvelope and isOrganizationSelfDeclaration, reads the
+declared join-policy via findAuthRule plus the isJoinRule type narrow,
+renders the policy in plain language via a kind-dispatched
+describePolicy helper, and then routes to a proof-picker step when
+the policy is requires_handshake or requires_credential. The picker
+filters holdings down to proof-eligible attestations — for handshake,
+relationship-kind envelopes signed by both the joiner and at least
+one anchor pubkey from policy.with_any_of; for credential,
+credential-kind envelopes whose credential_type leaf matches the
+policy and whose subject equals the joiner, optionally signed by
+the named issuer. The joiner picks one, the modal calls
+tapit-attest's disclosureProof on the appropriate leaf (verification
+for handshake, credential_type for credential), bakes the resulting
+DisclosureProofBundle into buildSelfMembershipDraft's proofs
+parameter from cut 2, signs with the joiner's wallet, and offers QR
+plus Mycelium delivery so the org-side acceptor can ingest the
+envelope through the existing self-membership-receive routing. The
+vouch policy gets a plain-prose notice on the send step explaining
+that cosignatures from existing members must be collected before
+submitting to the org — the full cosig orchestration sub-flow is not
+wired through JoinOrgModal yet but the joiner-signed envelope is a
+valid starting point for the existing cosigning surface to extend
+onto.
 
-All four gates green throughout all three commits: typecheck clean,
-eslint clean, tests 221→239→239→255 across the session, build OK
-with every chunk under its named budget.
+Two same-commit extractions resolved the file-size hard-limit
+overage cut 3 induced. SettingsScreen.tsx grew to 823 lines and
+HomeScreen.tsx grew to 824 — both over the 800-line hard limit the
+file-size test enforces. src/features/settings/OrgDeclarationSection.tsx
+encapsulates the full org-creation form state machine (org name,
+org rules, join policy, busy, error) plus the declareAsOrganization
+handler and lazy-loads OrgRulesEditor + JoinPolicyPicker internally;
+SettingsScreen drops from 823 to 656 lines after the extraction.
+src/features/wallet-core/useOpenMemberRosterControls.ts encapsulates
+the joinedMembers + pendingMembers useMemos plus the publishing flag
+plus the publish callback that calls publishOpenMemberRoster; HomeScreen
+drops from 824 to 797 lines after the hook extraction. Both
+extractions are clean component-and-hook boundaries — the extracted
+pieces have well-defined inputs and outputs and their internal state
+machines were never reused outside their consumer screens.
+
+Bundle budgets: three new explicit budgets (JoinPolicyPicker 3KB gz,
+JoinOrgModal 6KB gz, openMemberRoster helpers 2.5KB gz); three small
+bumps to existing chunks (HomeScreen 18.5→19.5KB for the openMemberRoster
+static imports plus the JoinOrgModal-lazy declaration, SettingsScreen
+10.5→11KB for the OrgDeclarationSection extraction landing in its
+static import graph, CSS 7.5→8KB for the new Tailwind utilities the
+picker sub-forms plus the modal layout plus the publish-roster amber
+chip introduced into the content scanner). All three bumps absorb
+measured overage of less than 100 bytes; headroom carries the next
+polish cut. New chunks landed: JoinPolicyPicker at 2.20KB gz (budget
+3KB), JoinOrgModal at 4.03KB gz (budget 6KB).
+
+All four gates green throughout the cut 3 commit. Typecheck clean.
+Lint clean. 255 of 255 tests passing on session start and on session
+end — no test deltas because cut 3 ships UI consumers of the
+already-tested substrate from cuts 1 and 2 (the existing tests for
+evaluateJoinPolicy, verifyOpenJoinedMembership, buildSelfMembershipDraft,
+the proof readers, acceptedSelfMemberships, pendingSelfMemberships,
+and publishOpenMemberRoster all stay valid because the on-wire shape
+did not change). Build OK with all bundle budgets within limits. The
+file-size test now flags JoinOrgModal at 580 lines as a soft warn —
+joining RecoveryInitiatorModal at 800 (right at the hard limit),
+FreshOnboarding at 776, HomeScreen at 797, WalletProvider at 751,
+SettingsScreen at 656, authRule.ts at 430, HandshakeModal at 723,
+WalletGuide at 710 — the same list the prior carpenter would
+recognize, plus the one new entry for the modal that shipped this
+session.
 
 ### What's hot right now
 
-Nothing in-flight. Working tree is clean as of pre-close-out,
-dispatch branch `claude/multisig-orgs-status-jiLwm` carries the
-three code commits plus this close-out flush, and the branch tip
-is being pushed to main per PFOR-016 (`git push origin <branch>:main`)
-as the final act of close-out so the Stop-hook gate clears and the
-next SessionStart hook reads a fresh letter from origin/main.
-Branch and main will be at the same SHA after the push. The next
-carpenter inherits a clean shared base with Phase E4 substrate
-fully landed (cuts 1+2 verifier + evaluator + builder + readers all
-shipped, officials-roster extracted to its own home with dedicated
-coverage) and Phase E4 cut 3 (UI wiring) as the natural next arc.
+Nothing in-flight. Working tree clean as of pre-close-out, dispatch
+branch `claude/multisig-orgs-status-jiLwm` carries the one code
+commit plus this close-out flush, and the branch tip is being pushed
+to main per PFOR-016 (`git push origin <branch>:main`) as the final
+act of close-out so the Stop-hook gate clears and the next SessionStart
+hook reads a fresh letter from origin/main. Branch and main will be
+at the same SHA after the push. The next carpenter inherits a clean
+shared base with the Phase E arc fully closed — substrate landed
+(cuts 1 and 2) AND UI landed (cut 3). Phase E ends here.
 
 ### Land-mines for the next carpenter
 
-Phase E4 cut 3 (UI wiring) is the natural next arc but it is a
-genuinely UI-heavy session — three concurrent threads can ship in
-parallel or sequentially: an org-creation membership-policy picker
-inside the SettingsScreen + OrgRulesEditor lazy-load surface; a
-Members view + publish-roster button on the org-mode Identity tab
-inside OrgIdentitySections; an any-wallet Profile join-an-org flow
-(new JoinOrgModal.tsx) that for proof-required policy kinds needs
-a proof-picker step letting the joiner pick which held attestation
-to disclose. The Join modal is the most novel piece because it
-introduces a new disclosure-proof-construction step at the joiner's
-end — disclosureProof() from tapit-attest is the primitive, but
-the UI flow that filters holdings + lets the joiner pick + bakes
-the result into buildSelfMembershipDraft's proofs parameter is
-new surface. Worth chip-form-asking the operator at session start
-whether to ship all three threads in one session (ambitious but
-self-contained) or just one or two (more conservative).
+HomeScreen.tsx sits at 797 lines, three lines under the 800-line
+hard limit. Any further addition there will trigger the hard error
+and require another extraction before the change can land. Plan an
+extraction up front if the next session touches HomeScreen. The
+natural next extraction candidates are the inbox-routing dispatcher
+(routeInbox + the per-route accept* handlers) or the tab-content
+rendering for one of the four tabs.
 
-The receiveSelfMembership signature still requires orgSelfDecl as
-a parameter from the caller. HomeScreen.acceptSelfMembership does
-the lookup correctly via the existing orgDeclaration useMemo, but
-any new caller path (a ScanEnvelopeModal flow, a batch-import
-path, an AI-driven acceptor) needs to remember the
-findOwnOrgDeclaration lookup itself or it will get a confusing
-throw at the gates. Worthwhile chip-form decision next session if
-cut 3 introduces more callers: centralize the lookup inside
-receiveSelfMembership (take wallet + holdings, derive declaration
-via findOwnOrgDeclaration internally), or keep the caller-side
-pattern uniform with the rest of the create-attestation function
-family. Either choice is defensible; the question is consistency.
-Probably worth pinning before cut 3's Profile join flow lands as
-a second caller path beyond HomeScreen.
+The vouch policy path in JoinOrgModal is structurally incomplete.
+The modal builds a joiner-signed envelope and surfaces a plain-prose
+notice that cosignatures from existing members must be collected
+before submitting to the org, but does not orchestrate that
+collection itself. The existing CosignRequestModal in
+src/features/cosigning/ handles fanout for org-action issuance under
+threshold-greater-than-one rules; an org-context-shaped invocation
+pattern extending it to vouch collection (where the eligible set is
+"any pubkey already known to the org as a member" rather than a
+named eligible list) is the next natural cut. Worth a chip-form
+decision before code starts because the from-any-member-of-the-known
+-set picker is a structurally different shape from the existing
+from-this-named-eligible-list picker. The chip phrasing would be
+something like: "Extend CosignRequestModal with an org-vouch context
+variant / Build a separate VouchRequestModal sibling / Park the
+sub-flow and require operators to use the cosigning surface manually
+for vouch joins."
 
-The connections manifest notes field is now roughly 17 kilobytes
-of unbroken text covering eleven phases of work — up from 14 at
-session start. The Phase E4 cut 2 paragraph and the officials-
-extraction addendum both expanded it. The prior letter named the
-markdown-sub-section refactor as worth doing but the doctrine for
-manifest notes is intentionally TTS-listenable prose without
-headers, so a markdown-shaped refactor would be either a cosmetic
-semantic-preserving rewrite (low value) or a structural change
-that revises the doctrine itself (worth chipping, not silent-
-picking). Worth surfacing as a chip-form question some session:
-do you want the manifest notes to evolve into markdown sub-sections
-for legibility, or stay as flowing prose for TTS, given that the
-connections manifest is now the leading indicator that the prose
-form has grown past human-scannable size?
+The describePolicy plain-language renderer plus the proof-candidate
+filter helpers (findHandshakeProofCandidates,
+findCredentialProofCandidates) are inlined into JoinOrgModal as
+local functions. A future verifier-side UI or a Foreman briefing UI
+would want the same helpers — one-file extraction when the second
+consumer lands. Parked until then; same pattern as the policy
+description that the prior letter named.
 
-authRule.ts at 430 lines remains in the soft-warn band. No obvious
-clean extraction point yet — the encoder/decoder pair plus the
-discriminated-union helpers plus the disclosureProof wrappers are
-all tightly coupled to AuthRule's shape and splitting them would
-mostly produce two files with a thick cross-import surface.
-SettingsScreen.tsx (789) and HomeScreen.tsx (760) also remain in
-the soft-warn band; prior letters named extraction plans for them
-but none has shipped. Both are higher-effort than they look
-because the cuts are component-shaped not pure-function-shaped.
-HomeScreen grew slightly this session (757→760) from splitting
-the connections import block into two destinations after the
-officials extraction.
+The connections manifest notes field is now approximately 20
+kilobytes of unbroken text covering twelve phases of work — up from
+17 at session start. The Phase E4 cut 3 paragraph extended it
+substantially. The same markdown-sub-section refactor question the
+prior letter named is still pending: do you want the manifest notes
+to evolve into markdown sub-sections for legibility, or stay as
+flowing prose for TTS, given that the connections manifest is now
+roughly the size of a small README? Worth a chip-form question some
+session — the answer affects every future manifest-update workflow.
+
+receiveSelfMembership's orgSelfDecl parameter is still passed in by
+the caller — the consistency question the prior letter named as
+worth pinning before a second caller path landed. Cut 3 did NOT
+introduce a second caller (JoinOrgModal builds + sends but does not
+receive; HomeScreen.acceptSelfMembership remains the only receive
+path), so the chip is still deferrable. Pin the chip the next session
+a second receiver path is about to land: centralize the lookup
+inside receiveSelfMembership (take wallet + holdings, derive
+declaration via findOwnOrgDeclaration internally), or keep the
+caller-side pattern uniform with the rest of the create-attestation
+function family. Probably worth pinning before any Phase D charter-
+amendment flow lands as a second consumer.
 
 publishOfficialsRoster + publishOpenMemberRoster + receiveSelfMembership
-all hit anchorQueue.upsert which uses IndexedDB which jsdom does
-not back. Tests exercise the pure builders + signed wallet.hold
-directly so the same envelope shape the production path emits is
-verified, but the full publish-pipeline storage round-trip is not
-exercised. Same uncertainty surface carried forward from Phase E2
-/ E3 / E4 cut 2 happy-path. Not blocking. fake-indexeddb or a
-polyfill would close this if Phase E4 cut 3 (or any future test
-refactor) wants storage assertions on the publish paths.
+all hit anchorQueue.upsert which uses IndexedDB which jsdom does not
+back. Tests exercise the pure builders + signed wallet.hold directly
+so the same envelope shape the production path emits is verified,
+but the full publish-pipeline storage round-trip is not exercised.
+Same uncertainty surface carried forward from prior phases; not
+blocking. fake-indexeddb or a polyfill would close this if a future
+test refactor wants storage assertions on the publish paths.
+
+No component tests landed for the new modals or pickers. The vitest
+harness is pure logic — no React Testing Library in the toolchain —
+so adding component tests would require pulling testing-library/react
+and configuration into the project. The pure-function substrate the
+UI consumes is fully covered by the existing 255 tests; the UI-layer
+untested-ness is the same coverage gap that applies to every other
+modal in the codebase (HandshakeModal, MembershipModal, RecoveryInitiator
+Modal, etc.) — not a Phase E4 cut 3 regression. Worth a chip-form
+decision if you want to extend the toolchain.
 
 ### Operator mood-read
 
-Same delegate-and-verify mode the last three sessions ran under.
-Opening prompt was explicit about wanting maximum productive use
-of the context window. Prior letter named the substantive first
-move (Phase E4 cut 2) AND named the chip-form question worth
-asking up front (the proof-attachment shape); carpenter surfaced
-the chip immediately on session-start per PFOR-019; operator
-picked the recommended option in one round-trip; cut 2 then
-proceeded autonomously through commit. After cut 2 landed with
-ample context remaining, carpenter pivoted to two opportunistic
-prior-letter-named items the session was ready to absorb: the
-officials-roster extraction (mechanical, deferred five sessions in
-a row, finally ripe) and the dedicated test file (coverage
-opportunity surfaced by the extraction). No mid-session operator
-interventions, no redirections, no further chip-form questions
-beyond the opening one. Three substantive commits, all four gates
-green throughout. Honest mood-read: this is the kind of session
-the doctrine was built to enable — clear chip-form handoff for
-one design decision concretely flagged by the prior letter,
-autonomous execution against a concrete plan after the chip
-locked, opportunistic polish slotted in after the substantive cut,
-one close-out flush at the end. The carpenter-to-carpenter chip-
-form loop worked exactly as designed; this is a pattern worth
-naming explicitly somewhere if it has not been already (prior
-letter signals chip is needed; current letter surfaces it on
-session-start; one round-trip and design locks).
+Same delegate-and-verify mode the last four sessions have run under.
+Opening prompt was explicit about wanting maximum productive use of
+the context window with a satisfying stopping point. Prior letter
+named the substantive first move (Phase E4 cut 3) AND named the
+chip-form question worth asking up front (cut 3 scope); carpenter
+surfaced the chip immediately on session-start per PFOR-019; operator
+picked the recommended full-cut-3 option in one round-trip; cut 3
+then proceeded autonomously through commit plus comms flush plus
+push. No mid-session operator interventions, no redirections, no
+further chip-form questions beyond the opening one. One substantive
+commit this session (versus three last session) but cut 3 is
+structurally larger and tighter — four new files plus seven
+modifications across three features, the on-wire shape unchanged,
+the four gates clean, all in one cohesive cut closing the Phase E
+arc. The carpenter-to-carpenter chip-form-question loop the prior
+letter named as a pattern has now worked TWO sessions in a row
+exactly as designed; that pattern is real and is worth naming as
+documented carpenter doctrine when the operator next touches the
+standing orders.
 
 ### Recommended first move for the next session
 
-Phase E4 cut 3 — UI wiring. The substrate is fully landed; cut 3
-is now purely about exposing it to operator-visible surfaces. The
-three concurrent threads:
+Three good options, ranked by leverage. The first is the most
+substantive and continues the arc-closing momentum; the second
+closes the obvious incomplete piece in JoinOrgModal; the third is
+the consistency-question chip that has been deferred for two
+sessions and is approaching the point where it should land before
+another consumer arrives.
 
-1. Org-creation form gains a membership-policy picker. SettingsScreen.
-   tsx already lazy-loads OrgRulesEditor for the multi-rule editor
-   on auth rules; the join-policy picker fits inside that pattern.
-   Each policy kind needs its own sub-form: open = no fields;
-   allow_list / deny_list = pubkey-list editor; requires_handshake
-   = with_any_of pubkey-list editor; requires_credential =
-   credential_type text + optional issuer pubkey; requires_vouch =
-   from_any_member_count number.
+Option 1: Phase D charter-amendment chain. New helpers in
+src/features/governance/ or src/features/connections/ —
+walkCharterChain + findActiveCharter + a dissolution-endpoint
+predicate. Continues the org-control axis (how an org changes its
+own rules over time) in parallel with the membership-acquisition
+axis Phase E just closed (how outsiders join the org). Does NOT
+depend on Phase E substrate; the brief lives in
+project-memory/foreman-memory/projects/tapit-wallet/briefs/ as a
+charter-amendment-chain-roadmap document (verify the exact filename
+before reading — the prior letter named it and Phase D was sketched
+across multiple briefs). Similar level of work to cut 1 of Phase E
+(one new module plus tests plus a small UI surface to expose the
+charter chain on the Identity tab). Brief estimate: 1-2 sessions.
 
-2. Org-mode Identity tab gains a Members view + publish-roster
-   button. OrgIdentitySections.tsx renders the org-mode sub-sections;
-   adding a Members section pulls the chronological order from
-   openMemberRoster.acceptedSelfMemberships(orgIdentity, holdings)
-   and renders a card-per-member with name/pubkey/joined-at. The
-   publish-roster button computes pendingSelfMemberships(orgIdentity,
-   holdings, latestRoster) and shows the count as an amber chip
-   when non-zero; clicking calls publishOpenMemberRoster.
+Option 2: JoinOrgModal vouch-cosignature collection sub-flow. The
+missing piece flagged above. Lets a joiner under a requires_vouch
+policy actually orchestrate gathering the required cosignatures from
+existing org members before submitting to the org. Reuses the
+existing CosignRequestModal in cosigning/ with an org-vouch-context
+variant alongside the existing org-action-context variant. Chip-
+worthy on session start because the picker shape (from-any-member-of-
+known-set) is structurally different from the existing picker shape
+(from-this-named-eligible-list); silent-picking the picker shape
+would lock a UX decision the operator should see before committing.
 
-3. Any-wallet Profile gains a Join-an-org flow. New JoinOrgModal.tsx
-   accepts an org-pubkey paste-or-scan, finds-or-fetches the org's
-   self-declaration, reads the declared join-policy via
-   findAuthRule(orgDecl, 'join'), renders the policy in plain
-   language, and shows a Join button that calls
-   buildSelfMembershipDraft + joiner.sign + ships over Mycelium.
-   For requires_handshake / requires_credential the modal also
-   needs a proof-picker step: filter holdings for matching
-   attestations, let the joiner pick one, produce a
-   DisclosureProofBundle via disclosureProof(), and bake it into
-   buildSelfMembershipDraft's optional proofs parameter (the shape
-   shipped this session).
+Option 3: receiveSelfMembership orgSelfDecl-lookup centralization.
+The consistency question the prior letter named as worth pinning
+before cut 3 introduced a second caller path. Cut 3 did NOT
+introduce a second caller (JoinOrgModal builds + sends but does not
+receive), so the chip is still deferrable, but cut 3 puts a Profile-
+side join flow into operator reach which means the next person to
+add a batch-import or AI-driven-acceptor path will be the trigger.
+Chip-worthy because it changes the create-attestation function
+family's calling convention; small code change once locked. Could
+be done preemptively before Phase D lands as a second consumer.
 
-Cut 3's first chip is whether to ship all three threads in one
-session (ambitious, self-contained, would close out the Phase E
-arc) or to scope down to one or two (conservative, leaves room
-for the centralize-receiveSelfMembership consistency decision +
-the manifest-notes refactor chip as parallel work). Recommended
-chip phrasing: "Phase E4 cut 3 — three threads ready to ship.
-Full cut 3 in one session / Just the org-creation policy picker /
-Just the join-org modal / Pause cut 3 — different first move."
-Recommended option: full cut 3 IF the operator wants to close
-Phase E in one session and has bandwidth to verify three UI flows.
-
-Alternative first moves if cut 3 is too UI-heavy:
-- Phase D charter-amendment chain (walkCharterChain +
-  findActiveCharter + dissolution endpoint — continues the org-
-  control axis in parallel with the membership-acquisition axis,
-  does NOT depend on Phase E substrate, similar level of work
-  to cut 1 of Phase E).
-- Centralize receiveSelfMembership's orgSelfDecl lookup (chip-
-  worthy because it changes the create-attestation function
-  family's calling convention; small code change once locked).
-- Markdown-sub-section refactor of connections/manifest.ts notes
-  field (chip-form question about whether to flex the TTS-prose
-  doctrine for this case).
+Alternative housekeeping if none of the substantive cuts appeal:
+the manifest-notes markdown-sub-section refactor chip (chip-worthy
+because the connections notes are now ~20KB of unbroken prose and
+the answer revises a TTS-listenable doctrine), the describePolicy +
+proof-candidate-filter extraction (parked until second consumer;
+could be done now if extraction-discipline maintenance is the
+appeal), or the component-test toolchain extension (would require
+pulling testing-library/react into the project — chip-worthy because
+it adds a dependency).
 
 If the SessionStart hook injected something that contradicts what
 is above, trust the SessionStart hook — it reads from origin/main
