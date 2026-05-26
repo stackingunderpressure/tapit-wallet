@@ -1,6 +1,6 @@
 import type { Attestation } from 'tapit-attest';
 import { isHandshake } from '../connections/createHandshake.ts';
-import { isMembership } from '../connections/createMembership.ts';
+import { isMembership, isSelfMembership } from '../connections/createMembership.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
 import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
 
@@ -20,6 +20,7 @@ export type InboxRouteAction =
   | 'cosign-witness'
   | 'absorb-cosign'
   | 'membership-receive'
+  | 'self-membership-receive'
   | 'recovery-share-receive'
   | 'recovery-request-respond';
 
@@ -51,6 +52,13 @@ export function routeFor(att: Attestation): EnvelopeRoute | null {
       action: 'membership-receive',
       label: 'Accept membership',
       hint: 'A membership credential issued to you.',
+    };
+  }
+  if (isSelfMembership(att)) {
+    return {
+      action: 'self-membership-receive',
+      label: 'Accept join request',
+      hint: 'A self-membership claim addressed to your organization.',
     };
   }
   if (isRecoveryShare(att)) {

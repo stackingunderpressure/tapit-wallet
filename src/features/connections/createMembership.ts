@@ -10,6 +10,18 @@ import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 // about a person — "[organization] declares [person] a member."
 // Organizations nest: an organization holds a membership the same
 // way a person does, because an organization is also a wallet.
+//
+// Phase E2 — joiner-side self-membership. A self-membership is a
+// SECOND credential-kind shape that flips the direction: the JOINER
+// signs a unilateral claim of membership in an org, and the org's
+// declared join-policy (Phase E1 AuthRuleForJoin in its auth tree)
+// is what decides whether the claim is valid. Same credential kind,
+// distinct credential_type leaf (`self_membership`), so consumers
+// never confuse the two. The org-side verifier + policy evaluator
+// ships in Phase E3; this cut lands the joiner-side builder, the
+// predicate + reader for routing and display, and the org-side
+// inbox-acceptor placeholder that holds and anchors incoming
+// self-memberships locally so they are not lost between Phases.
 
 /** True when an attestation is a membership credential. */
 export function isMembership(att: Attestation): boolean {
@@ -119,4 +131,93 @@ export function buildMembershipDraft(
     tier: 'notable',
     fields,
   });
+}
+
+// ---------- Phase E2 — joiner-side self-membership ----------
+
+/** True when an attestation is a self-membership credential —
+ *  a joiner's unilateral signed claim that they belong to an org.
+ *  Distinct from `isMembership` which covers org-issued memberships. */
+export function isSelfMembership(att: Attestation): boolean {
+  return (
+    att.kind === 'credential' &&
+    leafValue(att, 'credential_type') === 'self_membership'
+  );
+}
+
+export interface SelfMembershipView {
+  joinerId: string;
+  orgId: string;
+  orgName: string;
+  joinedAt: string;
+  requestedAt: string;
+}
+
+/** Read a self-membership credential's fields into a plain view. */
+export function readSelfMembership(att: Attestation): SelfMembershipView {
+  return {
+    joinerId: att.subject,
+    orgId: leafValue(att, 'org_id'),
+    orgName: leafValue(att, 'org_name'),
+    joinedAt: leafValue(att, 'joined_at'),
+    requestedAt: leafValue(att, 'requested_at'),
+  };
+}
+
+// Build the unsigned self-membership credential. The JOINER's wallet
+// calls this — it holds the joiner's own identity attestation and
+// knows the org's pubkey + display name (typically from a prior
+// connection or a paste of the org's identity). The joiner signs it;
+// the joiner holds it; the org-side handler (if/when the envelope
+// reaches it via Mycelium) evaluates the org's declared join-policy
+// in Phase E3.
+//
+// Both `joined_at` and `requested_at` are set to the draft moment.
+// Under the Option 2 substrate (purely unilateral self-claim) they
+// stay identical for the life of the envelope. Under Option 1 (org
+// publishes a roster), the org's roster snapshot timestamps when
+// the joiner was accepted, which can be later than `requested_at`;
+// the joiner's signed `requested_at` claim is preserved as the
+// joiner's intent. Phase E3/E4 sharpen this distinction in code.
+export function buildSelfMembershipDraft(
+  joinerIdentity: Attestation,
+  orgId: string,
+  orgName: string,
+): Attestation {
+  const now = new Date().toISOString();
+  return credentialAttestation({
+    subject: joinerIdentity.subject,
+    tier: 'notable',
+    fields: {
+      credential_type: 'self_membership',
+      org_id: orgId,
+      org_name: orgName,
+      joined_at: now,
+      requested_at: now,
+    },
+  });
+}
+
+// Phase E2 acceptor PLACEHOLDER for an incoming self-membership
+// envelope. wallet.hold internally verifies the joiner's signature
+// so the call is the authoritative integrity check; after holding,
+// the OpenTimestamps queue picks up the digest the same way it does
+// for handshakes and memberships. Phase E3 replaces this placeholder
+// with the real org-side acceptor: look up the org's declared
+// join-policy via findAuthRule, evaluate the joiner's claim against
+// it (open / allow_list / requires_handshake / etc.), and either add
+// the envelope to the pending-roster buffer or reject it. Throws if
+// the envelope is not a self-membership so callers can route by
+// envelope shape without relying on UI-side dispatch guarantees.
+export async function receiveSelfMembership(input: {
+  wallet: Wallet;
+  ownerId: string;
+  anchorWorker: WorkerHandle | null;
+  attestation: Attestation;
+}): Promise<void> {
+  const { wallet, ownerId, anchorWorker, attestation } = input;
+  if (!isSelfMembership(attestation)) {
+    throw new Error('not a self-membership credential');
+  }
+  await holdAndAnchor(wallet, ownerId, anchorWorker, attestation);
 }

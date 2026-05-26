@@ -1,18 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { Wallet, identityAttestation } from 'tapit-attest';
+import { Wallet, identityAttestation, envelopeId } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 
 import {
   buildOrgSelfDeclarationDraft,
   verifyOrgAuthorization,
 } from './createOrganization.ts';
-import { buildMembershipDraft, isMembership, readMembership } from './createMembership.ts';
+import {
+  buildMembershipDraft,
+  buildSelfMembershipDraft,
+  isMembership,
+  isSelfMembership,
+  readMembership,
+  readSelfMembership,
+  receiveSelfMembership,
+} from './createMembership.ts';
 import {
   buildAuthorizedByPayload,
   decodeAuthorizedBy,
   type AuthRule,
 } from '../governance/authRule.ts';
-import { leafValue } from './createHandshake.ts';
+import { leafValue, buildHandshakeDraft } from './createHandshake.ts';
 
 // Phase 8 Phase C cut 3 caller-wiring — round-trip coverage for the
 // org-issuance flow MembershipModal now drives end-to-end. The
@@ -131,5 +139,155 @@ describe('buildMembershipDraft — Phase 8 authorized_by leaf', () => {
     expect(result.authorized).toBe(true);
     expect(result.eligibleCount).toBe(2);
     expect(result.thresholdRequired).toBe(2);
+  });
+});
+
+// ---------- Phase E2 — joiner-side self-membership ----------
+
+describe('buildSelfMembershipDraft', () => {
+  it('produces a credential-kind attestation subject-bound to the joiner', () => {
+    const joiner = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+
+    const draft = buildSelfMembershipDraft(
+      joinerIdent,
+      'org-pubkey-hex',
+      'American Legion',
+    );
+
+    expect(draft.kind).toBe('credential');
+    expect(draft.subject).toBe(joiner.identity);
+    expect(leafValue(draft, 'credential_type')).toBe('self_membership');
+    expect(leafValue(draft, 'org_id')).toBe('org-pubkey-hex');
+    expect(leafValue(draft, 'org_name')).toBe('American Legion');
+  });
+
+  it('writes both joined_at and requested_at as ISO timestamps at draft time', () => {
+    const joiner = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+
+    const before = Date.now();
+    const draft = buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org');
+    const after = Date.now();
+
+    const joinedAt = Date.parse(leafValue(draft, 'joined_at'));
+    const requestedAt = Date.parse(leafValue(draft, 'requested_at'));
+    expect(Number.isFinite(joinedAt)).toBe(true);
+    expect(Number.isFinite(requestedAt)).toBe(true);
+    expect(joinedAt).toBeGreaterThanOrEqual(before);
+    expect(joinedAt).toBeLessThanOrEqual(after);
+    // Both fields are set in a single `new Date().toISOString()` call,
+    // so they must be byte-identical for an envelope built in one shot.
+    expect(leafValue(draft, 'joined_at')).toBe(leafValue(draft, 'requested_at'));
+  });
+
+  it('produces an envelope the joiner can sign without throwing', () => {
+    const joiner = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+
+    const draft = buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org');
+    const signed = joiner.sign(draft);
+
+    expect(signed.signatures.length).toBe(1);
+    expect(signed.signatures[0]!.signer).toBe(joiner.identity);
+    // envelopeId is stable for downstream anchoring; assert it computes.
+    expect(envelopeId(signed)).toMatch(/^[0-9a-f]+$/);
+  });
+});
+
+describe('isSelfMembership', () => {
+  it('returns true for a self-membership credential', () => {
+    const joiner = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org');
+    expect(isSelfMembership(draft)).toBe(true);
+    expect(isSelfMembership(joiner.sign(draft))).toBe(true);
+  });
+
+  it('returns false for an org-issued membership (different credential_type)', () => {
+    const org = Wallet.generate();
+    const member = Wallet.generate();
+    const orgIdent = signedIdentity(org, 'Org');
+    const memberIdent = signedIdentity(member, 'Pat');
+    const draft = buildMembershipDraft(orgIdent, memberIdent);
+    expect(isSelfMembership(draft)).toBe(false);
+    // The complementary predicate stays true on the org-issued shape —
+    // the two predicates are mutually exclusive by credential_type.
+    expect(isMembership(draft)).toBe(true);
+  });
+
+  it('returns false for a handshake (different attestation kind)', () => {
+    const a = Wallet.generate();
+    const b = Wallet.generate();
+    const aIdent = signedIdentity(a, 'A');
+    const bIdent = signedIdentity(b, 'B');
+    const draft = buildHandshakeDraft(aIdent, bIdent);
+    expect(isSelfMembership(draft)).toBe(false);
+  });
+});
+
+describe('readSelfMembership', () => {
+  it('round-trips every signed leaf through the view', () => {
+    const joiner = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(
+      joinerIdent,
+      'org-pubkey-hex',
+      'American Legion',
+    );
+    const signed = joiner.sign(draft);
+
+    const view = readSelfMembership(signed);
+    expect(view.joinerId).toBe(joiner.identity);
+    expect(view.orgId).toBe('org-pubkey-hex');
+    expect(view.orgName).toBe('American Legion');
+    expect(view.joinedAt).toBe(leafValue(signed, 'joined_at'));
+    expect(view.requestedAt).toBe(leafValue(signed, 'requested_at'));
+  });
+});
+
+describe('receiveSelfMembership placeholder acceptor', () => {
+  // The placeholder calls wallet.hold (signature integrity check)
+  // and queues anchoring; Phase E3 layers join-policy evaluation on
+  // top. Storage round-trip belongs to Phase E3's integration tests
+  // (anchorQueue.upsert hits IndexedDB which jsdom does not ship);
+  // here we cover the synchronous integrity gate and prove the
+  // produced envelope is independently hold-able by any wallet —
+  // both signatures the production receive-path depends on.
+
+  it('throws when the envelope is not a self-membership', async () => {
+    const org = Wallet.generate();
+    const member = Wallet.generate();
+    const orgHost = Wallet.generate();
+    const orgIdent = signedIdentity(org, 'Org');
+    const memberIdent = signedIdentity(member, 'Pat');
+    const orgMembership = org.sign(buildMembershipDraft(orgIdent, memberIdent));
+
+    await expect(
+      receiveSelfMembership({
+        wallet: orgHost,
+        ownerId: orgHost.identity,
+        anchorWorker: null,
+        attestation: orgMembership,
+      }),
+    ).rejects.toThrow(/not a self-membership/);
+  });
+
+  it('produces a signed self-membership that any wallet can hold', async () => {
+    // wallet.hold is the signature integrity check the acceptor
+    // depends on internally; if hold rejects, receive would too.
+    const joiner = Wallet.generate();
+    const orgHost = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const signed = joiner.sign(
+      buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org'),
+    );
+
+    await orgHost.hold(signed);
+
+    const holdings = await orgHost.holdings();
+    const held = holdings.find((a) => envelopeId(a) === envelopeId(signed));
+    expect(held).toBeDefined();
+    expect(isSelfMembership(held!)).toBe(true);
   });
 });

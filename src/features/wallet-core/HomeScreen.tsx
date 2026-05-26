@@ -31,6 +31,7 @@ import {
   isMembershipIssuedBy,
   readMembership,
   receiveMembership,
+  receiveSelfMembership,
 } from '../connections/createMembership.ts';
 import { holdRecoveryShare } from '../recovery/createShares.ts';
 // 5e-vi — recovery responder modal lazy-loaded so the share-decrypt +
@@ -186,6 +187,8 @@ export function HomeScreen() {
       setIncomingForAbsorb(envelope);
     } else if (action === 'membership-receive') {
       void acceptMembership(envelope);
+    } else if (action === 'self-membership-receive') {
+      void acceptSelfMembership(envelope);
     } else if (action === 'recovery-share-receive') {
       void acceptRecoveryShare(envelope);
     } else if (action === 'recovery-request-respond') {
@@ -230,6 +233,26 @@ export function HomeScreen() {
       if (item) dismissInboxEnvelope(item.eventId);
     } catch (err) {
       console.warn('membership receive failed', err);
+    }
+  }
+
+  // Phase E2 placeholder. Holds the incoming self-membership locally
+  // and queues anchoring; Phase E3 layers join-policy evaluation +
+  // pending-roster buffer on top of this same hook.
+  async function acceptSelfMembership(envelope: Attestation) {
+    try {
+      await receiveSelfMembership({
+        wallet,
+        ownerId,
+        anchorWorker,
+        attestation: envelope,
+      });
+      await save();
+      await refresh();
+      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
+      if (item) dismissInboxEnvelope(item.eventId);
+    } catch (err) {
+      console.warn('self-membership receive failed', err);
     }
   }
   const banner = backupBanner(prefs);
