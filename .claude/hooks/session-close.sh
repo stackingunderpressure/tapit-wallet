@@ -33,6 +33,17 @@ if command -v jq >/dev/null 2>&1; then
 fi
 
 mkdir -p "$ARCHIVE_DIR"
+
+# Archive idempotency: if the most recent archive file is byte-identical
+# to the current session.json, the carpenter did not overwrite the file
+# this session — nothing changed, so do nothing. Without this check the
+# timestamp-named archive copy guarantees a non-empty index diff per
+# Stop invocation and produces one empty checkpoint commit per Stop.
+LATEST_ARCHIVE="$(ls -1t "$ARCHIVE_DIR"/session-*.json 2>/dev/null | head -1)"
+if [ -n "$LATEST_ARCHIVE" ] && cmp -s "$LATEST_ARCHIVE" "$SESSION_FILE"; then
+  exit 0
+fi
+
 TIMESTAMP="$(date -u +%Y-%m-%d-%H%M%S)"
 cp "$SESSION_FILE" "$ARCHIVE_DIR/session-${TIMESTAMP}.json"
 

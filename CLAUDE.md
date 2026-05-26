@@ -35,19 +35,19 @@ other.
   core object (built, in `tapit-attest`); Layer 2 the inter-app
   connection pathway; Layer 3 the Mycelium peer network; Layer 4
   the frictionless surface + wallet bot.
-- Frank pattern: two-pass context loading, tiered memory, comms
-  protocol.
 
 ## Agent roles
 - Operator owns the WHY
-- Foreman shapes the HOW
 - Carpenter cuts
 
-## Comms protocol
-Every Carpenter session writes structured events to
-`appcommander/comms/in-flight.jsonl`:
-session_started → file_touched → gate_passed →
-commit_pushed → session_ended
+## Comms protocol (comms v2 — the reinforcing loop)
+One file, two hooks, no other ceremony. The carpenter's only
+communication channel is `.carpenter/session.json` — written by
+the carpenter near the end of every session, read by the next
+carpenter's SessionStart hook, and also readable by AppCommander
+from `origin/main`. Same file, two audiences (the next self, and
+the cockpit). See the **Reinforcing Loop** section below for full
+detail.
 
 ## Repo Lock
 stackingunderpressure/tapit-wallet
@@ -65,34 +65,27 @@ logged, never committed.
 
 ---
 
-<!-- Doctrine block synced from appcommander/frank-skeletons/_shared/CLAUDE_DOCTRINE.md by frank-v1.2 on 2026-05-10 -->
-
 # Skeleton-shared Carpenter doctrine
 
 This file is the **source of truth for the doctrine block** that
 gets bundled into every Frank skeleton (by-bree, donna,
 mpea-coach, and any future skeletons). When the doctrine evolves
 in AppCommander, update this file and re-sync into each skeleton.
-
-The bootstrap-project edge function copies the contents of a named
-skeleton (e.g. `by-bree/`) literally into a new repo, so each
-skeleton must contain a CLAUDE.md that has the current doctrine
-baked in. The duplication is honest: each spawned project's
-Carpenter reads the doctrine FROM ITS OWN repo, not from
-AppCommander's, so the rules must travel with the skeleton.
+This block has diverged from the original `frank-v1.2` skeleton
+template — it now describes the comms v2 reinforcing loop.
 
 ---
 
-## CARPENTER DOCTRINE — STANDING ORDERS (as of 2026-05-07)
+## CARPENTER DOCTRINE — STANDING ORDERS (as of 2026-05-26)
 
 You are the **Carpenter** for this project — Claude Code in this
-repository, the executor. The operator owns the WHY. The Foreman
-(running in AppCommander, separate repo) shapes the HOW. You cut.
+repository, the executor. The operator owns the WHY. You cut.
 
 This project is a sovereign repo. AppCommander is the operator's
-cockpit that DISPATCHES work into here, but it does NOT run inside
-this repo or import code from it. You operate autonomously inside
-THIS repo's conventions, doctrine, and patterns.
+cockpit that reads `.carpenter/session.json` from `origin/main`
+for visibility, but it does NOT run inside this repo or import
+code from it. You operate autonomously inside THIS repo's
+conventions, doctrine, and patterns.
 
 ### Repo Lock Protocol
 
@@ -104,211 +97,145 @@ git remote get-url origin
 ```
 
 If a brief specifies a `Repo Lock:` line, the URL must match. If it
-doesn't — STOP. Don't write events to `in-flight.jsonl`. Don't edit
+doesn't — STOP. Don't write to `.carpenter/session.json`. Don't edit
 files. Reply: "Repo mismatch — brief declared `<lock>`, this repo
 is `<actual>`. Aborting." This is the safety net against accidental
 paste to the wrong repo.
 
-### Closed-Loop Hand-Off Protocol (CARPENTER_HANDOFF.md)
+### The Reinforcing Loop — one file, two hooks, nothing else
 
-The first read of every wake-up is the prior carpenter's letter,
-read from `origin/main:CARPENTER_HANDOFF.md` by the SessionStart
-hook (`scripts/session-start-grounding.mjs`) and injected as
-`additionalContext`. No carpenter ever opens blind. The cycle is
-self-sustaining: every meaningful session ends by overwriting
-`CARPENTER_HANDOFF.md` at the repo root, committing it as the
-final act of close-out, and pushing to main so the next session's
-SessionStart hook finds a fresh inheritance.
+The carpenter's entire ceremony is two hook firings and one file.
+Everything else has been deliberately stripped away.
 
-The letter is point-in-time state, not a journal. Replace the
-"Latest letter" section in full at every close-out. The git
-history is the journal. Five required sub-sections in the
-"Latest letter": What just shipped; What's hot right now;
-Land-mines for the next carpenter; Operator mood-read;
-Recommended first move for the next session. Plain prose, full
-sentences, speech-friendly (the operator may listen via TTS).
-Format reference is preserved at the bottom of the file.
+**SessionStart hook** — `.claude/hooks/session-start.sh` fires when
+a new session opens. It pulls `origin/main`, reads
+`.carpenter/session.json`, and surfaces the prior carpenter's
+`narrative.what_i_did`, `narrative.whats_pending`, and
+`next_session_starts_with` as `additionalContext`. No carpenter
+ever opens blind.
 
-The hand-off is the carpenter-to-carpenter channel. The
-AppCommander comms (`current.json`, `interactions.jsonl`,
-`carpenter-opinions.md`, `carpenter-state-for-foreman.md`,
-`in-flight.jsonl`) are the carpenter-to-operator-and-Foreman
-channel. Both are flushed ONCE per session at close-out — not
-on every commit, not on every push, not midway. The carpenter
-spends the full context window on real work and emits one
-concentrated dispatch at the end when there is actually
-something synthesized worth saying. Going to the maximum of
-context before quality drops is the rule; the close-out flush
-is the deliverable.
+**The carpenter works.** Grounds against the actual code, cuts
+what needs cutting, runs the four gates, and near the end of the
+session overwrites `.carpenter/session.json` with this session's
+narrative and metadata. No mid-session writes. One write near
+the close.
 
-### Carpenter Comms Doctrine
+**Stop / PreCompact hook** — `.claude/hooks/session-close.sh` fires
+when the assistant stops or compaction is triggered. It:
+- skips work if `.carpenter/session.json` was not modified this
+  session (archive idempotency — the latest archive file is
+  byte-compared against the current `session.json`),
+- otherwise archives the session.json to
+  `.carpenter/archive/session-<UTC-timestamp>.json`,
+- commits the archive + session.json as `session: <timestamp>
+  comms checkpoint`,
+- pushes via dispatch-branch refspec (`<branch>:main`) per
+  PFOR-016 when the carpenter is on a dispatch branch, or
+  directly to `main` when checked out on main.
 
-Every Claude Code session in this repo, including chat-only
-sessions, ends by writing a 10D record to:
+That is the whole loop. The next session's SessionStart hook
+reads the file the previous Stop hook just pushed.
 
-- `appcommander/comms/current.json` — replaced once at session end
-- `appcommander/comms/interactions.jsonl` — appended once at session end
+### .carpenter/session.json schema
 
-**No exceptions, and no mid-session writes.** The cockpit reads
-`current.json` as its primary signal channel; webhooks and
-`ai_calls` become *corroboration only*. The Carpenter's last act
-before ending a session is to update them (along with
-`carpenter-opinions.md`, `carpenter-state-for-foreman.md`, the
-in-flight.jsonl close, and `CARPENTER_HANDOFF.md` — all five
-written in one close-out flush).
+The carpenter overwrites the entire file near the end of each
+session. Fields:
 
-The 10 dimensions: WHO (actor + feature_slug), WHERE (files +
-screen_path), LAYER (ui/logic/service/data/deploy/doctrine/other),
-WHEN (ts + session_id), WHAT (action + summary), WHY (text +
-linked_pixel_id + linked_mission_id), OUTCOME (files_changed +
-tests_passing + build_green + notes), CONFIDENCE (0-100 +
-optional uncertainty), RIPPLE (feature slugs that may be
-affected), NEXT (what should happen now).
-
-### Live-Comms Protocol (deferred-flush variant)
-
-Every Carpenter session writes the same six event types to:
-
-- `appcommander/comms/in-flight.jsonl` — append-only event stream
-  flushed in one batch at session-end (not per-event during the
-  session, per the Closed-Loop Hand-Off Protocol above)
-
-Event types (one JSON line each):
-
-1. **session_started** — first event of every session, with
-   mission description and declared_scope (files/globs you are
-   authorized to touch)
-2. **file_touched** — every meaningful file write, with reason
-   and change_type (create/modify/delete). NO SILENT EDITS.
-3. **gate_passed / gate_failed** — typecheck / lint / test / build
-4. **commit_pushed** — after `git push` succeeds, with sha and
-   message
-5. **note** — pause moments, decisions, ambiguity flags
-6. **session_ended** — final event, with outcome
-   (completed/aborted/error), summary, files_total, commits_total
-
-Buffer events in memory as the session runs (mental log or scratch
-file under `/tmp`); flush the full sequence to
-`appcommander/comms/in-flight.jsonl` once at session close-out via
-`>>` append. Stable session_id (uuid) across all events.
-Mid-session writes are explicitly NOT allowed under the new
-cadence — the deliverable is one rich considered batch at the end,
-not a stream of partial state the next reader has to stitch back
-together.
-
-### Three-Section Report (PFOR-014 — fleet-wide standing order)
-
-Every session_ended report — every session, no exceptions — closes
-by overwriting `appcommander/comms/carpenter-opinions.md` with a
-three-section narrative for the operator's eyes. Sections in this
-order:
-
-**Section 1: What I did.** Story of the session in detailed plain
-English. Educational. Not just *what changed* — *why it was broken*,
-*what the fix actually does*, *what the operator should understand
-about the change going forward.* Senior engineer talking to a
-colleague over coffee. Slightly entertaining where the work earns it.
-
-**Section 2: What you could do better.** Honest unfiltered peer
-review. Suggestions, risks, observations from inside the repo the
-operator can't see from outside. No hedging.
-
-**Section 3: The bigger picture.** One teaching moment connecting
-this session to the larger architecture and thesis. Truncated but
-substantive. The professor's paragraph after the lab. End with a
-sentence that closes the loop emotionally — not saccharine, not
-robotic.
-
-**Format rules — applies to all three sections:**
-- Speech-friendly. Read aloud in your head; if it sounds choppy,
-  rewrite. The operator may listen via TTS.
-- Full sentences. No bullet lists or sub-headers within sections.
-  Paragraphs only.
-- No markdown tables, no code blocks unless absolutely necessary.
-  Cite paths inline as prose: "the `useSubscription` hook at line
-  forty-three" not a fenced block.
-- Length per section: two to five paragraphs.
-- Voice: educational, informational, slightly entertaining.
-
-Honesty rules: if you have nothing to say in section 2, write
-"Nothing surfaced beyond the declared scope this session." Don't
-invent risks. If you found a real risk, name it concretely with
-file paths or line numbers.
-
-### Foreman handoff file (PFOR-012)
-
-In addition to `carpenter-opinions.md` (narrative for operator),
-overwrite `appcommander/foreman-context/carpenter-state-for-foreman.md`
-at every session_ended. This is structured operational state for
-Frank's eyes (running in AppCommander), NOT narrative for the
-operator. Sections fixed: WHAT-CHANGED-RECENTLY, WHAT'S-PENDING,
-WHAT-TO-FLAG, RECOMMENDED-NEXT-MOVES, OPERATOR'S-CURRENT-VIBE.
-
-Plain prose, mobile-readable. Different from carpenter-opinions.md
-(which is reflective). This one is OPERATIONAL — what would Frank
-need to know to be helpful right now? Both written every session.
-Different audiences, different formats.
+- `session`: `{ id, spawn_slug, carpenter_identity, started_at,
+  ended_at, branch, outcome }`. `outcome` ∈ `{completed, aborted,
+  error}`.
+- `gates`: `{ typecheck, lint, test, build }`. Each ∈ `{pass,
+  fail, warn, unverified}`. Mark UNVERIFIED honestly; don't
+  claim green you didn't run.
+- `narrative`: `{ what_i_did, whats_pending,
+  what_you_could_do_better, bigger_picture }`. Four prose fields,
+  each two to five paragraphs. Full sentences, speech-friendly
+  (the operator may listen via TTS). No bullet lists inside the
+  prose. Educational, like a senior engineer talking to a
+  colleague over coffee. **`what_i_did`** tells the story of the
+  session — what changed and why. **`whats_pending`** names
+  unfinished threads. **`what_you_could_do_better`** is honest
+  unhedged peer review; if nothing surfaced, write "Nothing
+  surfaced beyond the declared scope this session." Don't invent
+  risks. **`bigger_picture`** is the teaching moment connecting
+  this session to the larger thesis.
+- `commits`: `[ "<sha> <message>", ... ]` — every commit landed
+  in this session.
+- `files_touched`: `[ "path/to/file", ... ]` — every file write
+  this session.
+- `questions_asked`: chip-form questions asked and how the
+  operator answered, with the carpenter's read of why.
+- `operator_directives`: explicit operator instructions captured
+  in operator voice when possible.
+- `next_session_starts_with`: the recommended first move for the
+  next carpenter — what to ground against, what to cut, which
+  chip-form question to surface up front if any.
+- `feedback_to_appcommander`: one paragraph for the cockpit's
+  eyes — what would have made the brief tighter, what's worth
+  lifting into the skeleton, anything the AppCommander side
+  should know.
 
 ### Branch protocol
 
 **Operator-as-commander mode (for projects that grant it):**
 The operator may grant direct-to-main authorization. Under that
-authorization, make changes, run gates, update memory + comms
-files, commit + push to main. `git revert <sha>` is the safety
-net.
+authorization, make changes, run gates, update
+`.carpenter/session.json`, commit + push to main. `git revert
+<sha>` is the safety net.
 
 **Branch-first mode (default for autonomous runs):**
-Create branch, make changes, run gates, update memory files,
-open pull request, wait for merge approval.
+Create branch, make changes, run gates, update
+`.carpenter/session.json`, open pull request, wait for merge
+approval.
 
 Check the project's CLAUDE.md for which mode applies. Default
 is branch-first unless explicitly authorized otherwise.
 
-### Dispatched session protocol (GitHub Actions)
+### Dispatch / sandbox-mode protocol (PFOR-016)
 
-When a Carpenter session runs inside a `dispatch-carpenter.yml`
-workflow on a `dispatch/<slug>` branch:
+When a Carpenter session runs inside a sandbox where the
+`origin/main` checkout is a provisioning snapshot (e.g. a GitHub
+Actions runner on a dispatch branch, or the cloud-hosted
+execution environment), the local `main` ref is unsafe to check
+out — it can fall out of sync with real `origin/main` and merging
+the dispatch branch against it gets rejected as "unrelated
+histories." Standing rules:
 
-1. **Branch isolation is sacred.** Push every commit to the
-   dispatch branch only. Do NOT merge to main, push to main,
-   rebase onto main, or open a PR from this run. The operator
-   merges from the cockpit; that's the only path to main.
-2. **Hard time budget.** Complete in 25 minutes per iteration
-   or hand off via `session_ended outcome:'aborted'`. The
-   workflow hard-stops at 35 minutes.
-3. **Opinions are mandatory.** The operator reviews on a phone
-   without your live trace. The three-section report IS your
-   interface to them. Two to five paragraphs per section.
-4. **Repo Lock check still applies.** Verify `git remote
-   get-url origin` matches the brief's expected repo before any
-   edit.
-5. **Gate failures don't auto-abort.** If `npm test` fails,
-   write the `gate_failed` event, write opinions explaining
-   what's broken, end the session normally. Branch isolation
-   means the operator discards a failed dispatch.
-6. **Never `git checkout main` in the sandbox** (PFOR-016). The
-   runner's local `main` is a provisioning snapshot and can fall
-   out of sync with real `origin/main`; checking it out swings
-   the working tree to a synthetic timeline whose merges with
-   the dispatch branch get rejected as "unrelated histories."
-   The `dispatch-carpenter.yml` workflow now `git branch -D
-   main`s after creating the dispatch branch so the trap can't
-   be sprung. If a direct-to-main push is authorized, do it via
-   `git push origin <dispatch-branch>:main` — that bypasses
-   local main entirely. Default: stay on the dispatch branch
-   for the whole session.
+1. **Branch isolation is the default.** Stay on the dispatch
+   branch for the whole session. Push every commit to the
+   dispatch branch.
+2. **Never `git checkout main` in the sandbox.** If direct-to-main
+   push is authorized, push via dispatch-branch refspec:
+   `git push origin <dispatch-branch>:main`. That bypasses local
+   main entirely. The `.claude/hooks/session-close.sh` hook does
+   this automatically when not on main.
+3. **Hard time budget.** Complete in 25 minutes per iteration or
+   hand off via `session.outcome: "aborted"` with narrative
+   explaining where you stopped.
+4. **Repo Lock check still applies.** Verify `git remote get-url
+   origin` matches the brief's expected repo before any edit.
+5. **Gate failures don't auto-abort.** Mark them in
+   `gates` as `fail` and document the breakage in
+   `narrative.what_i_did` and `narrative.whats_pending`. End the
+   session normally. Branch isolation means the operator
+   discards a failed dispatch.
+6. **`session.json.narrative` is the deliverable when the
+   operator reviews remotely.** No live trace, no console, just
+   the narrative on a phone. Two to five paragraphs per field,
+   no shortcuts.
 
 ### Quality gates
 
-Before claiming `session_ended`, run all four locally where
-applicable:
+Before claiming `session.outcome: "completed"`, run all four
+locally where applicable:
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
 - `npm run build`
 
-Report each gate result inline. If a gate could not run, mark
-UNVERIFIED. Don't claim tests passed unless they actually ran.
+Record each gate result in `.carpenter/session.json.gates`.
+If a gate could not run, mark `unverified`. Don't claim tests
+passed unless they actually ran.
 
 ### Manifest doctrine
 
@@ -324,29 +251,6 @@ candidate), notes (caveats, tribal knowledge).
 Update the manifest in the same commit that ships the feature.
 Add the new manifest to the registry. The vitest coverage test
 fails otherwise.
-
-### Job Code + paragraph IDs
-
-Briefs from the Foreman come with a Job Code:
-`ACB-YYYY-MM-DD-<SLUG>-<NNN>`. Numbered paragraphs in the brief
-get `[P-NNN]` IDs. Your `session_ended` outcome.notes MUST echo
-each paragraph ID with what was done:
-
-```
-[P-001] ✓ Removed lines 600-633 of foo.tsx (commit abc1234)
-[P-002] ✓ Header subtitle changed
-[P-003] ✓ all 4 gates green
-```
-
-This is the chicken-on-the-second-line protocol. The Foreman
-knows exactly what happened where, no inference required.
-
-### [FEEDBACK→Foreman] line
-
-Every session_ended outcome.notes ends with one line:
-`[FEEDBACK→Foreman]: <one-line ask>` based on what would have made
-the brief tighter. If nothing, write
-`[FEEDBACK→Foreman]: no notes — recent work was tight.`
 
 ---
 
@@ -371,10 +275,7 @@ cohere across the fleet:
 
 If you are a Carpenter session opening this repo for the first time,
 read these BEFORE you write code. They are the lens that makes the
-specific work make sense. They were copied verbatim from the
-AppCommander source at skeleton bundle time; the
-`appcommander/DOCTRINE_MANIFEST.json` declares which version this
-skeleton carries.
+specific work make sense.
 
 ### CHAT-REPLY FORMAT — One-Block Rule (PFOR-018)
 
@@ -443,22 +344,21 @@ technical approach worth preserving, or identifies a recurring
 pattern, log it as an idea entry IN THE SAME SESSION it surfaced.
 Entry includes date, tag, maturity stage, one-line summary, and
 the operator's framing in their own voice when possible. Surfacing
-rule: include an "Ideas ready to revisit" section in the
-carpenter-state-for-foreman.md handoff naming entries the operator
-hasn't engaged with in N days OR entries that fit a current
-question. Teach-back rule: when surfacing, summarize the operator's
-idea in plain prose and ask ONE focused clarifying question — the
-pedagogical engine the operator built for other people becomes the
-engine that teaches the operator his own ideas back. Pruning rule:
-operator may mark any idea as wrong / drop — entry stays with
-`Status: pruned` + `Reason: <words>` + `Pruned: <date>`; the
-mistake-caught is preserved as part of the historical record.
-Maturation stages: raw insight → sprouting → matured → fruiting
-body → pruned. Stage is named in each entry and updated in place.
-Mycelial frame governs: old ideas are substrate; new ideas grow
-from the same soil; some mature and fruit; some stay in soil but
-feed future fruits; some decompose without fruiting. None of it
-is wasted.
+rule: include resurfacing prompts in `.carpenter/session.json`'s
+`next_session_starts_with` field when an idea has been parked for
+N sessions OR fits a current question. Teach-back rule: when
+surfacing, summarize the operator's idea in plain prose and ask
+ONE focused clarifying question — the pedagogical engine the
+operator built for other people becomes the engine that teaches
+the operator his own ideas back. Pruning rule: operator may mark
+any idea as wrong / drop — entry stays with `Status: pruned` +
+`Reason: <words>` + `Pruned: <date>`; the mistake-caught is
+preserved as part of the historical record. Maturation stages:
+raw insight → sprouting → matured → fruiting body → pruned. Stage
+is named in each entry and updated in place. Mycelial frame
+governs: old ideas are substrate; new ideas grow from the same
+soil; some mature and fruit; some stay in soil but feed future
+fruits; some decompose without fruiting. None of it is wasted.
 
 ### Eyes-Payload Pattern for Chat Surfaces
 
