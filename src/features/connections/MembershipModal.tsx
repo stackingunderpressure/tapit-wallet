@@ -387,7 +387,7 @@ export function MembershipModal({ onClose }: Props) {
         <Suspense fallback={null}>
           <CosignRequestModal
             attestation={membership}
-            orgContext={{ orgSelfDecl: ownOrg, action: ROUTINE_ISSUANCE }}
+            orgContext={{ kind: 'org_action', orgSelfDecl: ownOrg, action: ROUTINE_ISSUANCE }}
             onClose={() => setCosignOpen(false)}
           />
         </Suspense>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import type {
   Attestation,
   DisclosureProofBundle,
@@ -9,6 +9,16 @@ import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
 import { isHandshake, leafValue } from './createHandshake.ts';
+
+// Lazy-load the cosign request modal — same chunk-sharing pattern
+// MembershipModal and PromoteRouter use so the cosign UI body does
+// not weigh down the JoinOrgModal entry chunk. Only the requires_vouch
+// branch of the send step opens it.
+const CosignRequestModal = lazy(() =>
+  import('../cosigning/CosignRequestModal.tsx').then((m) => ({
+    default: m.CosignRequestModal,
+  })),
+);
 import {
   buildSelfMembershipDraft,
   type SelfMembershipProofs,
@@ -167,6 +177,7 @@ export function JoinOrgModal({ onClose }: Props) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
+  const [cosignOpen, setCosignOpen] = useState(false);
 
   // Derived: the join rule on the chosen org-self-declaration, or null
   // when the declaration carries no join rule (in which case open-join
@@ -487,10 +498,19 @@ export function JoinOrgModal({ onClose }: Props) {
                   This policy requires {joinRule.policy.from_any_member_count}{' '}
                   cosignature{joinRule.policy.from_any_member_count === 1 ? '' : 's'}{' '}
                   from existing members. The org will reject this envelope
-                  until enough members cosign it. Share the envelope with
-                  members first, collect their cosignatures, then send the
-                  cosigned version to the org.
+                  until you collect enough vouches. Use the button below to
+                  fan the signed envelope out to peers you think might be
+                  members; absorb each returned cosigned envelope back into
+                  your holdings, then send the fully cosigned version to
+                  the org.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setCosignOpen(true)}
+                  className="mt-2 w-full rounded-md bg-amber-900 py-2 text-paper text-sm font-medium"
+                >
+                  Collect vouch cosignatures
+                </button>
               </div>
             )}
             {prefs.nostrTransportEnabled && (
@@ -574,6 +594,23 @@ export function JoinOrgModal({ onClose }: Props) {
           onClose={() => setScanning(false)}
         />
       )}
+      {cosignOpen &&
+        selfMembership &&
+        orgDecl &&
+        joinRule?.policy.kind === 'requires_vouch' && (
+          <Suspense fallback={null}>
+            <CosignRequestModal
+              attestation={selfMembership}
+              orgContext={{
+                kind: 'org_vouch',
+                orgName:
+                  readOrganizationName(orgDecl) || 'this organization',
+                threshold: joinRule.policy.from_any_member_count,
+              }}
+              onClose={() => setCosignOpen(false)}
+            />
+          </Suspense>
+        )}
     </div>
   );
 }

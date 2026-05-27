@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
 import { canShare, shareText } from '../../shared/lib/share.ts';
@@ -24,21 +24,34 @@ interface Props {
    */
   prefillRecipient?: string;
   /**
-   * Phase 8 Phase C cut 3 — org-action mode. When the operator is
-   * requesting co-signs for an org-issued envelope under a specific
-   * Tapscript-style authorization rule, this prop names the org's
-   * self-declaration and the action the credential is being issued
-   * under. The modal looks up the matching rule via findAuthRule,
-   * shows a banner naming the action and threshold, and replaces
-   * the general PeerPicker with a constrained picker showing only
-   * the rule's eligible signers (with handshake-derived names where
-   * the operator's roster carries them). Absent for non-org cosigns
-   * — modal falls back to the existing single-recipient flow.
+   * Org-context mode — discriminated union over two distinct
+   * collection shapes.
+   *
+   * `org_action` (Phase 8 Phase C cut 3): signer-side org-action
+   * authorization. The modal looks up the named action via
+   * findAuthRule on the supplied self-declaration, shows a banner
+   * naming the action and threshold, and replaces the general
+   * PeerPicker with a constrained picker scoped to the rule's
+   * eligible set (with handshake-derived names where the operator's
+   * roster carries them). Use for org-issued credentials that need
+   * threshold > 1 cosignatures.
+   *
+   * `org_vouch` (Phase 8 Phase E4 cut 4): joiner-side vouch
+   * collection. When a `requires_vouch` org's join policy needs N
+   * cosignatures from existing members, the joiner uses this mode
+   * to fan their signed self-membership envelope out to their own
+   * peers. The picker shape differs from org_action because the
+   * joiner does not know which of their peers are members of the
+   * target org — the eligible set is open-ended, so we render the
+   * general PeerPicker over the joiner's full handshake roster and
+   * let the org's receive-side gate confirm vouch eligibility. The
+   * banner names the org and the threshold; `orgName` is passed by
+   * the caller rather than re-derived inside the modal to keep the
+   * dependency graph narrow.
    */
-  orgContext?: {
-    orgSelfDecl: Attestation;
-    action: string;
-  };
+  orgContext?:
+    | { kind: 'org_action'; orgSelfDecl: Attestation; action: string }
+    | { kind: 'org_vouch'; orgName: string; threshold: number };
 }
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
@@ -73,18 +86,18 @@ export function CosignRequestModal({
 
   // Phase 8 Phase C cut 3 — derive the org-action rule + a per-eligible
   // display name from the operator's handshake roster. Returns null when
-  // org-context is absent OR the named action is not declared in the
-  // org's auth tree (the latter would be a caller bug; the modal degrades
-  // by falling back to the general PeerPicker rather than disabling
-  // sending entirely).
+  // org-context is absent, is not the org_action kind, OR the named
+  // action is not declared in the org's auth tree (the latter would be
+  // a caller bug; the modal degrades by falling back to the general
+  // PeerPicker rather than disabling sending entirely).
   const orgRule = useMemo(() => {
-    if (!orgContext) return null;
+    if (!orgContext || orgContext.kind !== 'org_action') return null;
     const found = findAuthRule(orgContext.orgSelfDecl, orgContext.action);
-    // CosignRequestModal is the signer-side co-sign UI; join rules
-    // (joiner-side) are surfaced through a different flow and would
-    // not make sense here. Narrow to AuthRuleForOrgAction and fall
-    // back to the general PeerPicker if a caller ever hands us a
-    // join-action context by mistake.
+    // CosignRequestModal's org_action mode is the signer-side co-sign UI;
+    // join rules (joiner-side) flow through the org_vouch kind instead.
+    // Narrow to AuthRuleForOrgAction and fall back to the general
+    // PeerPicker if a caller ever hands us a join-action context by
+    // mistake.
     if (!found || !isOrgActionRule(found.rule)) return null;
     const rule = found.rule;
     const nameByKey = new Map<string, string>();
@@ -108,6 +121,19 @@ export function CosignRequestModal({
     });
     return { rule, eligibleDisplay };
   }, [orgContext, holdings, wallet.identity]);
+
+  // Vouch collection requires fanning out to multiple peers in one
+  // modal lifecycle — the joiner does not know which peer is the
+  // member, so they send to several. Reset the sent-state whenever
+  // the recipient changes so the send button re-enables on a new
+  // target and the prior peer's status banner clears. This also
+  // benefits the org_action path: a misclick on the constrained
+  // eligible list is now self-correcting.
+  useEffect(() => {
+    setSent(false);
+    setSendStatus(null);
+    setSendError(null);
+  }, [recipientTrim]);
 
   async function copy() {
     await navigator.clipboard.writeText(json);
@@ -160,7 +186,7 @@ export function CosignRequestModal({
             Close
           </button>
         </div>
-        {orgRule && orgContext && (
+        {orgRule && orgContext?.kind === 'org_action' && (
           <div className="mt-3 rounded-md border border-accent/40 bg-accent/5 p-3 text-xs">
             <div className="font-medium text-accent">
               Org action: {orgContext.action}
@@ -171,6 +197,22 @@ export function CosignRequestModal({
               Needs <span className="font-medium">{orgRule.rule.threshold}</span> of{' '}
               <span className="font-medium">{orgRule.rule.eligible.length}</span>{' '}
               signatures from the eligible set below.
+            </p>
+          </div>
+        )}
+        {orgContext?.kind === 'org_vouch' && (
+          <div className="mt-3 rounded-md border border-accent/40 bg-accent/5 p-3 text-xs">
+            <div className="font-medium text-accent">
+              Vouch needed: joining {orgContext.orgName}
+            </div>
+            <p className="mt-1 text-muted">
+              This org requires{' '}
+              <span className="font-medium">{orgContext.threshold}</span>{' '}
+              cosignature{orgContext.threshold === 1 ? '' : 's'} from existing
+              members. Send your signed join envelope to peers you think might
+              be members — the org will count their signatures when it
+              receives the cosigned envelope. You can send to multiple peers
+              in turn; the recipient field clears between sends.
             </p>
           </div>
         )}
