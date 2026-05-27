@@ -1,10 +1,16 @@
 import type { Attestation } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import {
   isFamilyRelationship,
   isHandshake,
   readHandshake,
 } from './createHandshake.ts';
 import { isMembership, readMembership } from './createMembership.ts';
+import {
+  familySignatureProgress,
+  findFamilyUnitsForMember,
+  readFamilyUnit,
+} from './familyUnit.ts';
 
 // Pure layout math for the PeopleTree visualization (the operator's
 // mycelium-tree vision from the 2026-05-27 ideas entry). Given the
@@ -42,6 +48,21 @@ export interface TreePeer {
 export interface TreeOrg {
   pubkey: string;
   name: string;
+  angle: number;
+}
+
+export interface TreeFamily {
+  /** Unique cryptographic identifier of the family-unit envelope. Used
+   *  as the stable angle seed (the same operator might be in two
+   *  families — birth family AND chosen family — and both must keep
+   *  distinct positions across reloads). */
+  envelopeId: string;
+  familyName: string;
+  /** Pubkey of the founding wallet. Carried so the tree can render a
+   *  founder badge when the operator is the founder of the family. */
+  founderId: string;
+  memberCount: number;
+  signedCount: number;
   angle: number;
 }
 
@@ -141,6 +162,43 @@ export function extractOrgs(
   return out;
 }
 
+/**
+ * Extract the family-units the operator is a member of, paired with
+ * ratification progress and a stable angular position. A wallet can
+ * belong to more than one family unit (birth family + chosen family),
+ * and both surface here. Stable angle is seeded by the family-unit
+ * envelope id (not the founder pubkey, because two families founded
+ * by the same operator would collide on founder-hash). keyAliases
+ * threads through to familySignatureProgress so the operator's own
+ * signature counts even after key rotation — the genesis pubkey
+ * stored in members[] differs from the active key that signs.
+ */
+export function extractFamilies(
+  holdings: readonly Attestation[],
+  myIdentity: string,
+  keyAliases?: ReadonlyMap<string, readonly string[]>,
+): TreeFamily[] {
+  const units = findFamilyUnitsForMember(holdings, myIdentity);
+  const out: TreeFamily[] = [];
+  const seen = new Set<string>();
+  for (const att of units) {
+    const id = envelopeId(att);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const view = readFamilyUnit(att);
+    const progress = familySignatureProgress(att, keyAliases);
+    out.push({
+      envelopeId: id,
+      familyName: view.familyName,
+      founderId: view.founderId.toLowerCase(),
+      memberCount: progress.total,
+      signedCount: progress.signed,
+      angle: angleFromPubkey(id),
+    });
+  }
+  return out;
+}
+
 /** Polar-to-cartesian conversion for a node on a ring of the given radius. */
 export function ringPosition(
   centerX: number,
@@ -165,3 +223,13 @@ export const CATEGORY_COLOR: Record<PeerCategory, string> = {
 
 /** Color the org-edge line (separate from peer categories). */
 export const ORG_EDGE_COLOR = '#7c3aed';
+
+/**
+ * Color the family-unit-edge line. Shares the family peer-category
+ * pink so the visual reads as "family-shaped relationship" across
+ * both forms (a peer with relationship=spouse/child/etc. on the inner
+ * ring, AND a multi-party family-unit envelope on the families ring).
+ * The structural distinction lives in the radius + the node shape,
+ * not the edge color.
+ */
+export const FAMILY_UNIT_EDGE_COLOR = CATEGORY_COLOR.family;

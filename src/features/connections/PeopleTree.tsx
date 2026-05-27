@@ -3,7 +3,9 @@ import type { Attestation } from 'tapit-attest';
 import { IdentityChip } from './IdentityChip.tsx';
 import {
   CATEGORY_COLOR,
+  FAMILY_UNIT_EDGE_COLOR,
   ORG_EDGE_COLOR,
+  extractFamilies,
   extractOrgs,
   extractPeers,
   ringPosition,
@@ -40,6 +42,14 @@ interface Props {
   myIdentity: string;
   /** The operator's own display name from their identity attestation. */
   myDisplayName?: string;
+  /** Operator's key-history (every pubkey the operator has ever used,
+   *  including the genesis identity). Threaded through to the family
+   *  layout so the operator's signature on family-unit envelopes is
+   *  detected across rotation — without the bridge, a rotated wallet
+   *  signs with its active key, which differs from the genesis pubkey
+   *  stored in members[], and the family node would under-count the
+   *  operator's own ratification. */
+  myKeyHistory?: readonly string[];
   /** Lookup map for resolving peer pubkeys to names — same map
    *  HomeScreen builds via peerNamesByPubkey. Passed through to each
    *  IdentityChip so peers whose handshake leaf has no name (rare but
@@ -49,18 +59,22 @@ interface Props {
 }
 
 const CANVAS_WIDTH = 340;
-const CANVAS_HEIGHT = 420;
+const CANVAS_HEIGHT = 460;
 const CENTER_X = CANVAS_WIDTH / 2;
 const CENTER_Y = CANVAS_HEIGHT / 2;
-const PEER_RING_RADIUS = 110;
-const ORG_RING_RADIUS = 165;
+const PEER_RING_RADIUS = 100;
+const FAMILY_RING_RADIUS = 145;
+const ORG_RING_RADIUS = 190;
 const NODE_WIDTH = 100;
 const NODE_HEIGHT = 36;
+const FAMILY_NODE_WIDTH = 110;
+const FAMILY_NODE_HEIGHT = 44;
 
 export function PeopleTree({
   holdings,
   myIdentity,
   myDisplayName,
+  myKeyHistory,
   namesByPubkey,
 }: Props) {
   const peers = useMemo(
@@ -71,14 +85,28 @@ export function PeopleTree({
     () => extractOrgs(holdings, myIdentity),
     [holdings, myIdentity],
   );
+  // keyAliases bridges the operator's genesis identity to every key
+  // they have ever used, so the family node's signed-count reflects
+  // their ratification regardless of whether they have rotated. Built
+  // once per render from the myKeyHistory prop the caller threads
+  // through from useWallet.
+  const families = useMemo(() => {
+    const aliases = myKeyHistory
+      ? new Map<string, readonly string[]>([
+          [myIdentity.toLowerCase(), myKeyHistory.map((k) => k.toLowerCase())],
+        ])
+      : undefined;
+    return extractFamilies(holdings, myIdentity, aliases);
+  }, [holdings, myIdentity, myKeyHistory]);
 
-  if (peers.length === 0 && orgs.length === 0) {
+  if (peers.length === 0 && orgs.length === 0 && families.length === 0) {
     return (
       <div className="mt-4 rounded-2xl border border-ink/10 bg-white px-5 py-8 text-center text-sm text-muted">
         <p className="font-medium text-ink">Your mycelium tree is empty.</p>
         <p className="mt-2">
-          Make a handshake with someone, or join an organization, and they
-          will start appearing here as branches around you.
+          Make a handshake with someone, join an organization, or start a
+          family, and they will start appearing here as branches around
+          you.
         </p>
       </div>
     );
@@ -112,6 +140,26 @@ export function PeopleTree({
                 stroke={CATEGORY_COLOR[p.category]}
                 strokeWidth={2}
                 strokeOpacity={0.55}
+              />
+            );
+          })}
+          {families.map((f) => {
+            const pos = ringPosition(
+              CENTER_X,
+              CENTER_Y,
+              FAMILY_RING_RADIUS,
+              f.angle,
+            );
+            return (
+              <line
+                key={`edge-family-${f.envelopeId}`}
+                x1={CENTER_X}
+                y1={CENTER_Y}
+                x2={pos.x}
+                y2={pos.y}
+                stroke={FAMILY_UNIT_EDGE_COLOR}
+                strokeWidth={3}
+                strokeOpacity={0.7}
               />
             );
           })}
@@ -183,6 +231,39 @@ export function PeopleTree({
           );
         })}
 
+        {families.map((f) => {
+          const pos = ringPosition(
+            CENTER_X,
+            CENTER_Y,
+            FAMILY_RING_RADIUS,
+            f.angle,
+          );
+          const allSigned =
+            f.memberCount > 0 && f.signedCount === f.memberCount;
+          return (
+            <div
+              key={`node-family-${f.envelopeId}`}
+              className="absolute rounded-lg bg-rose-50 border border-rose-300 px-2 py-1 shadow-sm z-10"
+              style={{
+                left: pos.x - FAMILY_NODE_WIDTH / 2,
+                top: pos.y - FAMILY_NODE_HEIGHT / 2,
+                width: FAMILY_NODE_WIDTH,
+              }}
+            >
+              <div className="text-[11px] font-semibold leading-tight truncate text-rose-900">
+                {f.familyName || 'Family'}
+              </div>
+              <div
+                className={`mt-0.5 text-[10px] leading-tight ${
+                  allSigned ? 'text-emerald-700' : 'text-rose-700'
+                }`}
+              >
+                {f.signedCount} of {f.memberCount} signed
+              </div>
+            </div>
+          );
+        })}
+
         {orgs.map((o) => {
           const pos = ringPosition(
             CENTER_X,
@@ -240,6 +321,13 @@ export function PeopleTree({
             style={{ background: CATEGORY_COLOR.acquaintance }}
           />
           Acquaintance
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className="inline-block h-[3px] w-4"
+            style={{ background: FAMILY_UNIT_EDGE_COLOR }}
+          />
+          Family unit
         </span>
         <span className="flex items-center gap-1">
           <span

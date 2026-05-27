@@ -514,6 +514,7 @@ export function HomeScreen() {
           holdings={holdings}
           myIdentity={wallet.identity}
           myDisplayName={identity ? displayNameOf(identity) : undefined}
+          myKeyHistory={wallet.keyHistory}
           inboxEnvelopes={inboxEnvelopes}
           peerNames={peerNames}
           dismissInboxEnvelope={dismissInboxEnvelope}

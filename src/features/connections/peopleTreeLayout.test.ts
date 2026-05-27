@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   Wallet,
+  envelopeId,
   identityAttestation,
   credentialAttestation,
   relationshipAttestation,
@@ -9,10 +10,12 @@ import type { Attestation } from 'tapit-attest';
 import {
   angleFromPubkey,
   CATEGORY_COLOR,
+  extractFamilies,
   extractOrgs,
   extractPeers,
   ringPosition,
 } from './peopleTreeLayout.ts';
+import { buildFamilyUnitDraft } from './familyUnit.ts';
 
 function newWalletAs(name: string): { wallet: Wallet; identity: Attestation } {
   const wallet = Wallet.generate();
@@ -246,5 +249,146 @@ describe('CATEGORY_COLOR', () => {
     expect(CATEGORY_COLOR.coworker).toMatch(/^#[0-9a-f]{6}$/i);
     expect(CATEGORY_COLOR.acquaintance).toMatch(/^#[0-9a-f]{6}$/i);
     expect(CATEGORY_COLOR.other).toMatch(/^#[0-9a-f]{6}$/i);
+  });
+});
+
+describe('extractFamilies', () => {
+  // Helper: build a founder-signed family-unit attestation. Founder is
+  // always the first wallet; named members include the operator.
+  function signedFamily(
+    founder: { wallet: Wallet; identity: Attestation },
+    familyName: string,
+    members: { wallet: Wallet; identity: Attestation; role: 'parent' | 'child' | 'spouse' }[],
+    extraSigners: Wallet[] = [],
+  ): Attestation {
+    const draft = buildFamilyUnitDraft(
+      founder.identity,
+      familyName,
+      members.map((m) => ({
+        pubkey: m.wallet.identity,
+        name: 'Member',
+        role: m.role,
+      })),
+    );
+    let env = founder.wallet.sign(draft);
+    for (const w of extraSigners) env = w.sign(env);
+    return env;
+  }
+
+  it('returns empty when the operator is not named in any family unit', () => {
+    const me = newWalletAs('Me');
+    const stranger = newWalletAs('Stranger');
+    const family = signedFamily(stranger, 'Their Family', [
+      { wallet: stranger.wallet, identity: stranger.identity, role: 'parent' },
+    ]);
+    const out = extractFamilies([family], me.identity.subject);
+    expect(out).toEqual([]);
+  });
+
+  it('returns a family the operator is named in (as founder)', () => {
+    const me = newWalletAs('Me');
+    const kid = newWalletAs('Kid');
+    const family = signedFamily(me, 'The Hearth', [
+      { wallet: me.wallet, identity: me.identity, role: 'parent' },
+      { wallet: kid.wallet, identity: kid.identity, role: 'child' },
+    ]);
+    const out = extractFamilies([family], me.identity.subject);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.familyName).toBe('The Hearth');
+    expect(out[0]?.memberCount).toBe(2);
+    expect(out[0]?.founderId).toBe(me.identity.subject.toLowerCase());
+  });
+
+  it('returns a family the operator is named in (as a non-founder member)', () => {
+    const founder = newWalletAs('Founder');
+    const me = newWalletAs('Me');
+    const family = signedFamily(founder, 'The Hearth', [
+      { wallet: founder.wallet, identity: founder.identity, role: 'parent' },
+      { wallet: me.wallet, identity: me.identity, role: 'child' },
+    ]);
+    const out = extractFamilies([family], me.identity.subject);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.founderId).toBe(founder.identity.subject.toLowerCase());
+  });
+
+  it('returns both birth-family and chosen-family when the operator is in both', () => {
+    const me = newWalletAs('Me');
+    const parent = newWalletAs('Parent');
+    const partner = newWalletAs('Partner');
+    const birth = signedFamily(parent, 'Birth', [
+      { wallet: parent.wallet, identity: parent.identity, role: 'parent' },
+      { wallet: me.wallet, identity: me.identity, role: 'child' },
+    ]);
+    const chosen = signedFamily(me, 'Chosen', [
+      { wallet: me.wallet, identity: me.identity, role: 'spouse' },
+      { wallet: partner.wallet, identity: partner.identity, role: 'spouse' },
+    ]);
+    const out = extractFamilies([birth, chosen], me.identity.subject);
+    expect(out).toHaveLength(2);
+    const names = out.map((f) => f.familyName).sort();
+    expect(names).toEqual(['Birth', 'Chosen']);
+  });
+
+  it('counts ratification progress against the named members', () => {
+    const founder = newWalletAs('Founder');
+    const me = newWalletAs('Me');
+    const other = newWalletAs('Other');
+    // founder + me sign, other has not yet ratified
+    const family = signedFamily(
+      founder,
+      'Two Of Three',
+      [
+        { wallet: founder.wallet, identity: founder.identity, role: 'parent' },
+        { wallet: me.wallet, identity: me.identity, role: 'child' },
+        { wallet: other.wallet, identity: other.identity, role: 'child' },
+      ],
+      [me.wallet],
+    );
+    const out = extractFamilies([family], me.identity.subject);
+    expect(out[0]?.memberCount).toBe(3);
+    expect(out[0]?.signedCount).toBe(2);
+  });
+
+  it('assigns each family a stable angle from its envelopeId hash', () => {
+    const founder = newWalletAs('Founder');
+    const me = newWalletAs('Me');
+    const family = signedFamily(founder, 'Stable', [
+      { wallet: founder.wallet, identity: founder.identity, role: 'parent' },
+      { wallet: me.wallet, identity: me.identity, role: 'child' },
+    ]);
+    const out = extractFamilies([family], me.identity.subject);
+    expect(out[0]?.angle).toBeCloseTo(angleFromPubkey(envelopeId(family)));
+  });
+
+  it('credits the operator signature when keyAliases bridges a rotated key', () => {
+    // The operator signs with their genesis key, then rotates. The
+    // active key differs from the genesis identity in members[].
+    // Without keyAliases the genesis-signed signature still matches
+    // (signer === genesis), so the bridge matters most when the
+    // founder is rotated AND signed after rotation. Simulate that
+    // by signing with a SECOND wallet whose pubkey we'll register as
+    // an alias of the founder's identity.
+    const founder = newWalletAs('Founder');
+    const rotatedKey = Wallet.generate();
+    const me = newWalletAs('Me');
+    const draft = buildFamilyUnitDraft(founder.identity, 'Rotated', [
+      { pubkey: founder.identity.subject, name: 'Founder', role: 'parent' },
+      { pubkey: me.identity.subject, name: 'Me', role: 'child' },
+    ]);
+    // The rotated key signs (not the founder's own wallet). Without
+    // keyAliases the founder appears unsigned.
+    const env = rotatedKey.sign(draft);
+
+    const without = extractFamilies([env], me.identity.subject);
+    expect(without[0]?.signedCount).toBe(0);
+
+    const aliases = new Map<string, readonly string[]>([
+      [
+        founder.identity.subject.toLowerCase(),
+        [rotatedKey.publicKey.toLowerCase()],
+      ],
+    ]);
+    const withAliases = extractFamilies([env], me.identity.subject, aliases);
+    expect(withAliases[0]?.signedCount).toBe(1);
   });
 });

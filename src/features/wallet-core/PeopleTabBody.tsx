@@ -35,6 +35,10 @@ interface Props {
   /** Operator's own display name for rendering the center node of
    *  the tree as a friendly chip. */
   myDisplayName?: string;
+  /** Operator's full key-history (every pubkey they have ever used).
+   *  Threaded through to PeopleTree so the family-unit ratification
+   *  count credits the operator's signature even after key rotation. */
+  myKeyHistory?: readonly string[];
   inboxEnvelopes: InboxEnvelope[];
   peerNames: Map<string, string>;
   dismissInboxEnvelope: (eventId: string) => void;
@@ -61,6 +65,7 @@ export function PeopleTabBody({
   holdings,
   myIdentity,
   myDisplayName,
+  myKeyHistory,
   inboxEnvelopes,
   peerNames,
   dismissInboxEnvelope,
@@ -180,6 +185,7 @@ export function PeopleTabBody({
             holdings={holdings}
             myIdentity={myIdentity}
             myDisplayName={myDisplayName}
+            myKeyHistory={myKeyHistory}
             namesByPubkey={peerNames}
           />
         </Suspense>
