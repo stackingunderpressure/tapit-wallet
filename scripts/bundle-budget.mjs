@@ -166,7 +166,16 @@ const BUDGETS = [
   // React.lazy and ships in its own chunk (~2.8KB gz,
   // StartFamilyModal-prefix), so only the section render + button
   // wiring lands statically.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 22_000, label: 'HomeScreen' },
+  // 2026-05-27 member-side family-ratify cut bumped 22.0KB -> 22.5KB
+  // to absorb the useInboxRouting hook extraction (the inbox-routed
+  // modal stack moved out of HomeScreen, but useInboxRouting itself
+  // lands in HomeScreen's static graph as it consumes useWallet and
+  // useInboxAccepts) plus the new family-ratify route case in
+  // envelopeRoute.ts. The FamilyRatifyModal itself is React.lazy and
+  // ships in its own chunk (FamilyRatifyModal- prefix); the hook
+  // wraps the lazy import alongside VouchWitnessModal and
+  // RecoveryResponderModal which already shipped as their own chunks.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 22_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

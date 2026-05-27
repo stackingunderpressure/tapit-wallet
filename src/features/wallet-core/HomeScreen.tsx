@@ -1,7 +1,6 @@
 import { lazy, Suspense, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Attestation, FieldBranch } from 'tapit-attest';
-import { envelopeId } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
 import { AttestationCard } from './AttestationCard.tsx';
@@ -9,12 +8,6 @@ import { JournalTabBody } from './JournalTabBody.tsx';
 import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
-import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
-const VouchWitnessModal = lazy(() =>
-  import('../cosigning/VouchWitnessModal.tsx').then((m) => ({
-    default: m.VouchWitnessModal,
-  })),
-);
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
 import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
@@ -39,14 +32,7 @@ import {
   isMembershipIssuedBy,
   readMembership,
 } from '../connections/createMembership.ts';
-import { useInboxAccepts } from './useInboxAccepts.ts';
-// 5e-vi — recovery responder modal lazy-loaded so the share-decrypt +
-// re-encrypt code only ships when an inbox row triggers it.
-const RecoveryResponderModal = lazy(() =>
-  import('../recovery/RecoveryResponderModal.tsx').then((m) => ({
-    default: m.RecoveryResponderModal,
-  })),
-);
+import { useInboxRouting } from './useInboxRouting.tsx';
 const ScanEnvelopeModal = lazy(() =>
   import('../qr/ScanEnvelopeModal.tsx').then((m) => ({
     default: m.ScanEnvelopeModal,
@@ -97,7 +83,6 @@ const LatticePanel = lazy(() =>
   })),
 );
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
-import { type InboxRouteAction } from '../transport/InboxPanel.tsx';
 import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promoteToJournalPrefill.ts';
 import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
 import { PromoteRouter, type PromoteRouterHandle } from '../messaging/PromoteRouter.tsx';
@@ -153,6 +138,11 @@ function isCapture(att: Attestation): boolean {
 export function HomeScreen() {
   const { wallet, holdings, identity, prefs, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
+  // Inbox-routed modal stack + dispatcher extracted to useInboxRouting
+  // (2026-05-27) when the family-ratify route landed and the six modal
+  // mounts plus their state would have crossed the 800-line hard limit
+  // on this file. orgDeclaration is threaded in below the holdings
+  // memo; the hook receives it once orgDeclaration is computed.
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerPrefill, setComposerPrefill] = useState<JournalPrefill | null>(null);
   const closeComposer = () => { setComposerOpen(false); setComposerPrefill(null); };
@@ -173,59 +163,6 @@ export function HomeScreen() {
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
   const [presenceOpen, setPresenceOpen] = useState(false);
   const [presenceDetail, setPresenceDetail] = useState<Attestation | null>(null);
-  // 5c-i-ε — inbox routing. When an envelope is routed from the
-  // InboxPanel, the matching modal opens pre-filled with the envelope.
-  // 5c-i-ζ adds incomingSenderForWitness so CosignAsWitnessModal can
-  // offer "Send back via Nostr" after the operator signs. The event-id
-  // pair lets the modal's onSuccess dismiss the inbox row automatically
-  // once the absorb / Send-back completes.
-  const [incomingForWitness, setIncomingForWitness] = useState<Attestation | null>(null);
-  const [incomingSenderForWitness, setIncomingSenderForWitness] = useState<string | null>(null);
-  const [incomingEventIdForWitness, setIncomingEventIdForWitness] = useState<string | null>(null);
-  // Absorb does NOT carry an eventId — the success callback dedupes
-  // by envelopeId across the whole inboxEnvelopes list because multiple
-  // relays can deliver the same counter-signed envelope under distinct
-  // Nostr event-ids and absorbing one should clear them all.
-  const [incomingForAbsorb, setIncomingForAbsorb] = useState<Attestation | null>(null);
-  // 5e-vi — recovery-request from a ceremony pubkey on a new device.
-  // When the operator opens the modal, the responder side walks
-  // strict out-of-band verification before releasing a share.
-  const [incomingForRecovery, setIncomingForRecovery] = useState<Attestation | null>(null);
-  const [incomingEventIdForRecovery, setIncomingEventIdForRecovery] = useState<string | null>(null);
-  // Peer-side vouch-witness arrival — the joiner's 1-sig self-
-  // membership envelope reached this wallet because the joiner is
-  // asking us to vouch. The modal opens pre-loaded with the envelope
-  // and sends the signed vouch back to the joiner via Mycelium.
-  const [incomingForVouch, setIncomingForVouch] = useState<Attestation | null>(null);
-  const [incomingEventIdForVouch, setIncomingEventIdForVouch] = useState<string | null>(null);
-
-  function routeInbox(
-    envelope: Attestation,
-    action: InboxRouteAction,
-    senderPubkey: string,
-  ) {
-    const item = inboxEnvelopes.find((x) => x.envelope === envelope);
-    const eventId = item?.eventId ?? null;
-    if (action === 'cosign-witness') {
-      setIncomingForWitness(envelope);
-      setIncomingSenderForWitness(senderPubkey);
-      setIncomingEventIdForWitness(eventId);
-    } else if (action === 'absorb-cosign') {
-      setIncomingForAbsorb(envelope);
-    } else if (action === 'membership-receive') {
-      void acceptMembership(envelope);
-    } else if (action === 'self-membership-receive') {
-      void acceptSelfMembership(envelope);
-    } else if (action === 'vouch-witness') {
-      setIncomingForVouch(envelope);
-      setIncomingEventIdForVouch(eventId);
-    } else if (action === 'recovery-share-receive') {
-      void acceptRecoveryShare(envelope);
-    } else if (action === 'recovery-request-respond') {
-      setIncomingForRecovery(envelope);
-      setIncomingEventIdForRecovery(eventId);
-    }
-  }
 
   const banner = backupBanner(prefs);
 
@@ -276,14 +213,14 @@ export function HomeScreen() {
     () => findOwnOrgDeclaration(holdings, wallet.identity),
     [holdings, wallet.identity],
   );
-  // Inbox accept-helpers extracted into a sibling hook (2026-05-27)
-  // when the peer-side vouch-witness surface needed routing-state
-  // headroom in this file. The hook is callsite-shape-identical to
-  // the inline helpers it replaced — same wallet/ownerId/anchorWorker
-  // dependencies pulled from useWallet, same orgDeclaration parameter
-  // computed above, same return shape consumed below in routeInbox.
-  const { acceptRecoveryShare, acceptMembership, acceptSelfMembership } =
-    useInboxAccepts(orgDeclaration);
+  // Inbox-routed modal stack + dispatcher live in useInboxRouting
+  // (which itself wraps useInboxAccepts so the membership-receive +
+  // self-membership-receive + recovery-share-receive helpers stay
+  // colocated with the modal mounts that consume them). HomeScreen
+  // passes routeInbox down to PeopleTabBody and ScanEnvelopeModal,
+  // and renders inboxModals next to the other modal mounts at the
+  // bottom of the JSX tree.
+  const { routeInbox, modals: inboxModals } = useInboxRouting(orgDeclaration);
   const issuedMemberships = useMemo(
     () =>
       orgDeclaration
@@ -615,79 +552,7 @@ export function HomeScreen() {
 
       {witnessOpen && <CosignAsWitnessModal onClose={() => setWitnessOpen(false)} />}
 
-      {incomingForWitness && (
-        <CosignAsWitnessModal
-          incoming={incomingForWitness}
-          incomingSender={incomingSenderForWitness ?? undefined}
-          onSuccess={() => {
-            if (incomingEventIdForWitness) dismissInboxEnvelope(incomingEventIdForWitness);
-          }}
-          onClose={() => {
-            setIncomingForWitness(null);
-            setIncomingSenderForWitness(null);
-            setIncomingEventIdForWitness(null);
-          }}
-        />
-      )}
-
-      {incomingForAbsorb && (
-        <AbsorbCosignModal
-          incoming={incomingForAbsorb}
-          onSuccess={() => {
-            // Multiple relays can deliver the same counter-signed envelope
-            // under distinct Nostr event-ids; the Nostr client dedupes
-            // events by id but two relays receiving the same envelope can
-            // each emit it with the relay's own re-broadcast id. The
-            // earlier behaviour dismissed only the event-id that opened
-            // the modal, leaving the other inbox rows in place — so the
-            // operator absorbed once and was offered absorb again the
-            // moment they closed the modal, looking like a loop. Compute
-            // the envelopeId of the just-absorbed envelope and drop every
-            // inbox row that points at the same envelopeId in one pass.
-            const absorbedId = envelopeId(incomingForAbsorb);
-            for (const item of inboxEnvelopes) {
-              if (envelopeId(item.envelope) === absorbedId) {
-                dismissInboxEnvelope(item.eventId);
-              }
-            }
-          }}
-          onClose={() => {
-            setIncomingForAbsorb(null);
-          }}
-        />
-      )}
-
-      {incomingForRecovery && (
-        <Suspense fallback={null}>
-          <RecoveryResponderModal
-            request={incomingForRecovery}
-            onSuccess={() => {
-              if (incomingEventIdForRecovery)
-                dismissInboxEnvelope(incomingEventIdForRecovery);
-            }}
-            onClose={() => {
-              setIncomingForRecovery(null);
-              setIncomingEventIdForRecovery(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {incomingForVouch && (
-        <Suspense fallback={null}>
-          <VouchWitnessModal
-            incoming={incomingForVouch}
-            onSuccess={() => {
-              if (incomingEventIdForVouch)
-                dismissInboxEnvelope(incomingEventIdForVouch);
-            }}
-            onClose={() => {
-              setIncomingForVouch(null);
-              setIncomingEventIdForVouch(null);
-            }}
-          />
-        </Suspense>
-      )}
+      {inboxModals}
 
       {handshakeOpen && <HandshakeModal onClose={() => setHandshakeOpen(false)} />}
 

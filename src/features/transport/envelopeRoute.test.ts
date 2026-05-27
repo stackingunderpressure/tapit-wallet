@@ -11,6 +11,7 @@ import {
   buildMembershipDraft,
   buildSelfMembershipDraft,
 } from '../connections/createMembership.ts';
+import { buildFamilyUnitDraft } from '../connections/familyUnit.ts';
 
 // envelopeRoute is the kind-to-action dispatcher both the Mycelium
 // inbox and the in-person QR scan path consume. Adding a new
@@ -182,5 +183,121 @@ describe('routeFor — Phase E2 self-membership routing', () => {
 
     const route = routeFor(joinerSigned, org.identity);
     expect(route!.action).toBe('self-membership-receive');
+  });
+});
+
+describe('routeFor — family-unit ratification routing', () => {
+  // The founder signs a family-unit envelope and ships it to a named
+  // member via Mycelium. The member's wallet sees the envelope land in
+  // its inbox; routeFor needs to recognize the receiver as a named-but-
+  // unsigned member and route to family-ratify so FamilyRatifyModal
+  // opens the review-and-sign surface. Without this branch a family-
+  // unit envelope returns null and the member sees a Copy button — the
+  // dead end the operator hit during field testing.
+  it('routes a founder-signed family-unit to family-ratify for a named member who has not signed', () => {
+    const founder = Wallet.generate();
+    const member = Wallet.generate();
+    const founderIdent = signedIdentity(founder, 'Founder');
+    const draft = buildFamilyUnitDraft(founderIdent, 'The Hearth', [
+      { pubkey: founder.identity, name: 'Founder', role: 'parent' },
+      { pubkey: member.identity, name: 'Kid', role: 'child' },
+    ]);
+    const founderSigned = founder.sign(draft);
+
+    const route = routeFor(founderSigned, member.identity);
+    expect(route).not.toBeNull();
+    expect(route!.action).toBe('family-ratify');
+    expect(route!.label).toBe('Ratify family');
+  });
+
+  // After the member ratifies and ships the cosigned envelope back,
+  // the founder's inbox sees a 2-signature envelope whose subject is
+  // the founder. AbsorbCosignModal can merge by envelopeId, so the
+  // founder-side route is absorb-cosign. Without the receiver=subject
+  // branch, the family-unit case would route to family-ratify on the
+  // founder's wallet, which is wrong — the founder doesn't ratify
+  // their own family-unit envelope, they absorb the member's signature.
+  it('routes a cosigned family-unit back to absorb-cosign for the founder', () => {
+    const founder = Wallet.generate();
+    const member = Wallet.generate();
+    const founderIdent = signedIdentity(founder, 'Founder');
+    const draft = buildFamilyUnitDraft(founderIdent, 'The Hearth', [
+      { pubkey: founder.identity, name: 'Founder', role: 'parent' },
+      { pubkey: member.identity, name: 'Kid', role: 'child' },
+    ]);
+    const founderSigned = founder.sign(draft);
+    const cosigned = member.sign(founderSigned);
+
+    const route = routeFor(cosigned, founder.identity);
+    expect(route).not.toBeNull();
+    expect(route!.action).toBe('absorb-cosign');
+    expect(route!.label).toBe('Absorb signature');
+  });
+
+  // A member who has already ratified can receive a re-broadcast of
+  // the envelope (the founder relayed it onward to other members and
+  // those members' signatures accumulated). Their pubkey is already in
+  // signers[], so routeFor sends them to absorb-cosign so their held
+  // copy ticks up to the latest signature set rather than asking them
+  // to ratify again. Re-signing would be a wallet.sign no-op anyway,
+  // but the action label needs to read honestly.
+  it('routes a re-broadcast family-unit to absorb-cosign for a member who already signed', () => {
+    const founder = Wallet.generate();
+    const memberA = Wallet.generate();
+    const memberB = Wallet.generate();
+    const founderIdent = signedIdentity(founder, 'Founder');
+    const draft = buildFamilyUnitDraft(founderIdent, 'The Hearth', [
+      { pubkey: founder.identity, name: 'Founder', role: 'parent' },
+      { pubkey: memberA.identity, name: 'A', role: 'child' },
+      { pubkey: memberB.identity, name: 'B', role: 'child' },
+    ]);
+    // founder + A + B all sign, then the bundle reaches memberA again
+    // because the founder fanned it back out after collecting all
+    // ratifications.
+    const founderSigned = founder.sign(draft);
+    const aSigned = memberA.sign(founderSigned);
+    const fullySigned = memberB.sign(aSigned);
+
+    const route = routeFor(fullySigned, memberA.identity);
+    expect(route!.action).toBe('absorb-cosign');
+  });
+
+  // A family-unit envelope reaching a wallet that isn't named in the
+  // members list has no defined action — return null so the inbox row
+  // falls back to the Copy affordance the same way unsupported envelope
+  // kinds do. Locks the discriminator so a future family-tree-share
+  // flow (a friend forwarding a family snapshot for context) cannot
+  // accidentally land on a ratify surface that signs by mistake.
+  it('returns null for a family-unit envelope received by an un-named wallet', () => {
+    const founder = Wallet.generate();
+    const member = Wallet.generate();
+    const stranger = Wallet.generate();
+    const founderIdent = signedIdentity(founder, 'Founder');
+    const draft = buildFamilyUnitDraft(founderIdent, 'The Hearth', [
+      { pubkey: founder.identity, name: 'Founder', role: 'parent' },
+      { pubkey: member.identity, name: 'Kid', role: 'child' },
+    ]);
+    const founderSigned = founder.sign(draft);
+
+    const route = routeFor(founderSigned, stranger.identity);
+    expect(route).toBeNull();
+  });
+
+  // Without receiver context (the scan path or any caller that hasn't
+  // threaded identity.subject through), routeFor has no way to decide
+  // who the envelope is for. Return null so the caller falls back to
+  // the Copy affordance instead of guessing.
+  it('returns null for a family-unit envelope with no receiver context', () => {
+    const founder = Wallet.generate();
+    const member = Wallet.generate();
+    const founderIdent = signedIdentity(founder, 'Founder');
+    const draft = buildFamilyUnitDraft(founderIdent, 'The Hearth', [
+      { pubkey: founder.identity, name: 'Founder', role: 'parent' },
+      { pubkey: member.identity, name: 'Kid', role: 'child' },
+    ]);
+    const founderSigned = founder.sign(draft);
+
+    const route = routeFor(founderSigned);
+    expect(route).toBeNull();
   });
 });

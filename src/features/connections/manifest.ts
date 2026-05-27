@@ -40,6 +40,7 @@ export const manifest: FeatureManifest = {
     'src/features/connections/familyUnit.ts',
     'src/features/connections/familyUnit.test.ts',
     'src/features/connections/StartFamilyModal.tsx',
+    'src/features/connections/FamilyRatifyModal.tsx',
   ],
   depends_on: ['wallet-core', 'qr', 'cosigning', 'anchoring', 'theme', 'governance'],
   pause_safe: true,

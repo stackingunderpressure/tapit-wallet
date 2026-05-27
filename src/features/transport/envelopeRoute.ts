@@ -1,6 +1,7 @@
 import type { Attestation } from 'tapit-attest';
 import { isHandshake, leafValue } from '../connections/createHandshake.ts';
 import { isMembership, isSelfMembership } from '../connections/createMembership.ts';
+import { isFamilyUnit, readFamilyUnit } from '../connections/familyUnit.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
 import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
 
@@ -44,6 +45,7 @@ export type InboxRouteAction =
   | 'membership-receive'
   | 'self-membership-receive'
   | 'vouch-witness'
+  | 'family-ratify'
   | 'recovery-share-receive'
   | 'recovery-request-respond';
 
@@ -118,6 +120,73 @@ export function routeFor(
       action: 'self-membership-receive',
       label: 'Accept join request',
       hint: 'A self-membership claim addressed to your organization.',
+    };
+  }
+  if (isFamilyUnit(att)) {
+    // Family-unit envelopes ride the cosign loop on the substrate
+    // familyUnit.ts established: the founder signs and ships to each
+    // named member, the member signs and ships back, the founder
+    // absorbs the cosignature into their held copy. Routing splits on
+    // who the receiver is relative to the envelope:
+    //
+    //   1. Founder receiving back (receiver IS the envelope subject)
+    //      → absorb-cosign so the new cosignature merges into the
+    //      held copy. AbsorbCosignModal works on family-unit envelopes
+    //      out of the box because it's envelope-kind-agnostic — it
+    //      matches by envelopeId and runs mergeSignatures.
+    //   2. Named member who has NOT yet signed → family-ratify. The
+    //      member-side FamilyRatifyModal opens with the envelope,
+    //      shows the family graph for review, and signs + holds +
+    //      sends-back-to-founder in one tap.
+    //   3. Named member who HAS already signed (e.g. a re-broadcast of
+    //      the envelope with more signatures from other members
+    //      accumulated since) → absorb-cosign so the member's held
+    //      copy ticks up to the latest signature set. The member
+    //      doesn't sign again — wallet.sign filters by signer, so
+    //      re-signing is a no-op anyway, but routing to absorb keeps
+    //      the surface honest about what the action actually does.
+    //   4. Not-named third party, OR no receiver context → null. A
+    //      family-unit envelope reaching a wallet that isn't named in
+    //      the member list has no defined action.
+    //
+    // Rotated-key subtlety: a member who has rotated signs with their
+    // active key, which differs from the genesis pubkey stored in
+    // members[].pubkey. routeFor doesn't have wallet.keyHistory, so a
+    // rotated member who has already signed routes to family-ratify
+    // here (their genesis pubkey isn't in signers[]). That's fine —
+    // FamilyRatifyModal's signing step is idempotent (wallet.sign
+    // filters duplicates), so a rotated member re-signing produces no
+    // new signature on the wire and the send-back is a no-op merge on
+    // the founder side. The per-member display-state in
+    // FamilyIdentitySections does carry the keyAliases bridge, so
+    // founder-side rendering stays honest.
+    const receiver = receiverPubkey?.trim().toLowerCase();
+    if (!receiver) return null;
+    const subject = att.subject.trim().toLowerCase();
+    if (receiver === subject) {
+      return {
+        action: 'absorb-cosign',
+        label: 'Absorb signature',
+        hint: 'A family ratification — merge it into your copy.',
+      };
+    }
+    const view = readFamilyUnit(att);
+    const named = view.members.some(
+      (m) => m.pubkey.toLowerCase() === receiver,
+    );
+    if (!named) return null;
+    const signers = new Set(att.signatures.map((s) => s.signer.toLowerCase()));
+    if (signers.has(receiver)) {
+      return {
+        action: 'absorb-cosign',
+        label: 'Absorb signatures',
+        hint: 'A family you already ratified — merge any new signatures into your copy.',
+      };
+    }
+    return {
+      action: 'family-ratify',
+      label: 'Ratify family',
+      hint: 'Someone named you in their family. Review and sign to confirm.',
     };
   }
   if (isRecoveryShare(att)) {
