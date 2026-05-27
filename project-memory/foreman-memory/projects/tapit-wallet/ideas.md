@@ -585,7 +585,21 @@ as the operator engages with each ring. Library options: pure SVG
 graph (force layout but heavier bundle), or custom Canvas (most
 control, most work).
 Feature: connections
-Stage: raw insight — substrate is whole, layout/interaction layer
-is the missing piece, no scope authorized yet.
+Stage: sprouting — first-version shipped 2026-05-27 as
+src/features/connections/PeopleTree.tsx + peopleTreeLayout.ts.
+Operator at center, handshake peers on an inner radial ring with
+edges color-coded by relationship category (family / friend /
+coworker / acquaintance / other), orgs the operator belongs to on
+an outer ring with dashed violet edges. Deterministic angular
+positioning via FNV-1a hash of pubkey (same hash the identicon
+module uses) so the same peer always lands in the same spot.
+SVG layer behind for edges, HTML+IdentityChip in front for nodes.
+React.lazy from PeopleTabBody behind a List ↔ Tree segmented
+toggle that defaults to List. Twenty new tests cover the pure
+layout helpers. Open future cuts: angular sector grouping by
+category (family peers visually cluster on one side), zoom +
+collapse for trees that grow past one screen, multi-hop expansion
+(your friend's friends), org-chain walking (your church belongs
+to your denomination belongs to ...), tap-a-node-for-detail.
 ```
 
