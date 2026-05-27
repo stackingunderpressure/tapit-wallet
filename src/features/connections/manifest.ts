@@ -37,6 +37,8 @@ export const manifest: FeatureManifest = {
     'src/features/connections/PeopleTree.tsx',
     'src/features/connections/peopleTreeLayout.ts',
     'src/features/connections/peopleTreeLayout.test.ts',
+    'src/features/connections/familyUnit.ts',
+    'src/features/connections/familyUnit.test.ts',
   ],
   depends_on: ['wallet-core', 'qr', 'cosigning', 'anchoring', 'theme', 'governance'],
   pause_safe: true,
