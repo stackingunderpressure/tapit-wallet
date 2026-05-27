@@ -6,6 +6,7 @@ import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { PeerPicker } from '../connections/PeerPicker.tsx';
 import { isHandshake, readHandshake } from '../connections/createHandshake.ts';
+import { IdentityChip } from '../connections/IdentityChip.tsx';
 import { findAuthRule, isOrgActionRule } from '../governance/authRule.ts';
 import {
   summarizePublish,
@@ -254,18 +255,18 @@ export function CosignRequestModal({
                           type="button"
                           onClick={() => setRecipient(e.pubkey)}
                           aria-pressed={selected}
-                          className={`w-full text-left rounded-md px-3 py-2 text-sm border ${
+                          className={`w-full text-left rounded-md px-3 py-2 border ${
                             selected
                               ? 'bg-accent/10 border-accent text-ink'
                               : 'bg-white border-ink/15 hover:bg-ink/5'
                           }`}
                         >
-                          <div className="font-medium">
-                            {e.name ?? 'Unknown peer'}
-                          </div>
-                          <div className="text-xs text-muted font-mono">
-                            {e.pubkey.slice(0, 8)}…{e.pubkey.slice(-4)}
-                          </div>
+                          <IdentityChip
+                            pubkey={e.pubkey}
+                            name={e.name ?? undefined}
+                            size="md"
+                            className="min-w-0"
+                          />
                         </button>
                       </li>
                     );

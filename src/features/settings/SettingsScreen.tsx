@@ -440,6 +440,8 @@ export function SettingsScreen() {
         ownerId={ownerId}
         anchorWorker={anchorWorker}
         existingOrgDeclaration={existingOrgDeclaration}
+        holdings={holdings}
+        identity={identity}
         save={save}
         refresh={refresh}
       />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import {
   publishOfficialsRoster,
@@ -6,6 +6,8 @@ import {
   findLatestOfficialsRoster,
   type Official,
 } from './officialsRoster.ts';
+import { isHandshake, readHandshake } from './createHandshake.ts';
+import { IdentityChip } from './IdentityChip.tsx';
 
 interface Props {
   onClose: () => void;
@@ -13,9 +15,9 @@ interface Props {
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
 
-function shortKey(hex: string): string {
-  if (hex.length <= 12) return hex;
-  return `${hex.slice(0, 8)}…${hex.slice(-4)}`;
+interface ContactOption {
+  pubkey: string;
+  name: string;
 }
 
 // 5b-org-ii — officials editor. Start from the current published
@@ -38,12 +40,51 @@ export function OfficialsEditorModal({ onClose }: Props) {
   const addPubkeyValid = HEX_64.test(addPubkeyNormalized);
   const addPubkeyDup = officials.some((o) => o.pubkey === addPubkeyNormalized);
 
+  // Walk handshakes once to surface the operator's existing contacts as
+  // one-tap picker rows above the paste input. The operator's complaint
+  // was direct: making someone an officer should not require pasting a
+  // 64-character hex string when the person is already in their
+  // contacts. Tapping a contact row fills both the pubkey field and
+  // the name field — the same effect as pasting hex and typing a name,
+  // but in one tap and rendered as a friendly identicon + name row
+  // instead of a wall of opaque hex.
+  const contacts = useMemo<ContactOption[]>(() => {
+    const found: ContactOption[] = [];
+    const seen = new Set<string>();
+    for (const a of holdings) {
+      if (!isHandshake(a)) continue;
+      const v = readHandshake(a);
+      const candidates: ContactOption[] = [];
+      if (v.initiatorId && v.initiatorId !== wallet.identity) {
+        candidates.push({ pubkey: v.initiatorId, name: v.initiatorName || '' });
+      }
+      if (v.responderId && v.responderId !== wallet.identity) {
+        candidates.push({ pubkey: v.responderId, name: v.responderName || '' });
+      }
+      for (const c of candidates) {
+        const k = c.pubkey.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        found.push({ pubkey: k, name: c.name });
+      }
+    }
+    return found;
+  }, [holdings, wallet.identity]);
+
   function addOfficial() {
     if (!addPubkeyValid || addPubkeyDup) return;
     setOfficials((prev) => [
       ...prev,
       { pubkey: addPubkeyNormalized, name: addName.trim() },
     ]);
+    setAddPubkey('');
+    setAddName('');
+  }
+
+  function addContact(contact: ContactOption) {
+    const lower = contact.pubkey.toLowerCase();
+    if (officials.some((o) => o.pubkey === lower)) return;
+    setOfficials((prev) => [...prev, { pubkey: lower, name: contact.name }]);
     setAddPubkey('');
     setAddName('');
   }
@@ -113,14 +154,12 @@ export function OfficialsEditorModal({ onClose }: Props) {
                   key={o.pubkey}
                   className="flex items-center justify-between gap-2 rounded-md border border-ink/15 bg-white px-3 py-2"
                 >
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {o.name || '(no name)'}
-                    </div>
-                    <div className="text-xs text-muted font-mono">
-                      {shortKey(o.pubkey)}
-                    </div>
-                  </div>
+                  <IdentityChip
+                    pubkey={o.pubkey}
+                    name={o.name}
+                    size="md"
+                    className="min-w-0"
+                  />
                   <button
                     type="button"
                     onClick={() => removeOfficial(o.pubkey)}
@@ -136,6 +175,49 @@ export function OfficialsEditorModal({ onClose }: Props) {
 
         <div className="mt-4 rounded-md border border-ink/15 bg-white p-3">
           <div className="text-xs font-medium">Add an official</div>
+          {contacts.length > 0 && (
+            <div className="mt-2">
+              <div className="text-[10px] uppercase tracking-wide text-muted">
+                From your connections
+              </div>
+              <ul className="mt-1.5 space-y-1">
+                {contacts.map((c) => {
+                  const already = officials.some((o) => o.pubkey === c.pubkey);
+                  return (
+                    <li key={c.pubkey}>
+                      <button
+                        type="button"
+                        onClick={() => addContact(c)}
+                        disabled={already}
+                        className={`w-full text-left rounded-md border px-3 py-2 transition ${
+                          already
+                            ? 'border-ink/10 bg-ink/5 opacity-60'
+                            : 'border-ink/15 bg-white hover:bg-ink/5'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <IdentityChip
+                            pubkey={c.pubkey}
+                            name={c.name}
+                            size="md"
+                            className="min-w-0"
+                          />
+                          {already && (
+                            <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted">
+                              Added
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-3 text-[10px] uppercase tracking-wide text-muted">
+                Or paste a public key
+              </div>
+            </div>
+          )}
           <input
             type="text"
             value={addPubkey}

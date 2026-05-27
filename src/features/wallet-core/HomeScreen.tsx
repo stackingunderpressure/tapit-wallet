@@ -416,6 +416,7 @@ export function HomeScreen() {
               joinedMembers={joinedMembers}
               pendingMembers={pendingMembers}
               publishing={publishingRoster}
+              namesByPubkey={peerNames}
               onOpenOfficials={() => setOfficialsOpen(true)}
               onOpenMembership={() => setMembershipOpen(true)}
               onPublishRoster={() => void handlePublishRoster()}

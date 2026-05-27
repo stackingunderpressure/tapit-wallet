@@ -138,7 +138,15 @@ const BUDGETS = [
   // React.lazy declaration. The modal itself is lazy-loaded so its
   // body is not in this chunk; only the trigger button + the
   // openMemberRoster helpers land statically.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 19_500, label: 'HomeScreen' },
+  // 2026-05-27 IdentityChip rollout bumped 19.5KB -> 19.7KB to absorb
+  // the IdentityChip primitive landing in the HomeScreen import graph
+  // via OrgIdentitySections (officials + joined-members lists render
+  // identicon + name + short-key chips instead of bare truncated hex).
+  // The chip itself plus its identityChipHelpers sibling add ~90 bytes
+  // gz to this chunk; the same primitive is reused on the Settings
+  // OrgRulesEditor + Officials editor + CosignRequestModal eligible-
+  // signer surfaces with no additional cost to HomeScreen.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 19_700, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

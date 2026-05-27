@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import {
@@ -11,6 +11,10 @@ import {
   readOrganizationName,
   selfDeclareOrganization,
 } from '../connections/createOrganization.ts';
+import {
+  displayNameOf,
+  peerNamesByPubkey,
+} from '../connections/createHandshake.ts';
 
 const OrgRulesEditor = lazy(() =>
   import('./OrgRulesEditor.tsx').then((m) => ({ default: m.OrgRulesEditor })),
@@ -32,6 +36,13 @@ interface Props {
   ownerId: string;
   anchorWorker: WorkerHandle | null;
   existingOrgDeclaration: Attestation | null;
+  /** The operator's holdings — used to build the pubkey → display-name
+   *  lookup so OrgRulesEditor can render eligible signers as friendly
+   *  identicon + name rows instead of bare truncated hex. */
+  holdings: readonly Attestation[];
+  /** The operator's own identity attestation, for resolving their own
+   *  display name in the lookup map. Optional — falls back to "You". */
+  identity: Attestation | null;
   save: () => Promise<unknown>;
   refresh: () => Promise<void>;
 }
@@ -41,6 +52,8 @@ export function OrgDeclarationSection({
   ownerId,
   anchorWorker,
   existingOrgDeclaration,
+  holdings,
+  identity,
   save,
   refresh,
 }: Props) {
@@ -57,6 +70,16 @@ export function OrgDeclarationSection({
   const [joinPolicy, setJoinPolicy] = useState<JoinPolicy | null>(null);
   const [orgBusy, setOrgBusy] = useState(false);
   const [orgError, setOrgError] = useState<string | null>(null);
+
+  const namesByPubkey = useMemo(
+    () =>
+      peerNamesByPubkey(
+        holdings,
+        wallet.identity,
+        identity ? displayNameOf(identity) : undefined,
+      ),
+    [holdings, wallet.identity, identity],
+  );
 
   function openOrgForm() {
     setOrgRules(defaultAuthRules(wallet.identity));
@@ -155,6 +178,7 @@ export function OrgDeclarationSection({
               founder={wallet.identity}
               value={orgRules}
               onChange={setOrgRules}
+              namesByPubkey={namesByPubkey}
             />
           </Suspense>
           <Suspense

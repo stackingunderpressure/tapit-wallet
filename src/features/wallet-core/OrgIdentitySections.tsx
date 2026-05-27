@@ -1,6 +1,7 @@
 import type { Attestation } from 'tapit-attest';
 import { readMembership, readSelfMembership } from '../connections/createMembership.ts';
 import { RatificationsBadge } from '../connections/RatificationsBadge.tsx';
+import { IdentityChip } from '../connections/IdentityChip.tsx';
 import type { Official } from '../connections/officialsRoster.ts';
 
 // Extracted from HomeScreen.tsx at Phase C close-out so the Identity-
@@ -37,6 +38,10 @@ interface Props {
   pendingMembers: readonly Attestation[];
   /** True while a publish is in flight (publish button disabled). */
   publishing: boolean;
+  /** Pubkey → display-name lookup; lets joined-member cards render a
+   *  friendly name + identicon when the joiner is someone this wallet
+   *  has already handshaken with, rather than a bare truncated hex. */
+  namesByPubkey?: ReadonlyMap<string, string>;
   onOpenOfficials: () => void;
   onOpenMembership: () => void;
   onPublishRoster: () => void;
@@ -48,6 +53,7 @@ export function OrgIdentitySections({
   joinedMembers,
   pendingMembers,
   publishing,
+  namesByPubkey,
   onOpenOfficials,
   onOpenMembership,
   onPublishRoster,
@@ -81,12 +87,12 @@ export function OrgIdentitySections({
                 key={o.pubkey}
                 className="rounded-2xl bg-white border border-ink/10 p-3"
               >
-                <div className="font-medium truncate">
-                  {o.name || '(no name)'}
-                </div>
-                <div className="mt-1 text-xs text-muted font-mono">
-                  {o.pubkey.slice(0, 8)}…{o.pubkey.slice(-4)}
-                </div>
+                <IdentityChip
+                  pubkey={o.pubkey}
+                  name={o.name}
+                  namesByPubkey={namesByPubkey}
+                  size="md"
+                />
               </li>
             ))}
           </ul>
@@ -176,9 +182,11 @@ export function OrgIdentitySections({
                   key={i}
                   className="rounded-2xl bg-white border border-ink/10 p-3"
                 >
-                  <div className="font-medium truncate font-mono text-xs">
-                    {v.joinerId.slice(0, 8)}…{v.joinerId.slice(-4)}
-                  </div>
+                  <IdentityChip
+                    pubkey={v.joinerId}
+                    namesByPubkey={namesByPubkey}
+                    size="md"
+                  />
                   <div className="mt-1 text-xs text-muted">
                     Joined {when}
                   </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AuthRuleForOrgAction } from '../governance/authRule.ts';
+import { IdentityChip } from '../connections/IdentityChip.tsx';
 
 // Phase 8 Phase C cut 2 — multi-rule org creation UI. Renders the
 // current list of authorization rules, with the default
@@ -28,6 +29,11 @@ interface Props {
   /** Current rules list; the parent owns this state. */
   value: readonly AuthRuleForOrgAction[];
   onChange: (next: AuthRuleForOrgAction[]) => void;
+  /** Optional pubkey → display-name lookup so eligible signers render as
+   *  friendly identicon + name rows instead of a comma-joined wall of
+   *  truncated hex. The textarea input still collects raw hex (one per
+   *  line) — the chip rendering is the read-side polish on saved rules. */
+  namesByPubkey?: ReadonlyMap<string, string>;
 }
 
 interface DraftRule {
@@ -44,11 +50,6 @@ function emptyDraft(founder: string): DraftRule {
     eligibleText: founder,
     thresholdText: '1',
   };
-}
-
-function shortKey(hex: string): string {
-  if (hex.length <= 12) return hex;
-  return `${hex.slice(0, 8)}…${hex.slice(-4)}`;
 }
 
 function parseEligible(text: string): { ok: string[]; bad: string[] } {
@@ -110,7 +111,7 @@ function validateDraft(
   };
 }
 
-export function OrgRulesEditor({ founder, value, onChange }: Props) {
+export function OrgRulesEditor({ founder, value, onChange, namesByPubkey }: Props) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<DraftRule>(() => emptyDraft(founder));
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -161,9 +162,21 @@ export function OrgRulesEditor({ founder, value, onChange }: Props) {
                     {rule.threshold} of {rule.eligible.length} signature
                     {rule.eligible.length === 1 ? '' : 's'} required
                   </div>
-                  <div className="mt-1 font-mono text-[10px] text-muted">
-                    Eligible:{' '}
-                    {rule.eligible.map((e) => shortKey(e)).join(', ')}
+                  <div className="mt-1.5">
+                    <div className="text-[10px] uppercase tracking-wide text-muted">
+                      Eligible
+                    </div>
+                    <ul className="mt-1 space-y-1">
+                      {rule.eligible.map((e) => (
+                        <li key={e}>
+                          <IdentityChip
+                            pubkey={e}
+                            namesByPubkey={namesByPubkey}
+                            size="sm"
+                          />
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
                 {!isDefault && (
