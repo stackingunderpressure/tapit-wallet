@@ -5,6 +5,7 @@ import type { Attestation } from 'tapit-attest';
 import {
   buildHandshakeDraft,
   buildRemoteHandshakeDraft,
+  findCompletedHandshakeWith,
   isHandshake,
   readHandshake,
 } from './createHandshake.ts';
@@ -78,5 +79,98 @@ describe('handshake relationship leaf', () => {
     const view = readHandshake(cosigned);
     expect(view.relationship).toBe('coworker');
     expect(cosigned.signatures.length).toBe(2);
+  });
+});
+
+describe('findCompletedHandshakeWith', () => {
+  it('returns the cosigned handshake when both parties have signed', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const draft = buildHandshakeDraft(alice.identity, bob.identity);
+    const cosigned = alice.wallet.sign(bob.wallet.sign(draft));
+    const found = findCompletedHandshakeWith(
+      [cosigned],
+      alice.identity.subject,
+      bob.identity.subject,
+    );
+    expect(found).toBe(cosigned);
+  });
+
+  it('returns null when only one side has signed (still pending)', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const oneSig = bob.wallet.sign(
+      buildHandshakeDraft(alice.identity, bob.identity),
+    );
+    expect(
+      findCompletedHandshakeWith(
+        [oneSig],
+        alice.identity.subject,
+        bob.identity.subject,
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null when the peer is not party to any handshake in holdings', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const stranger = newWalletAs('Stranger');
+    const cosigned = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity)),
+    );
+    expect(
+      findCompletedHandshakeWith(
+        [cosigned],
+        alice.identity.subject,
+        stranger.identity.subject,
+      ),
+    ).toBeNull();
+  });
+
+  it('is party-order-independent — initiator and responder swap roles fine', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    // Bob initiates this time
+    const cosigned = bob.wallet.sign(
+      alice.wallet.sign(buildHandshakeDraft(bob.identity, alice.identity)),
+    );
+    const fromAliceSide = findCompletedHandshakeWith(
+      [cosigned],
+      alice.identity.subject,
+      bob.identity.subject,
+    );
+    const fromBobSide = findCompletedHandshakeWith(
+      [cosigned],
+      bob.identity.subject,
+      alice.identity.subject,
+    );
+    expect(fromAliceSide).toBe(cosigned);
+    expect(fromBobSide).toBe(cosigned);
+  });
+
+  it('is case-insensitive on both pubkey arguments', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const cosigned = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity)),
+    );
+    expect(
+      findCompletedHandshakeWith(
+        [cosigned],
+        alice.identity.subject.toUpperCase(),
+        bob.identity.subject.toUpperCase(),
+      ),
+    ).toBe(cosigned);
+  });
+
+  it('returns null when myIdentity equals peerPubkey (defensive)', () => {
+    const alice = newWalletAs('Alice');
+    expect(
+      findCompletedHandshakeWith(
+        [],
+        alice.identity.subject,
+        alice.identity.subject,
+      ),
+    ).toBeNull();
   });
 });

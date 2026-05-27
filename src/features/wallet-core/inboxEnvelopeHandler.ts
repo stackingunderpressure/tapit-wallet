@@ -3,6 +3,10 @@ import type { Attestation, Wallet } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { saveWallet } from './saveWallet.ts';
 import { mergeSignatures } from '../cosigning/mergeSignatures.ts';
+import {
+  findCompletedHandshakeWith,
+  isHandshake,
+} from '../connections/createHandshake.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 // Inbox-arrival handler factory — extracted from WalletProvider so
@@ -53,9 +57,19 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
     void (async () => {
       try {
         const incomingId = envelopeId(item.envelope);
-        const held = (await wallet.holdings()).find(
-          (a) => envelopeId(a) === incomingId,
-        );
+        const holdings = await wallet.holdings();
+        // Silent-drop relay replays of handshake requests from peers
+        // we already have a completed handshake with. The Nostr relay
+        // re-delivers these on every wallet unlock; surfacing them as
+        // still-pending rows confuses the operator into thinking the
+        // connection did not complete when it actually did.
+        if (
+          isHandshake(item.envelope) &&
+          findCompletedHandshakeWith(holdings, wallet.identity, item.senderPubkey)
+        ) {
+          return;
+        }
+        const held = holdings.find((a) => envelopeId(a) === incomingId);
         if (!held) {
           setInboxEnvelopes((prev) =>
             prev.some((p) => p.eventId === item.eventId)

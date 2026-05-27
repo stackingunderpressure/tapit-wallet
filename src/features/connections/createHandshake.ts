@@ -186,6 +186,42 @@ export function peerNamesByPubkey(
   return out;
 }
 
+// Find a completed handshake in holdings between the operator and a
+// given peer pubkey. "Completed" means a relationship-kind attestation
+// carrying a verification leaf (isHandshake true) where both the
+// operator and the peer appear as initiator/responder AND both have
+// signed the envelope. Used to silence duplicate-handshake replays
+// that the Nostr relay re-delivers every wallet unlock — once we
+// already have a completed handshake with this peer, any subsequent
+// 1-sig handshake envelope from the same peer is a relay replay (or
+// a fresh-from-them re-initiation, which the operator does not need
+// to re-handle) and should not clutter the inbox as a still-pending
+// row. Case-insensitive on both pubkey comparisons; party-order-
+// independent so it does not matter who initiated.
+export function findCompletedHandshakeWith(
+  holdings: readonly Attestation[],
+  myIdentity: string,
+  peerPubkey: string,
+): Attestation | null {
+  const me = myIdentity.trim().toLowerCase();
+  const peer = peerPubkey.trim().toLowerCase();
+  if (!me || !peer || me === peer) return null;
+  for (const a of holdings) {
+    if (!isHandshake(a)) continue;
+    const v = readHandshake(a);
+    const init = v.initiatorId.trim().toLowerCase();
+    const resp = v.responderId.trim().toLowerCase();
+    const namesBoth =
+      (init === me && resp === peer) || (init === peer && resp === me);
+    if (!namesBoth) continue;
+    const signers = new Set(
+      a.signatures.map((s) => s.signer.trim().toLowerCase()),
+    );
+    if (signers.has(me) && signers.has(peer)) return a;
+  }
+  return null;
+}
+
 // Hold a handshake attestation and queue it for OpenTimestamps
 // anchoring — the same pipeline journal entries use. envelopeId is
 // stable across signature additions, so anchoring is idempotent

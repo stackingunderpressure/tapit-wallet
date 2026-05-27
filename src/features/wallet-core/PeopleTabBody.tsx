@@ -1,7 +1,11 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { ClassicConnections } from '../connections/ClassicConnections.tsx';
-import { readHandshake } from '../connections/createHandshake.ts';
+import {
+  findCompletedHandshakeWith,
+  isHandshake,
+  readHandshake,
+} from '../connections/createHandshake.ts';
 import {
   InboxPanel,
   type InboxRouteAction,
@@ -73,6 +77,36 @@ export function PeopleTabBody({
   } | null>(null);
   const [view, setView] = useState<View>('list');
 
+  // Hide and dismiss inbox rows that are relay-replayed duplicates of
+  // handshakes the operator has already completed. The Nostr relay
+  // re-delivers old envelopes on every wallet unlock; without this
+  // filter, a peer the operator finished connecting with shows up
+  // forever as a still-pending row that never resolves. Render-time
+  // filter for immediate visual cleanup; the useEffect below also
+  // dismisses the stale row from underlying state so it does not
+  // accumulate across multiple unlocks if the relay keeps replaying.
+  const visibleInbox = useMemo(
+    () =>
+      inboxEnvelopes.filter((item) => {
+        if (!isHandshake(item.envelope)) return true;
+        return !findCompletedHandshakeWith(
+          holdings,
+          myIdentity,
+          item.senderPubkey,
+        );
+      }),
+    [inboxEnvelopes, holdings, myIdentity],
+  );
+
+  useEffect(() => {
+    for (const item of inboxEnvelopes) {
+      if (!isHandshake(item.envelope)) continue;
+      if (findCompletedHandshakeWith(holdings, myIdentity, item.senderPubkey)) {
+        dismissInboxEnvelope(item.eventId);
+      }
+    }
+  }, [inboxEnvelopes, holdings, myIdentity, dismissInboxEnvelope]);
+
   function handleOpenThread(peer: { pubkey: string; name: string }) {
     const handshake = connectionEntries.find((att) => {
       const view = readHandshake(att);
@@ -99,7 +133,7 @@ export function PeopleTabBody({
   return (
     <section className="mt-5">
       <InboxPanel
-        envelopes={inboxEnvelopes}
+        envelopes={visibleInbox}
         peerNames={peerNames}
         onDismiss={dismissInboxEnvelope}
         onOpen={routeInbox}
