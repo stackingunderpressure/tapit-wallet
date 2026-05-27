@@ -15,10 +15,22 @@ const FreshCrew = lazy(() =>
 const PeerThread = lazy(() =>
   import('../messaging/PeerThread.tsx').then((m) => ({ default: m.PeerThread })),
 );
+const PeopleTree = lazy(() =>
+  import('../connections/PeopleTree.tsx').then((m) => ({ default: m.PeopleTree })),
+);
+
+type View = 'list' | 'tree';
 
 interface Props {
   connectionEntries: Attestation[];
+  /** Full holdings — PeopleTree extracts handshake peers AND
+   *  org-memberships from this; the list-view paths only need the
+   *  connectionEntries pre-filter. */
+  holdings: readonly Attestation[];
   myIdentity: string;
+  /** Operator's own display name for rendering the center node of
+   *  the tree as a friendly chip. */
+  myDisplayName?: string;
   inboxEnvelopes: InboxEnvelope[];
   peerNames: Map<string, string>;
   dismissInboxEnvelope: (eventId: string) => void;
@@ -42,7 +54,9 @@ interface Props {
 // original Inbox + Crew/Connections layout renders unchanged.
 export function PeopleTabBody({
   connectionEntries,
+  holdings,
   myIdentity,
+  myDisplayName,
   inboxEnvelopes,
   peerNames,
   dismissInboxEnvelope,
@@ -57,6 +71,7 @@ export function PeopleTabBody({
     name: string;
     handshake: Attestation;
   } | null>(null);
+  const [view, setView] = useState<View>('list');
 
   function handleOpenThread(peer: { pubkey: string; name: string }) {
     const handshake = connectionEntries.find((att) => {
@@ -89,7 +104,52 @@ export function PeopleTabBody({
         onDismiss={dismissInboxEnvelope}
         onOpen={routeInbox}
       />
-      {resolvedTheme === 'fresh' ? (
+      <div className="mt-4 flex items-center justify-end">
+        <div
+          role="tablist"
+          aria-label="People view"
+          className="inline-flex rounded-md border border-ink/15 bg-white p-0.5 text-xs"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'list'}
+            onClick={() => setView('list')}
+            className={`rounded px-3 py-1 ${
+              view === 'list' ? 'bg-ink text-paper' : 'text-muted'
+            }`}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === 'tree'}
+            onClick={() => setView('tree')}
+            className={`rounded px-3 py-1 ${
+              view === 'tree' ? 'bg-ink text-paper' : 'text-muted'
+            }`}
+          >
+            Tree
+          </button>
+        </div>
+      </div>
+      {view === 'tree' ? (
+        <Suspense
+          fallback={
+            <div className="mt-4 rounded-2xl border border-ink/10 bg-white px-4 py-6 text-center text-sm text-muted">
+              Growing your tree…
+            </div>
+          }
+        >
+          <PeopleTree
+            holdings={holdings}
+            myIdentity={myIdentity}
+            myDisplayName={myDisplayName}
+            namesByPubkey={peerNames}
+          />
+        </Suspense>
+      ) : resolvedTheme === 'fresh' ? (
         <Suspense fallback={null}>
           <FreshCrew
             connectionEntries={connectionEntries}

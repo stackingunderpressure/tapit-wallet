@@ -554,7 +554,9 @@ export function HomeScreen() {
       {tab === 'people' && (
         <PeopleTabBody
           connectionEntries={connectionEntries}
+          holdings={holdings}
           myIdentity={wallet.identity}
+          myDisplayName={identity ? displayNameOf(identity) : undefined}
           inboxEnvelopes={inboxEnvelopes}
           peerNames={peerNames}
           dismissInboxEnvelope={dismissInboxEnvelope}

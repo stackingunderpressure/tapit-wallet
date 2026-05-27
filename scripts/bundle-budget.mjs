@@ -146,7 +146,13 @@ const BUDGETS = [
   // gz to this chunk; the same primitive is reused on the Settings
   // OrgRulesEditor + Officials editor + CosignRequestModal eligible-
   // signer surfaces with no additional cost to HomeScreen.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 19_700, label: 'HomeScreen' },
+  // 2026-05-27 PeopleTree first-version (operator's mycelium-tree
+  // vision) bumped 19.7KB -> 20.0KB to absorb the holdings +
+  // myDisplayName pass-through props on PeopleTabBody — the tree
+  // component itself is React.lazy and ships in its own chunk
+  // (~1.7KB gz, PeopleTree-prefix), so only the prop wiring +
+  // PeopleTabBody view-toggle state lands statically here.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 20_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
