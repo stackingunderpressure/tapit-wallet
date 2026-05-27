@@ -3,7 +3,7 @@ import type {
   Attestation,
   DisclosureProofBundle,
 } from 'tapit-attest';
-import { canonicalEnvelope, disclosureProof } from 'tapit-attest';
+import { canonicalEnvelope, disclosureProof, envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import { QrShow } from '../qr/QrShow.tsx';
@@ -166,7 +166,7 @@ function describeHandshakePeer(handshake: Attestation, joinerId: string): string
 }
 
 export function JoinOrgModal({ onClose }: Props) {
-  const { wallet, identity, holdings, prefs, sendEnvelope } = useWallet();
+  const { wallet, identity, holdings, prefs, sendEnvelope, save } = useWallet();
   const [step, setStep] = useState<Step>('find');
   const [scanning, setScanning] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -217,6 +217,37 @@ export function JoinOrgModal({ onClose }: Props) {
     return [];
   }, [joinRule, holdings, identity]);
 
+  // Live view of the self-membership: the freshly-signed envelope as
+  // soon as the joiner signs it, then any later signature-merged
+  // version held in walletStore once a vouching peer's cosignature
+  // comes back through AbsorbCosignModal. The QR + Mycelium send
+  // surfaces use this so the cosigned bundle (not the original 1-sig
+  // envelope) ships to the org once enough vouches accumulate.
+  const liveSelfMembership = useMemo<Attestation | null>(() => {
+    if (!selfMembership) return null;
+    const id = envelopeId(selfMembership);
+    const fromHoldings = holdings.find((a) => envelopeId(a) === id);
+    return fromHoldings ?? selfMembership;
+  }, [selfMembership, holdings]);
+
+  // For requires_vouch: how many cosignatures the joiner has collected
+  // so far (signatures minus the joiner's own) against the policy
+  // threshold. The progress chip on the send step renders against this
+  // and the cosigned envelope absorbed into holdings flows through
+  // liveSelfMembership above.
+  const vouchProgress = useMemo<{
+    collected: number;
+    required: number;
+    ready: boolean;
+  } | null>(() => {
+    if (!liveSelfMembership || joinRule?.policy.kind !== 'requires_vouch') {
+      return null;
+    }
+    const collected = Math.max(0, liveSelfMembership.signatures.length - 1);
+    const required = joinRule.policy.from_any_member_count;
+    return { collected, required, ready: collected >= required };
+  }, [liveSelfMembership, joinRule]);
+
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
   }
@@ -251,10 +282,12 @@ export function JoinOrgModal({ onClose }: Props) {
   }
 
   // Construct the self-membership envelope (with proof leaves if the
-  // policy requires them) and sign with the joiner's wallet. Pure
-  // local — no network and no IndexedDB touch yet; the operator
-  // shares the signed envelope via QR or Mycelium from the send step.
-  function signAndProceed() {
+  // policy requires them) and sign with the joiner's wallet. For the
+  // requires_vouch policy the signed envelope is also held in the
+  // joiner's wallet so AbsorbCosignModal can locate it by envelopeId
+  // when a vouching peer's cosigned return-envelope arrives — the
+  // merge path needs an existing copy to absorb signatures into.
+  async function signAndProceed() {
     setError(null);
     if (!identity || !orgDecl || !joinRule) {
       setError('Missing identity or org declaration.');
@@ -287,6 +320,10 @@ export function JoinOrgModal({ onClose }: Props) {
       }
       const draft = buildSelfMembershipDraft(identity, orgId, orgName, proofs);
       const signed = wallet.sign(draft);
+      if (joinRule.policy.kind === 'requires_vouch') {
+        await wallet.hold(signed);
+        await save();
+      }
       setSelfMembership(signed);
       setStep('send');
     } catch (err) {
@@ -295,12 +332,12 @@ export function JoinOrgModal({ onClose }: Props) {
   }
 
   async function sendViaMycelium() {
-    if (!selfMembership || !orgDecl) return;
+    if (!liveSelfMembership || !orgDecl) return;
     setError(null);
     setSendStatus(null);
     setSending(true);
     try {
-      const result = await sendEnvelope(orgDecl.subject, selfMembership);
+      const result = await sendEnvelope(orgDecl.subject, liveSelfMembership);
       const status = summarizePublish(result);
       setSendStatus(status);
       if (status.tone !== 'fail') {
@@ -395,8 +432,7 @@ export function JoinOrgModal({ onClose }: Props) {
                     type="button"
                     onClick={() => {
                       if (policyNeedsProof) setStep('proof');
-                      else if (joinRule.policy.kind === 'requires_vouch') signAndProceed();
-                      else signAndProceed();
+                      else void signAndProceed();
                     }}
                     className={primaryBtn}
                   >
@@ -461,7 +497,7 @@ export function JoinOrgModal({ onClose }: Props) {
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={signAndProceed}
+                onClick={() => void signAndProceed()}
                 disabled={!selectedProof}
                 className={primaryBtn}
               >
@@ -478,7 +514,7 @@ export function JoinOrgModal({ onClose }: Props) {
           </>
         )}
 
-        {step === 'send' && selfMembership && orgDecl && joinRule && (
+        {step === 'send' && liveSelfMembership && orgDecl && joinRule && (
           <>
             <div className={`mt-2 ${eyebrow}`}>
               Step {policyNeedsProof ? 4 : 3} of {policyNeedsProof ? 4 : 3}
@@ -488,28 +524,45 @@ export function JoinOrgModal({ onClose }: Props) {
               can accept you into its roster. Show the QR if the org is
               in the room, or send via Mycelium if you have it on.
             </p>
-            <QrShow text={canonicalEnvelope(selfMembership)} label="Join envelope" />
-            {joinRule.policy.kind === 'requires_vouch' && (
-              <div className={`${ACCENT_BLOCK} border-amber-400/40 bg-amber-50`}>
-                <div className="text-xs font-medium text-amber-900">
-                  Cosignatures still needed
+            <QrShow text={canonicalEnvelope(liveSelfMembership)} label="Join envelope" />
+            {joinRule.policy.kind === 'requires_vouch' && vouchProgress && (
+              <div
+                className={`${ACCENT_BLOCK} ${
+                  vouchProgress.ready
+                    ? 'border-emerald-400/40 bg-emerald-50'
+                    : 'border-amber-400/40 bg-amber-50'
+                }`}
+              >
+                <div
+                  className={`text-xs font-medium ${
+                    vouchProgress.ready ? 'text-emerald-900' : 'text-amber-900'
+                  }`}
+                >
+                  {vouchProgress.ready
+                    ? `Ready — ${vouchProgress.collected} of ${vouchProgress.required} vouches collected`
+                    : `${vouchProgress.collected} of ${vouchProgress.required} vouches collected`}
                 </div>
-                <p className="mt-1 text-xs text-amber-900/80">
-                  This policy requires {joinRule.policy.from_any_member_count}{' '}
-                  cosignature{joinRule.policy.from_any_member_count === 1 ? '' : 's'}{' '}
-                  from existing members. The org will reject this envelope
-                  until you collect enough vouches. Use the button below to
-                  fan the signed envelope out to peers you think might be
-                  members; absorb each returned cosigned envelope back into
-                  your holdings, then send the fully cosigned version to
-                  the org.
+                <p
+                  className={`mt-1 text-xs ${
+                    vouchProgress.ready
+                      ? 'text-emerald-900/80'
+                      : 'text-amber-900/80'
+                  }`}
+                >
+                  {vouchProgress.ready
+                    ? 'The org will accept this envelope. Send it now via QR or Mycelium below.'
+                    : `This policy needs cosignatures from ${vouchProgress.required} existing member${vouchProgress.required === 1 ? '' : 's'} before the org will accept. Fan the signed envelope out to peers you think might be members; each absorbed return appears here as a new vouch.`}
                 </p>
                 <button
                   type="button"
                   onClick={() => setCosignOpen(true)}
-                  className="mt-2 w-full rounded-md bg-amber-900 py-2 text-paper text-sm font-medium"
+                  className={`mt-2 w-full rounded-md py-2 text-paper text-sm font-medium ${
+                    vouchProgress.ready ? 'bg-emerald-900' : 'bg-amber-900'
+                  }`}
                 >
-                  Collect vouch cosignatures
+                  {vouchProgress.ready
+                    ? 'Collect another vouch'
+                    : 'Collect vouch cosignatures'}
                 </button>
               </div>
             )}
@@ -595,12 +648,12 @@ export function JoinOrgModal({ onClose }: Props) {
         />
       )}
       {cosignOpen &&
-        selfMembership &&
+        liveSelfMembership &&
         orgDecl &&
         joinRule?.policy.kind === 'requires_vouch' && (
           <Suspense fallback={null}>
             <CosignRequestModal
-              attestation={selfMembership}
+              attestation={liveSelfMembership}
               orgContext={{
                 kind: 'org_vouch',
                 orgName:

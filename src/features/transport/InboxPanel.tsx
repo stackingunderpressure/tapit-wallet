@@ -99,10 +99,10 @@ interface RowProps {
 }
 
 function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
-  const { resolvedTheme } = useWallet();
+  const { resolvedTheme, identity } = useWallet();
   const isFresh = resolvedTheme === 'fresh';
   const [copied, setCopied] = useState(false);
-  const route = routeFor(item.envelope);
+  const route = routeFor(item.envelope, identity?.subject);
 
   async function onCopy() {
     try {

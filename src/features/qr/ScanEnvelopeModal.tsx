@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import { routeFor, type InboxRouteAction } from '../transport/envelopeRoute.ts';
+import { useWallet } from '../wallet-core/useWallet.ts';
 
 const QrScanModal = lazy(() =>
   import('./QrScanModal.tsx').then((m) => ({ default: m.QrScanModal })),
@@ -39,6 +40,7 @@ interface Props {
 // well-formed envelope, no signatures on the envelope, no routing
 // available for this envelope's kind.
 export function ScanEnvelopeModal({ onScannedRoute, onClose }: Props) {
+  const { identity } = useWallet();
   const [error, setError] = useState<string | null>(null);
 
   function handleScan(text: string) {
@@ -59,7 +61,7 @@ export function ScanEnvelopeModal({ onScannedRoute, onClose }: Props) {
       setError('Scanned envelope has no first signer.');
       return;
     }
-    const route = routeFor(envelope);
+    const route = routeFor(envelope, identity?.subject);
     if (!route) {
       setError(
         `Scanned a ${envelope.kind} envelope but the wallet does not auto-route this kind yet. Use Copy/Paste in the inbox instead.`,

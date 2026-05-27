@@ -92,4 +92,56 @@ describe('routeFor — Phase E2 self-membership routing', () => {
     const route = routeFor(signed);
     expect(route!.action).toBe('cosign-witness');
   });
+
+  // A cosigned self-membership arrives back at the joiner — the vouch
+  // collection loop's return leg. routeFor needs the receiver's pubkey
+  // to recognize that the envelope subject (the joiner) is the same
+  // wallet receiving it, and route to absorb-cosign instead of the
+  // org-side accept path. Without receiver context, every self-
+  // membership pre-this-cut routed to self-membership-receive, which
+  // silently warned-and-returned on the joiner's non-org wallet and
+  // left the cosig unmerged.
+  it('routes a peer-cosigned self-membership back to absorb-cosign for the joiner', () => {
+    const joiner = Wallet.generate();
+    const voucher = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org');
+    const joinerSigned = joiner.sign(draft);
+    const cosigned = voucher.sign(joinerSigned);
+
+    const route = routeFor(cosigned, joiner.identity);
+    expect(route!.action).toBe('absorb-cosign');
+    expect(route!.label).toBe('Absorb vouch');
+  });
+
+  // Same envelope, no receiver context — falls back to the org-side
+  // route. This is the back-compat path for callers that have not yet
+  // been wired to pass receiverPubkey.
+  it('falls back to self-membership-receive when no receiver context is provided', () => {
+    const joiner = Wallet.generate();
+    const voucher = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org');
+    const joinerSigned = joiner.sign(draft);
+    const cosigned = voucher.sign(joinerSigned);
+
+    const route = routeFor(cosigned);
+    expect(route!.action).toBe('self-membership-receive');
+  });
+
+  // Cosigned envelope arrives at the org (receiver != joiner) — the
+  // final delivery leg. Routes to self-membership-receive so the org
+  // acceptor runs the join-policy gate.
+  it('routes a cosigned self-membership to self-membership-receive when the receiver is not the joiner', () => {
+    const joiner = Wallet.generate();
+    const voucher = Wallet.generate();
+    const org = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(joinerIdent, 'org-id', 'Org');
+    const joinerSigned = joiner.sign(draft);
+    const cosigned = voucher.sign(joinerSigned);
+
+    const route = routeFor(cosigned, org.identity);
+    expect(route!.action).toBe('self-membership-receive');
+  });
 });

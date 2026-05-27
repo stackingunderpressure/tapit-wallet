@@ -15,6 +15,17 @@ import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
 // QR code from a peer next door, and the wallet routes it through the
 // same modal in either case. The transport choice is the operator's
 // (or the peer's) — the routing decision is the envelope's shape.
+//
+// Most envelope kinds route from shape alone; self-membership is the
+// one shape that needs receiver context to disambiguate. A self-
+// membership envelope flows: joiner signs → joiner sends to a vouching
+// peer → peer cosigns and returns → joiner absorbs → joiner sends the
+// cosigned bundle to the org → org accepts. The receiver at each
+// arrival is different (peer, joiner, org), and the right action
+// differs by receiver. Passing receiverPubkey lets the joiner-side
+// loop-back arrival route to absorb-cosign (merge the new cosig into
+// the held copy) instead of self-membership-receive (which is the
+// org-side accept path and would silently no-op on a non-org wallet).
 
 export type InboxRouteAction =
   | 'cosign-witness'
@@ -32,7 +43,10 @@ export interface EnvelopeRoute {
   hint: string;
 }
 
-export function routeFor(att: Attestation): EnvelopeRoute | null {
+export function routeFor(
+  att: Attestation,
+  receiverPubkey?: string,
+): EnvelopeRoute | null {
   if (isHandshake(att)) {
     if (att.signatures.length <= 1) {
       return {
@@ -55,6 +69,22 @@ export function routeFor(att: Attestation): EnvelopeRoute | null {
     };
   }
   if (isSelfMembership(att)) {
+    // Loop-back: receiver IS the joiner (envelope subject) and the
+    // envelope already carries a vouching peer's cosignature in
+    // addition to the joiner's own. Route to absorb-cosign so the
+    // joiner's held copy gets the new signature merged in.
+    if (
+      receiverPubkey &&
+      att.signatures.length > 1 &&
+      att.subject.trim().toLowerCase() ===
+        receiverPubkey.trim().toLowerCase()
+    ) {
+      return {
+        action: 'absorb-cosign',
+        label: 'Absorb vouch',
+        hint: 'A vouch you collected — merge it into your join envelope.',
+      };
+    }
     return {
       action: 'self-membership-receive',
       label: 'Accept join request',
