@@ -73,6 +73,20 @@ export interface WalletContextValue {
    */
   unholdEnvelope: (envelopeId: string) => Promise<void>;
   /**
+   * Compound peer-removal: drop the handshake envelope from holdings
+   * AND clear the chat thread with that peer in one atomic operation
+   * with a single save+refresh. The chat-thread clear is keyed on the
+   * peer pubkey (case-insensitive); the IDB-persistence debounce
+   * picks up the shrunken Map and writes the smaller blob automatically.
+   * Used by the operator-facing "Remove this person" affordance inside
+   * PeerThread. Local-only — the handshake envelope still exists for
+   * the peer who holds their copy; only this wallet's view changes.
+   */
+  removePeerConnection: (
+    handshakeEnvelopeId: string,
+    peerPubkey: string,
+  ) => Promise<void>;
+  /**
    * The currently-painted theme — 'classic' or 'fresh' — after
    * resolving the operator's prefs.theme choice (which can be
    * 'system') against the device's prefers-color-scheme. Read this

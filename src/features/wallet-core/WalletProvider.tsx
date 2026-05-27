@@ -636,6 +636,37 @@ export function WalletProvider({ children }: Props) {
     [phase, save, refresh],
   );
 
+  // Compound peer-removal: drop the handshake envelope and clear the
+  // chat thread with that peer in one go, then save+refresh once. The
+  // chat-thread clear is keyed on the peer pubkey (case-insensitive),
+  // not the envelope id, because thread state is per-peer rather than
+  // per-handshake. The useChatPersistence debounce picks up the
+  // shrunken Map and writes the smaller blob to IDB automatically.
+  const removePeerConnection = useCallback(
+    async (handshakeEnvelopeId: string, peerPubkey: string) => {
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        throw new Error('wallet must be unlocked to remove a peer');
+      }
+      await phase.wallet.unhold(handshakeEnvelopeId);
+      setChatThreadsByPeer((prev) => {
+        const lower = peerPubkey.toLowerCase();
+        let dropped = false;
+        const next = new Map<string, readonly ThreadMessage[]>();
+        for (const [k, v] of prev) {
+          if (k.toLowerCase() === lower) {
+            dropped = true;
+            continue;
+          }
+          next.set(k, v);
+        }
+        return dropped ? next : prev;
+      });
+      await save();
+      await refresh();
+    },
+    [phase, save, refresh],
+  );
+
   useEffect(() => {
     if (!session.session) setPassphrase(null);
   }, [session.session]);
@@ -686,6 +717,7 @@ export function WalletProvider({ children }: Props) {
       updatePrefs,
       refresh,
       unholdEnvelope,
+      removePeerConnection,
       resolvedTheme,
       chatThreadsByPeer,
       sendChatMessage,
@@ -699,6 +731,7 @@ export function WalletProvider({ children }: Props) {
     updatePrefs,
     refresh,
     unholdEnvelope,
+    removePeerConnection,
     anchorWorker,
     passphrase,
     inboxEnvelopes,

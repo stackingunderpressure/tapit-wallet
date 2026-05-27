@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { readHandshake } from '../connections/createHandshake.ts';
 import { MessageBubble } from './MessageBubble.tsx';
@@ -37,7 +38,7 @@ interface Props {
 // add the plus-menu and long-press promote-to-envelope; Cut 4
 // will refactor the in-memory state to IDB-paged persistence.
 export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote }: Props) {
-  const { resolvedTheme, chatThreadsByPeer, sendChatMessage } = useWallet();
+  const { resolvedTheme, chatThreadsByPeer, sendChatMessage, removePeerConnection } = useWallet();
   const isFresh = resolvedTheme === 'fresh';
   const messages = useMemo(
     () => chatThreadsByPeer.get(peerPubkey) ?? [],
@@ -45,6 +46,21 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
   );
   const scrollRef = useRef<HTMLDivElement>(null);
   const [promoteSource, setPromoteSource] = useState<string | null>(null);
+  const [removeConfirming, setRemoveConfirming] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  async function handleRemove() {
+    setRemoveError(null);
+    setRemoving(true);
+    try {
+      await removePeerConnection(envelopeId(handshake), peerPubkey);
+      onBack();
+    } catch (err) {
+      setRemoveError(err instanceof Error ? err.message : 'remove failed');
+      setRemoving(false);
+    }
+  }
 
   // Auto-scroll to bottom on new message arrival. The smooth
   // behaviour is intentional — the operator should see the new
@@ -145,7 +161,47 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
             </span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setRemoveConfirming(true)}
+          aria-label="Remove this person"
+          className="shrink-0 text-xs text-red-600 hover:underline"
+        >
+          Remove
+        </button>
       </div>
+      {removeConfirming && (
+        <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-xs">
+          <p className="text-red-900">
+            Remove <span className="font-semibold">{peerName || 'this person'}</span> from this wallet?
+            Their handshake leaves your holdings (they keep their copy), and the chat history with them
+            on this device is cleared. The peer's wallet is untouched.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void handleRemove()}
+              disabled={removing}
+              className="flex-1 rounded-md bg-red-600 py-2 text-paper text-sm font-medium disabled:opacity-60"
+            >
+              {removing ? 'Removing…' : 'Yes, remove'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setRemoveConfirming(false)}
+              disabled={removing}
+              className="rounded-md border border-ink/15 bg-white px-4 py-2 text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+          {removeError && (
+            <p className="mt-2 text-xs text-red-700" role="alert">
+              {removeError}
+            </p>
+          )}
+        </div>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3" style={{ maxHeight: '60vh' }}>
         {messages.length === 0 ? (
           <div className={`text-center text-xs ${dividerClass}`}>
