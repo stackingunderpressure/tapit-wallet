@@ -541,3 +541,51 @@ Phase 5c-adjacent; not part of the 5c-i transport cut itself.
 Feature: auth
 Stage: raw.
 ```
+
+```
+Date: 2026-05-27
+Section: ideas
+Entry: Mycelium-tree visualization. A visual canvas that renders
+the operator's relationships and organizations as a connected tree
+of identicon nodes — the IdentityChip primitive becomes the node,
+handshakes are edges between people, memberships are edges from
+person to org, the org-chain walker traces edges from org up to
+parent org. Family forms its own visible cluster (the relationship-
+leaf 'family' / 'spouse' / 'child' / 'parent' / 'sibling' already
+classifies handshake edges into the family subset, per
+isFamilyRelationship in createHandshake.ts). Organizations are
+their own cluster type. As the tree grows, branches condense and
+collapse — the operator's whole family collapses to one node when
+they zoom out to see "my church", the whole church collapses to
+one node when they zoom out to see "my town". Categories emerge
+as natural groupings: family, friend, coworker, acquaintance,
+other (already the five values on the relationship leaf), and
+org-membership as its own dimension. The substrate is whole —
+handshakes are graph edges in holdings, memberships are tree
+edges in holdings, walkOrgChain already walks org → parent → ...,
+and IdentityChip already renders a person as an identicon node.
+What is missing is the layout + interaction layer: how to position
+nodes deterministically (radial? force-directed? tree-layout?),
+how to render edges (SVG lines? Canvas?), how to collapse/expand
+groups, how to handle the zoom-out condensation.
+Context: Operator 2026-05-27, surfaced right after the IdentityChip
+peek-through rollout (sessions 2026-05-27-0430 and 2026-05-27-0455).
+The operator's voice: "I've always pictured a [mycelium / macro]
+tree of your map like your family your organization and then you're
+already as they build you... I like the idea of a visual of a
+miracle [mycelium] tree for the people in their icons." Connects
+thematically to the project's MYCELIUM doctrine — the mycelium
+network IS the substrate being visualized; the operator is asking
+to see the underground network rendered above ground. Natural
+starting cut: a static SVG render of the operator's immediate
+handshake-radius (1-hop) with collapsible org branches and no
+force layout, just deterministic radial positioning. Expand outward
+as the operator engages with each ring. Library options: pure SVG
++ d3-hierarchy (lightweight, no animation overhead), react-force-
+graph (force layout but heavier bundle), or custom Canvas (most
+control, most work).
+Feature: connections
+Stage: raw insight — substrate is whole, layout/interaction layer
+is the missing piece, no scope authorized yet.
+```
+
