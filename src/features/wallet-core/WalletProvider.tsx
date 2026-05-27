@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
 import type { RelayStatus, Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
-import { summarizePublish } from '../transport/publishStatus.ts';
 import { createInboxEnvelopeHandler } from './inboxEnvelopeHandler.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
@@ -37,9 +36,8 @@ import { applyOnboardingBundle } from '../onboarding/applyOnboardingBundle.ts';
 // the operator opts into the Mycelium network. Type-only import here
 // is free.
 import type { WalletConnection } from '../transport/connectWallet.ts';
-import type { InboxChatMessage, InboxEnvelope } from '../transport/encryptedInbox.ts';
-import type { ThreadMessage } from '../messaging/threadMessage.ts';
-import { useChatPersistence } from '../messaging/useChatPersistence.ts';
+import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
+import { useChatTransport } from '../messaging/useChatTransport.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -79,28 +77,19 @@ export function WalletProvider({ children }: Props) {
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
-  // Per-peer chat threads (sub-cut 2b). In-memory only this cut;
-  // Cut 4 will refactor to IDB-paged via messagesStore. Stored as a
-  // Map so React state-update creates a new Map reference; per-peer
-  // entries are immutable arrays the messaging components consume.
-  const [chatThreadsByPeer, setChatThreadsByPeer] = useState<
-    ReadonlyMap<string, readonly ThreadMessage[]>
-  >(() => new Map());
   // Mycelium transport relay-status snapshot. Null when the operator
   // has not opted into the network — UI uses this to hide the live
   // indicator entirely for non-Mycelium users. Subscribed from the
   // transport effect below; reset to null on tear-down.
   const [relayStatus, setRelayStatus] = useState<readonly RelayStatus[] | null>(null);
-  // Holds the live transport so sendEnvelope can reach it from outside
-  // the effect. Cleared on lock/disable; never observable when the
-  // Mycelium preference is off.
-  const transportRef = useRef<Transport | null>(null);
+  // Live Mycelium transport. Null when locked, signed out, or opted
+  // out. Lifted to state (not a ref) so useChatTransport can react
+  // to availability — the chat hook subscribes when this becomes
+  // non-null and tears down when it returns to null.
+  const [transport, setTransport] = useState<Transport | null>(null);
   // Holds the relay-status unsubscribe so the effect cleanup can call
   // it before closing the transport.
   const statusUnsubRef = useRef<(() => void) | null>(null);
-  // Holds the chat-kind subscription handle so the effect cleanup
-  // can close it before tearing down the transport.
-  const chatSubRef = useRef<{ close(): void } | null>(null);
   // Stable content-keyed string for the relay list so the transport
   // effect re-runs when the list content changes (not its reference).
   const relaysKey = useMemo(
@@ -243,6 +232,10 @@ export function WalletProvider({ children }: Props) {
     phase.kind === 'unlocked' || phase.kind === 'needs-identity'
       ? phase.wallet.publicKey
       : '';
+  const activeWallet =
+    phase.kind === 'unlocked' || phase.kind === 'needs-identity'
+      ? phase.wallet
+      : null;
   useEffect(() => {
     if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') return;
     if (!prefs.nostrTransportEnabled) return;
@@ -261,40 +254,14 @@ export function WalletProvider({ children }: Props) {
     void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
       if (cancelled) return;
       conn = connectWallet(wallet, { relays, onEnvelope });
-      transportRef.current = conn.transport;
+      setTransport(conn.transport);
       const unsubStatus = conn.transport.subscribeStatus((statuses) => {
         setRelayStatus(statuses);
       });
       statusUnsubRef.current = unsubStatus;
-      // Sub-cut 2b — chat-kind subscription rides the same transport.
-      // Independent kind filter so chat events do not collide with
-      // envelopes; inbound messages dedupe by Nostr event id.
-      void import('../transport/encryptedInbox.ts').then(({ subscribeChatMessages }) => {
-        if (cancelled || !conn) return;
-        const chatSub = subscribeChatMessages(
-          conn.transport,
-          wallet,
-          (item: InboxChatMessage) => {
-            const incoming: ThreadMessage = {
-              direction: 'in',
-              text: item.payload.text,
-              ts: item.receivedAt,
-              peerPubkey: item.senderPubkey,
-              eventId: item.eventId,
-            };
-            setChatThreadsByPeer((prev) => {
-              const existing = prev.get(item.senderPubkey) ?? [];
-              if (existing.some((m) => m.eventId === item.eventId)) {
-                return prev;
-              }
-              const next = new Map(prev);
-              next.set(item.senderPubkey, [...existing, incoming]);
-              return next;
-            });
-          },
-        );
-        chatSubRef.current = chatSub;
-      });
+      // Chat-kind subscription is owned by useChatTransport (see
+      // src/features/messaging/useChatTransport.ts) — it watches the
+      // `transport` state above and subscribes/teardown automatically.
     });
     return () => {
       cancelled = true;
@@ -302,12 +269,8 @@ export function WalletProvider({ children }: Props) {
         statusUnsubRef.current();
         statusUnsubRef.current = null;
       }
-      if (chatSubRef.current) {
-        chatSubRef.current.close();
-        chatSubRef.current = null;
-      }
       if (conn) conn.close();
-      transportRef.current = null;
+      setTransport(null);
       setInboxEnvelopes([]);
       // chat threads NOT cleared on transport teardown — messagesStore persists.
       setRelayStatus(null);
@@ -330,7 +293,6 @@ export function WalletProvider({ children }: Props) {
 
   const sendEnvelope = useCallback(
     async (recipientPubkey: string, envelope: Attestation) => {
-      const transport = transportRef.current;
       if (!transport) {
         throw new Error(
           'Mycelium network is not connected — enable it in Settings.',
@@ -345,7 +307,7 @@ export function WalletProvider({ children }: Props) {
       const result = await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
       return result.publish;
     },
-    [phase],
+    [phase, transport],
   );
 
   const syncEnvelope = useCallback(
@@ -353,7 +315,6 @@ export function WalletProvider({ children }: Props) {
       // Opportunistic — when Mycelium is off, sync is a no-op and
       // returns null. Callers do not need to gate on this; the cloud-
       // sync via walletStore.save still delivers eventually.
-      const transport = transportRef.current;
       if (!transport) return null;
       if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
         return null;
@@ -364,106 +325,7 @@ export function WalletProvider({ children }: Props) {
       const result = await sendEnvelopeToSelf(transport, envelope, phase.wallet);
       return result.publish;
     },
-    [phase],
-  );
-
-  const sendChatMessage = useCallback(
-    async (recipientPubkey: string, text: string) => {
-      const transport = transportRef.current;
-      if (!transport) {
-        throw new Error(
-          'Mycelium network is not connected — enable it in Settings.',
-        );
-      }
-      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
-        throw new Error('wallet must be unlocked');
-      }
-      const trimmed = text.trim();
-      if (trimmed.length === 0) return {};
-      // Optimistic local append before publish so the composer
-      // clears instantly and the operator sees their message in
-      // the thread. Publish result attaches the event id below.
-      const localTs = Math.floor(Date.now() / 1000);
-      setChatThreadsByPeer((prev) => {
-        const existing = prev.get(recipientPubkey) ?? [];
-        const next = new Map(prev);
-        next.set(recipientPubkey, [
-          ...existing,
-          { direction: 'out', text: trimmed, ts: localTs, peerPubkey: recipientPubkey },
-        ]);
-        return next;
-      });
-      const { sendChatMessageTo } = await import(
-        '../transport/encryptedInbox.ts'
-      );
-      const result = await sendChatMessageTo(
-        transport,
-        { text: trimmed },
-        recipientPubkey,
-        phase.wallet,
-        { created_at: localTs },
-      );
-      // Inspect publish outcome. Transport.publish does NOT reject on
-      // relay failure — the caller has to read PublishResult to know
-      // whether the event actually went out. Without this check the
-      // operator's optimistic local append made them THINK the
-      // message sent while every relay silently rejected — the bug
-      // they reported as "messages are still not sending properly.
-      // The other person is not receiving the message either way."
-      // 'fail' = every relay rejected AND none are still pending →
-      // the message is not going anywhere; surface the failure and
-      // rip the optimistic record out so the operator's thread
-      // honestly reflects what happened. 'pending' / 'ok' both
-      // attach the eventId and let the operator keep the optimistic
-      // record; pending messages may still land via slow relays.
-      const summary = summarizePublish(result.publish);
-      if (summary.tone === 'fail') {
-        setChatThreadsByPeer((prev) => {
-          const existing = prev.get(recipientPubkey) ?? [];
-          const filtered = existing.filter(
-            (m) =>
-              !(
-                m.direction === 'out' &&
-                m.ts === localTs &&
-                m.text === trimmed &&
-                !m.eventId
-              ),
-          );
-          const next = new Map(prev);
-          next.set(recipientPubkey, filtered);
-          return next;
-        });
-        throw new Error(summary.detail);
-      }
-      // Attach the event id to the optimistic record so subsequent
-      // re-arrivals from relay history dedupe correctly. Match by
-      // ts + text + direction since the optimistic record had no id.
-      const eventId = result.event.id;
-      setChatThreadsByPeer((prev) => {
-        const existing = prev.get(recipientPubkey) ?? [];
-        const updated = existing.map((m) =>
-          m.direction === 'out' &&
-          m.ts === localTs &&
-          m.text === trimmed &&
-          !m.eventId
-            ? { ...m, eventId }
-            : m,
-        );
-        const next = new Map(prev);
-        next.set(recipientPubkey, updated);
-        return next;
-      });
-      // 'pending' = at least one relay still might land it, but no
-      // acks before timeout. Surface a soft warning so the operator
-      // sees the message is in-flight rather than confirmed-sent.
-      // Operator chip-decision 2026-05-25: amber non-blocking
-      // signal distinct from the red 'fail' path.
-      if (summary.tone === 'pending') {
-        return { warning: summary.detail };
-      }
-      return {};
-    },
-    [phase],
+    [phase, transport],
   );
 
   // Attach confirmed anchors back onto held attestations and persist
@@ -636,6 +498,13 @@ export function WalletProvider({ children }: Props) {
     [phase, save, refresh],
   );
 
+  const { chatThreadsByPeer, sendChatMessage, purgePeerThread } = useChatTransport({
+    transport,
+    wallet: activeWallet,
+    ownerId: ownerId ?? null,
+    passphrase,
+  });
+
   // Compound peer-removal: drop the handshake envelope and clear the
   // chat thread with that peer in one go, then save+refresh once. The
   // chat-thread clear is keyed on the peer pubkey (case-insensitive),
@@ -648,23 +517,11 @@ export function WalletProvider({ children }: Props) {
         throw new Error('wallet must be unlocked to remove a peer');
       }
       await phase.wallet.unhold(handshakeEnvelopeId);
-      setChatThreadsByPeer((prev) => {
-        const lower = peerPubkey.toLowerCase();
-        let dropped = false;
-        const next = new Map<string, readonly ThreadMessage[]>();
-        for (const [k, v] of prev) {
-          if (k.toLowerCase() === lower) {
-            dropped = true;
-            continue;
-          }
-          next.set(k, v);
-        }
-        return dropped ? next : prev;
-      });
+      purgePeerThread(peerPubkey);
       await save();
       await refresh();
     },
-    [phase, save, refresh],
+    [phase, save, refresh, purgePeerThread],
   );
 
   useEffect(() => {
@@ -695,7 +552,6 @@ export function WalletProvider({ children }: Props) {
   // Resolved value is threaded through WalletContext so Fresh-aware
   // components can gate their rendering without re-running effects.
   const resolvedTheme = useTheme(prefs.theme);
-  useChatPersistence(ownerId ?? null, passphrase, chatThreadsByPeer, setChatThreadsByPeer);
 
   const value = useMemo<WalletContextValue | null>(() => {
     if (phase.kind !== 'unlocked') return null;
