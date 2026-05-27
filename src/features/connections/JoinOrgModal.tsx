@@ -151,19 +151,25 @@ function findHandshakeProofCandidates(
   });
 }
 
-// Compact pubkey/name renderer used for proof-candidate buttons. Uses
-// peer name when an identity attestation in holdings names the pubkey;
-// falls back to truncated hex otherwise.
-function describeHandshakePeer(handshake: Attestation, joinerId: string): string {
+// Resolve the peer side of a handshake — return both the pubkey and the
+// signed-leaf name so callers can render an IdentityChip without
+// duplicating the leaf-walking logic. The joiner is whichever side is
+// the local wallet's identity; the "peer" is the other side. Used by
+// the proof-candidate button rendering to show whose handshake the
+// joiner is about to disclose as proof.
+function peerOfHandshake(
+  handshake: Attestation,
+  joinerId: string,
+): { pubkey: string; name: string } {
   const initiator = leafValue(handshake, 'initiator_id');
   const initiatorName = leafValue(handshake, 'initiator_name');
   const responder = leafValue(handshake, 'responder_id');
   const responderName = leafValue(handshake, 'responder_name');
   const joinerLower = joinerId.trim().toLowerCase();
   if (initiator.trim().toLowerCase() === joinerLower) {
-    return responderName || `${responder.slice(0, 8)}…${responder.slice(-4)}`;
+    return { pubkey: responder, name: responderName };
   }
-  return initiatorName || `${initiator.slice(0, 8)}…${initiator.slice(-4)}`;
+  return { pubkey: initiator, name: initiatorName };
 }
 
 export function JoinOrgModal({ onClose }: Props) {
@@ -464,19 +470,19 @@ export function JoinOrgModal({ onClose }: Props) {
               <ul className="mt-3 space-y-2">
                 {proofCandidates.map((a, i) => {
                   const selected = selectedProof === a;
-                  let label = '';
-                  let when = '';
-                  if (joinRule.policy.kind === 'requires_handshake' && identity) {
-                    label = `Handshake with ${describeHandshakePeer(a, identity.subject)}`;
-                    when = leafValue(a, 'handshake_at') || a.issuedAt;
-                  } else {
-                    const credType = leafValue(a, 'credential_type');
-                    const orgName = leafValue(a, 'org_name');
-                    label = orgName
-                      ? `${credType} — ${orgName}`
-                      : credType || 'Credential';
-                    when = leafValue(a, 'issued_at') || a.issuedAt;
-                  }
+                  const isHandshakeKind =
+                    joinRule.policy.kind === 'requires_handshake' && identity;
+                  const peer = isHandshakeKind
+                    ? peerOfHandshake(a, identity.subject)
+                    : null;
+                  const credType = leafValue(a, 'credential_type');
+                  const orgName = leafValue(a, 'org_name');
+                  const credLabel = orgName
+                    ? `${credType} — ${orgName}`
+                    : credType || 'Credential';
+                  const when = isHandshakeKind
+                    ? leafValue(a, 'handshake_at') || a.issuedAt
+                    : leafValue(a, 'issued_at') || a.issuedAt;
                   return (
                     <li key={i}>
                       <button
@@ -488,7 +494,22 @@ export function JoinOrgModal({ onClose }: Props) {
                             : 'border-ink/15 bg-white hover:bg-ink/5'
                         }`}
                       >
-                        <div className="text-sm font-medium">{label}</div>
+                        {peer ? (
+                          <>
+                            <div className="text-[10px] uppercase tracking-wide text-muted">
+                              Handshake with
+                            </div>
+                            <div className="mt-1">
+                              <IdentityChip
+                                pubkey={peer.pubkey}
+                                name={peer.name}
+                                size="md"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-sm font-medium">{credLabel}</div>
+                        )}
                         <div className="mt-1 text-xs text-muted">{when}</div>
                       </button>
                     </li>

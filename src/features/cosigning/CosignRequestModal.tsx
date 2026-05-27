@@ -76,6 +76,7 @@ export function CosignRequestModal({
   const { wallet, holdings, prefs, sendEnvelope } = useWallet();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showEnvelope, setShowEnvelope] = useState(false);
   const [recipient, setRecipient] = useState(prefillRecipient ?? '');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -222,20 +223,31 @@ export function CosignRequestModal({
           paste it into <span className="font-medium">Sign someone else's entry</span> on
           their wallet, confirm, and send the signed version back to you.
         </p>
-        <textarea
-          readOnly
-          value={json}
-          rows={8}
-          className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
-        />
-        <button
-          type="button"
-          onClick={() => setShowQr((v) => !v)}
-          className="mt-2 text-xs text-accent hover:underline"
-        >
-          {showQr ? 'Hide QR' : 'Show as QR code'}
-        </button>
+        <div className="mt-3 flex gap-3 text-xs">
+          <button
+            type="button"
+            onClick={() => setShowQr((v) => !v)}
+            className="text-accent hover:underline"
+          >
+            {showQr ? 'Hide QR' : 'Show as QR code'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowEnvelope((v) => !v)}
+            className="text-accent hover:underline"
+          >
+            {showEnvelope ? 'Hide envelope code' : 'Show envelope code'}
+          </button>
+        </div>
         {showQr && <QrShow text={json} label="Co-sign request" />}
+        {showEnvelope && (
+          <textarea
+            readOnly
+            value={json}
+            rows={8}
+            className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
+          />
+        )}
 
         {prefs.nostrTransportEnabled && (
           <div className="mt-4 rounded-md bg-accent/5 border border-accent/30 p-3">

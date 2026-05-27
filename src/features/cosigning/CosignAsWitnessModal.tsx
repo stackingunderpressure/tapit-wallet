@@ -63,6 +63,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showEnvelope, setShowEnvelope] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -225,21 +226,32 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
               they will paste it into <span className="font-medium">Add a co-signer's signature</span> on
               their wallet.
             </p>
-            <textarea
-              readOnly
-              value={canonicalEnvelope(step.signed)}
-              rows={8}
-              className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
-            />
-            <button
-              type="button"
-              onClick={() => setShowQr((v) => !v)}
-              className="mt-2 text-xs text-accent hover:underline"
-            >
-              {showQr ? 'Hide QR' : 'Show as QR code'}
-            </button>
+            <div className="mt-3 flex gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => setShowQr((v) => !v)}
+                className="text-accent hover:underline"
+              >
+                {showQr ? 'Hide QR' : 'Show as QR code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEnvelope((v) => !v)}
+                className="text-accent hover:underline"
+              >
+                {showEnvelope ? 'Hide envelope code' : 'Show envelope code'}
+              </button>
+            </div>
             {showQr && (
               <QrShow text={canonicalEnvelope(step.signed)} label="Signed envelope" />
+            )}
+            {showEnvelope && (
+              <textarea
+                readOnly
+                value={canonicalEnvelope(step.signed)}
+                rows={8}
+                className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
+              />
             )}
             {incomingSender && (
               <>

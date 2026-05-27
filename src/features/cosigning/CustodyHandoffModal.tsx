@@ -52,6 +52,7 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
   const [step, setStep] = useState<Step>({ kind: 'compose' });
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [showEnvelope, setShowEnvelope] = useState(false);
 
   // Build the pubkey → display-name lookup so the subject-of-the-handoff
   // chip and the contact-picker rows can resolve any pubkey the operator
@@ -261,21 +262,32 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
               absorb via <span className="font-medium">Add a co-signer's
               signature</span>.
             </p>
-            <textarea
-              readOnly
-              value={canonicalEnvelope(step.signed)}
-              rows={8}
-              className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
-            />
-            <button
-              type="button"
-              onClick={() => setShowQr((v) => !v)}
-              className="mt-2 text-xs text-accent hover:underline"
-            >
-              {showQr ? 'Hide QR' : 'Show as QR code'}
-            </button>
+            <div className="mt-3 flex gap-3 text-xs">
+              <button
+                type="button"
+                onClick={() => setShowQr((v) => !v)}
+                className="text-accent hover:underline"
+              >
+                {showQr ? 'Hide QR' : 'Show as QR code'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEnvelope((v) => !v)}
+                className="text-accent hover:underline"
+              >
+                {showEnvelope ? 'Hide envelope code' : 'Show envelope code'}
+              </button>
+            </div>
             {showQr && (
               <QrShow text={canonicalEnvelope(step.signed)} label="Custody handoff" />
+            )}
+            {showEnvelope && (
+              <textarea
+                readOnly
+                value={canonicalEnvelope(step.signed)}
+                rows={8}
+                className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
+              />
             )}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
