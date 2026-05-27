@@ -1,10 +1,16 @@
 import { useState } from 'react';
+import { IdentityChip } from '../connections/IdentityChip.tsx';
 
 interface Props {
   /** The wallet's stable genesis pubkey — what other apps and peers recognize you by. Never changes across rotations. */
   identity: string;
   /** The currently-active signing key. Equals identity until the first rotation; diverges after. */
   activeKey: string;
+  /** The operator's own display name from their identity attestation. Drives the
+   *  IdentityChip's name + initials so the operator sees their own identity as
+   *  a friendly chip rather than a wall of font-mono hex. Falls back to
+   *  'You' when absent. */
+  displayName?: string;
   /** Optional ISO birthday from the identity attestation. Renders as a leaf line when present. */
   birthday?: string;
   /** Optional free-text location from the identity attestation. */
@@ -37,7 +43,7 @@ function formatBirthday(iso: string): string {
 // the signed identity attestation. Phase 5e-vii's rotation UI made
 // this distinction load-bearing because labeling the active key
 // as "Your identity" after a rotation would be semantically wrong.
-export function IdentityCard({ identity, activeKey, birthday, location }: Props) {
+export function IdentityCard({ identity, activeKey, displayName, birthday, location }: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -47,15 +53,19 @@ export function IdentityCard({ identity, activeKey, birthday, location }: Props)
   }
 
   const rotated = identity !== activeKey;
-  const truncatedId = `${identity.slice(0, 8)}…${identity.slice(-8)}`;
-  const truncatedActive = `${activeKey.slice(0, 8)}…${activeKey.slice(-8)}`;
 
   return (
     <div className="rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
       <div className="text-xs uppercase tracking-wide text-muted">
         Your identity
       </div>
-      <div className="mt-2 font-mono text-base">{truncatedId}</div>
+      <div className="mt-2">
+        <IdentityChip
+          pubkey={identity}
+          name={displayName || 'You'}
+          size="lg"
+        />
+      </div>
       <button
         type="button"
         onClick={copy}
@@ -84,8 +94,10 @@ export function IdentityCard({ identity, activeKey, birthday, location }: Props)
           <div className="text-xs uppercase tracking-wide text-muted">
             Currently signing with
           </div>
-          <div className="mt-1 font-mono text-sm">{truncatedActive}</div>
-          <p className="mt-1 text-xs text-muted">
+          <div className="mt-2">
+            <IdentityChip pubkey={activeKey} name={displayName || 'You'} size="md" />
+          </div>
+          <p className="mt-2 text-xs text-muted">
             The succession chain in Settings → Rotate wallet key binds your
             previous key to this one. Verifiers walk it back to your
             identity automatically.

@@ -9,6 +9,7 @@ import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
 import { isHandshake, leafValue } from './createHandshake.ts';
+import { IdentityChip } from './IdentityChip.tsx';
 
 // Lazy-load the cosign request modal — same chunk-sharing pattern
 // MembershipModal and PromoteRouter use so the cosign UI body does
@@ -407,12 +408,13 @@ export function JoinOrgModal({ onClose }: Props) {
         {step === 'review' && orgDecl && (
           <>
             <div className={`mt-2 ${eyebrow}`}>Step 2 of {policyNeedsProof ? 4 : 3}</div>
-            <h3 className="mt-1 text-lg font-semibold">
-              {readOrganizationName(orgDecl) || 'Unnamed organization'}
-            </h3>
-            <p className="mt-1 text-xs text-muted font-mono">
-              {orgDecl.subject.slice(0, 8)}…{orgDecl.subject.slice(-4)}
-            </p>
+            <div className="mt-2">
+              <IdentityChip
+                pubkey={orgDecl.subject}
+                name={readOrganizationName(orgDecl) || 'Unnamed organization'}
+                size="lg"
+              />
+            </div>
             {!joinRule ? (
               <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 This org has not declared a join policy. It does not

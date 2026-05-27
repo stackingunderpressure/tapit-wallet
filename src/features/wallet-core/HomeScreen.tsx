@@ -405,6 +405,7 @@ export function HomeScreen() {
           <IdentityCard
             identity={wallet.identity}
             activeKey={wallet.publicKey}
+            displayName={identity ? displayNameOf(identity) : undefined}
             birthday={identity ? leafValue(identity, 'birthday') || undefined : undefined}
             location={identity ? leafValue(identity, 'location') || undefined : undefined}
           />

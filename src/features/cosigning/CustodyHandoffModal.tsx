@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
@@ -6,6 +6,13 @@ import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { createCustodyHandoff } from './createCustodyHandoff.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
+import { IdentityChip } from '../connections/IdentityChip.tsx';
+import {
+  displayNameOf,
+  isHandshake,
+  peerNamesByPubkey,
+  readHandshake,
+} from '../connections/createHandshake.ts';
 
 interface Props {
   /** Pre-filled from the entry the operator was viewing. */
@@ -16,6 +23,11 @@ interface Props {
 type Step =
   | { kind: 'compose' }
   | { kind: 'signed'; signed: Attestation };
+
+interface ContactOption {
+  pubkey: string;
+  name: string;
+}
 
 // Custody-handoff modal. The current custodian fills in the new
 // custodian's pubkey and an optional note, the wallet builds a
@@ -31,7 +43,7 @@ type Step =
 // from time T1; from time T2, X is custodied by B" is multi-
 // signed and OTS-anchored.
 export function CustodyHandoffModal({ subject, onClose }: Props) {
-  const { wallet, ownerId, passphrase } = useWallet();
+  const { wallet, ownerId, passphrase, holdings, identity } = useWallet();
   const worker = useAnchorWorker();
   const [toKey, setToKey] = useState('');
   const [note, setNote] = useState('');
@@ -40,6 +52,52 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
   const [step, setStep] = useState<Step>({ kind: 'compose' });
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+
+  // Build the pubkey → display-name lookup so the subject-of-the-handoff
+  // chip and the contact-picker rows can resolve any pubkey the operator
+  // has met to a friendly name + identicon. The subject is whatever
+  // attestation is being handed off (often a journal entry's subject —
+  // either the operator themselves or another wallet they recorded
+  // about). The contacts are the operator's handshake-known peers,
+  // surfaced as one-tap rows above the paste input so the operator
+  // never has to copy-paste a 64-char hex string for a person they
+  // already know — same pattern OfficialsEditorModal uses.
+  const namesByPubkey = useMemo(
+    () =>
+      peerNamesByPubkey(
+        holdings,
+        wallet.identity,
+        identity ? displayNameOf(identity) : undefined,
+      ),
+    [holdings, wallet.identity, identity],
+  );
+
+  const contacts = useMemo<ContactOption[]>(() => {
+    const found: ContactOption[] = [];
+    const seen = new Set<string>();
+    for (const a of holdings) {
+      if (!isHandshake(a)) continue;
+      const v = readHandshake(a);
+      const candidates: ContactOption[] = [];
+      if (v.initiatorId && v.initiatorId !== wallet.identity) {
+        candidates.push({ pubkey: v.initiatorId, name: v.initiatorName || '' });
+      }
+      if (v.responderId && v.responderId !== wallet.identity) {
+        candidates.push({ pubkey: v.responderId, name: v.responderName || '' });
+      }
+      for (const c of candidates) {
+        const k = c.pubkey.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        found.push({ pubkey: k, name: c.name });
+      }
+    }
+    return found;
+  }, [holdings, wallet.identity]);
+
+  function pickContact(contact: ContactOption) {
+    setToKey(contact.pubkey);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -106,23 +164,71 @@ export function CustodyHandoffModal({ subject, onClose }: Props) {
         {step.kind === 'compose' ? (
           <form onSubmit={submit}>
             <p className="mt-2 text-sm text-muted">
-              Declare that <span className="font-medium">{subject}</span> is
-              now custodied by another wallet. You sign it; they sign it back
-              via <span className="font-medium">Sign someone else's entry</span>;
+              Declare that the entry below is now custodied by another wallet.
+              You sign it; they sign it back via{' '}
+              <span className="font-medium">Sign someone else's entry</span>;
               the chain shows both of you as custodians at the moment of
               handoff.
             </p>
-            <label className="mt-4 block">
-              <span className="text-sm font-medium">New custodian's pubkey</span>
+            <div className="mt-3 rounded-md border border-ink/10 bg-ink/5 p-3">
+              <div className="text-[10px] uppercase tracking-wide text-muted">
+                Entry subject
+              </div>
+              <div className="mt-1.5">
+                <IdentityChip
+                  pubkey={subject}
+                  namesByPubkey={namesByPubkey}
+                  size="md"
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              <span className="text-sm font-medium">New custodian</span>
+              {contacts.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-[10px] uppercase tracking-wide text-muted">
+                    From your connections
+                  </div>
+                  <ul className="mt-1.5 space-y-1">
+                    {contacts.map((c) => {
+                      const selected = c.pubkey === toKey.trim().toLowerCase();
+                      return (
+                        <li key={c.pubkey}>
+                          <button
+                            type="button"
+                            onClick={() => pickContact(c)}
+                            aria-pressed={selected}
+                            className={`w-full text-left rounded-md border px-3 py-2 transition ${
+                              selected
+                                ? 'border-accent bg-accent/10'
+                                : 'border-ink/15 bg-white hover:bg-ink/5'
+                            }`}
+                          >
+                            <IdentityChip
+                              pubkey={c.pubkey}
+                              name={c.name}
+                              size="md"
+                              className="min-w-0"
+                            />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-3 text-[10px] uppercase tracking-wide text-muted">
+                    Or paste a public key
+                  </div>
+                </div>
+              )}
               <input
                 type="text"
                 required
                 value={toKey}
                 onChange={(e) => setToKey(e.target.value)}
                 placeholder="64-character hex"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
-            </label>
+            </div>
             <label className="mt-3 block">
               <span className="text-sm font-medium">Note (optional)</span>
               <textarea
