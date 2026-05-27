@@ -157,7 +157,16 @@ const BUDGETS = [
   // WalletContext field, findCompletedHandshakeWith helper landing
   // in the HomeScreen import graph via PeopleTabBody, and the
   // useEffect that dismisses relay-replayed handshake duplicates.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 20_500, label: 'HomeScreen' },
+  // 2026-05-27 StartFamilyModal + FamilyIdentitySections bumped
+  // 20.5KB -> 22.0KB to absorb the family-unit static imports
+  // (findFamilyUnitsForMember + readFamilyUnit +
+  // familySignatureProgress + the FAMILY_ROLES vocab indirectly via
+  // FamilyIdentitySections) and the dedupeHandshakesByPeer +
+  // handshake-completed helpers. The StartFamilyModal itself is
+  // React.lazy and ships in its own chunk (~2.8KB gz,
+  // StartFamilyModal-prefix), so only the section render + button
+  // wiring lands statically.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 22_000, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

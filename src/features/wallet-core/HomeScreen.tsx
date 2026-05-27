@@ -16,6 +16,8 @@ const VouchWitnessModal = lazy(() =>
   })),
 );
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
+import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
+import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
@@ -66,6 +68,11 @@ import {
 import { useOpenMemberRosterControls } from './useOpenMemberRosterControls.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
+const StartFamilyModal = lazy(() =>
+  import('../connections/StartFamilyModal.tsx').then((m) => ({
+    default: m.StartFamilyModal,
+  })),
+);
 const JoinOrgModal = lazy(() =>
   import('../connections/JoinOrgModal.tsx').then((m) => ({
     default: m.JoinOrgModal,
@@ -161,6 +168,7 @@ export function HomeScreen() {
   const [scanEnvelopeOpen, setScanEnvelopeOpen] = useState(false);
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [joinOrgOpen, setJoinOrgOpen] = useState(false);
+  const [startFamilyOpen, setStartFamilyOpen] = useState(false);
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
   const [presenceOpen, setPresenceOpen] = useState(false);
@@ -325,6 +333,11 @@ export function HomeScreen() {
     [holdings, wallet.identity],
   );
 
+  const familyUnits = useMemo(
+    () => findFamilyUnitsForMember(holdings, wallet.identity),
+    [holdings, wallet.identity],
+  );
+
   const peerNames = useMemo(
     () => peerNamesByPubkey(holdings, wallet.identity, identity ? displayNameOf(identity) : undefined),
     [holdings, wallet.identity, identity],
@@ -472,6 +485,11 @@ export function HomeScreen() {
               </div>
             )}
           </div>
+          <FamilyIdentitySections
+            familyUnits={familyUnits}
+            namesByPubkey={peerNames}
+            onStartFamily={() => setStartFamilyOpen(true)}
+          />
           <div className="pt-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-muted">
@@ -694,6 +712,12 @@ export function HomeScreen() {
       {joinOrgOpen && (
         <Suspense fallback={null}>
           <JoinOrgModal onClose={() => setJoinOrgOpen(false)} />
+        </Suspense>
+      )}
+
+      {startFamilyOpen && (
+        <Suspense fallback={null}>
+          <StartFamilyModal onClose={() => setStartFamilyOpen(false)} />
         </Suspense>
       )}
 
