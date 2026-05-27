@@ -14,6 +14,7 @@ import {
 } from '../connections/createOrganization.ts';
 import {
   displayNameOf,
+  leafValue,
   peerNamesByPubkey,
 } from '../connections/createHandshake.ts';
 
@@ -46,10 +47,6 @@ interface Props {
   identity: Attestation | null;
   save: () => Promise<unknown>;
   refresh: () => Promise<void>;
-  /** Remove an envelope from holdings + save + refresh; used by the
-   *  Delete-this-organization affordance to drop the org self-
-   *  declaration so the wallet flips back to person-mode. */
-  unholdEnvelope: (envelopeId: string) => Promise<void>;
 }
 
 export function OrgDeclarationSection({
@@ -61,7 +58,6 @@ export function OrgDeclarationSection({
   identity,
   save,
   refresh,
-  unholdEnvelope,
 }: Props) {
   const [orgFormOpen, setOrgFormOpen] = useState(false);
   const [orgName, setOrgName] = useState('');
@@ -85,7 +81,28 @@ export function OrgDeclarationSection({
     setDeleteError(null);
     setDeleting(true);
     try {
-      await unholdEnvelope(envelopeId(existingOrgDeclaration));
+      // Cascade-drop every envelope this wallet holds that is tied to
+      // being THIS org: officials rosters, open-member rosters,
+      // memberships issued under this org's identity, and any self-
+      // membership envelopes pointing at this org. All four share the
+      // shape that their org_id leaf equals this wallet's identity.
+      // Without the cascade, leftover memberships keep feeding the
+      // People → Tree view's outer ring after the operator deletes
+      // the org-self-declaration, which reads as "still an org" to a
+      // person who just deleted their org.
+      const orgId = wallet.identity;
+      const toDrop = new Set<string>();
+      toDrop.add(envelopeId(existingOrgDeclaration));
+      for (const a of holdings) {
+        if (leafValue(a, 'org_id') === orgId) {
+          toDrop.add(envelopeId(a));
+        }
+      }
+      for (const id of toDrop) {
+        await wallet.unhold(id);
+      }
+      await save();
+      await refresh();
       setDeleteConfirming(false);
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'delete failed');

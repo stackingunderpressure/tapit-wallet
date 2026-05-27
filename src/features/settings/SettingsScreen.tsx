@@ -33,7 +33,7 @@ function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
 }
 
 export function SettingsScreen() {
-  const { wallet, ownerId, holdings, prefs, identity, resolvedTheme, anchorWorker, updatePrefs, save, refresh, unholdEnvelope } = useWallet();
+  const { wallet, ownerId, holdings, prefs, identity, resolvedTheme, anchorWorker, updatePrefs, save, refresh } = useWallet();
   const [cohortOpen, setCohortOpen] = useState(false);
   const cohortAtt = findLatestCohort(holdings, wallet.identity);
   const cohortView = cohortAtt ? readCohort(cohortAtt) : null;
@@ -444,7 +444,6 @@ export function SettingsScreen() {
         identity={identity}
         save={save}
         refresh={refresh}
-        unholdEnvelope={unholdEnvelope}
       />
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
