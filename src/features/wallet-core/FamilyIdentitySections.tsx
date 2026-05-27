@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import {
   familySignatureProgress,
+  memberHasSigned,
   readFamilyUnit,
 } from '../connections/familyUnit.ts';
 import { IdentityChip } from '../connections/IdentityChip.tsx';
@@ -11,14 +12,21 @@ import { summarizePublish } from '../transport/publishStatus.ts';
 // Extracted from HomeScreen.tsx in the StartFamilyModal cut to keep
 // HomeScreen under the 800-line hard limit. Renders the Identity-tab
 // Family section — a card per family unit the operator is a member
-// of, with each member rendered as an IdentityChip plus their role
-// and optional as_of date, and a "N of M signed" chip that reflects
-// how many named members have ratified the family-unit envelope so
-// far. Founder-side "Send to members" button ships the envelope via
-// Mycelium to every named member that has not signed yet; the
-// existing inbox silent-absorb path merges each returning cosigned
-// copy back into holdings, so the signature count climbs as members
+// of, with each member rendered as an IdentityChip plus their role,
+// optional as_of date, and a persistent per-member signature state
+// label (signed / awaiting signature). The "N of M signed" chip
+// reflects the same state in aggregate. Founder-side "Send to
+// members" button ships the envelope via Mycelium to every named
+// member that has not signed yet; the inbox silent-absorb path
+// merges each returning cosigned copy back into holdings as members
 // ratify. Members-side ratify UI is the next-up cut.
+//
+// Bridge note: rotated wallets sign with their active key, which
+// differs from the genesis identity pubkey the family-unit member
+// list stores. familyUnit.ts's memberHasSigned + familySignatureProgress
+// both accept an optional keyAliases map; this component passes a
+// {wallet.identity → wallet.keyHistory} entry so the operator's own
+// signature is detected regardless of whether they have rotated.
 
 interface Props {
   familyUnits: readonly Attestation[];
@@ -28,8 +36,13 @@ interface Props {
   onStartFamily: () => void;
 }
 
-interface SendStatus {
-  tone: 'pending' | 'ok' | 'partial' | 'fail';
+// Failure-only status. Success and pending are surfaced by the
+// derived-from-envelope per-member labels and the N-of-M chip,
+// which persist across navigation because they're derived from
+// holdings. The earlier transient success message disappeared on
+// tab-switch and read as a lie; only failures surface here now,
+// because a failure means the operator needs to act again.
+interface SendError {
   text: string;
 }
 
@@ -40,20 +53,30 @@ export function FamilyIdentitySections({
 }: Props) {
   const { wallet, sendEnvelope } = useWallet();
   const myIdentity = wallet.identity.toLowerCase();
-  const [statusByIndex, setStatusByIndex] = useState<Record<number, SendStatus>>({});
+  // keyAliases[wallet.identity] = every key in the operator's history.
+  // This is the bridge that fixes the "founder shows unsigned after
+  // rotation" bug — the signature's signer is the active key, which
+  // for a rotated wallet differs from the genesis identity pubkey
+  // stored in the family-unit member list.
+  const keyAliases = useMemo<ReadonlyMap<string, readonly string[]>>(() => {
+    const m = new Map<string, readonly string[]>();
+    m.set(myIdentity, wallet.keyHistory.map((k) => k.toLowerCase()));
+    return m;
+  }, [myIdentity, wallet.keyHistory]);
+  const [sending, setSending] = useState<Record<number, boolean>>({});
+  const [errorByIndex, setErrorByIndex] = useState<Record<number, SendError>>({});
 
-  async function sendToUnsignedMembers(idx: number, att: Attestation) {
-    const view = readFamilyUnit(att);
-    const signers = new Set(att.signatures.map((s) => s.signer.toLowerCase()));
-    const targets = view.members.filter((m) => {
-      const lower = m.pubkey.toLowerCase();
-      return lower !== myIdentity && !signers.has(lower);
-    });
+  async function sendToUnsignedMembers(
+    idx: number,
+    att: Attestation,
+    targets: readonly { pubkey: string }[],
+  ) {
     if (targets.length === 0) return;
-    setStatusByIndex((prev) => ({
-      ...prev,
-      [idx]: { tone: 'pending', text: `Sending to ${targets.length}…` },
-    }));
+    setSending((prev) => ({ ...prev, [idx]: true }));
+    setErrorByIndex((prev) => {
+      const { [idx]: _gone, ...rest } = prev;
+      return rest;
+    });
     let sent = 0;
     let failed = 0;
     for (const t of targets) {
@@ -66,16 +89,17 @@ export function FamilyIdentitySections({
         failed += 1;
       }
     }
-    let tone: SendStatus['tone'] = 'ok';
-    if (failed > 0 && sent === 0) tone = 'fail';
-    else if (failed > 0) tone = 'partial';
-    const text =
-      failed === 0
-        ? `Sent to ${sent} member${sent === 1 ? '' : 's'} · they will sign and the count will climb.`
-        : sent === 0
+    setSending((prev) => {
+      const { [idx]: _gone, ...rest } = prev;
+      return rest;
+    });
+    if (failed > 0) {
+      const text =
+        sent === 0
           ? `Could not send to any of the ${failed} member${failed === 1 ? '' : 's'}. Is Mycelium on?`
           : `Sent to ${sent}, ${failed} failed. Try again.`;
-    setStatusByIndex((prev) => ({ ...prev, [idx]: { tone, text } }));
+      setErrorByIndex((prev) => ({ ...prev, [idx]: { text } }));
+    }
   }
 
   return (
@@ -104,17 +128,18 @@ export function FamilyIdentitySections({
         <ul className="mt-2 space-y-3">
           {familyUnits.map((a, i) => {
             const view = readFamilyUnit(a);
-            const progress = familySignatureProgress(a);
+            const progress = familySignatureProgress(a, keyAliases);
             const signers = new Set(
               a.signatures.map((s) => s.signer.toLowerCase()),
             );
             const isFounder = view.founderId.toLowerCase() === myIdentity;
             const unsignedNonFounder = view.members.filter((m) => {
               const lower = m.pubkey.toLowerCase();
-              return lower !== myIdentity && !signers.has(lower);
+              if (lower === myIdentity) return false;
+              return !memberHasSigned(m.pubkey, signers, keyAliases);
             });
-            const status = statusByIndex[i];
-            const sendBusy = status?.tone === 'pending';
+            const sendBusy = !!sending[i];
+            const error = errorByIndex[i];
             return (
               <li
                 key={i}
@@ -129,48 +154,49 @@ export function FamilyIdentitySections({
                   </span>
                 </div>
                 <ul className="mt-3 space-y-2">
-                  {view.members.map((m) => (
-                    <li key={m.pubkey}>
-                      <IdentityChip
-                        pubkey={m.pubkey}
-                        name={m.name}
-                        namesByPubkey={namesByPubkey}
-                        size="sm"
-                        hideShortKey
-                      />
-                      <div className="ml-10 -mt-1 text-[10px] uppercase tracking-wide text-muted">
-                        {m.role}
-                        {m.as_of ? ` · since ${m.as_of}` : ''}
-                        {signers.has(m.pubkey.toLowerCase()) && ' · signed'}
-                      </div>
-                    </li>
-                  ))}
+                  {view.members.map((m) => {
+                    const signed = memberHasSigned(m.pubkey, signers, keyAliases);
+                    return (
+                      <li key={m.pubkey}>
+                        <IdentityChip
+                          pubkey={m.pubkey}
+                          name={m.name}
+                          namesByPubkey={namesByPubkey}
+                          size="sm"
+                          hideShortKey
+                        />
+                        <div className="ml-10 -mt-1 text-[10px] uppercase tracking-wide text-muted">
+                          {m.role}
+                          {m.as_of ? ` · since ${m.as_of}` : ''}
+                          {signed ? (
+                            <span className="text-emerald-700"> · signed</span>
+                          ) : (
+                            <span className="text-amber-700"> · awaiting signature</span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
                 {isFounder && unsignedNonFounder.length > 0 && (
                   <div className="mt-3">
                     <button
                       type="button"
-                      onClick={() => void sendToUnsignedMembers(i, a)}
+                      onClick={() =>
+                        void sendToUnsignedMembers(i, a, unsignedNonFounder)
+                      }
                       disabled={sendBusy}
                       className="w-full rounded-md border border-ink/15 bg-white py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-60"
                     >
                       {sendBusy
                         ? 'Sending…'
-                        : `Send to ${unsignedNonFounder.length} unsigned member${unsignedNonFounder.length === 1 ? '' : 's'}`}
+                        : `Send to ${unsignedNonFounder.length} awaiting member${unsignedNonFounder.length === 1 ? '' : 's'}`}
                     </button>
                   </div>
                 )}
-                {status && status.tone !== 'pending' && (
-                  <p
-                    className={`mt-2 text-xs ${
-                      status.tone === 'ok'
-                        ? 'text-emerald-700'
-                        : status.tone === 'partial'
-                          ? 'text-amber-700'
-                          : 'text-red-700'
-                    }`}
-                  >
-                    {status.text}
+                {error && (
+                  <p className="mt-2 text-xs text-red-700" role="alert">
+                    {error.text}
                   </p>
                 )}
               </li>

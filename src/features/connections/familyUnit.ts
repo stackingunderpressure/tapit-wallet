@@ -204,8 +204,25 @@ export function readFamilyUnit(att: Attestation): FamilyUnit {
   };
 }
 
-/** Count how many of the named members have signed the envelope. */
-export function familySignatureProgress(att: Attestation): {
+/**
+ * Count how many of the named members have signed the envelope.
+ *
+ * `keyAliases` lets the caller bridge a member's identity pubkey to
+ * a key-history. A rotated wallet signs with its active key, which
+ * differs from its genesis identity pubkey; without an alias map a
+ * post-rotation signature would be missed and the founder would
+ * appear unsigned. Callers that know the operator's own keyHistory
+ * (FamilyIdentitySections via useWallet) pass it in keyed on
+ * wallet.identity. For other members the caller does not know the
+ * remote wallet's key-history, so omitting them just means the
+ * direct-pubkey match still applies — pre-rotation signatures
+ * continue to count, post-rotation signatures from remote peers
+ * don't (a separate problem for a later cut).
+ */
+export function familySignatureProgress(
+  att: Attestation,
+  keyAliases?: ReadonlyMap<string, readonly string[]>,
+): {
   signed: number;
   total: number;
 } {
@@ -215,14 +232,38 @@ export function familySignatureProgress(att: Attestation): {
   );
   let signed = 0;
   for (const m of view.members) {
-    if (signers.has(m.pubkey.toLowerCase())) signed += 1;
+    if (memberHasSigned(m.pubkey, signers, keyAliases)) signed += 1;
   }
   return { signed, total: view.members.length };
 }
 
+/**
+ * Predicate form of the keyAliases-aware sign check: true when this
+ * member's pubkey OR any aliased key for it appears in the signer set.
+ * Exported so UI callers can render per-member labels using the same
+ * bridge logic the aggregate counter uses.
+ */
+export function memberHasSigned(
+  memberPubkey: string,
+  signers: ReadonlySet<string>,
+  keyAliases?: ReadonlyMap<string, readonly string[]>,
+): boolean {
+  const lower = memberPubkey.toLowerCase();
+  if (signers.has(lower)) return true;
+  const aliases = keyAliases?.get(lower);
+  if (!aliases) return false;
+  for (const a of aliases) {
+    if (signers.has(a.toLowerCase())) return true;
+  }
+  return false;
+}
+
 /** True when every named member's pubkey has signed the envelope. */
-export function familySignersComplete(att: Attestation): boolean {
-  const { signed, total } = familySignatureProgress(att);
+export function familySignersComplete(
+  att: Attestation,
+  keyAliases?: ReadonlyMap<string, readonly string[]>,
+): boolean {
+  const { signed, total } = familySignatureProgress(att, keyAliases);
   return total > 0 && signed === total;
 }
 

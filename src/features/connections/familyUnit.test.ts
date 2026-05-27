@@ -11,6 +11,7 @@ import {
   familySignersComplete,
   findFamilyUnitsForMember,
   isFamilyUnit,
+  memberHasSigned,
   readFamilyUnit,
   type FamilyMember,
 } from './familyUnit.ts';
@@ -233,6 +234,65 @@ describe('familySignatureProgress + familySignersComplete', () => {
       signed: 1,
       total: 1,
     });
+  });
+
+  it('misses a rotated-key signature without keyAliases (founder appears unsigned)', () => {
+    const dad = newWalletAs('Dad');
+    const draft = buildFamilyUnitDraft(dad.identity, 'F', [memberOf(dad, 'dad')]);
+    dad.wallet.rotate();
+    const signed = dad.wallet.sign(draft);
+    // Founder member.pubkey == genesis identity; signer == rotated active
+    // key. Without an alias bridge the counter sees zero matches.
+    expect(familySignatureProgress(signed)).toEqual({ signed: 0, total: 1 });
+  });
+
+  it('detects a rotated-key signature when keyAliases bridges identity to keyHistory', () => {
+    const dad = newWalletAs('Dad');
+    const draft = buildFamilyUnitDraft(dad.identity, 'F', [memberOf(dad, 'dad')]);
+    dad.wallet.rotate();
+    const signed = dad.wallet.sign(draft);
+    const aliases = new Map<string, readonly string[]>([
+      [dad.identity.subject.toLowerCase(), dad.wallet.keyHistory],
+    ]);
+    expect(familySignatureProgress(signed, aliases)).toEqual({
+      signed: 1,
+      total: 1,
+    });
+    expect(familySignersComplete(signed, aliases)).toBe(true);
+  });
+});
+
+describe('memberHasSigned', () => {
+  it('returns true on a direct pubkey match without aliases', () => {
+    const a = newWalletAs('A');
+    const draft = buildFamilyUnitDraft(a.identity, 'F', [memberOf(a, 'parent')]);
+    const signed = a.wallet.sign(draft);
+    const signers = new Set(signed.signatures.map((s) => s.signer.toLowerCase()));
+    expect(memberHasSigned(a.identity.subject, signers)).toBe(true);
+  });
+
+  it('returns false when the member did not sign and no aliases supplied', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const draft = buildFamilyUnitDraft(a.identity, 'F', [
+      memberOf(a, 'parent'),
+      memberOf(b, 'child'),
+    ]);
+    const signed = a.wallet.sign(draft); // only A signed
+    const signers = new Set(signed.signatures.map((s) => s.signer.toLowerCase()));
+    expect(memberHasSigned(b.identity.subject, signers)).toBe(false);
+  });
+
+  it('counts an aliased signer as the member having signed', () => {
+    const a = newWalletAs('A');
+    const draft = buildFamilyUnitDraft(a.identity, 'F', [memberOf(a, 'parent')]);
+    a.wallet.rotate();
+    const signed = a.wallet.sign(draft);
+    const signers = new Set(signed.signatures.map((s) => s.signer.toLowerCase()));
+    const aliases = new Map<string, readonly string[]>([
+      [a.identity.subject.toLowerCase(), a.wallet.keyHistory],
+    ]);
+    expect(memberHasSigned(a.identity.subject, signers, aliases)).toBe(true);
   });
 });
 
