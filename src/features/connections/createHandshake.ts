@@ -186,6 +186,56 @@ export function peerNamesByPubkey(
   return out;
 }
 
+// Dedupe handshake envelopes by peer pubkey, keeping the "best" copy
+// per peer. Best means: most signatures wins (a cosigned 2-sig
+// handshake supersedes a stale 1-sig draft from an earlier attempt
+// the peer never reciprocated); on signature-count ties, the newer
+// issuedAt wins. Used by HomeScreen.connectionEntries so the People
+// tab renders ONE card per peer even when the operator's holdings
+// contain multiple handshake envelopes with the same person — which
+// happens when an initial handshake attempt stalled with no co-
+// signature, the operator tried again later, the second attempt
+// succeeded, and now both envelopes sit in holdings (the 1-sig draft
+// AND the 2-sig completed). Without this dedup the People tab
+// double-renders the peer, which is the operator-reported "showing up
+// twice, one connected one pending" bug. Hiding the stale 1-sig
+// envelope from the list view does not delete it from holdings — it
+// stays as honest history that the operator once offered a handshake
+// that never reciprocated.
+export function dedupeHandshakesByPeer(
+  handshakes: readonly Attestation[],
+  myIdentity: string,
+): Attestation[] {
+  const me = myIdentity.trim().toLowerCase();
+  const byPeer = new Map<string, Attestation>();
+  for (const a of handshakes) {
+    if (!isHandshake(a)) continue;
+    const v = readHandshake(a);
+    const init = v.initiatorId.trim().toLowerCase();
+    const resp = v.responderId.trim().toLowerCase();
+    let peer: string;
+    if (init === me) peer = resp;
+    else if (resp === me) peer = init;
+    else continue;
+    if (!peer) continue;
+    const existing = byPeer.get(peer);
+    if (!existing) {
+      byPeer.set(peer, a);
+      continue;
+    }
+    if (a.signatures.length > existing.signatures.length) {
+      byPeer.set(peer, a);
+      continue;
+    }
+    if (a.signatures.length === existing.signatures.length) {
+      const at = new Date(a.issuedAt).getTime();
+      const et = new Date(existing.issuedAt).getTime();
+      if (Number.isFinite(at) && at > et) byPeer.set(peer, a);
+    }
+  }
+  return [...byPeer.values()];
+}
+
 // Find a completed handshake in holdings between the operator and a
 // given peer pubkey. "Completed" means a relationship-kind attestation
 // carrying a verification leaf (isHandshake true) where both the

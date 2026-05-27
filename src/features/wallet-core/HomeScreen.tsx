@@ -20,6 +20,7 @@ import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
 import {
+  dedupeHandshakesByPeer,
   isHandshake,
   peerNamesByPubkey,
   displayNameOf,
@@ -240,13 +241,14 @@ export function HomeScreen() {
   );
   const connectionEntries = useMemo(
     () =>
-      holdings
-        .filter((a) => isHandshake(a))
-        .sort(
-          (a, b) =>
-            new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
-        ),
-    [holdings],
+      dedupeHandshakesByPeer(
+        holdings.filter((a) => isHandshake(a)),
+        wallet.identity,
+      ).sort(
+        (a, b) =>
+          new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+      ),
+    [holdings, wallet.identity],
   );
   const membershipEntries = useMemo(
     () =>

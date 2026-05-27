@@ -5,6 +5,7 @@ import type { Attestation } from 'tapit-attest';
 import {
   buildHandshakeDraft,
   buildRemoteHandshakeDraft,
+  dedupeHandshakesByPeer,
   findCompletedHandshakeWith,
   isHandshake,
   readHandshake,
@@ -172,5 +173,65 @@ describe('findCompletedHandshakeWith', () => {
         alice.identity.subject,
       ),
     ).toBeNull();
+  });
+});
+
+describe('dedupeHandshakesByPeer', () => {
+  it('returns empty when there are no handshakes', () => {
+    const alice = newWalletAs('Alice');
+    expect(dedupeHandshakesByPeer([], alice.identity.subject)).toEqual([]);
+  });
+
+  it('prefers the cosigned envelope over a stale 1-sig draft for the same peer', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const stale = alice.wallet.sign(
+      buildHandshakeDraft(alice.identity, bob.identity),
+    );
+    // Different envelope (different handshake_at) so a separate envelopeId
+    const second = buildHandshakeDraft(alice.identity, bob.identity);
+    const cosigned = alice.wallet.sign(bob.wallet.sign(second));
+    const out = dedupeHandshakesByPeer([stale, cosigned], alice.identity.subject);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toBe(cosigned);
+  });
+
+  it('keeps a single handshake when there is no duplicate to compete with', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const only = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity)),
+    );
+    const out = dedupeHandshakesByPeer([only], alice.identity.subject);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toBe(only);
+  });
+
+  it('returns one card per peer when several distinct peers each have one handshake', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const carol = newWalletAs('Carol');
+    const aliceBob = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity)),
+    );
+    const aliceCarol = alice.wallet.sign(
+      carol.wallet.sign(buildHandshakeDraft(alice.identity, carol.identity)),
+    );
+    const out = dedupeHandshakesByPeer(
+      [aliceBob, aliceCarol],
+      alice.identity.subject,
+    );
+    expect(out).toHaveLength(2);
+  });
+
+  it('filters out handshakes that do not name the operator as a party', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const carol = newWalletAs('Carol');
+    const bobCarol = bob.wallet.sign(
+      carol.wallet.sign(buildHandshakeDraft(bob.identity, carol.identity)),
+    );
+    const out = dedupeHandshakesByPeer([bobCarol], alice.identity.subject);
+    expect(out).toEqual([]);
   });
 });
