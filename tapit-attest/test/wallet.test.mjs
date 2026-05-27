@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Wallet, MemoryStore, verifyEnvelope, generateKeypair } from '../dist/index.js';
+import { Wallet, MemoryStore, verifyEnvelope, generateKeypair, envelopeId } from '../dist/index.js';
 
 test('a generated wallet has matching identity and active key', () => {
   const w = Wallet.generate();
@@ -51,6 +51,35 @@ test('hold stores verified attestations and rejects tampered ones', async () => 
 
   const tampered = { ...a, subject: 'did:example:impostor' };
   await assert.rejects(() => holder.hold(tampered), /does not verify/);
+});
+
+test('unhold removes an attestation by envelope id; no-op when absent', async () => {
+  const issuer = Wallet.generate();
+  const holder = Wallet.generate();
+  const a = issuer.attest({
+    kind: 'credential',
+    tier: 'routine',
+    subject: holder.identity,
+    fields: { award: 'gold' },
+  });
+  const b = issuer.attest({
+    kind: 'credential',
+    tier: 'routine',
+    subject: holder.identity,
+    fields: { award: 'silver' },
+  });
+  await holder.hold(a);
+  await holder.hold(b);
+  assert.equal((await holder.holdings()).length, 2);
+
+  await holder.unhold(envelopeId(a));
+  const remaining = await holder.holdings();
+  assert.equal(remaining.length, 1);
+  assert.equal(envelopeId(remaining[0]), envelopeId(b));
+
+  // No-op on unknown id — does not throw, does not affect remaining holdings.
+  await holder.unhold('not-a-real-envelope-id');
+  assert.equal((await holder.holdings()).length, 1);
 });
 
 test('aboutMe and issuedByMe partition the holdings correctly', async () => {

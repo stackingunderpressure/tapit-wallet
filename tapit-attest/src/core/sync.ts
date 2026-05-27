@@ -37,6 +37,8 @@ export function toRecord(a: Attestation, updatedAt?: string): AttestationRecord 
 export interface AttestationStore {
   get(id: string): Promise<AttestationRecord | null>;
   put(record: AttestationRecord): Promise<void>;
+  /** Remove the record with the given id. No-op when the id is not present. */
+  delete(id: string): Promise<void>;
   list(): Promise<AttestationRecord[]>;
   bySubject(subject: string): Promise<AttestationRecord[]>;
   bySigner(signer: string): Promise<AttestationRecord[]>;
@@ -52,6 +54,10 @@ export class MemoryStore implements AttestationStore {
 
   async put(record: AttestationRecord): Promise<void> {
     this.records.set(record.id, record);
+  }
+
+  async delete(id: string): Promise<void> {
+    this.records.delete(id);
   }
 
   async list(): Promise<AttestationRecord[]> {

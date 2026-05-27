@@ -64,6 +64,15 @@ export interface WalletContextValue {
   /** Reload holdings + identity after a mutation. */
   refresh: () => Promise<void>;
   /**
+   * Remove an envelope from this wallet's holdings by its envelope id,
+   * then save + refresh so the UI reflects the change. Local-only —
+   * the envelope still exists for anyone who holds a copy; only this
+   * wallet's view changes. Used by the operator-facing "Leave
+   * organization" and "Delete organization" affordances. No-op when
+   * the id is not held.
+   */
+  unholdEnvelope: (envelopeId: string) => Promise<void>;
+  /**
    * The currently-painted theme — 'classic' or 'fresh' — after
    * resolving the operator's prefs.theme choice (which can be
    * 'system') against the device's prefers-color-scheme. Read this

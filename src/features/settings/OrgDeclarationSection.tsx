@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import {
   defaultAuthRules,
@@ -45,6 +46,10 @@ interface Props {
   identity: Attestation | null;
   save: () => Promise<unknown>;
   refresh: () => Promise<void>;
+  /** Remove an envelope from holdings + save + refresh; used by the
+   *  Delete-this-organization affordance to drop the org self-
+   *  declaration so the wallet flips back to person-mode. */
+  unholdEnvelope: (envelopeId: string) => Promise<void>;
 }
 
 export function OrgDeclarationSection({
@@ -56,6 +61,7 @@ export function OrgDeclarationSection({
   identity,
   save,
   refresh,
+  unholdEnvelope,
 }: Props) {
   const [orgFormOpen, setOrgFormOpen] = useState(false);
   const [orgName, setOrgName] = useState('');
@@ -70,6 +76,23 @@ export function OrgDeclarationSection({
   const [joinPolicy, setJoinPolicy] = useState<JoinPolicy | null>(null);
   const [orgBusy, setOrgBusy] = useState(false);
   const [orgError, setOrgError] = useState<string | null>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function deleteOrgDeclaration() {
+    if (!existingOrgDeclaration) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await unholdEnvelope(envelopeId(existingOrgDeclaration));
+      setDeleteConfirming(false);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const namesByPubkey = useMemo(
     () =>
@@ -133,10 +156,48 @@ export function OrgDeclarationSection({
             . The Identity tab on Home shows the people you have admitted as
             members.
           </p>
-          <p className="mt-2 text-xs text-muted">
-            Declaration is one-way in this version. If you need to undo it,
-            start a fresh wallet for the person-side identity.
-          </p>
+          {deleteConfirming ? (
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-xs">
+              <p className="text-red-900">
+                Delete the org declaration from this wallet? Your wallet flips
+                back to person-mode immediately. Any memberships you issued
+                stay in your history; this only removes the declaration that
+                says "this wallet is an organization." The declaration still
+                exists in the world for anyone who holds a copy.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={deleteOrgDeclaration}
+                  disabled={deleting}
+                  className="flex-1 rounded-md bg-red-600 py-2 text-paper text-sm font-medium disabled:opacity-60"
+                >
+                  {deleting ? 'Deleting…' : 'Yes, delete'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirming(false)}
+                  disabled={deleting}
+                  className="rounded-md border border-ink/15 px-4 py-2 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+              {deleteError && (
+                <p className="mt-2 text-xs text-red-700" role="alert">
+                  {deleteError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDeleteConfirming(true)}
+              className="mt-3 rounded-md border border-red-200 bg-white px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+            >
+              Delete this organization
+            </button>
+          )}
         </>
       ) : !orgFormOpen ? (
         <>

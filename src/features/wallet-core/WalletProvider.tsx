@@ -624,6 +624,18 @@ export function WalletProvider({ children }: Props) {
     [prefs, ownerId],
   );
 
+  const unholdEnvelope = useCallback(
+    async (envelopeId: string) => {
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        throw new Error('wallet must be unlocked to unhold');
+      }
+      await phase.wallet.unhold(envelopeId);
+      await save();
+      await refresh();
+    },
+    [phase, save, refresh],
+  );
+
   useEffect(() => {
     if (!session.session) setPassphrase(null);
   }, [session.session]);
@@ -673,6 +685,7 @@ export function WalletProvider({ children }: Props) {
       save,
       updatePrefs,
       refresh,
+      unholdEnvelope,
       resolvedTheme,
       chatThreadsByPeer,
       sendChatMessage,
@@ -685,6 +698,7 @@ export function WalletProvider({ children }: Props) {
     save,
     updatePrefs,
     refresh,
+    unholdEnvelope,
     anchorWorker,
     passphrase,
     inboxEnvelopes,

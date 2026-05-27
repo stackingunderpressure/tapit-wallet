@@ -190,6 +190,18 @@ export class Wallet {
     await this.store.put(toRecord(attestation));
   }
 
+  /**
+   * Remove an attestation from the wallet's holdings by its envelope
+   * id. No-op when the id is not held. This is local-only — the
+   * envelope still exists for anyone else who holds a copy; only
+   * this wallet's view changes. Used by the operator-facing
+   * "leave organization" and "delete organization" affordances, and
+   * by any future "tidy up old envelopes" surface.
+   */
+  async unhold(envelopeId: string): Promise<void> {
+    await this.store.delete(envelopeId);
+  }
+
   /** Every held attestation whose signatures verify. */
   async holdings(): Promise<Attestation[]> {
     return loadVerified(this.store);

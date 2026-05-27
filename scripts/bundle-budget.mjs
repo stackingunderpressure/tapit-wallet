@@ -152,7 +152,12 @@ const BUDGETS = [
   // component itself is React.lazy and ships in its own chunk
   // (~1.7KB gz, PeopleTree-prefix), so only the prop wiring +
   // PeopleTabBody view-toggle state lands statically here.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 20_000, label: 'HomeScreen' },
+  // 2026-05-27 unholdEnvelope wiring + handshake-dedup filter +
+  // useEffect cleanup bumped 20.0KB -> 20.5KB to absorb the new
+  // WalletContext field, findCompletedHandshakeWith helper landing
+  // in the HomeScreen import graph via PeopleTabBody, and the
+  // useEffect that dismisses relay-replayed handshake duplicates.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 20_500, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
