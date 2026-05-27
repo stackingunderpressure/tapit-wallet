@@ -10,6 +10,11 @@ import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
+const VouchWitnessModal = lazy(() =>
+  import('../cosigning/VouchWitnessModal.tsx').then((m) => ({
+    default: m.VouchWitnessModal,
+  })),
+);
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
@@ -30,10 +35,8 @@ import {
   isMembership,
   isMembershipIssuedBy,
   readMembership,
-  receiveMembership,
-  receiveSelfMembership,
 } from '../connections/createMembership.ts';
-import { holdRecoveryShare } from '../recovery/createShares.ts';
+import { useInboxAccepts } from './useInboxAccepts.ts';
 // 5e-vi — recovery responder modal lazy-loaded so the share-decrypt +
 // re-encrypt code only ships when an inbox row triggers it.
 const RecoveryResponderModal = lazy(() =>
@@ -140,7 +143,7 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const { wallet, ownerId, holdings, identity, prefs, anchorWorker, inboxEnvelopes, dismissInboxEnvelope, relayStatus, save, refresh, resolvedTheme } = useWallet();
+  const { wallet, holdings, identity, prefs, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerPrefill, setComposerPrefill] = useState<JournalPrefill | null>(null);
@@ -180,6 +183,12 @@ export function HomeScreen() {
   // strict out-of-band verification before releasing a share.
   const [incomingForRecovery, setIncomingForRecovery] = useState<Attestation | null>(null);
   const [incomingEventIdForRecovery, setIncomingEventIdForRecovery] = useState<string | null>(null);
+  // Peer-side vouch-witness arrival — the joiner's 1-sig self-
+  // membership envelope reached this wallet because the joiner is
+  // asking us to vouch. The modal opens pre-loaded with the envelope
+  // and sends the signed vouch back to the joiner via Mycelium.
+  const [incomingForVouch, setIncomingForVouch] = useState<Attestation | null>(null);
+  const [incomingEventIdForVouch, setIncomingEventIdForVouch] = useState<string | null>(null);
 
   function routeInbox(
     envelope: Attestation,
@@ -198,6 +207,9 @@ export function HomeScreen() {
       void acceptMembership(envelope);
     } else if (action === 'self-membership-receive') {
       void acceptSelfMembership(envelope);
+    } else if (action === 'vouch-witness') {
+      setIncomingForVouch(envelope);
+      setIncomingEventIdForVouch(eventId);
     } else if (action === 'recovery-share-receive') {
       void acceptRecoveryShare(envelope);
     } else if (action === 'recovery-request-respond') {
@@ -206,73 +218,6 @@ export function HomeScreen() {
     }
   }
 
-  async function acceptRecoveryShare(envelope: Attestation) {
-    if (!identity) return;
-    try {
-      await holdRecoveryShare(
-        wallet,
-        ownerId,
-        anchorWorker,
-        envelope,
-        identity.subject,
-      );
-      await save();
-      await refresh();
-      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
-      if (item) dismissInboxEnvelope(item.eventId);
-    } catch (err) {
-      console.warn('recovery-share receive failed', err);
-    }
-  }
-
-  async function acceptMembership(envelope: Attestation) {
-    if (!identity) return;
-    try {
-      await receiveMembership({
-        wallet,
-        ownerId,
-        anchorWorker,
-        attestation: envelope,
-        myIdentity: identity.subject,
-      });
-      await save();
-      await refresh();
-      // Find the inbox row by envelope content and drop it.
-      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
-      if (item) dismissInboxEnvelope(item.eventId);
-    } catch (err) {
-      console.warn('membership receive failed', err);
-    }
-  }
-
-  // Phase E3 cut 1. receiveSelfMembership now gates on the org's
-  // declared join-policy in its auth tree — the wallet must hold its
-  // own org self-declaration (computed below via findOwnOrgDeclaration
-  // in the orgDeclaration useMemo). A wallet that has not declared
-  // itself as an org has no business accepting open joins, so we
-  // short-circuit with a warn rather than calling into the rejector.
-  async function acceptSelfMembership(envelope: Attestation) {
-    if (!orgDeclaration) {
-      console.warn('self-membership routed to a wallet without an org declaration; ignoring');
-      return;
-    }
-    try {
-      await receiveSelfMembership({
-        wallet,
-        ownerId,
-        anchorWorker,
-        attestation: envelope,
-        orgSelfDecl: orgDeclaration,
-        holdings,
-      });
-      await save();
-      await refresh();
-      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
-      if (item) dismissInboxEnvelope(item.eventId);
-    } catch (err) {
-      console.warn('self-membership receive failed', err);
-    }
-  }
   const banner = backupBanner(prefs);
 
   const journalEntries = useMemo(
@@ -321,6 +266,14 @@ export function HomeScreen() {
     () => findOwnOrgDeclaration(holdings, wallet.identity),
     [holdings, wallet.identity],
   );
+  // Inbox accept-helpers extracted into a sibling hook (2026-05-27)
+  // when the peer-side vouch-witness surface needed routing-state
+  // headroom in this file. The hook is callsite-shape-identical to
+  // the inline helpers it replaced — same wallet/ownerId/anchorWorker
+  // dependencies pulled from useWallet, same orgDeclaration parameter
+  // computed above, same return shape consumed below in routeInbox.
+  const { acceptRecoveryShare, acceptMembership, acceptSelfMembership } =
+    useInboxAccepts(orgDeclaration);
   const issuedMemberships = useMemo(
     () =>
       orgDeclaration
@@ -691,6 +644,22 @@ export function HomeScreen() {
             onClose={() => {
               setIncomingForRecovery(null);
               setIncomingEventIdForRecovery(null);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {incomingForVouch && (
+        <Suspense fallback={null}>
+          <VouchWitnessModal
+            incoming={incomingForVouch}
+            onSuccess={() => {
+              if (incomingEventIdForVouch)
+                dismissInboxEnvelope(incomingEventIdForVouch);
+            }}
+            onClose={() => {
+              setIncomingForVouch(null);
+              setIncomingEventIdForVouch(null);
             }}
           />
         </Suspense>

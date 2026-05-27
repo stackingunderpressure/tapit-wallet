@@ -1,5 +1,5 @@
 import type { Attestation } from 'tapit-attest';
-import { isHandshake } from '../connections/createHandshake.ts';
+import { isHandshake, leafValue } from '../connections/createHandshake.ts';
 import { isMembership, isSelfMembership } from '../connections/createMembership.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
 import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
@@ -22,16 +22,28 @@ import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
 // peer → peer cosigns and returns → joiner absorbs → joiner sends the
 // cosigned bundle to the org → org accepts. The receiver at each
 // arrival is different (peer, joiner, org), and the right action
-// differs by receiver. Passing receiverPubkey lets the joiner-side
-// loop-back arrival route to absorb-cosign (merge the new cosig into
-// the held copy) instead of self-membership-receive (which is the
-// org-side accept path and would silently no-op on a non-org wallet).
+// differs by receiver. Passing receiverPubkey lets the dispatcher
+// route the same envelope to three different surfaces:
+//
+//   1. joiner-side loop-back (receiver IS subject, >1 signature) →
+//      absorb-cosign so the merged cosignature lands on the held copy.
+//   2. peer-side vouch arrival (receiver is NEITHER subject NOR the
+//      org named in org_id, 1 signature) → vouch-witness so the peer
+//      sees a "vouch for this joiner" surface and can attach their
+//      signature as an attestation of personal trust. Without this
+//      branch the envelope routes to self-membership-receive which
+//      warns-and-returns silently on a non-org wallet, leaving the
+//      peer with no actionable surface.
+//   3. org-side accept (receiver IS the org named in org_id, any
+//      signature count) → self-membership-receive, which runs the
+//      org's declared join-policy gate before holding the envelope.
 
 export type InboxRouteAction =
   | 'cosign-witness'
   | 'absorb-cosign'
   | 'membership-receive'
   | 'self-membership-receive'
+  | 'vouch-witness'
   | 'recovery-share-receive'
   | 'recovery-request-respond';
 
@@ -69,20 +81,37 @@ export function routeFor(
     };
   }
   if (isSelfMembership(att)) {
+    const receiver = receiverPubkey?.trim().toLowerCase();
+    const subject = att.subject.trim().toLowerCase();
+    const orgId = leafValue(att, 'org_id').trim().toLowerCase();
     // Loop-back: receiver IS the joiner (envelope subject) and the
     // envelope already carries a vouching peer's cosignature in
     // addition to the joiner's own. Route to absorb-cosign so the
     // joiner's held copy gets the new signature merged in.
-    if (
-      receiverPubkey &&
-      att.signatures.length > 1 &&
-      att.subject.trim().toLowerCase() ===
-        receiverPubkey.trim().toLowerCase()
-    ) {
+    if (receiver && att.signatures.length > 1 && subject === receiver) {
       return {
         action: 'absorb-cosign',
         label: 'Absorb vouch',
         hint: 'A vouch you collected — merge it into your join envelope.',
+      };
+    }
+    // Vouch-witness: a vouching peer received the joiner's 1-sig
+    // envelope. Receiver is NEITHER the joiner (subject) NOR the org
+    // named in the org_id leaf. Route to a peer-facing signing
+    // surface so the peer can attach their signature as an attestation
+    // of personal trust. Without this branch the envelope routes to
+    // self-membership-receive which short-circuits on a non-org wallet
+    // and leaves the peer with no actionable surface.
+    if (
+      receiver &&
+      att.signatures.length === 1 &&
+      subject !== receiver &&
+      orgId !== receiver
+    ) {
+      return {
+        action: 'vouch-witness',
+        label: 'Vouch',
+        hint: 'A peer is asking you to vouch for their join request.',
       };
     }
     return {

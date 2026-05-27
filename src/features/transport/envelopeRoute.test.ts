@@ -144,4 +144,43 @@ describe('routeFor — Phase E2 self-membership routing', () => {
     const route = routeFor(cosigned, org.identity);
     expect(route!.action).toBe('self-membership-receive');
   });
+
+  // Peer-side vouch arrival: the joiner fanned their 1-sig self-
+  // membership out to a vouching peer. The peer's wallet is neither
+  // the joiner (envelope subject) nor the org named in the org_id
+  // leaf — it's a third party being asked to vouch. routeFor needs to
+  // recognize this as a vouch-witness arrival so the peer sees an
+  // actionable surface. Without this branch the envelope routed to
+  // self-membership-receive and the peer's wallet warned-and-returned
+  // silently, leaving the joiner unable to collect vouches.
+  it('routes a 1-sig self-membership to vouch-witness when the receiver is a peer (not joiner, not org)', () => {
+    const joiner = Wallet.generate();
+    const peer = Wallet.generate();
+    const org = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(joinerIdent, org.identity, 'Org');
+    const joinerSigned = joiner.sign(draft);
+
+    const route = routeFor(joinerSigned, peer.identity);
+    expect(route!.action).toBe('vouch-witness');
+    expect(route!.label).toBe('Vouch');
+  });
+
+  // 1-sig self-membership arriving at the org directly (no vouches
+  // needed, or vouches collected and then the joiner forwarded the
+  // first-leg envelope to the org without absorbing): the org_id leaf
+  // matches the receiver pubkey, so routeFor must keep this on the
+  // self-membership-receive path. Locks the discriminator so a future
+  // vouch-witness branch refactor cannot accidentally steal direct-
+  // submission joins from the org.
+  it('routes a 1-sig self-membership to self-membership-receive when the receiver IS the org', () => {
+    const joiner = Wallet.generate();
+    const org = Wallet.generate();
+    const joinerIdent = signedIdentity(joiner, 'Sam');
+    const draft = buildSelfMembershipDraft(joinerIdent, org.identity, 'Org');
+    const joinerSigned = joiner.sign(draft);
+
+    const route = routeFor(joinerSigned, org.identity);
+    expect(route!.action).toBe('self-membership-receive');
+  });
 });
