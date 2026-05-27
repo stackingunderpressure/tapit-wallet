@@ -76,8 +76,9 @@ export function VouchWitnessModal({
     wallet.identity,
     identity ? displayNameOf(identity) : undefined,
   );
-  const joinerLabel =
-    joinerNames.get(view.joinerId.trim().toLowerCase()) ?? shortKey(view.joinerId);
+  const joinerKey = view.joinerId.trim().toLowerCase();
+  const hasJoinerRelationship = joinerNames.has(joinerKey);
+  const joinerLabel = joinerNames.get(joinerKey) ?? shortKey(view.joinerId);
 
   const [step, setStep] = useState<Step>({ kind: 'review' });
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +177,19 @@ export function VouchWitnessModal({
                 vouch for them.
               </p>
             </div>
+            {!hasJoinerRelationship && (
+              <div
+                className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+                role="alert"
+              >
+                <span className="font-semibold">
+                  You have no handshake with this person yet.
+                </span>{' '}
+                Vouching means warranting their identity to the
+                organization, so make sure you actually know who you
+                are signing for before you sign.
+              </div>
+            )}
             <div className="mt-3">
               <EnvelopePreview attestation={incoming} />
             </div>
