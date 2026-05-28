@@ -6,6 +6,7 @@ import {
   clearPendingOnboarding,
   setPendingOnboarding,
 } from './pendingOnboarding.ts';
+import { PassphraseCommitWarnings } from '../wallet-core/PassphraseCommitWarnings.tsx';
 
 // The Fresh compose-before-login state machine. Replaces the
 // sign-in form FreshLoginShell painted in Cut 2 with the
@@ -22,7 +23,15 @@ import {
 // FreshLoginShell. Shipped as Cut 5 of the 2026-05-24 Fresh
 // young-adult-friendly theme + IA roadmap.
 
-type Step = 'splash' | 'compose' | 'name' | 'passphrase' | 'recovery' | 'email' | 'code';
+type Step =
+  | 'splash'
+  | 'compose'
+  | 'name'
+  | 'passphrase'
+  | 'passphrase-warn'
+  | 'recovery'
+  | 'email'
+  | 'code';
 type EmailStatus = 'idle' | 'busy' | 'error';
 
 const SPLASH_MS = 3000;
@@ -141,7 +150,7 @@ export function FreshOnboarding() {
       return;
     }
     setError(null);
-    setStep('recovery');
+    setStep('passphrase-warn');
   }
 
   function ackRecovery() {
@@ -260,10 +269,18 @@ export function FreshOnboarding() {
         />
       )}
 
+      {step === 'passphrase-warn' && (
+        <PassphraseCommitWarnings
+          variant="fresh"
+          onConfirm={() => setStep('recovery')}
+          onBack={() => setStep('passphrase')}
+        />
+      )}
+
       {step === 'recovery' && (
         <RecoveryStep
           onAcknowledge={ackRecovery}
-          onBack={() => setStep('passphrase')}
+          onBack={() => setStep('passphrase-warn')}
         />
       )}
 
@@ -523,11 +540,13 @@ function PassphraseStep(props: {
   return (
     <form onSubmit={props.onSubmit}>
       <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-        Pick a passphrase.
+        Pick a passphrase only you would know.
       </h1>
       <p className="mt-3 text-sm text-fresh-text-secondary">
         This is the only secret only you know. We never see it. Pick something
-        memorable — a phrase, not a password.
+        personal to you — a phrase you would remember on your own. Password
+        managers are fine for backup, but the passphrase needs to live in your
+        head first, not just in an autofill box.
       </p>
       <label className="mt-8 block">
         <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">

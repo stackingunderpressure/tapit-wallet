@@ -95,7 +95,19 @@ const BUDGETS = [
   // overwriting disk before the PBKDF2 decrypt resolves. Extra
   // useState plus the load-resolution path settles past the prior
   // budget by ~150 bytes.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 9_500, label: 'WalletProvider' },
+  // 2026-05-27 passphrase-commit-warnings bumped 9.5KB -> 10KB:
+  // PassphraseCommitWarnings (the two-step personal-and-memorable
+  // plus irrecoverable-consequence gate the operator asked for) is
+  // imported eagerly by PassphrasePrompt because the gate runs on
+  // the first-login critical path — code-splitting a security
+  // acknowledgment behind Suspense would add a loading flash at
+  // the exact moment the operator needs the warning to be
+  // unambiguous. The component is small (~150 lines, ~600 bytes
+  // gz including the variant-fresh branch only PassphrasePrompt
+  // does not consume — that branch tree-shakes when Vite is
+  // confident, but the import edge from WalletProvider catches it
+  // here).
+  { pattern: /^WalletProvider-.*\.js$/, gz: 10_000, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
