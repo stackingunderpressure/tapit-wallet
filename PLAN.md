@@ -19,22 +19,46 @@
 
 ## What this wallet IS (and is NOT)
 
-It IS a person's sovereign identity wallet. It generates and holds
-the user's keypair on their device. It signs attestations about
-their perception of reality — their identity, their relationships,
-their life events, their organizations, their families. It anchors
-those attestations to Bitcoin via OpenTimestamps so they carry a
-tamper-evident clock. It transmits them peer-to-peer over Nostr.
-The user's keys never leave the wallet unencrypted, ever.
+It IS a person's sovereign Nostr identity wallet. It generates
+and holds the user's keypair on their device — the SAME BIP340
+pubkey is both the wallet's identity and its Nostr identity per
+D-11d, one secret, one cryptographic chain of custody. It signs
+attestations about their perception of reality — their identity,
+their relationships, their life events, their organizations,
+their families. It anchors those attestations to Bitcoin via
+OpenTimestamps so they carry a tamper-evident clock. It publishes
+signed records to the Nostr relay set when the operator chooses
+to disclose them publicly — selective disclosure to the public
+audience is just one mode of the substrate's selective-disclosure
+primitive, sitting alongside selective disclosure to a peer
+(NIP-17 chat, NIP-44 envelope) and selective disclosure to a
+verifier (multi-leaf disclosure proof). The user's keys never
+leave the wallet unencrypted, ever.
 
 It is NOT a Bitcoin financial wallet (no UTXOs, no Lightning, no
 zaps — those are deliberate scope choices, see "Out of v1" below).
-It is NOT a Nostr social client (no public feed, no kind-1 posting,
-no NIP-05 verification surface — also deliberate). It is NOT a
-chatbot or an LLM frontend or a feature embedded inside another
-app. It is the identity layer of the Hearth product family, and
-the substrate other apps will connect TO when they need something
-signed.
+It is NOT a Nostr social feed READER — operators continue to use
+Damus or Amethyst or Primal to scroll their existing follows and
+read their inbox; this wallet's posture is identity-substrate-first
+not feed-first, it publishes and signs, it does not read. It is
+NOT a chatbot or an LLM frontend or a feature embedded inside
+another app. It is the identity layer of the Hearth product
+family, and the substrate other apps (including existing Nostr
+clients via future NIP-07 / NIP-46) will connect TO when they
+need something signed.
+
+The reframing rationale: the previous PLAN.md (2026-05-28 morning)
+drew a line at "no public Nostr feed posting" framing the wallet
+as attestation-holder not social-feed-publisher. That line was
+structurally inconsistent with Tier 3 (the Matt Odell tribute
+attestation), which explicitly involves posting a public Nostr
+note, and with the wallet's growth story — Bitcoin / Nostr /
+freedom-tech are the audience that cares about keys and privacy,
+and a wallet that signs but does not publish has no substrate
+flow through the Nostr mycelium. The line was retired 2026-05-29
+on the operator's directive: make this a Nostr-enhanced identity
+wallet, let the substrate grow from the roots up through the only
+audience that gives a damn about keys and privacy.
 
 ## Standing protections — these never lapse
 
@@ -165,6 +189,57 @@ cloud blob, or (b) document the single-active-device assumption
 in the wallet guide. Pick one; do not let the assumption stay
 silent.
 
+### 7. kind-0 Nostr profile metadata
+
+Added 2026-05-29 doctrine reframing. The wallet's BIP340 pubkey
+IS its Nostr identity per D-11d, but today that identity has no
+kind-0 metadata published anywhere — followers who click through
+from a kind-1 note (item 8) or a NIP-17 DM see a naked pubkey
+with no display name, no picture, no NIP-05 handle. Publish a
+kind-0 metadata event seeded from the operator's identity
+attestation (display name from `name`, picture from
+`attachment_*` if present) on first connect, re-publish when the
+operator edits their identity. Without this the published Nostr
+identity is structurally incomplete.
+
+### 8. kind-1 publish helper + "Share to Nostr" affordance
+
+The substrate primitive plus the visible surface. A
+`NostrTransport.publish` helper that wraps a kind-1 event built
+from a journal entry (or any shareable record) with optional
+NIP-19 references back to the signed envelope so anyone can fetch
+the bytes and verify the math; a "Share to Nostr" button on the
+journal-entry detail surface; the source entry gets stamped with
+the published event id so the operator can see what's already
+been shared. Publishing rides the existing NostrTransport — same
+key, same relay set, same encryption-free model that kind-1 uses.
+
+### 9. Import-existing-nsec flow
+
+For operators bringing an existing Nostr identity (Primal,
+Damus, Amethyst, snort, etc.) — Tapit grows an "I already have
+a Nostr nsec, import it" path that takes over management of
+that identity so the operator's existing follows, profile, and
+post history come with them. Honest disclosure required: the
+nsec already exists outside Tapit (in Primal's secure enclave,
+in an nsec-bunker, in whichever client they were using), so the
+keys-never-leave-the-wallet-unencrypted discipline becomes more
+nuanced for imported identities. The operator who explicitly
+imports is making an informed choice rather than having the
+discipline silently weakened — the import surface names the
+tradeoff plainly.
+
+### 10. NIP-05 verification surface
+
+Map a human-readable handle (e.g. `tom@dynastytrust.org`) to
+the wallet's pubkey via DNS, the Nostr-community-standard
+identity-verification path. Many Bitcoin-community Nostr users
+already have NIP-05 handles; matching that surface makes the
+wallet identity legible inside existing clients (Damus shows a
+verified checkmark, Primal renders the handle, etc.). Lower
+priority than items 7-9 because publishing works without it —
+but the wallet's identity reads naked-pubkey-shaped without it.
+
 ## Tier 2 — Polish and substrate maturation
 
 These are the named-pending threads from the prior session
@@ -274,18 +349,29 @@ is the doctrine — not "we'll add it later."
   Bitcoin in this wallet is the public clock for tamper-evident
   timestamps, not the financial layer. A different bet than
   every other Bitcoin wallet, and a defensible one.
-- **NIP-05 verification / NIP-07 browser-signer integration /
-  public Nostr feed kind-1 posting.** This wallet is an
-  attestation-holder, not a social-feed-publisher. A different
-  category than Damus or Amethyst — not a weaker version of
-  them.
+- **Nostr social feed READING.** This wallet is not a Damus /
+  Amethyst / Primal replacement. Operators continue to use their
+  existing Nostr client to scroll their follows and read their
+  inbox. The wallet's posture is identity-substrate-first not
+  feed-first — it publishes and signs (Tier 1 items 7-10), it
+  does not read. (Reframed 2026-05-29 — the prior PLAN.md line
+  retired kind-1 posting and NIP-05 as out-of-v1, which was the
+  wrong line and is now retired itself; kind-1 publishing and
+  kind-0 profile metadata and NIP-05 verification are all in
+  scope per Tier 1 items 7-10.)
 - **Hardware-wallet support for the encryption key.** The
   wallet's keypair IS the secret. Not an HD seed that could ride
   a Trezor. Hardware support would be a structurally different
   product.
-- **NIP-46 inter-app signing transport.** Layer 2 ships as a
-  deeplink today. NIP-46 swaps in at the same SignRequest /
-  SignGrant message shapes when it lands.
+- **NIP-46 / NIP-07 inter-app signing transports.** Layer 2
+  ships as a deeplink today; NIP-46 (remote signer over Nostr)
+  and NIP-07 (browser extension API) become the natural inter-
+  app pathways once Tier 1 items 7-10 close and the wallet's
+  Nostr-identity-substrate is fully established. Existing Nostr
+  web apps (nostrudel, snort, etc.) ask the wallet to sign
+  events via NIP-07; remote services ask via NIP-46. Both swap
+  in at the same SignRequest / SignGrant message shapes the
+  deeplink path uses today.
 - **Voice input / output, NFC tap-to-cosign, QR-as-transport for
   cosigning.** UX polish on existing primitives. Paste-flow
   works; the rest is later.
