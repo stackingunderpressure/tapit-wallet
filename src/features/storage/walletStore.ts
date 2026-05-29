@@ -53,15 +53,25 @@ export const walletStore = {
     await localStore.put(ownerId, value);
 
     const prefs = await prefsStore.load(ownerId);
+    // lastLocalSync ALWAYS advances when the local write succeeds,
+    // regardless of remote outcome — so the home-screen banner can
+    // honestly surface local-newer-than-cloud when remote push
+    // fails or cloudSync is off (2026-05-28 PLAN.md Tier 1 item 6).
     if (!prefs.cloudSync) {
+      await prefsStore.save(ownerId, { ...prefs, lastLocalSync: now });
       return { localSyncedAt: now, remoteSyncedAt: null, remoteFailed: false };
     }
     try {
       await remoteStore.put(ownerId, value);
-      await prefsStore.save(ownerId, { ...prefs, lastRemoteSync: now });
+      await prefsStore.save(ownerId, {
+        ...prefs,
+        lastRemoteSync: now,
+        lastLocalSync: now,
+      });
       return { localSyncedAt: now, remoteSyncedAt: now, remoteFailed: false };
     } catch (err) {
       console.warn('remoteStore.put failed; local save succeeded', err);
+      await prefsStore.save(ownerId, { ...prefs, lastLocalSync: now });
       return { localSyncedAt: now, remoteSyncedAt: null, remoteFailed: true };
     }
   },

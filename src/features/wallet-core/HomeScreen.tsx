@@ -87,8 +87,7 @@ import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promo
 import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
 import { PromoteRouter, type PromoteRouterHandle } from '../messaging/PromoteRouter.tsx';
 import type { PromotePayload } from '../messaging/promoteTarget.ts';
-
-const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+import { backupBanner } from './backupBanner.ts';
 
 // Top-level tabs separate the kinds of things the wallet holds.
 // Journal is the diary, Identity the founding card plus memberships,
@@ -103,23 +102,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'people', label: 'People' },
   { id: 'lattice', label: 'Lattice' },
 ];
-
-function backupBanner(prefs: {
-  cloudSync: boolean;
-  lastRemoteSync: string | null;
-}): { tone: 'ok' | 'warn'; text: string } | null {
-  if (!prefs.cloudSync) {
-    return { tone: 'warn', text: 'Cloud backup is off. Your wallet lives only on this device.' };
-  }
-  if (!prefs.lastRemoteSync) {
-    return { tone: 'warn', text: 'Cloud backup pending — first sync has not completed yet.' };
-  }
-  const age = Date.now() - new Date(prefs.lastRemoteSync).getTime();
-  if (age > STALE_AFTER_MS) {
-    return { tone: 'warn', text: 'Cloud backup is more than a day old.' };
-  }
-  return null;
-}
 
 // A capture (Phase 4.5 capture bridge) is a journal-kind
 // attestation carrying a source=capture leaf. The Captured tab

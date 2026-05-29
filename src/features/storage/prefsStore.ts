@@ -23,6 +23,17 @@ export interface Prefs {
   /** ISO 8601 of the last successful remote save; null if never. */
   lastRemoteSync: string | null;
   /**
+   * ISO 8601 of the last LOCAL save. Always set when walletStore.save
+   * completes, regardless of remote outcome — even when remote push
+   * fails (or cloudSync is off), local saves are recorded here.
+   * When lastLocalSync > lastRemoteSync the local snapshot is newer
+   * than what the cloud knows about, which the home-screen banner
+   * surfaces as honest UX so the operator can SEE the unsynced state
+   * rather than have it lurk silently. Added 2026-05-28 (PLAN.md
+   * Tier 1 item 6).
+   */
+  lastLocalSync: string | null;
+  /**
    * Milliseconds of inactivity before the wallet re-locks and the
    * passphrase prompt comes back. 0 means never (only sign-out or
    * a fresh browser session locks). Default 30 minutes per
@@ -77,6 +88,7 @@ const KEY = (ownerId: string) => `prefs:${ownerId}`;
 const DEFAULT_PREFS: Prefs = {
   cloudSync: true,
   lastRemoteSync: null,
+  lastLocalSync: null,
   idleTimeoutMs: 30 * 60 * 1000,
   nostrTransportEnabled: false,
   nostrRelays: [...DEFAULT_RELAYS],

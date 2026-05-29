@@ -18,6 +18,8 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/UnlockPrompt.tsx',
     'src/features/wallet-core/IdentityCeremony.tsx',
     'src/features/wallet-core/HomeScreen.tsx',
+    'src/features/wallet-core/backupBanner.ts',
+    'src/features/wallet-core/backupBanner.test.ts',
     'src/features/wallet-core/IdentityCard.tsx',
     'src/features/wallet-core/AttestationCard.tsx',
     'src/features/wallet-core/useIdleLock.ts',

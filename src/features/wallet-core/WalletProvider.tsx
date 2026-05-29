@@ -68,6 +68,7 @@ export function WalletProvider({ children }: Props) {
   const [prefs, setPrefs] = useState<Prefs>({
     cloudSync: true,
     lastRemoteSync: null,
+    lastLocalSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
     nostrTransportEnabled: false,
     nostrRelays: [],
