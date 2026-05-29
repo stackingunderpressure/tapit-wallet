@@ -3,6 +3,10 @@ import { useMemo } from 'react';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
+import {
+  deriveVerificationStatus,
+  type VerificationKind,
+} from '../anchoring/verificationStatus.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 
@@ -20,23 +24,31 @@ function readString(claim: FieldBranch, name: string): string | undefined {
 // badge is async metadata that arrives later — sometimes within an
 // hour, sometimes after days of retry. UI never frames the entry as
 // "waiting" or "pending" or "failed" — only the verification badge
-// varies, and it never alarms.
+// varies, and it never alarms. The third state `stalled` was added
+// 2026-05-28 (PLAN.md Tier 1 item 4) to honestly surface when the
+// OpenTimestamps calendar has been unreachable across enough
+// attempts that the operator should see the case rather than have
+// it lurk silently behind a perpetual "Time-verifying…" badge.
 
 function verificationBadge(
-  state: string | undefined,
+  kind: VerificationKind,
   btcHeight?: number,
-): { text: string; tone: 'verified' | 'verifying' } {
-  if (state === 'confirmed') {
+): { text: string; tone: VerificationKind } {
+  if (kind === 'verified') {
     return {
       text: btcHeight ? `Time-verified · block ${btcHeight}` : 'Time-verified',
       tone: 'verified',
     };
   }
+  if (kind === 'stalled') {
+    return { text: 'Time-verifying — calendar slow', tone: 'stalled' };
+  }
   return { text: 'Time-verifying…', tone: 'verifying' };
 }
 
-function toneClass(tone: 'verified' | 'verifying'): string {
+function toneClass(tone: VerificationKind): string {
   if (tone === 'verified') return 'bg-emerald-50 text-emerald-900 border-emerald-200';
+  if (tone === 'stalled') return 'bg-amber-50 text-amber-900 border-amber-200';
   return 'bg-ink/5 text-muted border-ink/10';
 }
 
@@ -56,20 +68,8 @@ export function JournalCard({ attestation }: Props) {
       : '📄'
     : null;
 
-  // The verified state lives durably on the attestation itself — the
-  // WalletProvider attaches the confirmed anchor and it rides the
-  // encrypted wallet backup. Read that first; the live queue is only
-  // a fallback for entries not yet confirmed. This keeps a verified
-  // badge sticky across reloads, re-unlocks, and device restores.
-  const verifiedAnchor =
-    attestation.anchor?.status === 'confirmed'
-      ? attestation.anchor
-      : row?.state === 'confirmed'
-        ? row.anchor
-        : null;
-  const badge = verifiedAnchor
-    ? verificationBadge('confirmed', verifiedAnchor.btcHeight)
-    : verificationBadge(row?.state);
+  const status = deriveVerificationStatus(attestation, row);
+  const badge = verificationBadge(status.kind, status.anchor?.btcHeight);
 
   return (
     <Link

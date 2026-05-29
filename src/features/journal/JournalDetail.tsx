@@ -4,6 +4,7 @@ import type { Attestation, FieldBranch } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
+import { deriveVerificationStatus } from '../anchoring/verificationStatus.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { mediaStore } from '../storage/mediaStore.ts';
 import { downloadJournalEntry } from './downloadEntry.ts';
@@ -96,13 +97,14 @@ export function JournalDetail() {
   // Prefer the anchor persisted on the attestation — the durable
   // verified state that rides the encrypted wallet backup. The live
   // queue row is only a fallback for entries not yet confirmed, so a
-  // verified entry stays verified across reloads and restores.
+  // verified entry stays verified across reloads and restores. The
+  // shared deriveVerificationStatus helper also surfaces the
+  // `stalled` third state (2026-05-28 PLAN.md Tier 1 item 4) when
+  // the OpenTimestamps calendar has been unreachable across enough
+  // attempts that the operator should see the case honestly.
+  const verification = deriveVerificationStatus(entry, row);
   const verifiedAnchor =
-    entry.anchor?.status === 'confirmed'
-      ? entry.anchor
-      : row?.state === 'confirmed'
-        ? row.anchor
-        : null;
+    verification.kind === 'verified' ? verification.anchor : null;
 
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto">
@@ -147,7 +149,9 @@ export function JournalDetail() {
             ? verifiedAnchor.btcHeight
               ? `Time-verified · Bitcoin block ${verifiedAnchor.btcHeight}`
               : 'Time-verified'
-            : 'Time-verifying… (usually within an hour; can take days)'}
+            : verification.kind === 'stalled'
+              ? `Time-verifying — the OpenTimestamps calendar has been unreachable across ${verification.attempts} attempts. The wallet keeps trying; your entry is signed and waiting.`
+              : 'Time-verifying… (usually within an hour; can take days)'}
         </div>
 
         {attachmentHash && (

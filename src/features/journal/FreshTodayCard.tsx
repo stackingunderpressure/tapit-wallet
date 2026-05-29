@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { useAnchorStatus } from '../anchoring/useAnchorStatus.ts';
+import { deriveVerificationStatus } from '../anchoring/verificationStatus.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { categoryAccent, deriveTitle } from './categoryAccents.ts';
@@ -64,15 +65,13 @@ export function FreshTodayCard({ attestation }: Props) {
   const body =
     text.trim().length > 0 && text.trim() !== title ? text : '';
 
+  const verification = deriveVerificationStatus(attestation, row);
   const verifiedAnchor =
-    attestation.anchor?.status === 'confirmed'
-      ? attestation.anchor
-      : row?.state === 'confirmed'
-        ? row.anchor
-        : null;
+    verification.kind === 'verified' ? verification.anchor : null;
 
   const ageMs = Date.now() - new Date(writtenAt).getTime();
   const stillTimestamping = !verifiedAnchor && ageMs < 60 * 60 * 1000;
+  const calendarSlow = verification.kind === 'stalled';
 
   return (
     <Link
@@ -118,6 +117,10 @@ export function FreshTodayCard({ attestation }: Props) {
               {verifiedAnchor.btcHeight
                 ? `Block ${verifiedAnchor.btcHeight} · verified`
                 : 'Time-verified'}
+            </span>
+          ) : calendarSlow ? (
+            <span className="text-xs rounded-full px-2.5 py-1 border border-amber-300/60 text-amber-200 bg-amber-400/[0.10]">
+              Time-verifying — calendar slow
             </span>
           ) : (
             <span className="text-xs rounded-full px-2.5 py-1 border border-fresh-mycelium-glow/40 text-fresh-mycelium-glow bg-fresh-mycelium-glow/[0.08]">
