@@ -49,6 +49,17 @@ export interface OnboardingBundle {
    * saves can re-encrypt.
    */
   passphrase: string;
+  /**
+   * Optional 64-char hex of a 32-byte secp256k1 private key the
+   * operator imported via the existing-Nostr-identity flow
+   * (PLAN.md Tier 1 item 9, 2026-05-29). When set, the post-sign-
+   * in setup uses createWalletFromImport rather than createWallet
+   * so the wallet wraps the operator's imported keypair instead
+   * of a freshly generated one. Subject to the same module-level
+   * volatility as `passphrase` — the hex never gets persisted
+   * outside this in-memory holder.
+   */
+  importedPrivateKeyHex?: string;
 }
 
 let pending: OnboardingBundle | null = null;

@@ -112,7 +112,14 @@ const BUDGETS = [
   // does not consume — that branch tree-shakes when Vite is
   // confident, but the import edge from WalletProvider catches it
   // here).
-  { pattern: /^WalletProvider-.*\.js$/, gz: 10_000, label: 'WalletProvider' },
+  // 2026-05-29 import-existing-nsec (PLAN.md Tier 1 item 9) bumped
+  // 10KB -> 10.5KB: the onImport callback + createWalletFromImport
+  // helper added ~150 bytes gz to the WalletProvider chunk. The
+  // heavy components (ImportNostrIdentityPrompt, the inline bech32
+  // codec) are React.lazy'd via PassphrasePrompt so they ship in
+  // their own chunk and only load when the operator taps the
+  // import link.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 10_500, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -352,7 +359,15 @@ const BUDGETS = [
   // components. ~4.3KB gz today; budget carries headroom for the
   // Cut 6 Sage activation hook-in if it lands as a sibling import
   // before a more granular split is earned.
-  { pattern: /^FreshLoginShell-.*\.js$/, gz: 5_500, label: 'FreshLoginShell (lazy)' },
+  // 2026-05-29 import-existing-nsec (PLAN.md Tier 1 item 9) bumped
+  // 5.5KB -> 6KB: ImportDiscloseStep + ImportEnterStep + the
+  // parseNostrPrivateKey bech32 codec + the publicKeyFromPrivate
+  // edge added ~90 bytes gz to the FreshLoginShell chunk. The steps
+  // live in freshOnboardingSteps.tsx alongside the existing seven
+  // step components; lazy-loading just the import sub-steps would
+  // add Suspense flicker mid-flow and the steps run on the import
+  // critical path once selected, so the audit-and-bump is right.
+  { pattern: /^FreshLoginShell-.*\.js$/, gz: 6_000, label: 'FreshLoginShell (lazy)' },
 
   // Vendor chunks split via vite.config.ts manualChunks.
   { pattern: /^attest-.*\.js$/, gz: 35_000, label: 'tapit-attest vendor' },

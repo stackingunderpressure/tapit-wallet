@@ -1,8 +1,21 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { PassphraseCommitWarnings } from './PassphraseCommitWarnings.tsx';
+
+// Lazy-loaded so the import-existing-nsec substrate (bech32 codec,
+// publicKeyFromPrivate, the disclose + enter + confirm UI) stays
+// out of the first-login critical-path bundle. Most operators
+// generate fresh; only those who tap the import link pay the
+// chunk-load cost. Same pattern as WalletGuideBitcoinTab.
+const ImportNostrIdentityPrompt = lazy(() =>
+  import('./ImportNostrIdentityPrompt.tsx').then((m) => ({
+    default: m.ImportNostrIdentityPrompt,
+  })),
+);
 
 interface Props {
   onSubmit: (passphrase: string) => Promise<void>;
+  /** Import an existing Nostr nsec instead of generating a fresh keypair. */
+  onImport?: (passphrase: string, privateKeyHex: string) => Promise<void>;
 }
 
 // First-login passphrase capture. Two fields with confirmation. The
@@ -13,12 +26,35 @@ interface Props {
 // clickthrough failure mode). The passphrase IS the encryption key
 // per CLAUDE_ROOT.md rule one; a clickthrough mistake is terminal
 // because the cloud-sync blob is undecryptable without it.
-export function PassphrasePrompt({ onSubmit }: Props) {
+//
+// Operators with an existing Nostr identity can switch to the
+// import-existing-nsec flow via the link below the form (PLAN.md
+// Tier 1 item 9, 2026-05-29). The import path runs through its own
+// disclosure-and-warning gate before committing the imported key.
+export function PassphrasePrompt({ onSubmit, onImport }: Props) {
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
+  const [importMode, setImportMode] = useState(false);
+
+  if (importMode && onImport) {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
+            Loading import flow…
+          </div>
+        }
+      >
+        <ImportNostrIdentityPrompt
+          onSubmit={onImport}
+          onCancel={() => setImportMode(false)}
+        />
+      </Suspense>
+    );
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +137,18 @@ export function PassphrasePrompt({ onSubmit }: Props) {
         {error && (
           <p className="mt-3 text-sm text-red-600" role="alert">
             {error}
+          </p>
+        )}
+        {onImport && (
+          <p className="mt-5 text-center text-xs text-muted">
+            Already have a Nostr nsec?{' '}
+            <button
+              type="button"
+              onClick={() => setImportMode(true)}
+              className="text-accent underline hover:text-ink"
+            >
+              Import your existing identity
+            </button>
           </p>
         )}
       </form>

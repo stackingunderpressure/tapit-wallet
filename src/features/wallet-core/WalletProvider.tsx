@@ -10,6 +10,7 @@ import { PassphrasePrompt } from './PassphrasePrompt.tsx';
 import { UnlockPrompt } from './UnlockPrompt.tsx';
 import { IdentityCeremony } from './IdentityCeremony.tsx';
 import { createWallet } from './createWallet.ts';
+import { createWalletFromImport } from './createWalletFromImport.ts';
 import { unlockWallet } from './unlockWallet.ts';
 import {
   createIdentityAttestation,
@@ -165,7 +166,19 @@ export function WalletProvider({ children }: Props) {
         return;
       }
       try {
-        const wallet = await createWallet(ownerId, bundle.passphrase);
+        // Branch on bundle.importedPrivateKeyHex so the Fresh
+        // import-existing-nsec path (PLAN.md Tier 1 item 9, 2026-
+        // 05-29) wraps the operator's imported keypair rather than
+        // generating a fresh one. Same downstream applyOnboardingBundle
+        // call signs the founding identity attestation and (optional)
+        // first journal entry under whichever wallet was created.
+        const wallet = bundle.importedPrivateKeyHex
+          ? await createWalletFromImport(
+              ownerId,
+              bundle.passphrase,
+              bundle.importedPrivateKeyHex,
+            )
+          : await createWallet(ownerId, bundle.passphrase);
         if (cancelled) return;
         const loadedPrefs = await prefsStore.load(ownerId);
         // Anchor worker has not started yet (its effect only fires
@@ -406,6 +419,29 @@ export function WalletProvider({ children }: Props) {
     [ownerId],
   );
 
+  // Import-existing-nsec path (PLAN.md Tier 1 item 9). Same shape as
+  // onCreate but uses createWalletFromImport so the wallet is built
+  // around the operator's existing keypair rather than a freshly
+  // generated one. The honest-disclosure surface in
+  // ImportNostrIdentityPrompt has already informed the operator that
+  // the keys-never-leave discipline is more nuanced for imported
+  // identities; here we just do the cryptographic plumbing.
+  const onImport = useCallback(
+    async (passphrase: string, privateKeyHex: string) => {
+      if (!ownerId) throw new Error('no session');
+      const wallet = await createWalletFromImport(
+        ownerId,
+        passphrase,
+        privateKeyHex,
+      );
+      setPassphrase(passphrase);
+      setHoldings([]);
+      setPhase({ kind: 'needs-identity', wallet });
+      setPrefs(await prefsStore.load(ownerId));
+    },
+    [ownerId],
+  );
+
   const onUnlock = useCallback(
     async (passphrase: string) => {
       if (phase.kind !== 'locked') throw new Error('not in locked state');
@@ -610,7 +646,7 @@ export function WalletProvider({ children }: Props) {
   }
 
   if (phase.kind === 'first-login') {
-    return <PassphrasePrompt onSubmit={onCreate} />;
+    return <PassphrasePrompt onSubmit={onCreate} onImport={onImport} />;
   }
 
   if (phase.kind === 'onboarding-setup') {

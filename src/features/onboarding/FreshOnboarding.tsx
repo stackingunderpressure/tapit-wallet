@@ -7,6 +7,8 @@ import {
   setPendingOnboarding,
 } from './pendingOnboarding.ts';
 import { PassphraseCommitWarnings } from '../wallet-core/PassphraseCommitWarnings.tsx';
+import { parseNostrPrivateKey } from '../wallet-core/parseNostrPrivateKey.ts';
+import { publicKeyFromPrivate } from 'tapit-attest';
 import {
   SplashStep,
   ComposeStep,
@@ -15,6 +17,8 @@ import {
   RecoveryStep,
   EmailStep,
   CodeStep,
+  ImportDiscloseStep,
+  ImportEnterStep,
 } from './freshOnboardingSteps.tsx';
 
 // The Fresh compose-before-login state machine. Replaces the
@@ -40,7 +44,9 @@ type Step =
   | 'passphrase-warn'
   | 'recovery'
   | 'email'
-  | 'code';
+  | 'code'
+  | 'import-disclose'
+  | 'import-enter';
 type EmailStatus = 'idle' | 'busy' | 'error';
 
 const SPLASH_MS = 3000;
@@ -71,6 +77,13 @@ export function FreshOnboarding() {
   const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
+
+  // Import-existing-nsec branch state (PLAN.md Tier 1 item 9,
+  // 2026-05-29). When non-null, FreshOnboarding routes through the
+  // import path and the captured private key rides in the bundle
+  // for WalletProvider's onboarding-setup effect to consume.
+  const [importKeyInput, setImportKeyInput] = useState('');
+  const [importedPrivateKeyHex, setImportedPrivateKeyHex] = useState<string | null>(null);
 
   const photoRef = useRef<HTMLInputElement>(null);
   const splashTimer = useRef<number | null>(null);
@@ -167,6 +180,18 @@ export function FreshOnboarding() {
     setStep('email');
   }
 
+  function submitImportEnter(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const parsed = parseNostrPrivateKey(importKeyInput);
+    if (!parsed.ok) {
+      setError(parsed.reason);
+      return;
+    }
+    setImportedPrivateKeyHex(parsed.privateKeyHex);
+    setStep('name');
+  }
+
   async function sendCode(targetEmail: string): Promise<boolean> {
     setEmailStatus('busy');
     setError(null);
@@ -207,6 +232,9 @@ export function FreshOnboarding() {
       displayName: displayName.trim(),
       birthday: birthday.trim() || undefined,
       passphrase,
+      ...(importedPrivateKeyHex
+        ? { importedPrivateKeyHex }
+        : {}),
     });
     const { error: err } = await supabase().auth.verifyOtp({
       email: email.trim(),
@@ -241,15 +269,69 @@ export function FreshOnboarding() {
       {step === 'splash' && <SplashStep />}
 
       {step === 'compose' && (
-        <ComposeStep
-          text={text}
-          onTextChange={setText}
-          attachment={attachment}
-          attachmentBusy={attachmentBusy}
-          onPickAttachment={onPickAttachment}
-          onClearAttachment={() => setAttachment(null)}
-          photoRef={photoRef}
-          onSubmit={submitCompose}
+        <>
+          <ComposeStep
+            text={text}
+            onTextChange={setText}
+            attachment={attachment}
+            attachmentBusy={attachmentBusy}
+            onPickAttachment={onPickAttachment}
+            onClearAttachment={() => setAttachment(null)}
+            photoRef={photoRef}
+            onSubmit={submitCompose}
+            error={error}
+          />
+          <p className="mt-6 text-center text-xs text-fresh-text-tertiary">
+            Already have a Nostr identity?{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setStep('import-disclose');
+              }}
+              className="font-medium text-fresh-accent-primary underline transition hover:text-fresh-text-primary"
+            >
+              Import it
+            </button>
+          </p>
+        </>
+      )}
+
+      {step === 'import-disclose' && (
+        <ImportDiscloseStep
+          onContinue={() => {
+            setError(null);
+            setStep('import-enter');
+          }}
+          onBack={() => {
+            setError(null);
+            setImportedPrivateKeyHex(null);
+            setImportKeyInput('');
+            setStep('compose');
+          }}
+        />
+      )}
+
+      {step === 'import-enter' && (
+        <ImportEnterStep
+          keyInput={importKeyInput}
+          onKeyInputChange={setImportKeyInput}
+          derivedPubkey={(() => {
+            const trimmed = importKeyInput.trim();
+            if (trimmed.length === 0) return null;
+            const parsed = parseNostrPrivateKey(trimmed);
+            if (!parsed.ok) return null;
+            try {
+              return publicKeyFromPrivate(parsed.privateKeyHex);
+            } catch {
+              return null;
+            }
+          })()}
+          onSubmit={submitImportEnter}
+          onBack={() => {
+            setError(null);
+            setStep('import-disclose');
+          }}
           error={error}
         />
       )}
