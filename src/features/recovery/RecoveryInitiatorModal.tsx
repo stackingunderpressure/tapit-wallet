@@ -16,9 +16,6 @@ import { buildRecoverySuccession } from './createRecoverySuccession.ts';
 const QrScanModal = lazy(() =>
   import('../qr/QrScanModal.tsx').then((m) => ({ default: m.QrScanModal })),
 );
-const QrShow = lazy(() =>
-  import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
-);
 import type { Transport } from '../transport/transport.ts';
 import type { WalletConnection } from '../transport/connectWallet.ts';
 import { sendEnvelopeTo } from '../transport/encryptedInbox.ts';
@@ -29,6 +26,17 @@ import {
   isShareResponse,
   readShareResponse,
 } from './createRecoveryRequest.ts';
+import {
+  HEX_64,
+  phaseHeadline,
+  shortKey,
+  type CohortEntry,
+  type PeerStatus,
+  type RecoveryPhase,
+} from './recoveryInitiatorTypes.ts';
+import { RecoveryConfigStep } from './RecoveryConfigStep.tsx';
+import { RecoveryAwaitingShares } from './RecoveryAwaitingShares.tsx';
+import { RecoveryNamingStep } from './RecoveryNamingStep.tsx';
 
 // Phase 5e-v — the recovery initiator. Opens from the locked screen;
 // generates a fresh ceremony Wallet in modal-local state (never
@@ -41,29 +49,12 @@ import {
 // as an audit-trail record, hands restored wallet + new passphrase
 // to WalletProvider via onRecovered. Falls back to DEFAULT_RELAYS
 // when prefs.nostrRelays is empty.
-
-interface CohortEntry {
-  pubkey: string;
-  name: string;
-}
-
-interface PeerStatus {
-  pubkey: string;
-  name: string;
-  state: 'queued' | 'sending' | 'sent' | 'send-failed' | 'received' | 'response-error';
-  detail?: string;
-}
-
-type Phase =
-  | { kind: 'configuring' }
-  | { kind: 'sending' }
-  | { kind: 'awaiting'; received: number; needed: number }
-  | { kind: 'combining' }
-  | { kind: 'restoring' }
-  | { kind: 'naming'; restored: Wallet }
-  | { kind: 'saving' }
-  | { kind: 'done' }
-  | { kind: 'error'; message: string };
+//
+// Per-phase render sub-components live in sibling files
+// (RecoveryConfigStep / RecoveryAwaitingShares / RecoveryNamingStep)
+// so this orchestrator stays under the 800-line hard limit and the
+// Tier 1 cross-device recovery field-test has headroom to land
+// fixes in the right sub-component rather than re-growing this file.
 
 interface Props {
   ownerId: string;
@@ -71,27 +62,6 @@ interface Props {
   relays: readonly string[];
   onRecovered: (wallet: Wallet, passphrase: string) => Promise<void>;
   onClose: () => void;
-}
-
-const HEX_64 = /^[0-9a-f]{64}$/i;
-
-function phaseHeadline(phase: Phase, peerCount: number): string {
-  switch (phase.kind) {
-    case 'configuring': return 'Recover your wallet';
-    case 'sending': return 'Asking your cohort…';
-    case 'awaiting': return `Waiting for ${phase.needed} of ${peerCount}…`;
-    case 'combining': return 'Combining the shares…';
-    case 'restoring': return 'Putting your wallet back together…';
-    case 'naming': return 'Choose a new passphrase';
-    case 'saving': return 'Saving your wallet…';
-    case 'done': return 'Welcome back.';
-    case 'error': return 'Recovery stopped';
-  }
-}
-
-function shortKey(hex: string): string {
-  if (hex.length <= 12) return hex;
-  return `${hex.slice(0, 8)}…${hex.slice(-4)}`;
 }
 
 export function RecoveryInitiatorModal({
@@ -132,7 +102,7 @@ export function RecoveryInitiatorModal({
   const [confirmPass, setConfirmPass] = useState('');
 
   // Ceremony state
-  const [phase, setPhase] = useState<Phase>({ kind: 'configuring' });
+  const [phase, setPhase] = useState<RecoveryPhase>({ kind: 'configuring' });
   const [peers, setPeers] = useState<PeerStatus[]>([]);
   const collectedSharesRef = useRef<Map<string, Share>>(new Map());
   const transportRef = useRef<Transport | null>(null);
@@ -145,20 +115,32 @@ export function RecoveryInitiatorModal({
   // present, throws on decrypt failure. The blended-recovery
   // 2026-05-23 split: same handling regardless of transport, only the
   // arrival surface differs.
-  function absorbShareResponse(envelope: Attestation): { result: 'added' | 'skipped'; reason?: string } {
+  function absorbShareResponse(envelope: Attestation): {
+    result: 'added' | 'skipped';
+    reason?: string;
+  } {
     if (!isShareResponse(envelope)) {
       return { result: 'skipped', reason: 'not a share-response envelope' };
     }
     const view = readShareResponse(envelope);
     if (view.oldIdentity !== oldIdentityRef.current) {
-      return { result: 'skipped', reason: 'addressed to a different recovery subject' };
+      return {
+        result: 'skipped',
+        reason: 'addressed to a different recovery subject',
+      };
     }
     if (view.ceremonyPubkey !== ceremonyWallet.publicKey) {
-      return { result: 'skipped', reason: 'addressed to a different ceremony' };
+      return {
+        result: 'skipped',
+        reason: 'addressed to a different ceremony',
+      };
     }
     const share = decryptShareResponse(ceremonyWallet, envelope);
     if (collectedSharesRef.current.has(String(share.index))) {
-      return { result: 'skipped', reason: 'this share has already been received' };
+      return {
+        result: 'skipped',
+        reason: 'this share has already been received',
+      };
     }
     collectedSharesRef.current.set(String(share.index), share);
     setPeers((prev) => {
@@ -192,7 +174,9 @@ export function RecoveryInitiatorModal({
   // The signed recovery-request envelope, stored once beginSending
   // builds it so the operator can render it as a QR for peers they
   // visit in person — same envelope the Mycelium publish path used.
-  const [requestEnvelope, setRequestEnvelope] = useState<Attestation | null>(null);
+  const [requestEnvelope, setRequestEnvelope] = useState<Attestation | null>(
+    null,
+  );
   const [requestQrOpen, setRequestQrOpen] = useState(false);
 
   function handleScannedShareResponse(text: string) {
@@ -201,7 +185,9 @@ export function RecoveryInitiatorModal({
     try {
       envelope = parseEnvelope(text);
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'could not parse scanned QR');
+      setScanError(
+        err instanceof Error ? err.message : 'could not parse scanned QR',
+      );
       return;
     }
     try {
@@ -212,7 +198,11 @@ export function RecoveryInitiatorModal({
       }
       setScanOpen(false);
     } catch (err) {
-      setScanError(err instanceof Error ? err.message : 'failed to decrypt share-response');
+      setScanError(
+        err instanceof Error
+          ? err.message
+          : 'failed to decrypt share-response',
+      );
     }
   }
 
@@ -231,14 +221,22 @@ export function RecoveryInitiatorModal({
         onEnvelope: (item) => {
           try {
             const outcome = absorbShareResponse(item.envelope);
-            if (outcome.result === 'skipped' && outcome.reason && outcome.reason !== 'not a share-response envelope') {
+            if (
+              outcome.result === 'skipped' &&
+              outcome.reason &&
+              outcome.reason !== 'not a share-response envelope'
+            ) {
               // skipped-but-known share — show as a per-peer error if we
               // can identify the responder; otherwise drop silently.
               const view = readShareResponse(item.envelope);
               setPeers((prev) =>
                 prev.map((p) =>
                   p.pubkey === view.responderPubkey
-                    ? { ...p, state: 'response-error', detail: outcome.reason ?? 'response error' }
+                    ? {
+                        ...p,
+                        state: 'response-error',
+                        detail: outcome.reason ?? 'response error',
+                      }
                     : p,
                 ),
               );
@@ -251,7 +249,8 @@ export function RecoveryInitiatorModal({
                   ? {
                       ...p,
                       state: 'response-error',
-                      detail: err instanceof Error ? err.message : 'decrypt failed',
+                      detail:
+                        err instanceof Error ? err.message : 'decrypt failed',
                     }
                   : p,
               ),
@@ -306,7 +305,10 @@ export function RecoveryInitiatorModal({
       return 'Old wallet pubkey must be 64-character hex.';
     }
     const cleaned = cohort
-      .map((c) => ({ pubkey: c.pubkey.trim().toLowerCase(), name: c.name.trim() }))
+      .map((c) => ({
+        pubkey: c.pubkey.trim().toLowerCase(),
+        name: c.name.trim(),
+      }))
       .filter((c) => c.pubkey.length > 0);
     if (cleaned.length < 2) {
       return 'Add at least two cohort members.';
@@ -336,13 +338,25 @@ export function RecoveryInitiatorModal({
       return;
     }
     if (!transportRef.current) {
-      setPhase({ kind: 'error', message: 'Network not connected yet — try again in a moment.' });
+      setPhase({
+        kind: 'error',
+        message: 'Network not connected yet — try again in a moment.',
+      });
       return;
     }
     const cleaned = cohort
-      .map((c) => ({ pubkey: c.pubkey.trim().toLowerCase(), name: c.name.trim() }))
+      .map((c) => ({
+        pubkey: c.pubkey.trim().toLowerCase(),
+        name: c.name.trim(),
+      }))
       .filter((c) => c.pubkey.length > 0);
-    setPeers(cleaned.map((c) => ({ pubkey: c.pubkey, name: c.name || shortKey(c.pubkey), state: 'queued' })));
+    setPeers(
+      cleaned.map((c) => ({
+        pubkey: c.pubkey,
+        name: c.name || shortKey(c.pubkey),
+        state: 'queued',
+      })),
+    );
     setPhase({ kind: 'sending' });
 
     const envelope: Attestation = buildRecoveryRequestEnvelope(
@@ -356,10 +370,17 @@ export function RecoveryInitiatorModal({
     let dispatched = 0;
     for (const peer of cleaned) {
       setPeers((prev) =>
-        prev.map((p) => (p.pubkey === peer.pubkey ? { ...p, state: 'sending' } : p)),
+        prev.map((p) =>
+          p.pubkey === peer.pubkey ? { ...p, state: 'sending' } : p,
+        ),
       );
       try {
-        const { publish } = await sendEnvelopeTo(transport, envelope, peer.pubkey, ceremonyWallet);
+        const { publish } = await sendEnvelopeTo(
+          transport,
+          envelope,
+          peer.pubkey,
+          ceremonyWallet,
+        );
         const summary = summarizePublish(publish);
         setPeers((prev) =>
           prev.map((p) =>
@@ -407,7 +428,9 @@ export function RecoveryInitiatorModal({
       // WalletProvider's locked phase). Reuse it rather than a fresh
       // walletStore.load to avoid a redundant network hop.
       if (storedBlob.v !== 2) {
-        throw new Error('cloud backup is the legacy v1 format and cannot be recovered without a passphrase');
+        throw new Error(
+          'cloud backup is the legacy v1 format and cannot be recovered without a passphrase',
+        );
       }
       const recoverableBlob: RecoverableEncryptedBlob = storedBlob;
       const restored = await Wallet.restoreFromKData(recoverableBlob, kData);
@@ -418,7 +441,10 @@ export function RecoveryInitiatorModal({
     } catch (err) {
       setPhase({
         kind: 'error',
-        message: err instanceof Error ? err.message : 'recovery failed during combine + restore',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'recovery failed during combine + restore',
       });
     }
   }
@@ -435,7 +461,10 @@ export function RecoveryInitiatorModal({
     }
     const kData = kDataRef.current;
     if (!kData) {
-      setPhase({ kind: 'error', message: 'K_data missing — recovery state lost.' });
+      setPhase({
+        kind: 'error',
+        message: 'K_data missing — recovery state lost.',
+      });
       return;
     }
     setPhase({ kind: 'saving' });
@@ -444,7 +473,10 @@ export function RecoveryInitiatorModal({
       // moment, held + anchored before save so it lives in the new
       // blob. Peer co-signs ride the existing mergeSignatures path
       // and ship in the dedicated 5e-vii UI session.
-      const succession = buildRecoverySuccession(restored, peers.map((p) => p.pubkey));
+      const succession = buildRecoverySuccession(
+        restored,
+        peers.map((p) => p.pubkey),
+      );
       await restored.hold(succession);
       await anchorQueue.upsert(ownerId, {
         digestHex: envelopeId(succession),
@@ -474,6 +506,12 @@ export function RecoveryInitiatorModal({
     [phase, peers.length],
   );
 
+  const isAwaitingShape =
+    phase.kind === 'sending' ||
+    phase.kind === 'awaiting' ||
+    phase.kind === 'combining' ||
+    phase.kind === 'restoring';
+
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -496,228 +534,37 @@ export function RecoveryInitiatorModal({
         )}
 
         {isRecoverableBlob && phase.kind === 'configuring' && (
-          <>
-            <p className="mt-2 text-sm text-muted">
-              Enter your old wallet pubkey and the cohort members who hold
-              pieces of your backup. Each member verifies it is really you out
-              of band before releasing their piece. Once enough pieces come
-              back, your wallet is rebuilt on this device.
-            </p>
-
-            <label className="mt-4 block">
-              <span className="text-sm font-medium">Your old wallet pubkey</span>
-              <input
-                type="text"
-                value={oldIdentity}
-                onChange={(e) => setOldIdentity(e.target.value)}
-                placeholder="64-character hex"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono focus:border-accent focus:outline-none"
-              />
-            </label>
-
-            <label className="mt-3 block">
-              <span className="text-sm font-medium">Your name</span>
-              <input
-                type="text"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                placeholder="So cohort members know who is asking"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
-              />
-            </label>
-
-            <label className="mt-3 block">
-              <span className="text-sm font-medium">Optional message</span>
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={2}
-                placeholder="A note for the cohort"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
-              />
-            </label>
-
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Cohort members</span>
-                <button
-                  type="button"
-                  onClick={addCohortRow}
-                  className="text-xs text-accent hover:underline"
-                >
-                  + Add
-                </button>
-              </div>
-              <div className="mt-2 space-y-2">
-                {cohort.map((c, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={c.name}
-                      onChange={(e) => updateCohort(i, { name: e.target.value })}
-                      placeholder="Name"
-                      className="w-24 rounded-md border border-ink/15 bg-white px-2 py-1.5 text-xs focus:border-accent focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={c.pubkey}
-                      onChange={(e) => updateCohort(i, { pubkey: e.target.value })}
-                      placeholder="pubkey (64 hex)"
-                      className="flex-1 min-w-0 rounded-md border border-ink/15 bg-white px-2 py-1.5 text-xs font-mono focus:border-accent focus:outline-none"
-                    />
-                    {cohort.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => removeCohortRow(i)}
-                        className="text-xs text-muted hover:text-red-600"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <label className="mt-4 block">
-              <span className="text-sm font-medium">Threshold (M of N)</span>
-              <input
-                type="number"
-                min={2}
-                max={cohort.filter((c) => c.pubkey.trim()).length || 2}
-                value={threshold}
-                onChange={(e) => setThreshold(Math.max(2, Number(e.target.value) || 2))}
-                className="mt-1 w-24 rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm focus:border-accent focus:outline-none"
-              />
-              <span className="ml-2 text-xs text-muted">
-                of {cohort.filter((c) => c.pubkey.trim()).length || cohort.length} cohort members
-              </span>
-            </label>
-
-            <button
-              type="button"
-              onClick={() => void beginSending()}
-              className="mt-5 w-full rounded-md bg-ink py-2.5 text-paper text-sm font-medium"
-            >
-              Begin recovery
-            </button>
-
-            <div className="mt-3 rounded-md bg-ink/[0.04] px-3 py-2 text-xs text-muted">
-              Ceremony device pubkey ·{' '}
-              <span className="font-mono">{shortKey(ceremonyWallet.publicKey)}</span>{' '}
-              — share with cohort members so they can verify it on the call.
-            </div>
-          </>
+          <RecoveryConfigStep
+            oldIdentity={oldIdentity}
+            onOldIdentityChange={setOldIdentity}
+            operatorName={operatorName}
+            onOperatorNameChange={setOperatorName}
+            message={message}
+            onMessageChange={setMessage}
+            cohort={cohort}
+            onUpdateCohort={updateCohort}
+            onAddCohortRow={addCohortRow}
+            onRemoveCohortRow={removeCohortRow}
+            threshold={threshold}
+            onThresholdChange={setThreshold}
+            ceremonyPubkey={ceremonyWallet.publicKey}
+            onBegin={() => void beginSending()}
+          />
         )}
 
-        {isRecoverableBlob &&
-          (phase.kind === 'sending' || phase.kind === 'awaiting' || phase.kind === 'combining' || phase.kind === 'restoring') && (
-            <>
-              <p className="mt-2 text-sm text-muted">
-                Read your ceremony pubkey aloud to each cohort member so they
-                can verify it before releasing their share.
-              </p>
-              <div className="mt-3 rounded-md bg-ink/[0.04] px-3 py-2 text-xs font-mono break-all">
-                {ceremonyWallet.publicKey}
-              </div>
-              <div className="mt-4 space-y-2">
-                {peers.map((p) => (
-                  <div
-                    key={p.pubkey}
-                    className="flex items-center justify-between rounded-md border border-ink/10 bg-white px-3 py-2 text-sm"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{p.name}</div>
-                      <div className="text-xs text-muted font-mono">{shortKey(p.pubkey)}</div>
-                    </div>
-                    <div className="text-xs text-right ml-3 shrink-0">
-                      {p.state === 'queued' && <span className="text-muted">Queued</span>}
-                      {p.state === 'sending' && <span className="text-muted">Sending…</span>}
-                      {p.state === 'sent' && <span className="text-muted">Sent · waiting</span>}
-                      {p.state === 'send-failed' && (
-                        <span className="text-red-600">{p.detail || 'Send failed'}</span>
-                      )}
-                      {p.state === 'received' && (
-                        <span className="text-emerald-700">Share received</span>
-                      )}
-                      {p.state === 'response-error' && (
-                        <span className="text-red-600">{p.detail || 'Response error'}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {(phase.kind === 'sending' || phase.kind === 'awaiting') && (
-                <div className="mt-4 rounded-md border border-ink/15 bg-white p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted font-semibold">
-                    Visiting someone in person?
-                  </div>
-                  <p className="mt-1 text-xs text-muted">
-                    Show your request QR to peers you visit; they scan it and
-                    release their share back to you in person. Scan their
-                    response when they show it. Same threshold either way.
-                  </p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setRequestQrOpen(true)}
-                      disabled={!requestEnvelope}
-                      className="rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
-                    >
-                      Show request QR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setScanOpen(true)}
-                      className="rounded-md border border-ink/20 bg-white py-2 text-ink text-sm font-medium hover:bg-ink/5"
-                    >
-                      Scan a share-response
-                    </button>
-                  </div>
-                  {scanError && (
-                    <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-900">
-                      {scanError}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {requestQrOpen && requestEnvelope && (
-                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50/60 p-3">
-                  <div className="text-xs uppercase tracking-wide text-amber-900 font-semibold">
-                    Your recovery request
-                  </div>
-                  <p className="mt-1 text-xs">
-                    Hand the phone to a cohort member next to you. They open
-                    their wallet → People → Scan envelope. The request opens
-                    in their responder modal where they can release in person.
-                  </p>
-                  <Suspense
-                    fallback={<div className="mt-2 text-xs text-muted">Rendering QR…</div>}
-                  >
-                    <QrShow text={JSON.stringify(requestEnvelope)} />
-                  </Suspense>
-                  <button
-                    type="button"
-                    onClick={() => setRequestQrOpen(false)}
-                    className="mt-2 w-full rounded-md border border-ink/15 bg-white py-1.5 text-xs"
-                  >
-                    Hide QR
-                  </button>
-                </div>
-              )}
-              {phase.kind === 'combining' && (
-                <p className="mt-4 text-sm text-muted">
-                  Threshold reached. Combining shares back into your encryption key…
-                </p>
-              )}
-              {phase.kind === 'restoring' && (
-                <p className="mt-4 text-sm text-muted">
-                  Key reconstructed. Decrypting your backup and rebuilding the wallet…
-                </p>
-              )}
-            </>
-          )}
+        {isRecoverableBlob && isAwaitingShape && (
+          <RecoveryAwaitingShares
+            phase={phase}
+            peers={peers}
+            ceremonyPubkey={ceremonyWallet.publicKey}
+            requestEnvelope={requestEnvelope}
+            requestQrOpen={requestQrOpen}
+            onShowRequestQr={() => setRequestQrOpen(true)}
+            onHideRequestQr={() => setRequestQrOpen(false)}
+            onOpenScan={() => setScanOpen(true)}
+            scanError={scanError}
+          />
+        )}
 
         {scanOpen && (
           <Suspense fallback={null}>
@@ -732,39 +579,13 @@ export function RecoveryInitiatorModal({
         )}
 
         {phase.kind === 'naming' && (
-          <>
-            <p className="mt-2 text-sm text-muted">
-              Your wallet is back. Choose a new passphrase to save it under on
-              this device. Your old passphrase is no longer needed.
-            </p>
-            <label className="mt-4 block">
-              <span className="text-sm font-medium">New passphrase</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={newPass}
-                onChange={(e) => setNewPass(e.target.value)}
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none"
-              />
-            </label>
-            <label className="mt-3 block">
-              <span className="text-sm font-medium">Confirm</span>
-              <input
-                type="password"
-                autoComplete="new-password"
-                value={confirmPass}
-                onChange={(e) => setConfirmPass(e.target.value)}
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => void saveUnderNewPassphrase(phase.restored)}
-              className="mt-4 w-full rounded-md bg-ink py-2.5 text-paper text-sm font-medium"
-            >
-              Save and unlock
-            </button>
-          </>
+          <RecoveryNamingStep
+            newPass={newPass}
+            onNewPassChange={setNewPass}
+            confirmPass={confirmPass}
+            onConfirmPassChange={setConfirmPass}
+            onSubmit={() => void saveUnderNewPassphrase(phase.restored)}
+          />
         )}
 
         {phase.kind === 'saving' && (

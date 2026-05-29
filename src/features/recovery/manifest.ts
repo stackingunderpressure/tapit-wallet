@@ -18,6 +18,10 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/createRecoveryRequest.test.ts',
     'src/features/recovery/RecoveryResponderModal.tsx',
     'src/features/recovery/RecoveryInitiatorModal.tsx',
+    'src/features/recovery/RecoveryConfigStep.tsx',
+    'src/features/recovery/RecoveryAwaitingShares.tsx',
+    'src/features/recovery/RecoveryNamingStep.tsx',
+    'src/features/recovery/recoveryInitiatorTypes.ts',
     'src/features/recovery/RecoveryKeyImportModal.tsx',
     'src/features/recovery/createRecoverySuccession.ts',
     'src/features/recovery/createRecoverySuccession.test.ts',
@@ -27,5 +31,5 @@ export const manifest: FeatureManifest = {
   removal_safe: true,
   monetizable: false,
   notes:
-    'The cohort credential carries the member list as canonical JSON of {pubkey, name} pairs sorted + deduplicated so the digest is stable regardless of pick order. Latest-by-issuedAt wins for the in-effect cohort; older cohorts stay held + anchored for governance audit. Cohort members are sourced from existing handshakes today; organizations from memberships are a follow-on (would extend candidate pool from isMembership holdings). The publishCohort builder validates threshold + totalShares + member count + Shamir GF(256) ceiling (255 max) before signing.',
+    'RecoveryInitiatorModal extraction 2026-05-28 (PLAN.md Tier 1 item 2): the three phase-render blocks (configuring → RecoveryConfigStep, sending/awaiting/combining/restoring → RecoveryAwaitingShares, naming → RecoveryNamingStep) plus shared types + helpers (recoveryInitiatorTypes) moved into sibling files so the orchestrator stays under the 800-line hard limit. Sub-components own presentation only; the absorb-share / publish-result / combine-and-restore / save-under-new-passphrase logic stays in the parent. Done pre-emptively before the Tier 1 cross-device recovery field-test so any fixes that test surfaces land in the right sub-component rather than re-growing the orchestrator. The cohort credential carries the member list as canonical JSON of {pubkey, name} pairs sorted + deduplicated so the digest is stable regardless of pick order. Latest-by-issuedAt wins for the in-effect cohort; older cohorts stay held + anchored for governance audit. Cohort members are sourced from existing handshakes today; organizations from memberships are a follow-on (would extend candidate pool from isMembership holdings). The publishCohort builder validates threshold + totalShares + member count + Shamir GF(256) ceiling (255 max) before signing.',
 };
