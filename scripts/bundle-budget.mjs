@@ -40,9 +40,14 @@ const BUDGETS = [
   // operator-requested expansions: WalletGuide tabs surface, OTS
   // anchoring explanation, and the Sovereignty tab covering the
   // four-gradation spectrum (Connected / Connected-private / Sovereign-
-  // with-cohort / Sovereign-solo). Current ~10.2KB gz. Past 12KB the
-  // honest next move is to lazy-load the non-Account tabs as separate
-  // chunks so the cold-start landing still ships tight.
+  // with-cohort / Sovereign-solo). 2026-05-28 PLAN.md Tier 1 item 5
+  // added the Bitcoin's-role tab via React.lazy following the
+  // "past 12KB lazy-load non-Account tabs" rule named in this
+  // comment — the new tab lives in WalletGuideBitcoinTab.tsx and
+  // loads on demand. Current ~11.3KB gz. Subsequent non-Account
+  // tab additions extend the lazy-load pattern (one tab per chunk
+  // or one shared chunk both work — pick by what makes sense for
+  // the tab's content).
   { pattern: /^index-.*\.js$/, gz: 12_000, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']

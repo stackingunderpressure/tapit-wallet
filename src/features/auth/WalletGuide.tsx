@@ -1,7 +1,17 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { useSession } from './useSession.ts';
+
+// Bitcoin's-role tab content lives in its own lazy-loaded module so
+// the doctrine framing does not ride in the cold-start login bundle.
+// The bundle-budget rule names 12KB as the threshold past which
+// non-Account tabs should code-split; this addition crossed it.
+const BitcoinsRole = lazy(() =>
+  import('./WalletGuideBitcoinTab.tsx').then((m) => ({
+    default: m.BitcoinsRole,
+  })),
+);
 
 // The wallet's reference surface — same content reachable from the
 // signed-out login screen AND from a "Guide" link inside the app.
@@ -25,7 +35,7 @@ import { useSession } from './useSession.ts';
 // landing surface; /about renders it as a reference while signed
 // in. The Account tab reads useSession to decide what to show.
 
-type Tab = 'why' | 'what' | 'recovery' | 'sovereignty' | 'account';
+type Tab = 'why' | 'what' | 'recovery' | 'sovereignty' | 'bitcoin' | 'account';
 
 interface TabSpec {
   id: Tab;
@@ -37,6 +47,7 @@ const TABS: TabSpec[] = [
   { id: 'what', label: 'What it holds' },
   { id: 'recovery', label: 'Recovery' },
   { id: 'sovereignty', label: 'Sovereignty' },
+  { id: 'bitcoin', label: 'Bitcoin' },
   { id: 'account', label: 'Account' },
 ];
 
@@ -102,6 +113,15 @@ export function WalletGuide({ initialTab = 'why' }: Props) {
           {tab === 'what' && <WhatItHolds />}
           {tab === 'recovery' && <RecoveryPaths />}
           {tab === 'sovereignty' && <Sovereignty />}
+          {tab === 'bitcoin' && (
+            <Suspense
+              fallback={
+                <p className="text-sm text-muted">Loading…</p>
+              }
+            >
+              <BitcoinsRole />
+            </Suspense>
+          )}
           {tab === 'account' && <Account />}
         </div>
       </div>
@@ -473,7 +493,15 @@ function Sovereignty() {
 }
 
 // ============================================================
-// Tab 5 — Account
+// Tab 5 — Bitcoin's role (PLAN.md Tier 1 item 5)
+// ============================================================
+//
+// Lazy-loaded — content lives in WalletGuideBitcoinTab.tsx so it
+// stays out of the cold-start login bundle. See the lazy import at
+// the top of this file.
+
+// ============================================================
+// Tab 6 — Account
 // ============================================================
 
 type AuthStep = 'email' | 'code';
