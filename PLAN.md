@@ -1,359 +1,340 @@
-# Tapit Wallet — build plan
+# Tapit Wallet — roadmap
 
-> Phased work order. `DESIGN.md` is the authoritative spec; this
-> file mirrors its phasing in a tighter format and tracks status.
-> Refreshed 2026-05-21 to reflect Phase 2.5 / 2.6 / 2.7 / 3 / 4 +
-> the verify-pass fixes + security polish having shipped.
+> **This document supersedes everything.** Prior phase-by-phase
+> planning lived in this file too; that structure is retired.
+> Manifest notes still carry tribal knowledge about WHY individual
+> features are shaped the way they are (historical record), and the
+> briefs under `project-memory/foreman-memory/projects/tapit-wallet/briefs/`
+> still carry technical design depth for the items they cover. But
+> the "what's next, in what order, why" answer is this file.
+>
+> The lens: **would a serious Bitcoin / Nostr / freedom-tech person
+> open this wallet today without us being embarrassed for them.**
+> Specifically the kind of person who has spent a decade arguing for
+> self-custody, on-device key generation, Bitcoin-anchored proofs,
+> Nostr-native identity, and no third-party identity middleware —
+> Matt Odell shorthand for that audience. They are the first
+> community to evaluate it because they will accept the philosophy
+> we built on; everyone else is downstream of that acceptance.
 
-## What Tapit Wallet is (and is not)
+## What this wallet IS (and is NOT)
 
-It IS a person's sovereign identity wallet: a standalone app that
-generates and holds the user's keypair and is the Merkle holder
-of their signed attestations. It is the only place keys live, and
-the hub other apps connect to.
+It IS a person's sovereign identity wallet. It generates and holds
+the user's keypair on their device. It signs attestations about
+their perception of reality — their identity, their relationships,
+their life events, their organizations, their families. It anchors
+those attestations to Bitcoin via OpenTimestamps so they carry a
+tamper-evident clock. It transmits them peer-to-peer over Nostr.
+The user's keys never leave the wallet unencrypted, ever.
 
-It is NOT a cryptocurrency wallet, not a chatbot, not a feature
-embedded inside another app. It does not hold coins; it holds
-identity and reputation — signed attestations.
+It is NOT a Bitcoin financial wallet (no UTXOs, no Lightning, no
+zaps — those are deliberate scope choices, see "Out of v1" below).
+It is NOT a Nostr social client (no public feed, no kind-1 posting,
+no NIP-05 verification surface — also deliberate). It is NOT a
+chatbot or an LLM frontend or a feature embedded inside another
+app. It is the identity layer of the Hearth product family, and
+the substrate other apps will connect TO when they need something
+signed.
 
-## Prime Directive
+## Standing protections — these never lapse
 
-Build the smallest useful version correctly. The user's keys
-never leave the wallet unencrypted — that rule outranks
-everything. Clarity beats cleverness. A wallet a non-technical
-person cannot use is a wallet that does not exist.
+1. The user's keys never leave the wallet unencrypted. Not in an
+   env var, not in a log, not in a commit, not on the network in
+   the clear. This rule outranks every other rule in this file.
+2. Never re-implement `tapit-attest`. The library holds the
+   cryptographic primitives; the wallet consumes them. Zero
+   re-implementations have happened to date and that record stands.
+3. Build the smallest useful thing correctly. Clarity beats
+   cleverness; safety beats speed.
+4. Four gates green before push: typecheck, lint, test, build.
+   Unverified is honest; claimed-green-when-not is not.
 
-## v1 launch scope
+## Where we are today
 
-v1 ships when a non-technical user can install the PWA, log in by
-email magic link, create an identity backed by a signed identity
-attestation, write diary entries with text and photos/documents
-that get OpenTimestamps-anchored to Bitcoin, witness-co-sign other
-family members' entries via in-person paste-flow, hand off
-custody of a long-running subject thread, selectively disclose
-one field of an attestation without leaking the rest, and approve
-inter-app sign requests via deeplink. The Mycelium peer network
-(Layer 3) and the wallet bot (Layer 4) are explicitly NOT in v1.
+The audit ran 2026-05-28 against the actual repo, not from memory.
+23 feature folders, doctrine quintet present at
+`project-memory/foreman-memory/core/`, 335 tests green, four-gate
+floor holding.
 
-## Layer 1 — already built
+Working end-to-end:
+- Passphrase-based key generation behind the double-warn gate
+  (personal-and-memorable check + irrecoverable-consequence check).
+- Identity attestation creation + Bitcoin anchoring via passive
+  OpenTimestamps poll-based worker with exponential backoff.
+- Peer relationship attestations — Tier P (in-person, 3 QR
+  exchanges) and Tier R (remote, over Nostr) — typed by
+  relationship leaf (family / friend / coworker / acquaintance /
+  other).
+- NIP-17 gift-wrapped per-peer encrypted chat (kind 1059, three
+  layers, ephemeral outer signature so relays never see the real
+  sender). Migrated from custom kind 9574 on 2026-05-26 because
+  public relays were accept-but-not-persist on the custom kind.
+- Organization declaration + six-kind join-policy substrate
+  (open / allow-list / deny-list / requires-handshake /
+  requires-credential / requires-vouch). Phases A, B, C, E1, E2,
+  E3, E4 cuts 1-6 complete.
+- Selective-leaf disclosure proofs (multi-leaf + legacy single-leaf)
+  with the verifier path running outside `AuthGate` so external
+  parties can verify without a wallet of their own.
+- Shamir-split social recovery substrate — cohort declaration,
+  share distribution scaffolding, recovery ceremony modal.
+  **(End-to-end cross-device run UNTESTED — see Tier 1.)**
+- Family-unit envelopes — multi-party named groups with
+  member-ratification by cosignature, rendered on the People tab
+  Tree view as a third ring around the operator's identity.
+- Journal entries — diary primitive with categories, photo +
+  document attachments, OpenTimestamps anchoring, subject picker
+  for about-me vs about-someone-else.
+- Layer 2 inter-app sign pathway via deeplink — third-party apps
+  construct a SignRequest URL, the wallet renders a plain-English
+  approval screen, callback delivers a SignGrant or SignDecline.
+- Wallet uses the same BIP340 pubkey for identity AND Nostr
+  (D-11d). One secret, one cryptographic chain of custody, not a
+  wallet with one identity and a Nostr handle on the side.
 
-The `Wallet` core object — keypair, succession, attestation
-holder, sign-both-ways, encrypted backup, sync, peer recovery —
-lives in `tapit-attest`, consumed as a `file:` dependency. This
-app is built *around* that object; do not rebuild it. Wallet-side
-patches landed: sign-poisoning fix in `verifyEnvelope`,
-`journal` AttestationKind added, `metaHash` exported,
-`disclosureProof` + `verifyDisclosureProof` implemented (replacing
-the v1.1 stub). Bundled version `0.1.1-wallet.0`.
+Roughly 60-70% of Doctrine Layer 1 (identity) shipped, 50% of
+Layer 3 (peer network) shipped. Layer 2 (inter-app signing via
+deeplink) shipped; NIP-46 transport swap deferred. Layer 4
+(wallet bot) deferred per design intent.
 
-## Phase 1 — PWA shell + email auth + key generation [DONE]
+## Tier 1 — Close the embarrassment gap
 
-Vite + React 18 + TypeScript + Tailwind project shell.
-`tapit-attest` wired as `file:` dependency. Supabase magic-link
-auth. PWA manifest + hand-rolled service worker. On first login:
-passphrase prompt → `generateKeypair()` → encrypted snapshot →
-IndexedDB + Supabase `wallet_blobs`. Home screen with the user's
-public key displayed.
+These are the cuts that must land before the Bitcoin community
+sees this wallet. They are ordered by gap-severity, not by
+technical difficulty. The first one is load-bearing for the whole
+demo story.
 
-## Phase 2 — Identity attestation + backup posture [DONE]
+### 1. Social recovery end-to-end across two physical devices
 
-First-run display-name flow → self-signed `identityAttestation`
-with display name + creation date + pubkey on the Merkle tree.
-Attestation card renders on the home screen. Settings screen:
-cloud-sync toggle (default ON), local encrypted-backup download,
-sign-out. Backup-status banner on home (stale > 24h, off,
-pending).
+The single biggest credibility blocker. Bitcoin people trust
+math but demand the demo loop close on actual hardware. Recovery
+ceremony code exists; cross-device run is untested. Open the
+wallet on phone A, name a cohort, distribute shares to phone B
++ phone C, simulate loss of phone A by clearing its blob,
+initiate recovery on a fresh device, collect M-of-N shares,
+reconstitute the wallet, verify the keypair recovers, verify
+prior attestations still verify against the recovered identity.
+Document what works, surface what breaks, fix it. Until this
+closes, the demo story has a hole exactly where a serious
+evaluator will press hardest.
 
-## Phase 2.5 — Diary wedge [DONE]
+### 2. Extract `RecoveryInitiatorModal.tsx` pre-emptively
 
-The operator's reframe from earlier: the wallet's day-one product
-is a cryptographically signed time-anchored personal diary that
-gets quietly corroborated by peers over time. Composer with text,
-subject picker (Me / Someone-else label), category picker (Diary,
-Family, Medical, Marriage, Witness plus free-form), optional
-attachment. Each entry signed by the wallet, queued for
-OpenTimestamps anchoring, rendered as a card on the home screen
-grouped by category tab. Detail view per entry with anchor status,
-signers, save-to-files download.
+799 of 800 lines. The next addition to this file breaches the
+hard limit. The recovery cross-device test in (1) will surface
+fixes that need to land here; extracting first gives those fixes
+headroom. Natural extraction candidates: the share-collection
+sub-flow, the ceremony-wallet lifecycle, the share-combine path.
 
-## Phase 2.6 — Witness co-signing + custody handoff [DONE]
+### 3. Extract `FreshOnboarding.tsx` pre-emptively
 
-Manual envelope-JSON paste-flow between operator and witness via
-any channel. CosignRequestModal (originator), CosignAsWitnessModal
-(witness paste → preview → sign), AbsorbCosignModal (originator
-absorbs). CustodyHandoffModal for the grandchild-thread custody
-arc (grandparent → parents → eventually the child themselves)
-via meta-kind attestation co-signed by both custodians.
+794 of 800 lines. Same logic — the next addition breaches.
+Natural extraction candidates: each step component (Splash,
+Compose, Name, Passphrase, Recovery, Email, Code) is already a
+sub-component but the parent state machine is fat. Extract the
+state machine itself or pull the step components into their own
+file.
 
-## Phase 2.7 — Generic attachments [DONE]
+### 4. OpenTimestamps calendar-unavailable end-state in the anchor worker
 
-Claim leaves renamed `photo_*` → `attachment_*` plus
-`attachment_name`. Composer has separate 📷 Photo (camera shortcut
-preserved) and 📄 Document (broad MIME picker) buttons.
+Today the worker retries failed anchors forever with exponential
+backoff. If the OpenTimestamps calendar goes dark, the operator
+sees no surface signal — the envelope just stays unanchored
+silently. Surface a "calendar unreachable" state in the journal
+entry card after N-consecutive-failures, so the operator can SEE
+the case rather than have it lurk. Not a fix for the underlying
+calendar dependency; an honest UX surface.
 
-## Verify pass + security polish [DONE]
+### 5. WalletGuide "why no Lightning" framing tab
 
-Adversarial code review found two real bugs: entry-digest used
-non-canonical JSON.stringify hash (fixed to `envelopeId`), and
-confirmed anchors never attached to held attestations (lost
-Bitcoin block heights on backup-restore; fixed with subscribing
-to the worker and attaching anchors on confirm).
+Bitcoin people will ask why a wallet anchored to Bitcoin doesn't
+do Lightning. The answer is in SATOSHI.md — Bitcoin is the public
+clock for tamper-evident timestamps, not the financial layer of
+this wallet. Write that framing into the WalletGuide tabs so the
+answer is in the wallet itself when the question lands. Proactive
+framing, not defensive apology.
 
-Idle-timeout hook (DESIGN.md §5) — default 30 min, configurable
-in Settings, re-prompts for passphrase on activity-timeout.
-Closes the mid-session-abandonment window the passphrase-in-
-context move from Phase 2.5 widened.
+### 6. Multi-device sync honest UX
 
-Anchor-worker polish: 30s fetch timeout via wrapped OtsTransport
-with AbortController; exponential backoff for failed rows
-(`min(5min × 2^attempts, 1hr)`).
+Today multi-device sync via Nostr is fire-and-forget with
+last-write-wins on the snapshot blob. This works for one-device-
+at-a-time use; it breaks if the operator opens the wallet on
+iPad mid-iPhone session. Either (a) add a basic "sync state"
+indicator that shows when the local snapshot is newer than the
+cloud blob, or (b) document the single-active-device assumption
+in the wallet guide. Pick one; do not let the assumption stay
+silent.
 
-## Phase 3 — Layer 2 inter-app deeplink pathway [DONE]
+## Tier 2 — Polish and substrate maturation
 
-Third-party apps construct a URL pointing at `/sign` with a
-base64url-encoded SignRequest. The wallet decodes, validates,
-renders a plain-English approval screen showing the claimed
-origin + the actual callback host + the content being signed.
-On approve, builds the attestation via `wallet.attest`, signs,
-holds, queues anchoring, redirects with a SignGrant. On decline,
-redirects with a structured SignDecline. Per-kind plain-English
-template surfaces prominent fields by name. Intent='attest' only
-in v1; NIP-46 transport is a future swap of the deeplink layer
-for the same SignRequest/SignGrant message shapes.
+These are the named-pending threads from the prior session
+handoffs and manifest notes. They are real work but they are not
+embarrassment-gap items — none of them block a credible
+community demo.
 
-## Phase 4 — Selective leaf disclosure [DONE]
+- **Tap-for-detail on family-ring nodes.** Open
+  `FamilyIdentitySections` in view-mode when a family node is
+  tapped on the Tree view.
+- **Add-birthday-now backdated credential.** Operator's own
+  missing-birthday pain point. Same supplement-credential pattern
+  the family-unit substrate established — a credential signed
+  today carrying a backdated `as_of` leaf.
+- **Quick-share over-18 / over-21 age-gate presets.** Depends on
+  the birthday leaf landing in (the add-birthday-now cut). Two
+  presets become buildable once the leaf exists.
+- **Succession-proof leaf for cosigning members** (the rotated-key
+  bridge fix). Today `keyAliases` accepts the operator's own
+  rotation chain but never remote members'. Proper fix: embed a
+  succession-proof leaf in the cosigned envelope at sign time so
+  rotation by remote members is detectable on the founder's side.
+- **WalletProvider extraction continued.** Natural next candidates
+  are `usePeerOps` (sendEnvelope / syncEnvelope /
+  removePeerConnection / unholdEnvelope cluster) or
+  `useInboxSubscription` (the Mycelium subscription + inbox
+  handler wiring). Not structurally forced; pull before the next
+  transport-layer cut forces it under pressure.
+- **Phase D org charter-amendment chain.** Charter governance per
+  HEARTWOOD doctrine. `walkCharterChain` + `findActiveCharter`
+  helpers plus dissolution endpoint. Each new self-declaration
+  must be authorized by the prior charter's `charter_amendment`
+  rule.
+- **Phase 5e-iii-b recovery share distribution.** Backup-format v2
+  distribution + actual share transport. Adjacent to the Tier 1
+  cross-device test; some of this work will likely land as part
+  of (1) and what remains becomes a follow-up cut.
+- **WebAuthn assertion verification (verifier-side).** Phase 5d
+  cleanup — wallet currently does device-passkey enrollment but
+  defers signature-verification to the verifier flow.
+- **Persistent offline outbox + sync resume for Nostr.** Phase
+  5c-iii. Lets messages and envelopes queue locally and publish
+  when connectivity returns.
+- **Photo / file capture Tier 1b.** Capture-bridge today handles
+  text and links; photo and file post-capture deferred.
+- **Tightknit-group toggleable chat.** The family-unit substrate
+  already supports arbitrary tight-knit named groups (kids' friend
+  group, chosen family, Sunday hike crew, etc.). A per-member
+  per-family local-preference toggle lights up a group chat
+  scoped to that family-unit's member list. Operator chat-design
+  thread from 2026-05-28. Compose with the events toggle on the
+  same axis (each operator picks chat-only, events-only, both,
+  or neither for each family).
+- **Threshold-gated Hearth chat for teens.** Builds on the
+  tightknit-group toggleable chat above. Existing vouch-loop
+  cryptography already does the threshold-join gate; missing
+  layer is the moderation surface and the teen-grade UX that
+  makes the multisig ceremony invisible. Operator strategy
+  thread from 2026-05-28 — kid-safety angle is a strong product
+  hook this wallet can credibly own because the identity layer
+  is verified, not pseudonymous.
 
-The "math, not trust" demonstration most legible to a
-non-technical user. From any entry's detail page, the operator
-picks one leaf of the claim tree and the wallet produces a
-DisclosureProofBundle they hand to a verifier. The companion
-`/verify` route lives outside `AuthGate` so the verifier
-(third-party context) can paste and check the proof without a
-wallet of their own. Library work: `disclosureProof` +
-`verifyDisclosureProof` in `tapit-attest/src/core/field-tree.ts`;
-`metaHash` exported from `envelope.ts` so the verifier uses the
-same canonical hashing the signer used.
+## Tier 3 — Inaugural demonstration
 
-## Phase 4.5 — Tabbed home + capture bridge (PWA-first) [DONE]
+### The Matt Odell tribute attestation
 
-Decided 2026-05-22 (D-07, D-08). Two post-v1 pieces, both
-independent of Phase 5 and buildable now. Both shipped — status
-reconciled 2026-05-25 after the section had drifted to [NEXT]
-while the actual code landed.
+When Tier 1 is closed and the wallet is field-tested honestly,
+the inaugural outbound act of this wallet is a signed attestation
+acknowledging Matt Odell as a foundational influence on the
+information-and-sovereignty philosophy the wallet is built on.
+Operator strategy thread from 2026-05-28.
 
-**Tabbed home:** shipped. `HomeScreen.tsx` renders four top-level
-tabs (Journal, Identity, Captured, People). `JournalTabs.tsx` +
-`JournalTabRouter.tsx` host the diary's life-layer category tabs
-nested under Journal. The Captured tab filters journal entries by
-`source=capture` so capture-bridge entries surface apart from the
-diary.
+Shape: a journal entry with the about-someone-else field set to
+Matt's verified Nostr pubkey (verify the npub from a trusted
+source — his published handle, his podcast feed, OpenSats — not
+from any in-wallet directory), a brief prose body naming the
+specific lineage (Citadel Dispatch, Rabbit Hole Recap,
+OpenSats, the years of broadcasting that Bitcoin self-custody
+and Nostr-native identity are the foundation of digital
+sovereignty), no expectation of countersignature, anchored to
+Bitcoin via the standard OpenTimestamps path.
 
-**Capture bridge (Tier 1):** shipped. `public/manifest.webmanifest`
-registers a `share_target` with `action: /capture, method: GET,
-params: {title, text, url}`. `src/App.tsx` lazy-mounts
-`CaptureScreen.tsx` at `/capture` inside the WalletProvider tree.
-A capture reuses the journal `createJournalEntry` pipeline; the
-data-model addition is the optional `source` leaf on JournalInput.
-Tier 2 (native share extension / iOS App Store) and Tier 3
-(desktop browser extension) remain deferred to v1.5. Sketch of
-record: `briefs/2026-05-22-capture-bridge-phase-sketch.md`.
+Delivery: a private NIP-17 DM to Matt carrying the envelope id
+plus a brief courtesy note, and a public Nostr note (kind 1)
+tagging his pubkey with the signed envelope linked or hashed in
+the body so anyone can fetch the bytes and verify against the
+wallet's pubkey.
 
-## Phase 5 — Social recovery + Mycelium peer network
+Why this is the inaugural moment: it is the substrate enacting
+itself in public. One small outbound gesture uses Layer 1
+(signed envelope), Layer 2 (deeplink-equivalent inter-app
+signing context — the journal flow), the SATOSHI substrate
+(Bitcoin OpenTimestamps anchor), the MYCELIUM transport (Nostr
+NIP-17 DM + public note), and demonstrates the wallet's whole
+thesis in a single act. If the cross-device recovery test in
+Tier 1 is the technical loop-close, this is the narrative
+loop-close. It does not require Matt's response to count; the
+attestation stands on its own.
 
-The spec of record now exists — `MYCELIUM_NETWORK_SPEC.md`
-(written 2026-05-22) — which discharges D-04 and breaks Layer 3
-into increments 5a–5f: the in-person handshake, organizations +
-membership, Nostr transport, device-verified presence, the
-hyphal lattice + social recovery, then quorum-controlled
-organization keys. 5a and 5b are built; 5c is next. The brief
-of 2026-05-21 promoted Shamir-based cascade recovery to this
-phase per the operator's no-pre-stashed-key sharpening: M-of-N
-peers initiate, every subscribed peer encrypts their share to
-the new keypair, reassembly happens on the new device, M peers
-co-sign a recovery-succession event that handoff signing
-authority to the new key. Technical note carried in
-`carpenter-state-for-foreman.md`: the Shamir split must be over
-the encryption key for the cloud-mirrored backup blob, NOT over
-the signing keypair, so M-of-N collusion does not equal total
-identity capture forever.
+## Out of v1 — confidently framed, not apologized for
 
-## Phase 6 — Family-mode custody (full keypair)
+These are deliberate scope choices grounded in doctrine, not
+gaps in execution. When asked by serious evaluators, the answer
+is the doctrine — not "we'll add it later."
 
-The original DESIGN.md Phase 6 generates a real child keypair at
-birth and stores it under the parent's passphrase. The operator's
-2026-05-21 message refined the model to "identity by attestation
-not by key" — the grandchild's identity is a typed-label subject
-that accumulates signed attestations from custodians, and the
-grandchild eventually absorbs the thread into their own keypair
-when they get one. That lighter model already ships in Phase 2.6.
-Full-keypair custody is now optional, not required for v1.
-
-## Phase 8 — Tapscript-style org authorization tree + charter governance [PLANNED]
-
-Promoted from Phase 7+ non-goal through three iterations on
-2026-05-25 — FROST-first morning brief, list-of-sigs evening
-brief, then this Tapscript-style late-evening brief — after the
-operator asked whether what was being briefed actually was
-"Taproot multisig" and whether the wallet's leaves theory held
-up. The honest answer surfaced that the wallet's existing
-leaf-tree primitive (Phase 4 selective disclosure) is the EXACT
-cryptographic shape needed to port Taproot's script-path
-Merkle-tree-of-conditions model to off-chain attestation
-envelopes, and the operator chose to pivot to that substrate.
-
-Brief of record:
-`project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-tapscript-style-org-authorization-tree-roadmap.md`.
-Supersedes all three prior briefs:
-
-- `2026-05-23-quorum-org-keys-roadmap.md` (MuSig2-first)
-- `2026-05-25-frost-first-and-charter-governance-roadmap.md` (FROST-first)
-- `2026-05-25-simple-multisig-orgs-roadmap.md` (list-of-Schnorr-signatures)
-
-All three stay in the briefs folder. List-of-sigs is preserved
-as the simpler fallback if Tapscript-style proves heavier than
-expected during implementation; FROST is preserved as the
-upgrade path for the day an org specifically needs
-signer-anonymity.
-
-Substrate: an org's authority is a Merkle commitment to a tree
-of authorization-rule leaves
-(`{action, threshold, eligible}` tuples), implemented as a
-sub-branch in the org's self-declaration claim tree. An
-org-issued envelope carries a disclosure proof of one rule leaf
-(via the shipped `disclosureProof` /
-`verifyDisclosureProof` from `tapit-attest/src/core/field-tree.ts`)
-plus signatures from the eligible signers named in that leaf.
-Zero new cryptographic code; the entire arc is wallet-side
-plumbing on a primitive already in production for selective
-disclosure of facts (Phase 4), now generalized to selective
-disclosure of authorization rules.
-
-Four phases:
-
-- **Phase A** — `AuthRule` type + `selfDeclareOrganization`
-  gains `authRules` parameter; rules become a sub-branch of
-  the claim tree; `proveAuthorization(org, action)` wraps
-  the shipped `disclosureProof`. Default rule preserves
-  existing-shape declarations. About one session.
-- **Phase B** — Authorized envelope shape:
-  `authorized_by` leaf carries the disclosure proof bundle;
-  `verifyOrgAuthorization(envelope, knownOrgs)` reconstructs
-  the org's auth-root, checks the disclosed rule, counts
-  eligible-signer signatures against threshold. About one
-  session.
-- **Phase C** — Multi-rule org creation UI + per-action
-  signing flow. `RatificationsBadge` extended to render the
-  rule name inline. About one to two sessions. **[DONE
-  2026-05-26]** Cut 1 shipped the rule-name decoration on
-  `RatificationsBadge`; cut 2 shipped `OrgRulesEditor` and
-  threaded `orgRules` from `SettingsScreen` into
-  `selfDeclareOrganization`; cut 3 shipped the org-action
-  mode on `CosignRequestModal` and (this session) wired
-  `MembershipModal` to bake the `authorized_by` leaf via
-  `buildAuthorizedByPayload` and surface the "Request
-  co-signs from eligible signers" button when the
-  `routine_issuance` rule has threshold > 1. The post-
-  declaration `RulesEditorModal` deferred from Phase C
-  belongs to Phase D's charter-amendment chain and is
-  tracked there.
-- **Phase D** — Charter amendment chain
-  (`walkCharterChain` / `findActiveCharter`) + dissolution
-  endpoint. Each new self-declaration must be authorized by
-  the prior charter's `charter_amendment` rule. About one to
-  two sessions.
-- **Phase E** — Open-joining + per-org configurable
-  membership-policy. Member-initiated self-membership
-  attestations gated by a `join` rule in the org's auth tree
-  (open / allow-list / requires-handshake / requires-credential
-  / requires-vouch). Roster shows founder first, then joiners
-  in chronological order via Bitcoin anchor heights. Three
-  substrate options (org auto-publishes roster / org pre-signs
-  open policy / hybrid) deferred to a substrate-decision chip
-  after operator reads the dedicated brief. Brief of record:
-  `project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-05-25-open-joining-and-configurable-membership-policy-roadmap.md`.
-  Depends on Phase A (shipped) and Phase B (verifier).
-  About 5-7 sessions, ~2-3 weeks.
-
-Phase E extends the canonical Tapscript brief along the
-membership-acquisition axis (how do people become members)
-while Phases A–D handle the org-control axis (who can authorize
-org actions). Both briefs live side-by-side; neither supersedes
-the other.
-
-Operator-locked decisions (2026-05-25 evening + late-evening
-+ deep-evening chip sessions): Tapscript-style substrate over
-list-of-sigs and FROST, auth-tree as sub-branch of the claim
-tree (reuses shipped disclosure primitive verbatim), no FROST,
-no MuSig2, no DKG, no tapit-attest version bump. Phase E
-adds: per-org configurable membership-policy via a `join` rule
-in the auth tree, abuse-resistance posture configurable per org
-(not at the substrate), member-initiated self-membership
-attestations as a NEW dimension extending MYCELIUM_NETWORK_SPEC
-§6 along the membership-acquisition axis. Open-joining substrate
-choice (org auto-publishes roster / org pre-signs open policy /
-hybrid) deferred to a follow-up chip after operator reads the
-Phase E brief.
-
-Estimated calendar: 4-6 sessions, ~1.5-3 weeks. Similar to the
-list-of-sigs calendar because most of the work is wallet-side
-UI plumbing on a cryptographic primitive
-(`disclosureProof` / `verifyDisclosureProof`) already in
-production. The structural payoff over list-of-sigs is
-per-action thresholds with per-rule eligible subsets, plus
-privacy of unused rules until invoked — properties that mirror
-Bitcoin Taproot's script-path multisig at the SHAPE level
-(while remaining off-chain attestation signing, not Bitcoin
-script execution).
-
-## Phase 9+ — explicit non-goals for v1
-
-- Wallet bot (conversational guide). Dormant scaffolding is
-  preserved in `src/features/{persona,snapshot-builder,suggested-questions,temporal}/`
-  with `pause_safe: true` manifests, awaiting this launch.
-- Mycelium peer network (Layer 3) — wallet-to-wallet contact
-  discovery, transitive trust weighting. Spec-first.
-- Nostr NIP-46 transport (deeplink only in v1; NIP-46 swaps in
-  the same SignRequest/SignGrant shapes when it lands).
-- NFC tap-to-cosign and tap-to-bump-for-recovery (D24, D25).
-- Voice input/output.
-- WebAuthn / biometric unlock.
-- QR-as-transport for co-signing (paste-flow ships in v1; QR is
-  later UX polish on the same primitives).
-
-## Known follow-ups (logged, not blocking)
-
-- Multi-tab worker coordination (BroadcastChannel leader election).
-- HEIC/WebP photo re-encode in composer for cross-device
-  portability (`canvas.toBlob`).
-- Pre-commit library-seam audit script — convert the verbal
-  pre-push pattern that caught the digest + anchor-attach bugs
-  into a mechanical check.
-- Bundle-budget audit before the next phase that meaningfully
-  enlarges the post-auth chunks.
-- OTS fixture restoration (4 skipped tests in `tapit-attest`).
-- `Tap-it-Attest-main.zip` cleanup at repo root.
-
-## Do NOT
-
-- Do NOT re-implement anything in `tapit-attest` — inherit it.
-- Do NOT put a private key anywhere but the user's wallet,
-  encrypted. Not an env var, not a log, not a commit.
-- Do NOT build Layer 3 before `MYCELIUM_NETWORK_SPEC.md` exists.
-- Do NOT treat the approval screen as plumbing — it is the
+- **Lightning / BOLT12 / zaps / merchant payments.** SATOSHI.md:
+  Bitcoin in this wallet is the public clock for tamper-evident
+  timestamps, not the financial layer. A different bet than
+  every other Bitcoin wallet, and a defensible one.
+- **NIP-05 verification / NIP-07 browser-signer integration /
+  public Nostr feed kind-1 posting.** This wallet is an
+  attestation-holder, not a social-feed-publisher. A different
+  category than Damus or Amethyst — not a weaker version of
+  them.
+- **Hardware-wallet support for the encryption key.** The
+  wallet's keypair IS the secret. Not an HD seed that could ride
+  a Trezor. Hardware support would be a structurally different
   product.
-- Do NOT add features beyond the manifests in
-  `src/features-registry.ts` without a decision logged in
-  `project-memory/.../decisions.md` and a matching `manifest.ts`.
+- **NIP-46 inter-app signing transport.** Layer 2 ships as a
+  deeplink today. NIP-46 swaps in at the same SignRequest /
+  SignGrant message shapes when it lands.
+- **Voice input / output, NFC tap-to-cosign, QR-as-transport for
+  cosigning.** UX polish on existing primitives. Paste-flow
+  works; the rest is later.
+- **Multi-tab worker coordination (BroadcastChannel leader
+  election).** Single-tab assumption holds today.
+- **HEIC / WebP photo re-encode for cross-device portability.**
+  Native format ships; re-encode deferred.
 
-## Recommended first move after Phase 4
+## Deferred — substrate exists, scope choice or sequencing
 
-Operator browser-verifies the full Phase 1+2+2.5+2.6+2.7+3+4
-stack against the live Netlify+Supabase deploy. Walk: login →
-passphrase → display-name → home with identity card → New entry
-with photo → wait for Time-verified · block N → Hand a co-sign
-request to a family device → witness signs → absorb → home shows
-multi-signer count → /entry/:digest → Share a proof of one field
-→ paste into /verify in another tab → confirms math → /sign with
-a constructed test request → approve → callback host received
-the grant. If any step stalls, that's the next session's first
-business.
+These are honest items that the substrate already anticipates,
+but they sit behind the Tier 1 / Tier 2 work. They get pulled
+forward only when (a) the embarrassment gap is closed and (b) a
+specific use case demands them.
+
+- **Wallet bot (Layer 4).** Dormant scaffolding preserved in
+  `src/features/{persona,snapshot-builder,suggested-questions,temporal}/`
+  with `pause_safe: true` manifests. Activated by the Phase 7+
+  wallet-bot launch session.
+- **Mycelium peer-network discovery (Phase 8+).** Transitive trust
+  lattice, gossip-relay discovery. Waiting on
+  `MYCELIUM_NETWORK_SPEC.md` finalization beyond what's currently
+  written.
+- **Hub layer (Hearth-spec Layer 0 — the server piece).** The
+  doctrine quintet's HEARTH_SPEC.md names a personal hub that
+  hosts identity + storage + engine + recipe registry +
+  federation endpoints. Not started; this wallet is the identity
+  piece of that future hub.
+
+## How to use this document
+
+The carpenter consults this file as the canonical "what's next."
+Tier 1 items are the cuts that close the embarrassment gap before
+community demo. Tier 2 items get cut in the order the operator
+picks via the standard chip-form chooser, after Tier 1 closes.
+Tier 3 is the inaugural symbolic moment that closes the loop.
+Out-of-v1 and Deferred items are the answers to "why doesn't it
+do X" and the things to NOT cut without an explicit operator
+directive.
+
+Manifest notes still carry tribal knowledge — read them when
+working on a specific feature. The briefs under
+`project-memory/foreman-memory/projects/tapit-wallet/briefs/`
+still carry technical design depth for the substrate they cover.
+But the order, the priority, and the lens come from here.
+
+## Footer
+
+Roadmap written 2026-05-28 by the Matt-Odell-lens audit + the
+operator's framing call. Supersedes the prior phase-by-phase
+PLAN.md. When this roadmap itself needs revising, the operator
+calls it; the carpenter does not retire items unilaterally.
