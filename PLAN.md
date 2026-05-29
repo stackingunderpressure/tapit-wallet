@@ -387,10 +387,48 @@ but they sit behind the Tier 1 / Tier 2 work. They get pulled
 forward only when (a) the embarrassment gap is closed and (b) a
 specific use case demands them.
 
-- **Wallet bot (Layer 4).** Dormant scaffolding preserved in
+- **Wallet bot (Layer 4) — the trusted-knowledge propagator.**
+  Dormant scaffolding preserved in
   `src/features/{persona,snapshot-builder,suggested-questions,temporal}/`
   with `pause_safe: true` manifests. Activated by the Phase 7+
-  wallet-bot launch session.
+  wallet-bot launch session. Operator vision absorbed 2026-05-29:
+  the bot is NOT a vanilla LLM frontend and NOT a wallet-navigation
+  helper. The bot is a substrate query layer that answers questions
+  about cryptography, Bitcoin, identity, privacy, sovereignty, and
+  the navigation of those domains by surfacing ONLY information
+  that has been signed as an attestation by a source we know to be
+  trustworthy — provenance is cryptographic, not editorial. The
+  problem the bot solves is the information landscape's
+  rent-seeking corruption: today everybody extracts data from the
+  user willingly and unlawfully to feed information back to them,
+  and the user has no way to know what is real or right. The
+  bot inverts that by being constrained to a corpus of
+  attestation-signed claims whose sources we can verify; multiple
+  trusted sources signing the same claim strengthen its trust
+  (HEARTWOOD's judge-weight reputation primitive applied to
+  knowledge itself, not just governance acts); the bot becomes
+  the propagator of trusted knowledge to people who need it to
+  take sovereignty into their own hands. The substrate that
+  makes this real is already partially in place — signed
+  attestations are the corpus primitive, the disclosure-proof
+  system is the verifier path, the HEARTWOOD threshold-of-eligible
+  rules are the source-trust-calibration layer. What is missing
+  is (a) a question-answer attestation kind that lets a trusted
+  source sign a claim of the form "in domain X, the answer to
+  question Q is A, here is the reasoning, here are my caveats,"
+  (b) a curated registry of who counts as trusted in which
+  domains (the operator's framing: "people we know are
+  trustworthy"), (c) a bot-side query layer that retrieves
+  matching attestations and presents them with their full
+  provenance chain (signer pubkey, signing date, OTS-anchor block
+  height, judge-weight) rather than a synthesized opaque answer.
+  SATOSHI.md names Lightning-as-LLM-payment as the financial
+  substrate of the bot at the Hearth layer; that infrastructure
+  is what lets the bot operate without renting compute through a
+  corporate billing relationship that the rent-seekers control.
+  Layer 4 in this framing is not a wallet feature but a sovereign-
+  knowledge-substrate that the wallet's identity layer is the
+  necessary precondition for.
 - **Mycelium peer-network discovery (Phase 8+).** Transitive trust
   lattice, gossip-relay discovery. Waiting on
   `MYCELIUM_NETWORK_SPEC.md` finalization beyond what's currently
