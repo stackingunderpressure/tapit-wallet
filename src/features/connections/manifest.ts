@@ -8,6 +8,9 @@ export const manifest: FeatureManifest = {
   touches: [
     'src/features/connections/HandshakeModal.tsx',
     'src/features/connections/MembershipModal.tsx',
+    'src/features/connections/VouchingCircleSection.tsx',
+    'src/features/connections/findVouchingCircleCandidates.ts',
+    'src/features/connections/findVouchingCircleCandidates.test.ts',
     'src/features/connections/createHandshake.ts',
     'src/features/connections/createHandshake.test.ts',
     'src/features/connections/createMembership.ts',

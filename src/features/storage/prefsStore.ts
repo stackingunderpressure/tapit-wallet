@@ -81,6 +81,19 @@ export interface Prefs {
    * toggle is the structural opt-out. Only consumed under Fresh.
    */
   memoriesEnabled: boolean;
+  /**
+   * The lowercase-hex pubkeys of peers the operator has opted
+   * INTO their vouching circle — the eligible pool for the
+   * peer-mediated identity gate (PLAN.md Founding Vision + Tier 1
+   * item 11 sub-cut A, 2026-05-29). The picker surfaces candidates
+   * sourced from existing trust networks (family-units, recovery
+   * cohort, handshakes), the operator confirms which of those
+   * are in their vouching circle, and this list persists the
+   * selection. Doesn't yet do anything cryptographically — the
+   * gate composition is later sub-cuts; this is the substrate
+   * bootstrap step.
+   */
+  vouchingCirclePubkeys: string[];
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -95,6 +108,7 @@ const DEFAULT_PREFS: Prefs = {
   theme: 'fresh',
   streaksEnabled: true,
   memoriesEnabled: true,
+  vouchingCirclePubkeys: [],
 };
 
 export const prefsStore = {

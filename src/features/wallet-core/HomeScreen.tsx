@@ -11,6 +11,16 @@ import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
 import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
+
+// Lazy-loaded so the vouching-circle substrate (candidate finder
+// helper + section UI) only ships when the operator opens the
+// Identity tab. Matches the bundle-budget discipline used for the
+// Bitcoin tab and ImportNostrIdentityPrompt.
+const VouchingCircleSection = lazy(() =>
+  import('../connections/VouchingCircleSection.tsx').then((m) => ({
+    default: m.VouchingCircleSection,
+  })),
+);
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
@@ -118,7 +128,7 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const { wallet, holdings, identity, prefs, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
+  const { wallet, holdings, identity, prefs, updatePrefs, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   // Inbox-routed modal stack + dispatcher extracted to useInboxRouting
   // (2026-05-27) when the family-ratify route landed and the six modal
@@ -344,6 +354,23 @@ export function HomeScreen() {
             location={identity ? leafValue(identity, 'location') || undefined : undefined}
           />
           {identity && <AttestationCard attestation={identity} />}
+          <Suspense
+            fallback={
+              <div className="rounded-2xl border border-ink/10 bg-paper/50 p-4 text-xs text-muted">
+                Loading vouching circle…
+              </div>
+            }
+          >
+            <VouchingCircleSection
+              holdings={holdings}
+              myKey={wallet.identity}
+              selected={prefs.vouchingCirclePubkeys}
+              onChange={(next) =>
+                void updatePrefs({ vouchingCirclePubkeys: [...next] })
+              }
+            />
+          </Suspense>
+
           {orgDeclaration && (
             <OrgIdentitySections
               officials={officials}
