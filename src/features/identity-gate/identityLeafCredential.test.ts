@@ -6,11 +6,15 @@ import {
 } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 import {
+  buildReleaseGatePolicyLeafDraft,
   buildVouchingCircleLeafDraft,
+  findLatestReleaseGatePolicyLeaf,
   findLatestVouchingCircleLeaf,
   isIdentityLeaf,
   isIdentityLeafOfType,
+  isReleaseGatePolicyLeaf,
   isVouchingCircleLeaf,
+  readReleaseGatePolicyLeaf,
   readVouchingCircleLeaf,
 } from './identityLeafCredential.ts';
 import {
@@ -252,5 +256,196 @@ describe('findLatestVouchingCircleLeaf', () => {
     expect(
       findLatestVouchingCircleLeaf([otherLeaf], op.identity.subject),
     ).toBeNull();
+  });
+});
+
+describe('release_gate_policy leaf', () => {
+  it('builds, signs, and round-trips a gate policy', () => {
+    const op = newWalletAs('Op');
+    const draft = buildReleaseGatePolicyLeafDraft({
+      identityPubkey: op.identity.subject,
+      forLeaf: 'dynasty_trust_spend_key',
+      eligiblePubkeys: [HEX_64('aa'), HEX_64('bb'), HEX_64('cc')],
+      threshold: 2,
+      freshnessHorizonHours: 30 * 24,
+    });
+    const signed = op.wallet.sign(draft);
+    expect(isReleaseGatePolicyLeaf(signed)).toBe(true);
+    const view = readReleaseGatePolicyLeaf(signed);
+    expect(view.forLeaf).toBe('dynasty_trust_spend_key');
+    expect(view.eligiblePubkeys).toEqual([
+      HEX_64('aa'),
+      HEX_64('bb'),
+      HEX_64('cc'),
+    ]);
+    expect(view.threshold).toBe(2);
+    expect(view.freshnessHorizonHours).toBe(30 * 24);
+    expect(view.pingHorizonHours).toBeNull();
+  });
+
+  it('defaults freshness_horizon_hours to one year (8760 hours)', () => {
+    const op = newWalletAs('Op');
+    const draft = buildReleaseGatePolicyLeafDraft({
+      identityPubkey: op.identity.subject,
+      forLeaf: 'foo',
+      eligiblePubkeys: [HEX_64('aa')],
+      threshold: 1,
+    });
+    const signed = op.wallet.sign(draft);
+    expect(readReleaseGatePolicyLeaf(signed).freshnessHorizonHours).toBe(8760);
+  });
+
+  it('round-trips an optional ping_horizon_hours', () => {
+    const op = newWalletAs('Op');
+    const draft = buildReleaseGatePolicyLeafDraft({
+      identityPubkey: op.identity.subject,
+      forLeaf: 'foo',
+      eligiblePubkeys: [HEX_64('aa')],
+      threshold: 1,
+      pingHorizonHours: 24,
+    });
+    const signed = op.wallet.sign(draft);
+    expect(readReleaseGatePolicyLeaf(signed).pingHorizonHours).toBe(24);
+  });
+
+  it('canonicalizes eligible_pubkeys — sorted + deduped + lowercase', () => {
+    const op = newWalletAs('Op');
+    const a = HEX_64('aa');
+    const b = HEX_64('bb');
+    const draft = buildReleaseGatePolicyLeafDraft({
+      identityPubkey: op.identity.subject,
+      forLeaf: 'foo',
+      eligiblePubkeys: [b, a, a.toUpperCase(), b],
+      threshold: 1,
+    });
+    const signed = op.wallet.sign(draft);
+    expect(readReleaseGatePolicyLeaf(signed).eligiblePubkeys).toEqual([a, b]);
+  });
+
+  it('rejects empty forLeaf', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: '   ',
+        eligiblePubkeys: [HEX_64('aa')],
+        threshold: 1,
+      }),
+    ).toThrow(/forLeaf must not be empty/);
+  });
+
+  it('rejects threshold larger than eligible set size', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: 'foo',
+        eligiblePubkeys: [HEX_64('aa'), HEX_64('bb')],
+        threshold: 5,
+      }),
+    ).toThrow(/threshold 5 cannot exceed eligible set size 2/);
+  });
+
+  it('rejects threshold less than 1', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: 'foo',
+        eligiblePubkeys: [HEX_64('aa')],
+        threshold: 0,
+      }),
+    ).toThrow(/threshold must be a positive integer/);
+  });
+
+  it('isReleaseGatePolicyLeaf does not match vouching_circle', () => {
+    const op = newWalletAs('Op');
+    const vouching = buildVouchingCircleLeafDraft({
+      identityPubkey: op.identity.subject,
+      pubkeys: [HEX_64('aa')],
+    });
+    expect(isReleaseGatePolicyLeaf(vouching)).toBe(false);
+  });
+
+  it('isIdentityLeaf returns true for release_gate_policy', () => {
+    const op = newWalletAs('Op');
+    const policy = buildReleaseGatePolicyLeafDraft({
+      identityPubkey: op.identity.subject,
+      forLeaf: 'foo',
+      eligiblePubkeys: [HEX_64('aa')],
+      threshold: 1,
+    });
+    expect(isIdentityLeaf(policy)).toBe(true);
+    expect(isIdentityLeafOfType(policy, 'release_gate_policy')).toBe(true);
+  });
+});
+
+describe('findLatestReleaseGatePolicyLeaf', () => {
+  it('returns null when no policy exists for the named leaf', () => {
+    const op = newWalletAs('Op');
+    expect(
+      findLatestReleaseGatePolicyLeaf([], op.identity.subject, 'foo'),
+    ).toBeNull();
+  });
+
+  it('returns the policy for the matching forLeaf only', () => {
+    const op = newWalletAs('Op');
+    const policyForA = op.wallet.sign(
+      buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: 'leaf_a',
+        eligiblePubkeys: [HEX_64('aa')],
+        threshold: 1,
+      }),
+    );
+    const policyForB = op.wallet.sign(
+      buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: 'leaf_b',
+        eligiblePubkeys: [HEX_64('bb')],
+        threshold: 1,
+      }),
+    );
+    const foundA = findLatestReleaseGatePolicyLeaf(
+      [policyForA, policyForB],
+      op.identity.subject,
+      'leaf_a',
+    );
+    expect(foundA?.issuedAt).toBe(policyForA.issuedAt);
+    const foundB = findLatestReleaseGatePolicyLeaf(
+      [policyForA, policyForB],
+      op.identity.subject,
+      'leaf_b',
+    );
+    expect(foundB?.issuedAt).toBe(policyForB.issuedAt);
+  });
+
+  it('latest-by-issuedAt wins per forLeaf', () => {
+    const op = newWalletAs('Op');
+    const older = op.wallet.sign({
+      ...buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: 'foo',
+        eligiblePubkeys: [HEX_64('aa')],
+        threshold: 1,
+      }),
+      issuedAt: '2026-05-01T12:00:00.000Z',
+    });
+    const newer = op.wallet.sign({
+      ...buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf: 'foo',
+        eligiblePubkeys: [HEX_64('bb'), HEX_64('cc')],
+        threshold: 2,
+      }),
+      issuedAt: '2026-05-29T12:00:00.000Z',
+    });
+    const found = findLatestReleaseGatePolicyLeaf(
+      [newer, older],
+      op.identity.subject,
+      'foo',
+    );
+    expect(found?.issuedAt).toBe(newer.issuedAt);
+    expect(readReleaseGatePolicyLeaf(found!).threshold).toBe(2);
   });
 });

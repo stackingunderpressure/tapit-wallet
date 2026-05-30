@@ -251,3 +251,230 @@ export async function publishVouchingCircleLeaf(
   if (anchorWorker) void anchorWorker.kick();
   return signed;
 }
+
+// ---------------------------------------------------------------
+// release_gate_policy leaf — second concrete identity-leaf type
+// (sub-cut C.4, 2026-05-29)
+// ---------------------------------------------------------------
+//
+// Per-LEAF gate policy that names which peers are eligible to
+// attest, how many of them must attest (threshold M), and how
+// long an attestation stays fresh (freshness horizon in hours).
+// The operator-chip-form decision 2026-05-29 was "per-leaf
+// operator-configurable" gate scope — each high-value identity
+// leaf (dynasty_trust_spend_key, wealth_strategy_auth, etc.)
+// gets its own policy with its own threshold and eligible-set.
+//
+// The eligible_pubkeys list MUST be a subset of the operator's
+// vouching_circle leaf — the verifier in sub-cut E.2 (to come)
+// will enforce this so a tampered gate policy cannot widen the
+// eligible set beyond who the operator has actually designated.
+// For this sub-cut C.4, the substrate just ships the schema +
+// builder + reader + findLatest helper. The validator that
+// enforces vouching-circle-subset lives in E.2 alongside the
+// threshold check.
+//
+// Hybrid liveness (operator chip-form pick) is encoded as two
+// horizons: freshness_horizon_hours is the long durability
+// window (default 365 days), and ping_horizon_hours is the
+// short re-confirmation window where a one-tap ping-ack from
+// the same peer freshens the attestation (sub-cut G's hybrid
+// liveness mechanism). For sub-cut C.4, both fields are stored;
+// the ping-ack envelope kind ships in sub-cut G.
+
+export interface ReleaseGatePolicyPayload {
+  /**
+   * The identity-leaf name this policy gates (e.g.
+   * 'dynasty_trust_spend_key'). Free-form matching the
+   * identity_leaf field on attest-release-authority envelopes.
+   */
+  for_leaf: string;
+  /** Lowercase-hex pubkeys eligible to attest. Sorted canonical. */
+  eligible_pubkeys: readonly string[];
+  /** Number of distinct eligible attestations required (M of N). */
+  threshold: number;
+  /** Long-horizon freshness in hours. Default 8760 = 365 days. */
+  freshness_horizon_hours: number;
+  /**
+   * Short-horizon ping re-confirmation window in hours. Optional
+   * because sub-cut G (hybrid liveness pings) wires the actual
+   * ping envelope kind; this field reserves the slot in the
+   * policy schema now so the leaf's envelopeId stays stable
+   * when G lands without forcing a re-sign for every policy.
+   */
+  ping_horizon_hours?: number;
+}
+
+export interface ReleaseGatePolicyView {
+  forLeaf: string;
+  eligiblePubkeys: readonly string[];
+  threshold: number;
+  freshnessHorizonHours: number;
+  pingHorizonHours: number | null;
+  designatedAt: string;
+  supersedes: string;
+}
+
+export interface BuildReleaseGatePolicyLeafInput {
+  identityPubkey: string;
+  forLeaf: string;
+  eligiblePubkeys: readonly string[];
+  threshold: number;
+  freshnessHorizonHours?: number;
+  pingHorizonHours?: number;
+  supersedes?: string;
+}
+
+const DEFAULT_FRESHNESS_HORIZON_HOURS = 365 * 24;
+
+export function buildReleaseGatePolicyLeafDraft(
+  input: BuildReleaseGatePolicyLeafInput,
+): Attestation {
+  if (!HEX_64.test(input.identityPubkey)) {
+    throw new Error('identityPubkey must be 64-char hex');
+  }
+  const forLeaf = input.forLeaf.trim();
+  if (forLeaf.length === 0) {
+    throw new Error('forLeaf must not be empty');
+  }
+  for (const p of input.eligiblePubkeys) {
+    if (!HEX_64.test(p)) {
+      throw new Error(`eligible pubkey is not 64-char hex: ${p}`);
+    }
+  }
+  // Canonicalize: lowercase + dedup + sort. Same shape as the
+  // vouching_circle leaf so equal logical policies produce equal
+  // envelopeIds.
+  const canonicalEligible = Array.from(
+    new Set(input.eligiblePubkeys.map((p) => p.toLowerCase())),
+  ).sort();
+  if (!Number.isInteger(input.threshold) || input.threshold < 1) {
+    throw new Error('threshold must be a positive integer');
+  }
+  if (input.threshold > canonicalEligible.length) {
+    throw new Error(
+      `threshold ${input.threshold} cannot exceed eligible set size ${canonicalEligible.length}`,
+    );
+  }
+  const freshnessHorizonHours =
+    input.freshnessHorizonHours ?? DEFAULT_FRESHNESS_HORIZON_HOURS;
+  if (!Number.isFinite(freshnessHorizonHours) || freshnessHorizonHours <= 0) {
+    throw new Error('freshnessHorizonHours must be a positive number');
+  }
+  if (
+    input.pingHorizonHours !== undefined &&
+    (!Number.isFinite(input.pingHorizonHours) || input.pingHorizonHours <= 0)
+  ) {
+    throw new Error('pingHorizonHours must be a positive number when provided');
+  }
+  const payload: ReleaseGatePolicyPayload = {
+    for_leaf: forLeaf,
+    eligible_pubkeys: canonicalEligible,
+    threshold: input.threshold,
+    freshness_horizon_hours: freshnessHorizonHours,
+    ...(input.pingHorizonHours !== undefined
+      ? { ping_horizon_hours: input.pingHorizonHours }
+      : {}),
+  };
+  return credentialAttestation({
+    subject: input.identityPubkey.toLowerCase(),
+    tier: 'notable',
+    fields: {
+      credential_type: IDENTITY_LEAF_TYPE,
+      leaf_type: 'release_gate_policy' as IdentityLeafType,
+      payload: JSON.stringify(payload),
+      designated_at: new Date().toISOString(),
+      supersedes: input.supersedes?.trim() ?? '',
+      // for_leaf is also lifted to a top-level field so
+      // findLatestReleaseGatePolicyLeaf can filter without
+      // having to JSON-parse every leaf's payload.
+      for_leaf: forLeaf,
+    },
+  });
+}
+
+export function isReleaseGatePolicyLeaf(att: Attestation): boolean {
+  return isIdentityLeafOfType(att, 'release_gate_policy');
+}
+
+export function readReleaseGatePolicyLeaf(
+  att: Attestation,
+): ReleaseGatePolicyView {
+  const view = readIdentityLeaf(att);
+  let forLeaf = '';
+  let eligiblePubkeys: readonly string[] = [];
+  let threshold = 0;
+  let freshnessHorizonHours = 0;
+  let pingHorizonHours: number | null = null;
+  try {
+    const parsed = JSON.parse(view.payloadJson) as ReleaseGatePolicyPayload;
+    if (typeof parsed.for_leaf === 'string') forLeaf = parsed.for_leaf;
+    if (Array.isArray(parsed.eligible_pubkeys)) {
+      eligiblePubkeys = parsed.eligible_pubkeys.filter(
+        (p): p is string => typeof p === 'string' && HEX_64.test(p),
+      );
+    }
+    if (Number.isInteger(parsed.threshold)) threshold = parsed.threshold;
+    if (
+      typeof parsed.freshness_horizon_hours === 'number' &&
+      Number.isFinite(parsed.freshness_horizon_hours)
+    ) {
+      freshnessHorizonHours = parsed.freshness_horizon_hours;
+    }
+    if (
+      typeof parsed.ping_horizon_hours === 'number' &&
+      Number.isFinite(parsed.ping_horizon_hours)
+    ) {
+      pingHorizonHours = parsed.ping_horizon_hours;
+    }
+  } catch {
+    // Corrupt payload — return zeros; the verifier will refuse
+    // gracefully when threshold=0 fails the count comparison.
+  }
+  return {
+    forLeaf,
+    eligiblePubkeys,
+    threshold,
+    freshnessHorizonHours,
+    pingHorizonHours,
+    designatedAt: view.designatedAt,
+    supersedes: view.supersedes,
+  };
+}
+
+/**
+ * Find the operator's currently-effective release_gate_policy
+ * leaf for a specific identity-leaf name. Latest-by-issuedAt
+ * wins per (walletIdentity, forLeaf) pair. Matches the
+ * findLatestVouchingCircleLeaf pattern.
+ */
+export function findLatestReleaseGatePolicyLeaf(
+  holdings: readonly Attestation[],
+  walletIdentity: string,
+  forLeaf: string,
+): Attestation | null {
+  let latest: Attestation | null = null;
+  let latestMs = -Infinity;
+  const forLeafTrimmed = forLeaf.trim();
+  for (const a of holdings) {
+    if (!isReleaseGatePolicyLeaf(a)) continue;
+    if (a.subject.toLowerCase() !== walletIdentity.toLowerCase()) continue;
+    if (
+      !a.signatures.some(
+        (s) => s.signer.toLowerCase() === walletIdentity.toLowerCase(),
+      )
+    ) {
+      continue;
+    }
+    // The top-level for_leaf field is the cheap filter; if it
+    // matches, the policy is for the right leaf.
+    if (leafValue(a, 'for_leaf') !== forLeafTrimmed) continue;
+    const ms = new Date(a.issuedAt).getTime();
+    if (!Number.isFinite(ms)) continue;
+    if (ms > latestMs) {
+      latestMs = ms;
+      latest = a;
+    }
+  }
+  return latest;
+}
