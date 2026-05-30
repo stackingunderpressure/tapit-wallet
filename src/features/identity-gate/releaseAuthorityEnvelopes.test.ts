@@ -111,6 +111,69 @@ describe('attest-release-authority', () => {
     const signed = peer.wallet.sign(draft);
     expect(readAttestReleaseAuthority(signed).reason).toBe('');
   });
+
+  it('round-trips an identityLeafEnvelopeId binding (sub-cut C.3)', () => {
+    const op = newWalletAs('Op');
+    const peer = newWalletAs('Peer');
+    const leafEnvelopeId = 'cc'.repeat(32);
+    const draft = buildAttestReleaseAuthorityDraft({
+      identityPubkey: op.identity.subject,
+      identityLeaf: 'dynasty_trust_spend_key',
+      identityLeafEnvelopeId: leafEnvelopeId,
+      attestorName: 'Peer',
+      horizonUntil: ONE_YEAR_FROM_NOW,
+    });
+    const signed = peer.wallet.sign(draft);
+    expect(readAttestReleaseAuthority(signed).identityLeafEnvelopeId).toBe(
+      leafEnvelopeId,
+    );
+  });
+
+  it('identityLeafEnvelopeId defaults to empty string (backwards compat)', () => {
+    // Attestations signed before sub-cut C.3 had no leaf-envelope-id
+    // field. Reading them should produce empty string, not undefined
+    // or a crash. The same behavior applies to new attestations where
+    // the caller omits the field.
+    const op = newWalletAs('Op');
+    const peer = newWalletAs('Peer');
+    const draft = buildAttestReleaseAuthorityDraft({
+      identityPubkey: op.identity.subject,
+      identityLeaf: 'foo',
+      attestorName: 'Peer',
+      horizonUntil: ONE_YEAR_FROM_NOW,
+    });
+    const signed = peer.wallet.sign(draft);
+    expect(readAttestReleaseAuthority(signed).identityLeafEnvelopeId).toBe('');
+  });
+
+  it('rejects identityLeafEnvelopeId that is not 64-char hex when provided', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildAttestReleaseAuthorityDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        identityLeafEnvelopeId: 'not-hex',
+        attestorName: 'Peer',
+        horizonUntil: ONE_YEAR_FROM_NOW,
+      }),
+    ).toThrow(/identityLeafEnvelopeId must be 64-char hex/);
+  });
+
+  it('identityLeafEnvelopeId normalizes to lowercase', () => {
+    const op = newWalletAs('Op');
+    const peer = newWalletAs('Peer');
+    const draft = buildAttestReleaseAuthorityDraft({
+      identityPubkey: op.identity.subject,
+      identityLeaf: 'foo',
+      identityLeafEnvelopeId: 'CC'.repeat(32),
+      attestorName: 'Peer',
+      horizonUntil: ONE_YEAR_FROM_NOW,
+    });
+    const signed = peer.wallet.sign(draft);
+    expect(readAttestReleaseAuthority(signed).identityLeafEnvelopeId).toBe(
+      'cc'.repeat(32),
+    );
+  });
 });
 
 describe('revoke-release-authority', () => {

@@ -66,6 +66,22 @@ export interface AttestReleaseAuthorityInput {
    * is `<context>_<purpose>` lowercase-snake.
    */
   identityLeaf: string;
+  /**
+   * Optional 64-char hex envelopeId of the signed identity-leaf
+   * credential this attestation binds to (sub-cut C.3, 2026-05-29).
+   * Closes gap 2 from the gap audit — when present, the verifier
+   * (sub-cut E) checks that the attestation's leaf-commitment
+   * binding matches the currently-effective leaf credential, so a
+   * leaf rotation (operator signs a new credential for the same
+   * leaf_type) produces a new envelopeId and prior attestations
+   * stop authorizing the rotated leaf. Backwards-compatible:
+   * envelopes signed before this field existed parse without it
+   * and read as the empty string — the verifier treats those as
+   * unbound (legacy attestations that the operator can replace by
+   * requesting a fresh attestation from the same peer for the
+   * current leaf envelopeId).
+   */
+  identityLeafEnvelopeId?: string;
   /** Peer's display name at signing time. */
   attestorName: string;
   /** ISO 8601 of when the attestation horizon ends. */
@@ -77,6 +93,12 @@ export interface AttestReleaseAuthorityInput {
 export interface AttestReleaseAuthorityView {
   identityPubkey: string;
   identityLeaf: string;
+  /**
+   * 64-char hex envelopeId of the signed leaf credential this
+   * attestation binds to, or empty string for legacy attestations
+   * predating sub-cut C.3 (2026-05-29).
+   */
+  identityLeafEnvelopeId: string;
   attestorName: string;
   attestedAt: string;
   horizonUntil: string;
@@ -102,6 +124,10 @@ export function buildAttestReleaseAuthorityDraft(
   if (Date.parse(input.horizonUntil) <= Date.parse(attestedAt)) {
     throw new Error('horizonUntil must be after attestedAt');
   }
+  const leafEnvelopeId = input.identityLeafEnvelopeId?.trim() ?? '';
+  if (leafEnvelopeId.length > 0 && !HEX_64.test(leafEnvelopeId)) {
+    throw new Error('identityLeafEnvelopeId must be 64-char hex when provided');
+  }
   return credentialAttestation({
     subject: input.identityPubkey.toLowerCase(),
     tier: 'notable',
@@ -109,6 +135,7 @@ export function buildAttestReleaseAuthorityDraft(
       credential_type: CRED_TYPES.attest,
       identity_id: input.identityPubkey.toLowerCase(),
       identity_leaf: input.identityLeaf.trim(),
+      identity_leaf_envelope_id: leafEnvelopeId.toLowerCase(),
       attestor_name: input.attestorName.trim(),
       attested_at: attestedAt,
       horizon_until: input.horizonUntil,
@@ -127,6 +154,7 @@ export function readAttestReleaseAuthority(
   return {
     identityPubkey: leafValue(att, 'identity_id'),
     identityLeaf: leafValue(att, 'identity_leaf'),
+    identityLeafEnvelopeId: leafValue(att, 'identity_leaf_envelope_id'),
     attestorName: leafValue(att, 'attestor_name'),
     attestedAt: leafValue(att, 'attested_at'),
     horizonUntil: leafValue(att, 'horizon_until'),
