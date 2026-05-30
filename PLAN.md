@@ -17,6 +17,89 @@
 > community to evaluate it because they will accept the philosophy
 > we built on; everyone else is downstream of that acceptance.
 
+## The Founding Vision — the architectural core
+
+> *This section is the operator's founding vision in his own
+> framing, locked in place 2026-05-29 after multiple sessions of
+> agents missing the architectural core while shipping tactical
+> cuts around it. The vision is NOT a future tier — it is the
+> ground every tier below stands on, and every cut in this file
+> exists to advance it, prepare substrate for it, or pay down debt
+> that would otherwise block it.*
+
+The wallet is not a solo-sovereign identity tool. It is a
+**peer-mediated identity substrate** where the community a person
+chooses is what vouches for their validity, and the cryptographic
+proofs of that vouching are what make the identity functional in
+high-value contexts that solo sovereignty cannot adequately
+protect.
+
+The architectural core in the operator's own words: your
+community is what vouches for your validity, and when that is not
+you the math quits working and every web of the Mycelium network
+screams imposter. You can put ten people in front of the gate
+that an attacker has to convince that they are you, and that is
+easy for you because they know you and impossible for an attacker
+because they cannot reproduce a lifetime of context. Bitcoin held
+through this manner via tap-leaves with M-of-N peer-attestation
+gates is the high-value-custody story that solo sovereignty
+cannot match. The Tapit identity tree carries the Bitcoin
+spending leaf hidden inside the Merkle commitment, AND carries
+peer-contributed attestation leaves; the release of the spending
+leaf requires producing disclosure proofs for the spending leaf
+AND for M-of-N fresh peer attestations. If a peer revokes — signs
+an envelope saying "I withdraw my attestation for this identity's
+leaf-release authority" — their leaf goes stale, the M-of-N gate
+stops resolving, and the cryptographic chain that would release
+the key fails to validate. The network's role is exactly what the
+operator named: nobody objects when the math works, the system
+refuses when it does not. This is HEARTWOOD's threshold-of-
+eligible primitive applied to identity-key-RELEASE, the Tapscript
+substrate already shipped (Phase 8 AuthRule trees), composed with
+the multi-leaf disclosure proofs (Phase 4) and the OpenTimestamps
+anchoring (Bitcoin freshness) into one cohesive thing.
+
+The substrate that already exists makes this real today —
+AuthRule {threshold, eligible} tuples, multi-leaf disclosure
+proofs, the vouch-loop pattern (Phase E4 cut 5) which is literally
+the peer-attestation primitive applied to org joining, the cohort
+declaration (recovery), the family-unit member ratification, the
+keyHistory rotation chain — every one of those is a COMPONENT of
+the peer-mediated identity vision but none is the vision itself.
+The cut that names them as components of one thing and adds the
+composing primitives (attest-release, revoke-release, the
+imposter-detect signal, the release ceremony UX) is what makes
+the vision real as software rather than as architecture.
+
+**The architectural shape, locked 2026-05-29 via operator chip-form:**
+
+- **Gate scope: per-leaf operator-configurable.** Not every action
+  is gated — solo-by-default for everyday signing — but each
+  identity-leaf the operator commits can be opted into a gate
+  with its own threshold and its own eligible-peer set. DynastyTrust
+  spend leaf might be 5-of-7 from family. Wealth Strategy might be
+  3-of-5 from financial-trusted peers. Bitcoin recovery cohort
+  share might be 7-of-10 from the hyphal lattice. Different leaves,
+  different gates, all composable.
+- **Gate liveness: hybrid — durable + low-friction pings.**
+  Attestations are durable for a long horizon (one to two years —
+  policy choice per leaf) but the wallet sends low-friction "are
+  you still attesting?" pings that a peer one-taps to confirm. No
+  re-sign ceremony required for routine confirmation; silence
+  triggers a soft warning surfaced to the operator and to other
+  peers, escalating to staleness only after explicit signals or
+  prolonged silence. Matches the "people who know me one-tap
+  things" ease the vision depends on without sacrificing the
+  liveness signal.
+- **Bootstrap: seeded from existing trust networks.** The
+  operator's existing relationships become the gate-source pool
+  by default — Nostr follows from their imported Primal identity,
+  their family-unit envelope members, their recovery cohort, peers
+  from handshakes. The wallet surfaces a "these are the people who
+  could vouch for you" picker and the operator confirms. The gate
+  feels like a natural extension of relationships the operator has
+  already curated, not a separate setup ceremony.
+
 ## What this wallet IS (and is NOT)
 
 It IS a person's sovereign Nostr identity wallet. It generates
@@ -72,6 +155,18 @@ audience that gives a damn about keys and privacy.
    cleverness; safety beats speed.
 4. Four gates green before push: typecheck, lint, test, build.
    Unverified is honest; claimed-green-when-not is not.
+5. **The Founding Vision constraint (added 2026-05-29).** Every
+   chip-form chooser, every Tier prioritization discussion, every
+   cut decision is evaluated against three honest categories:
+   does this cut advance the peer-mediated identity substrate
+   directly, is it substrate-preparation for something that does,
+   or is it tactical debt-paydown that has to happen anyway. Cuts
+   that do not fit any of those three are questioned out loud
+   before they slide through. This rule exists because agents
+   (including this one) have repeatedly approached the wallet
+   through tactical lenses that miss the architectural core —
+   making the vision a foreground constraint rather than backdrop
+   context is the discipline that catches the drift.
 
 ## Where we are today
 
@@ -239,6 +334,98 @@ wallet identity legible inside existing clients (Damus shows a
 verified checkmark, Primal renders the handle, etc.). Lower
 priority than items 7-9 because publishing works without it —
 but the wallet's identity reads naked-pubkey-shaped without it.
+
+### 11. Peer-mediated key-release substrate (the architectural core)
+
+Added 2026-05-29 with the Founding Vision section above. This is
+the cut that turns the architectural core from "described in
+doctrine" into "real in software." It is the highest-leverage
+single substrate cut on the roadmap because every high-value
+custody story downstream (DynastyTrust, Wealth Strategy, Bitcoin
+recovery, the Matt Odell tribute as inaugural use) depends on it
+existing as composable primitives rather than as a vision that
+keeps getting re-explained.
+
+**The shape, locked via operator chip-form 2026-05-29:**
+
+- **Per-leaf operator-configurable gate.** Identity leaves carry
+  an optional `release_gate` sub-tree built on the existing
+  Phase 8 AuthRule {threshold, eligible} substrate. Leaves
+  without a gate stay solo (the everyday-signing path). Leaves
+  with a gate require an M-of-N attestation bundle to be
+  cryptographically present at the moment of disclosure.
+- **Hybrid liveness with low-friction pings.** Attestations are
+  durable for an operator-configurable horizon (default one to
+  two years per leaf); the wallet sends low-friction "are you
+  still attesting?" pings that peers one-tap; silence triggers a
+  soft warning rather than auto-staleness; explicit revocation
+  immediately stales the leaf.
+- **Bootstrap from existing trust networks.** The wallet's
+  peer-picker surfaces the operator's existing relationships —
+  Nostr follows from their imported Primal identity, family-unit
+  envelope members, recovery cohort, handshake peers — as the
+  default pool from which a leaf's eligible-peer set can be
+  drawn. The operator confirms; the gate composition becomes a
+  natural extension of relationships they have already curated.
+
+**Concrete substrate pieces to ship:**
+
+- New envelope kinds: `attest-release-authority` (peer signs that
+  the operator's identity-leaf X release is authorized at time T
+  for horizon H), `revoke-release-authority` (peer signs that
+  they withdraw their prior attestation for leaf X), and
+  `imposter-signal` (peer signs "I think this identity may no
+  longer be the operator" with optional reason). Each is a
+  thin claim-tree shape on the existing tapit-attest envelope
+  primitive; no new cryptography.
+- New gate composition: `releaseGatePolicy` sub-tree on the
+  identity attestation that names per-leaf threshold + eligible
+  set + freshness horizon + ping policy. Composes Phase 8
+  AuthRule with the new envelope kinds.
+- New release ceremony UX: when the operator wants to release a
+  gated leaf (e.g. authorize a DynastyTrust spend), the wallet
+  surfaces "request peer attestations now" → peers receive a
+  one-tap attest request → wallet composes the bundle when
+  threshold reached → operator presents the bundle to the
+  verifier (DynastyTrust spend authorization, etc.).
+- New verifier wrapper: `verifyGatedRelease(bundle, knownIdentities)`
+  in tapit-attest that checks the bundle composes correctly
+  against the leaf's release_gate policy + the freshness window
+  + the absence of unrevoked-but-stale attestations.
+- New imposter-detect surface: peers can fire a one-tap "I think
+  this is off about X" signal that goes to other gate-peers and
+  to the operator (or operator-trust-circle if operator is the
+  one the signal is about). The signal is broadcast within the
+  gate-peer set rather than publicly published — community
+  screaming heard by the network that matters, not by the open
+  relays.
+- New peer-picker surface: surfaces the operator's existing
+  trust networks (Nostr follows, family-unit members, cohort,
+  peers) as the default pool, with per-leaf eligible-set
+  selection from that pool.
+
+**Estimated calendar:** 6-10 carpenter sessions. The cut is
+chunky because it composes existing substrate with new envelope
+kinds and a meaningful UX layer, but it is mostly UI plumbing
+on cryptographic primitives already in production. No new
+crypto required — every piece composes existing tapit-attest
+primitives (Merkle field tree, disclosure proofs, AuthRule
+trees, OpenTimestamps anchoring).
+
+**Why this is Tier 1 not Tier 2:** the carpenter doctrine
+constraint added 2026-05-29 (Standing Protection #5) requires
+every cut to advance the peer-mediated identity substrate,
+prepare for it, or pay down debt. This item IS the peer-mediated
+identity substrate. Until it ships, the architectural core lives
+in doctrine but not in software, and downstream cuts (DynastyTrust
+integration, Wealth Strategy auth, high-value custody contexts)
+have nothing to compose against. Tier 1 items 7-10 (the Nostr
+substrate) are foundation for THIS item because the peer pool is
+drawn from Nostr-network relationships; item 1 (recovery
+cross-device hardware test) shares the same peer-as-substrate
+discipline. Items 2-6 (the embarrassment-gap closers) are
+debt-paydown that had to land before this item could draw
+clean carpenter attention.
 
 ## Tier 2 — Polish and substrate maturation
 
