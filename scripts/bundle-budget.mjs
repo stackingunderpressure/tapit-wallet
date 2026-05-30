@@ -313,6 +313,16 @@ const BUDGETS = [
   // never need it; small because it's just a hex input + new-pass
   // form running restoreFromKData + exportRecoverableWithKData.
   { pattern: /^RecoveryKeyImportModal-.*\.js$/, gz: 2_500, label: 'RecoveryKeyImportModal' },
+  // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
+  // — React.lazy from HomeScreen Identity tab. Carries the
+  // candidate-finder helper (reads family / cohort / handshake from
+  // holdings), the identity-leaf credential primitive
+  // (buildVouchingCircleLeafDraft + readVouchingCircleLeaf +
+  // findLatestVouchingCircleLeaf + publishVouchingCircleLeaf), and
+  // the picker UI with sign-on-save. ~3.5KB gz with reasonable
+  // headroom for the gate-policy composition that lands in
+  // subsequent sub-cuts and may also flow through this surface.
+  { pattern: /^VouchingCircleSection-.*\.js$/, gz: 4_500, label: 'VouchingCircleSection' },
   // 5e-v RecoveryInitiatorModal — React.lazy from UnlockPrompt;
   // loads when the operator hits "Lost passphrase? Start recovery"
   // on the locked screen. Heavier than the responder because it

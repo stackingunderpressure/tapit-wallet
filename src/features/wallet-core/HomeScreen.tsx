@@ -128,7 +128,7 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const { wallet, holdings, identity, prefs, updatePrefs, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
+  const { wallet, ownerId, holdings, identity, prefs, updatePrefs, anchorWorker, save, refresh, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   // Inbox-routed modal stack + dispatcher extracted to useInboxRouting
   // (2026-05-27) when the family-ratify route landed and the six modal
@@ -362,12 +362,19 @@ export function HomeScreen() {
             }
           >
             <VouchingCircleSection
+              wallet={wallet}
+              ownerId={ownerId}
+              anchorWorker={anchorWorker}
               holdings={holdings}
               myKey={wallet.identity}
-              selected={prefs.vouchingCirclePubkeys}
-              onChange={(next) =>
+              draft={prefs.vouchingCirclePubkeys}
+              onDraftChange={(next) =>
                 void updatePrefs({ vouchingCirclePubkeys: [...next] })
               }
+              saveAndRefresh={async () => {
+                await save();
+                await refresh();
+              }}
             />
           </Suspense>
 

@@ -1,5 +1,7 @@
-import type { Attestation } from 'tapit-attest';
-import { credentialAttestation } from 'tapit-attest';
+import type { Attestation, Wallet } from 'tapit-attest';
+import { credentialAttestation, envelopeId } from 'tapit-attest';
+import { anchorQueue } from '../anchoring/anchorQueue.ts';
+import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 // Identity-leaf credential primitive (PLAN.md Founding Vision +
 // Tier 1 item 11 sub-cut C.1, 2026-05-29). The structured shape
@@ -209,4 +211,43 @@ export function findLatestVouchingCircleLeaf(
     }
   }
   return latest;
+}
+
+/**
+ * Build, sign, hold, and queue-for-anchor a vouching_circle leaf
+ * credential. Used by the VouchingCircleSection sign-on-save path
+ * (sub-cut C.2, 2026-05-29). Auto-detects the latest existing
+ * vouching_circle leaf in holdings and sets `supersedes` on the
+ * new leaf to its envelopeId so the rotation chain is auditable.
+ * Caller is responsible for calling refresh() to pick up the
+ * newly-held attestation, and save() to push the encrypted
+ * snapshot to storage. Matches the publishCohort pattern in
+ * src/features/recovery/createCohort.ts.
+ */
+export async function publishVouchingCircleLeaf(
+  wallet: Wallet,
+  ownerId: string,
+  anchorWorker: WorkerHandle | null,
+  pubkeys: readonly string[],
+  holdings: readonly Attestation[],
+): Promise<Attestation> {
+  const prior = findLatestVouchingCircleLeaf(holdings, wallet.identity);
+  const draft = buildVouchingCircleLeafDraft({
+    identityPubkey: wallet.identity,
+    pubkeys,
+    ...(prior ? { supersedes: envelopeId(prior) } : {}),
+  });
+  const signed = wallet.sign(draft);
+  await wallet.hold(signed);
+  const digestHex = envelopeId(signed);
+  await anchorQueue.upsert(ownerId, {
+    digestHex,
+    state: 'queued',
+    anchor: null,
+    attempts: 0,
+    last_attempt: null,
+    last_error: null,
+  });
+  if (anchorWorker) void anchorWorker.kick();
+  return signed;
 }
