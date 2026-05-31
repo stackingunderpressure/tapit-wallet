@@ -13,6 +13,8 @@ export const manifest: FeatureManifest = {
     'src/features/identity-gate/identityLeafCredential.test.ts',
     'src/features/identity-gate/verifyReleaseAuthorityBundle.ts',
     'src/features/identity-gate/verifyReleaseAuthorityBundle.test.ts',
+    'src/features/identity-gate/verifyGatedRelease.ts',
+    'src/features/identity-gate/verifyGatedRelease.test.ts',
   ],
   depends_on: ['wallet-core', 'connections'],
   pause_safe: true,
