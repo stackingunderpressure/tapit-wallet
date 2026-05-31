@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
-import type { Attestation } from 'tapit-attest';
+import { envelopeId, type Attestation } from 'tapit-attest';
 import {
+  familyOtherRatifierCount,
   familySignatureProgress,
+  isFamilyFounder,
   memberHasSigned,
   readFamilyUnit,
 } from '../connections/familyUnit.ts';
@@ -9,24 +11,42 @@ import { IdentityChip } from '../connections/IdentityChip.tsx';
 import { useWallet } from './useWallet.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
 
-// Extracted from HomeScreen.tsx in the StartFamilyModal cut to keep
-// HomeScreen under the 800-line hard limit. Renders the Identity-tab
-// Family section — a card per family unit the operator is a member
-// of, with each member rendered as an IdentityChip plus their role,
-// optional as_of date, and a persistent per-member signature state
-// label (signed / awaiting signature). The "N of M signed" chip
-// reflects the same state in aggregate. Founder-side "Send to
-// members" button ships the envelope via Mycelium to every named
-// member that has not signed yet; the inbox silent-absorb path
-// merges each returning cosigned copy back into holdings as members
-// ratify. Members-side ratify UI is the next-up cut.
+// Identity-tab Family section. Renders a decked-out card per family
+// unit the operator is a member of, with full CRUD on the operator's
+// own copy:
+//
+//   Create — the "+ Start family" button (onStartFamily).
+//   Read   — the card itself: family name, founded date, a Founder /
+//            Member badge framing whether the operator founded this or
+//            was named into it, per-member rows with role + as_of +
+//            signed/awaiting state, and the N-of-M ratification chip.
+//   Update — founder-only "Edit" button, enabled only while the
+//            founder is the sole signer (familyOtherRatifierCount===0)
+//            because re-signing mints a new envelopeId and orphans any
+//            ratifications already collected. Opens StartFamilyModal in
+//            edit mode via onEditFamily. Once another member has
+//            ratified, Edit is hidden and the operator uses Delete +
+//            recreate instead (a proper amendment-envelope flow that
+//            preserves ratifications is a follow-up cut).
+//   Delete — every card carries a destructive action on the operator's
+//            OWN held copy. For the founder it reads "Delete family";
+//            for a named member it reads "Leave family". Both call
+//            unholdEnvelope, which removes only this wallet's copy —
+//            the envelope still exists for anyone else who holds it.
+//            This is the fix for the operator's stuck-wrong-wallet
+//            family that previously had no removal path at all.
+//
+// Founder-side "Send to N awaiting members" ships the envelope via
+// Mycelium to every named member that has not signed yet; the inbox
+// silent-absorb path merges each returning cosigned copy back into
+// holdings as members ratify.
 //
 // Bridge note: rotated wallets sign with their active key, which
-// differs from the genesis identity pubkey the family-unit member
-// list stores. familyUnit.ts's memberHasSigned + familySignatureProgress
-// both accept an optional keyAliases map; this component passes a
-// {wallet.identity → wallet.keyHistory} entry so the operator's own
-// signature is detected regardless of whether they have rotated.
+// differs from the genesis identity pubkey the family-unit member list
+// stores. familyUnit.ts's memberHasSigned + familySignatureProgress +
+// familyOtherRatifierCount all accept an optional keyAliases map; this
+// component passes a {wallet.identity → wallet.keyHistory} entry so the
+// operator's own signature is detected regardless of rotation.
 
 interface Props {
   familyUnits: readonly Attestation[];
@@ -34,30 +54,42 @@ interface Props {
    *  friendly names when the operator has a handshake with them. */
   namesByPubkey: ReadonlyMap<string, string>;
   onStartFamily: () => void;
+  /** Open the edit form for a family the operator founded and solely
+   *  signed. The card gates the affordance before calling this. */
+  onEditFamily: (att: Attestation) => void;
 }
 
-// Failure-only status. Success and pending are surfaced by the
-// derived-from-envelope per-member labels and the N-of-M chip,
-// which persist across navigation because they're derived from
-// holdings. The earlier transient success message disappeared on
-// tab-switch and read as a lie; only failures surface here now,
-// because a failure means the operator needs to act again.
+// Failure-only send status. Success and pending are surfaced by the
+// derived-from-envelope per-member labels and the N-of-M chip, which
+// persist across navigation because they're derived from holdings.
 interface SendError {
   text: string;
+}
+
+function formatFounded(iso: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export function FamilyIdentitySections({
   familyUnits,
   namesByPubkey,
   onStartFamily,
+  onEditFamily,
 }: Props) {
-  const { wallet, sendEnvelope } = useWallet();
+  const { wallet, sendEnvelope, unholdEnvelope } = useWallet();
   const myIdentity = wallet.identity.toLowerCase();
   // keyAliases[wallet.identity] = every key in the operator's history.
-  // This is the bridge that fixes the "founder shows unsigned after
-  // rotation" bug — the signature's signer is the active key, which
-  // for a rotated wallet differs from the genesis identity pubkey
-  // stored in the family-unit member list.
+  // This is the bridge that fixes "founder shows unsigned after
+  // rotation" — the signature's signer is the active key, which for a
+  // rotated wallet differs from the genesis identity pubkey stored in
+  // the family-unit member list.
   const keyAliases = useMemo<ReadonlyMap<string, readonly string[]>>(() => {
     const m = new Map<string, readonly string[]>();
     m.set(myIdentity, wallet.keyHistory.map((k) => k.toLowerCase()));
@@ -65,6 +97,12 @@ export function FamilyIdentitySections({
   }, [myIdentity, wallet.keyHistory]);
   const [sending, setSending] = useState<Record<number, boolean>>({});
   const [errorByIndex, setErrorByIndex] = useState<Record<number, SendError>>({});
+  // Inline two-step delete confirm, keyed by card index — mirrors the
+  // PeerThread "Remove this person" pattern so the destructive action
+  // is never a single tap.
+  const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<Record<number, string>>({});
 
   async function sendToUnsignedMembers(
     idx: number,
@@ -102,6 +140,27 @@ export function FamilyIdentitySections({
     }
   }
 
+  async function handleDelete(idx: number, att: Attestation) {
+    setDeleting(idx);
+    setDeleteError((prev) => {
+      const { [idx]: _gone, ...rest } = prev;
+      return rest;
+    });
+    try {
+      await unholdEnvelope(envelopeId(att));
+      // Holdings refresh re-derives familyUnits and the card drops out,
+      // so no local removal bookkeeping is needed here.
+      setConfirmingDelete(null);
+    } catch (err) {
+      setDeleteError((prev) => ({
+        ...prev,
+        [idx]: err instanceof Error ? err.message : 'remove failed',
+      }));
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <div className="pt-2">
       <div className="flex items-center justify-between">
@@ -132,7 +191,10 @@ export function FamilyIdentitySections({
             const signers = new Set(
               a.signatures.map((s) => s.signer.toLowerCase()),
             );
-            const isFounder = view.founderId.toLowerCase() === myIdentity;
+            const isFounder = isFamilyFounder(a, myIdentity);
+            const founded = formatFounded(view.foundedAt);
+            const otherRatifiers = familyOtherRatifierCount(a, keyAliases);
+            const canEdit = isFounder && otherRatifiers === 0;
             const unsignedNonFounder = view.members.filter((m) => {
               const lower = m.pubkey.toLowerCase();
               if (lower === myIdentity) return false;
@@ -140,14 +202,35 @@ export function FamilyIdentitySections({
             });
             const sendBusy = !!sending[i];
             const error = errorByIndex[i];
+            const isConfirming = confirmingDelete === i;
+            const isDeleting = deleting === i;
+            const delErr = deleteError[i];
             return (
               <li
-                key={i}
+                key={envelopeId(a)}
                 className="rounded-2xl bg-white border border-ink/10 p-4 shadow-sm"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-medium truncate">
-                    {view.familyName || 'Unnamed family'}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">
+                      {view.familyName || 'Unnamed family'}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-medium ${
+                          isFounder
+                            ? 'bg-accent/10 text-accent'
+                            : 'bg-ink/5 text-ink/70'
+                        }`}
+                      >
+                        {isFounder ? 'You founded this' : 'You were named'}
+                      </span>
+                      <span>
+                        {view.members.length} member
+                        {view.members.length === 1 ? '' : 's'}
+                      </span>
+                      {founded && <span>· founded {founded}</span>}
+                    </div>
                   </div>
                   <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
                     {progress.signed} of {progress.total} signed
@@ -156,15 +239,31 @@ export function FamilyIdentitySections({
                 <ul className="mt-3 space-y-2">
                   {view.members.map((m) => {
                     const signed = memberHasSigned(m.pubkey, signers, keyAliases);
+                    const memberIsFounder = isFamilyFounder(a, m.pubkey);
+                    const isMe = m.pubkey.toLowerCase() === myIdentity;
                     return (
                       <li key={m.pubkey}>
-                        <IdentityChip
-                          pubkey={m.pubkey}
-                          name={m.name}
-                          namesByPubkey={namesByPubkey}
-                          size="sm"
-                          hideShortKey
-                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <IdentityChip
+                            pubkey={m.pubkey}
+                            name={m.name}
+                            namesByPubkey={namesByPubkey}
+                            size="sm"
+                            hideShortKey
+                          />
+                          <div className="shrink-0 flex items-center gap-1">
+                            {memberIsFounder && (
+                              <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-accent">
+                                Founder
+                              </span>
+                            )}
+                            {isMe && (
+                              <span className="rounded-full bg-ink/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-ink/70">
+                                You
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         <div className="ml-10 -mt-1 text-[10px] uppercase tracking-wide text-muted">
                           {m.role}
                           {m.as_of ? ` · since ${m.as_of}` : ''}
@@ -198,6 +297,92 @@ export function FamilyIdentitySections({
                   <p className="mt-2 text-xs text-red-700" role="alert">
                     {error.text}
                   </p>
+                )}
+
+                {/* CRUD action row — Edit (founder, sole-signer) and the
+                    destructive Delete / Leave (everyone, own copy). */}
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/5 pt-3">
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => onEditFamily(a)}
+                      className="text-xs font-medium text-accent hover:underline"
+                    >
+                      Edit
+                    </button>
+                  ) : isFounder ? (
+                    <span className="text-[10px] text-muted">
+                      Edit locked — {otherRatifiers} member
+                      {otherRatifiers === 1 ? ' has' : 's have'} ratified.
+                      Delete &amp; recreate to change membership.
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                  {!isConfirming && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDelete(i)}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      {isFounder ? 'Delete family' : 'Leave family'}
+                    </button>
+                  )}
+                </div>
+
+                {isConfirming && (
+                  <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs">
+                    <p className="text-red-900">
+                      {isFounder ? (
+                        <>
+                          Delete{' '}
+                          <span className="font-semibold">
+                            {view.familyName || 'this family'}
+                          </span>{' '}
+                          from your wallet? It leaves your holdings. Members
+                          who already hold a copy keep theirs — this only
+                          removes it here. Use this to clear out a family you
+                          created by mistake or on the wrong wallet.
+                        </>
+                      ) : (
+                        <>
+                          Leave{' '}
+                          <span className="font-semibold">
+                            {view.familyName || 'this family'}
+                          </span>
+                          ? Your copy leaves your holdings. The founder and
+                          other members keep theirs.
+                        </>
+                      )}
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleDelete(i, a)}
+                        disabled={isDeleting}
+                        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                      >
+                        {isDeleting
+                          ? 'Removing…'
+                          : isFounder
+                            ? 'Delete'
+                            : 'Leave'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingDelete(null)}
+                        disabled={isDeleting}
+                        className="rounded-md border border-ink/15 px-3 py-1.5 text-xs font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {delErr && (
+                      <p className="mt-2 text-red-700" role="alert">
+                        {delErr}
+                      </p>
+                    )}
+                  </div>
                 )}
               </li>
             );

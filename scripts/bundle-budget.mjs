@@ -204,7 +204,12 @@ const BUDGETS = [
   // block — the error-tone styling plus the Retry button that re-runs
   // save() so a persistent Supabase rejection is loud and actionable
   // rather than lurking behind only the soft local-newer note.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 22_750, label: 'HomeScreen' },
+  // 2026-05-31 family CRUD overhaul bumped 22.75KB -> 23.5KB: the
+  // decked-out FamilyIdentitySections (Founder/Member badges, founded
+  // date, per-member badges, inline Delete/Leave confirm, Edit gating)
+  // is statically imported by HomeScreen, plus the editFamily state +
+  // second StartFamilyModal mount in edit mode. Measured 22.91KB gz.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 24_064, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
@@ -273,6 +278,13 @@ const BUDGETS = [
   // JournalDetail and HomeScreen import it (5c-i-ε inbox routing).
   // ~2.8KB gz today.
   { pattern: /^AbsorbCosignModal-.*\.js$/, gz: 4_000, label: 'AbsorbCosignModal' },
+  // StartFamilyModal — named budget added 2026-05-31 when the family
+  // CRUD overhaul gave it an edit mode (pre-fill from an existing
+  // envelope, hold-new-then-unhold-old replace, auto-send-on-create
+  // loop) and pushed it past the 3KB catch-all to ~3.2KB gz. Its own
+  // React.lazy chunk; only the section render lands statically in
+  // HomeScreen.
+  { pattern: /^StartFamilyModal-.*\.js$/, gz: 4_000, label: 'StartFamilyModal' },
   // The handshake helpers (createHandshake + leafValue +
   // displayNameOf + isHandshake + readHandshake) get hoisted once
   // PeerPicker (5c-i-θ) joins HandshakeModal as an importer.

@@ -7,9 +7,11 @@ import {
 import type { Attestation } from 'tapit-attest';
 import {
   buildFamilyUnitDraft,
+  familyOtherRatifierCount,
   familySignatureProgress,
   familySignersComplete,
   findFamilyUnitsForMember,
+  isFamilyFounder,
   isFamilyUnit,
   memberHasSigned,
   readFamilyUnit,
@@ -60,6 +62,54 @@ describe('isFamilyUnit', () => {
       fields: { credential_type: 'membership' },
     });
     expect(isFamilyUnit(notFam)).toBe(false);
+  });
+});
+
+describe('isFamilyFounder', () => {
+  it('is true for the founder pubkey and false for other members', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const draft = buildFamilyUnitDraft(dad.identity, 'Test', [
+      memberOf(dad, 'dad'),
+      memberOf(kid, 'child'),
+    ]);
+    expect(isFamilyFounder(draft, dad.identity.subject)).toBe(true);
+    expect(isFamilyFounder(draft, kid.identity.subject)).toBe(false);
+  });
+
+  it('is case-insensitive on the pubkey', () => {
+    const dad = newWalletAs('Dad');
+    const draft = buildFamilyUnitDraft(dad.identity, 'Test', [
+      memberOf(dad, 'dad'),
+    ]);
+    expect(isFamilyFounder(draft, dad.identity.subject.toUpperCase())).toBe(
+      true,
+    );
+  });
+});
+
+describe('familyOtherRatifierCount', () => {
+  it('is 0 when only the founder has signed (Edit is unlocked)', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const draft = buildFamilyUnitDraft(dad.identity, 'Test', [
+      memberOf(dad, 'dad'),
+      memberOf(kid, 'child'),
+    ]);
+    const founderSigned = dad.wallet.sign(draft);
+    expect(familyOtherRatifierCount(founderSigned)).toBe(0);
+  });
+
+  it('counts non-founder ratifiers and excludes the founder', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const draft = buildFamilyUnitDraft(dad.identity, 'Test', [
+      memberOf(dad, 'dad'),
+      memberOf(kid, 'child'),
+    ]);
+    const founderSigned = dad.wallet.sign(draft);
+    const bothSigned = kid.wallet.sign(founderSigned);
+    expect(familyOtherRatifierCount(bothSigned)).toBe(1);
   });
 });
 

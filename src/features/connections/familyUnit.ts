@@ -258,6 +258,40 @@ export function memberHasSigned(
   return false;
 }
 
+/** True when the given pubkey is the founder of this family unit. */
+export function isFamilyFounder(att: Attestation, pubkey: string): boolean {
+  return (
+    leafValue(att, 'founder_id').toLowerCase() === pubkey.toLowerCase()
+  );
+}
+
+/**
+ * Count how many NON-founder members have ratified (signed). Used to
+ * gate the founder-side Edit affordance: editing a family rebuilds and
+ * re-signs the envelope, which mints a fresh envelopeId and therefore
+ * orphans any signatures already collected. That is harmless while the
+ * founder is the only signer, but once another member has ratified
+ * their consent, silently dropping it on an edit would be dishonest —
+ * so the UI only offers Edit when this returns 0 and steers the
+ * operator to Delete-and-recreate (or, later, a proper amendment
+ * envelope) otherwise. keyAliases bridges the founder's own rotation
+ * chain the same way the progress counter does.
+ */
+export function familyOtherRatifierCount(
+  att: Attestation,
+  keyAliases?: ReadonlyMap<string, readonly string[]>,
+): number {
+  const view = readFamilyUnit(att);
+  const founder = view.founderId.toLowerCase();
+  const signers = new Set(att.signatures.map((s) => s.signer.toLowerCase()));
+  let n = 0;
+  for (const m of view.members) {
+    if (m.pubkey.toLowerCase() === founder) continue;
+    if (memberHasSigned(m.pubkey, signers, keyAliases)) n += 1;
+  }
+  return n;
+}
+
 /** True when every named member's pubkey has signed the envelope. */
 export function familySignersComplete(
   att: Attestation,

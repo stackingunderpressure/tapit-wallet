@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { envelopeId } from 'tapit-attest';
+import { envelopeId, type Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import {
   buildFamilyUnitDraft,
   FAMILY_ROLES,
+  readFamilyUnit,
   type FamilyMember,
   type FamilyRole,
 } from './familyUnit.ts';
@@ -23,13 +24,30 @@ import { IdentityChip } from './IdentityChip.tsx';
 // backdated as_of date (a kid's actual birthday signed today). Sign
 // produces a founder-signed family-unit credential, holds it locally,
 // and refreshes — the family appears on the Identity tab immediately.
-// Member-side ratification (each named member co-signs to confirm
-// membership) is a follow-up cut that reuses the existing cosigning
-// + Mycelium transport patterns; for this cut the family unit ships
-// founder-signed and any named member's wallet can be sent the
-// envelope later to add their signature.
+//
+// Edit mode (2026-05-31 CRUD overhaul): when `editing` is passed the
+// form opens pre-filled from an existing family-unit envelope and Save
+// REPLACES it — holds the freshly-signed envelope and unholds the old
+// one in a single save. Re-signing mints a new envelopeId, which
+// orphans any signatures already collected, so the caller only offers
+// Edit while the founder is the sole signer (familyOtherRatifierCount
+// === 0); once another member has ratified, the card steers the
+// operator to Delete-and-recreate instead. Editing is founder-only:
+// only the wallet that is the envelope subject can replace it.
+//
+// On create, the new auto-send behaviour ships the founder-signed
+// envelope to every named non-founder member over Mycelium right after
+// holding it, so "I made a family" actually reaches the members
+// instead of silently sitting in the founder's wallet until they hunt
+// down a secondary Send button. Send failures are surfaced but do not
+// block the create — the family is held locally regardless and the
+// card's "Send to N awaiting members" button remains the retry path.
 
 interface Props {
+  /** When present, the form edits this existing family-unit envelope
+   *  in place rather than creating a fresh one. Founder-only; the
+   *  caller gates on sole-signer state before passing it. */
+  editing?: Attestation;
   onClose: () => void;
 }
 
@@ -54,15 +72,47 @@ const ROLE_LABELS: Record<FamilyRole, string> = {
   sibling: 'Sibling',
 };
 
-export function StartFamilyModal({ onClose }: Props) {
-  const { wallet, ownerId, holdings, identity, save, refresh } = useWallet();
+export function StartFamilyModal({ editing, onClose }: Props) {
+  const { wallet, ownerId, holdings, identity, save, refresh, sendEnvelope } =
+    useWallet();
   const anchorWorker = useAnchorWorker();
-  const [familyName, setFamilyName] = useState('');
-  const [myRole, setMyRole] = useState<FamilyRole>('parent');
-  const [myAsOf, setMyAsOf] = useState('');
-  const [members, setMembers] = useState<DraftMember[]>([]);
+  const myIdentityLower = wallet.identity.toLowerCase();
+  // Pre-fill from the editing envelope once. The founder is split back
+  // out of the member list into the You-section fields; everyone else
+  // becomes a draft row. Members whose pubkey is the founder's are not
+  // duplicated into the editable rows.
+  const editingView = useMemo(
+    () => (editing ? readFamilyUnit(editing) : null),
+    [editing],
+  );
+  const [familyName, setFamilyName] = useState(
+    () => editingView?.familyName ?? '',
+  );
+  const [myRole, setMyRole] = useState<FamilyRole>(
+    () =>
+      editingView?.members.find(
+        (m) => m.pubkey.toLowerCase() === myIdentityLower,
+      )?.role ?? 'parent',
+  );
+  const [myAsOf, setMyAsOf] = useState(
+    () =>
+      editingView?.members.find(
+        (m) => m.pubkey.toLowerCase() === myIdentityLower,
+      )?.as_of ?? '',
+  );
+  const [members, setMembers] = useState<DraftMember[]>(() =>
+    (editingView?.members ?? [])
+      .filter((m) => m.pubkey.toLowerCase() !== myIdentityLower)
+      .map((m) => ({
+        pubkey: m.pubkey.toLowerCase(),
+        name: m.name,
+        role: m.role,
+        asOf: m.as_of ?? '',
+      })),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isEditing = !!editing;
 
   const contacts = useMemo<ContactOption[]>(() => {
     const found: ContactOption[] = [];
@@ -141,6 +191,17 @@ export function StartFamilyModal({ onClose }: Props) {
       ]);
       const signed = wallet.sign(draft);
       await wallet.hold(signed);
+      // Edit mode replaces the old envelope: unhold it AFTER the new
+      // one is safely held so a crash between the two never leaves the
+      // wallet with neither. Re-signing minted a fresh envelopeId, so
+      // the old and new ids differ and the unhold targets only the old.
+      if (isEditing && editing) {
+        const oldId = envelopeId(editing);
+        const newId = envelopeId(signed);
+        if (oldId !== newId) {
+          await wallet.unhold(oldId);
+        }
+      }
       const digestHex = envelopeId(signed);
       if (ownerId) {
         await anchorQueue.upsert(ownerId, {
@@ -155,6 +216,29 @@ export function StartFamilyModal({ onClose }: Props) {
       }
       await save();
       await refresh();
+      // Auto-send to every named non-founder member so creating a
+      // family actually delivers the ratification request. Best-effort:
+      // a send failure (Mycelium off, relay down) does NOT fail the
+      // create — the family is held locally and the card's "Send to N
+      // awaiting members" button is the retry path. We surface the
+      // failure count so the operator knows to retry rather than
+      // assuming everyone got it.
+      const targets = others.map((m) => m.pubkey);
+      let sendFailed = 0;
+      for (const pubkey of targets) {
+        try {
+          await sendEnvelope(pubkey, signed);
+        } catch {
+          sendFailed += 1;
+        }
+      }
+      if (sendFailed > 0 && !isEditing) {
+        setError(
+          `Family created and held, but could not reach ${sendFailed} of ${targets.length} member${targets.length === 1 ? '' : 's'} — open the family card and tap "Send to awaiting members" once Mycelium is connected.`,
+        );
+        setBusy(false);
+        return;
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'sign failed');
@@ -167,7 +251,9 @@ export function StartFamilyModal({ onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Start a family</h2>
+          <h2 className="text-base font-semibold">
+            {isEditing ? 'Edit family' : 'Start a family'}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -177,11 +263,9 @@ export function StartFamilyModal({ onClose }: Props) {
           </button>
         </div>
         <p className="mt-2 text-sm text-muted">
-          Name your family, then add the people in it from your
-          connections. Each member's role is recorded. You can set a
-          backdated date for when each member joined (a kid's actual
-          birthday, a spouse's marriage date) even though you are
-          signing today.
+          {isEditing
+            ? "Fix the name, roles, dates, or who's in this family. Saving replaces the existing family envelope with a corrected one and re-sends it to the members. You can do this freely while you're the only one who has signed."
+            : 'Name your family, then add the people in it from your connections. Each member\'s role is recorded. You can set a backdated date for when each member joined (a kid\'s actual birthday, a spouse\'s marriage date) even though you are signing today.'}
         </p>
 
         <label className="mt-4 block">
@@ -335,10 +419,9 @@ export function StartFamilyModal({ onClose }: Props) {
         </div>
 
         <p className="mt-4 text-xs text-muted">
-          Signing creates a founder-signed family-unit envelope held in
-          your wallet. Each named member's wallet can co-sign later to
-          ratify their membership; ratifications progress is shown on
-          the family card on your Identity tab.
+          {isEditing
+            ? 'Saving re-signs the corrected family-unit envelope, replaces the old one in your wallet, and re-sends it to each named member so their copy matches. Ratification progress resets because the envelope is new.'
+            : 'Signing creates a founder-signed family-unit envelope held in your wallet and sends it to each named member to ratify. Ratification progress is shown on the family card on your Identity tab.'}
         </p>
 
         <div className="mt-3 flex gap-2">
@@ -348,7 +431,11 @@ export function StartFamilyModal({ onClose }: Props) {
             disabled={busy || familyName.trim().length === 0}
             className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
           >
-            {busy ? 'Signing…' : 'Sign and create family'}
+            {busy
+              ? 'Signing…'
+              : isEditing
+                ? 'Save changes'
+                : 'Sign and create family'}
           </button>
           <button
             type="button"

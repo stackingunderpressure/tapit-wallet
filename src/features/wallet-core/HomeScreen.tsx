@@ -151,6 +151,10 @@ export function HomeScreen() {
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [joinOrgOpen, setJoinOrgOpen] = useState(false);
   const [startFamilyOpen, setStartFamilyOpen] = useState(false);
+  // When set, StartFamilyModal opens in edit mode pre-filled from this
+  // family-unit envelope. Founder-only, sole-signer-only — the card
+  // gates the affordance before calling this.
+  const [editFamily, setEditFamily] = useState<Attestation | null>(null);
   const [officialsOpen, setOfficialsOpen] = useState(false);
   const [chainFor, setChainFor] = useState<Attestation | null>(null);
   const [presenceOpen, setPresenceOpen] = useState(false);
@@ -453,6 +457,7 @@ export function HomeScreen() {
             familyUnits={familyUnits}
             namesByPubkey={peerNames}
             onStartFamily={() => setStartFamilyOpen(true)}
+            onEditFamily={(att) => setEditFamily(att)}
           />
           <div className="pt-2">
             <div className="flex items-center justify-between">
@@ -611,6 +616,15 @@ export function HomeScreen() {
       {startFamilyOpen && (
         <Suspense fallback={null}>
           <StartFamilyModal onClose={() => setStartFamilyOpen(false)} />
+        </Suspense>
+      )}
+
+      {editFamily && (
+        <Suspense fallback={null}>
+          <StartFamilyModal
+            editing={editFamily}
+            onClose={() => setEditFamily(null)}
+          />
         </Suspense>
       )}
 
