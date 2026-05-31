@@ -250,67 +250,6 @@ function PassphraseStep(props: {
   );
 }
 
-function RecoveryStep(props: { onAcknowledge: () => void; onBack: () => void }) {
-  return (
-    <div>
-      <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-        Three ways back in.
-      </h1>
-      <p className="mt-3 text-sm text-fresh-text-secondary">
-        If you ever lose this device, here is how you get yourself back. You
-        don't have to set anything up right now — just know they're here.
-      </p>
-      <div className="mt-6 space-y-3">
-        <RecoveryCard
-          icon="🔑"
-          title="A paper key"
-          body="A single string you write down once, fold up, and stash somewhere safe. Anyone with it can restore your wallet — so treat it like a house key."
-        />
-        <RecoveryCard
-          icon="👯"
-          title="A small circle of friends"
-          body="Add a few people you trust. If you lose this device, enough of them together can help you get back in — none of them alone."
-        />
-        <RecoveryCard
-          icon="💾"
-          title="An encrypted file"
-          body="A backup file you download anywhere — cloud drive, USB stick, email to yourself. Useless to anyone without your passphrase."
-        />
-      </div>
-      <div className="mt-6 flex gap-3">
-        <button
-          type="button"
-          onClick={props.onAcknowledge}
-          className="flex-1 rounded-2xl bg-fresh-accent-primary py-3.5 font-medium text-fresh-text-inverse shadow-[0_8px_30px_-8px_rgba(192,252,77,0.6)] transition active:animate-fresh-press motion-reduce:active:animate-none"
-        >
-          Got it, continue
-        </button>
-        <button
-          type="button"
-          onClick={props.onBack}
-          className="rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 text-sm text-fresh-text-primary backdrop-blur-xl"
-        >
-          Back
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function RecoveryCard(props: { icon: string; title: string; body: string }) {
-  return (
-    <div className="rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 backdrop-blur-xl">
-      <p className="text-sm font-medium text-fresh-text-primary">
-        <span className="mr-2" aria-hidden>
-          {props.icon}
-        </span>
-        {props.title}
-      </p>
-      <p className="mt-1 text-xs text-fresh-text-secondary">{props.body}</p>
-    </div>
-  );
-}
-
 function EmailStep(props: {
   email: string;
   onEmailChange: (v: string) => void;
@@ -580,7 +519,6 @@ export {
   ComposeStep,
   NameStep,
   PassphraseStep,
-  RecoveryStep,
   EmailStep,
   CodeStep,
   ImportDiscloseStep,

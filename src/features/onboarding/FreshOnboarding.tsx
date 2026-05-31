@@ -14,7 +14,6 @@ import {
   ComposeStep,
   NameStep,
   PassphraseStep,
-  RecoveryStep,
   EmailStep,
   CodeStep,
   ImportDiscloseStep,
@@ -42,7 +41,6 @@ type Step =
   | 'name'
   | 'passphrase'
   | 'passphrase-warn'
-  | 'recovery'
   | 'email'
   | 'code'
   | 'import-disclose'
@@ -173,11 +171,6 @@ export function FreshOnboarding() {
     }
     setError(null);
     setStep('passphrase-warn');
-  }
-
-  function ackRecovery() {
-    setError(null);
-    setStep('email');
   }
 
   function submitImportEnter(e: React.FormEvent) {
@@ -363,15 +356,8 @@ export function FreshOnboarding() {
       {step === 'passphrase-warn' && (
         <PassphraseCommitWarnings
           variant="fresh"
-          onConfirm={() => setStep('recovery')}
+          onConfirm={() => setStep('email')}
           onBack={() => setStep('passphrase')}
-        />
-      )}
-
-      {step === 'recovery' && (
-        <RecoveryStep
-          onAcknowledge={ackRecovery}
-          onBack={() => setStep('passphrase-warn')}
         />
       )}
 
@@ -380,7 +366,7 @@ export function FreshOnboarding() {
           email={email}
           onEmailChange={setEmail}
           onSubmit={submitEmail}
-          onBack={() => setStep('recovery')}
+          onBack={() => setStep('passphrase-warn')}
           busy={emailStatus === 'busy'}
           error={error}
         />
