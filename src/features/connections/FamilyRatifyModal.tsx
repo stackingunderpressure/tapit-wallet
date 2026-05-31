@@ -134,14 +134,55 @@ export function FamilyRatifyModal({
     setSendStatus(null);
     setSending(true);
     try {
-      // Send-back destination is the envelope subject — the founder.
-      // The relay-peer who forwarded the envelope is irrelevant; the
-      // founder is the one who needs the cosignature so the founder-
-      // side progress chip ticks up.
-      const result = await sendEnvelope(view.founderId, step.signed);
-      const status = summarizePublish(result);
-      setSendStatus(status);
-      if (status.tone !== 'fail') {
+      // Fan-out destinations. The founder's CURRENT subscribe-and-
+      // decrypt address is their active signing key — not necessarily
+      // founder_id. If the founder rotated AT ANY POINT after we
+      // received the envelope, sending only to founder_id (genesis)
+      // is invisible to them: NIP-44 ECDH between (our privkey,
+      // founder genesis pubkey) produces a shared secret only a
+      // wallet holding the founder's genesis PRIVKEY can recover,
+      // and a rotated wallet has discarded that privkey. Operator
+      // field-test 2026-05-31: founder rotated, daughter's send-back
+      // never surfaced on the founder side, family card stayed at
+      // 0-of-N. Address the envelope to founder_id AND to every
+      // distinct signer pubkey on the envelope — the founder's
+      // signature signer is whatever key they used at signing time,
+      // which is a strictly better target than the genesis identity
+      // for any wallet that rotated before signing. Send to all
+      // distinct candidates (minus our own key history so we don't
+      // self-CC); the founder's silent-absorb path dedupes the
+      // multi-relay multi-target deliveries via envelopeId.
+      const myKeys = new Set(
+        wallet.keyHistory.map((k) => k.toLowerCase()),
+      );
+      const targets = new Set<string>();
+      const founderIdKey = view.founderId.trim().toLowerCase();
+      if (!myKeys.has(founderIdKey)) targets.add(founderIdKey);
+      for (const s of step.signed.signatures) {
+        const signerKey = s.signer.trim().toLowerCase();
+        if (!myKeys.has(signerKey)) targets.add(signerKey);
+      }
+      if (targets.size === 0) {
+        throw new Error('no valid recipient for the signed family unit');
+      }
+      let best: PublishStatusSummary | null = null;
+      let anyOk = false;
+      for (const t of targets) {
+        const result = await sendEnvelope(t, step.signed);
+        const status = summarizePublish(result);
+        if (status.tone !== 'fail') anyOk = true;
+        // Prefer 'ok' over 'pending' over 'fail' for the displayed
+        // status so the most informative summary survives.
+        if (
+          !best ||
+          (status.tone === 'ok' && best.tone !== 'ok') ||
+          (status.tone === 'pending' && best.tone === 'fail')
+        ) {
+          best = status;
+        }
+      }
+      setSendStatus(best);
+      if (anyOk) {
         setSent(true);
         if (onSuccess) onSuccess();
       }
