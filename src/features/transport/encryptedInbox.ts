@@ -126,7 +126,15 @@ export function subscribeInbox(
   return transport.subscribe(
     {
       kinds: [TAPIT_ENVELOPE_KIND],
-      '#p': [recipient.publicKey],
+      // Subscribe on every key this wallet has ever used (genesis +
+      // each rotated key), not just the active one — same reasoning as
+      // subscribeChatMessages below. A peer who connected before a
+      // rotation still addresses envelopes to a retired key. NOTE: the
+      // FILTER half is fixed here, but a wallet that has discarded the
+      // old PRIVATE key still cannot DECRYPT a message sent to it —
+      // that requires retaining the keypair history in the Wallet,
+      // tracked as the follow-up to operator bug 2026-05-31.
+      '#p': recipient.keyHistory,
       ...(options.since !== undefined ? { since: options.since } : {}),
     },
     handler,
