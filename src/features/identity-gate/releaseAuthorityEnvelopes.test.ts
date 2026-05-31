@@ -4,12 +4,15 @@ import type { Attestation } from 'tapit-attest';
 import {
   buildAttestReleaseAuthorityDraft,
   buildImposterSignalDraft,
+  buildReleaseAuthorityRequestDraft,
   buildRevokeReleaseAuthorityDraft,
   isAttestReleaseAuthority,
   isImposterSignal,
+  isReleaseAuthorityRequest,
   isRevokeReleaseAuthority,
   readAttestReleaseAuthority,
   readImposterSignal,
+  readReleaseAuthorityRequest,
   readRevokeReleaseAuthority,
 } from './releaseAuthorityEnvelopes.ts';
 
@@ -302,5 +305,128 @@ describe('typeguard isolation', () => {
     expect(isImposterSignal(attest)).toBe(false);
     expect(isImposterSignal(revoke)).toBe(false);
     expect(isImposterSignal(imposter)).toBe(true);
+  });
+});
+
+describe('release-authority-request', () => {
+  it('builds, signs, and round-trips an operator-signed request', () => {
+    const op = newWalletAs('Operator');
+    const draft = buildReleaseAuthorityRequestDraft({
+      identityPubkey: op.identity.subject,
+      identityLeaf: 'dynasty_trust_spend_key',
+      identityLeafEnvelopeId: 'aa'.repeat(32),
+      proposedHorizonUntil: ONE_YEAR_FROM_NOW,
+      requesterName: 'Operator',
+      reason: 'About to authorize a spend; please attest.',
+    });
+    const signed = op.wallet.sign(draft);
+    expect(isReleaseAuthorityRequest(signed)).toBe(true);
+    const view = readReleaseAuthorityRequest(signed);
+    expect(view.identityPubkey).toBe(op.identity.subject.toLowerCase());
+    expect(view.identityLeaf).toBe('dynasty_trust_spend_key');
+    expect(view.identityLeafEnvelopeId).toBe('aa'.repeat(32));
+    expect(view.proposedHorizonUntil).toBe(ONE_YEAR_FROM_NOW);
+    expect(view.requesterName).toBe('Operator');
+    expect(view.reason).toBe('About to authorize a spend; please attest.');
+    expect(view.requestedAt).toBeTruthy();
+  });
+
+  it('rejects empty identityLeaf', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseAuthorityRequestDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: '  ',
+        proposedHorizonUntil: ONE_YEAR_FROM_NOW,
+        requesterName: 'Op',
+      }),
+    ).toThrow(/identityLeaf/);
+  });
+
+  it('rejects empty requesterName', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseAuthorityRequestDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        proposedHorizonUntil: ONE_YEAR_FROM_NOW,
+        requesterName: '   ',
+      }),
+    ).toThrow(/requesterName/);
+  });
+
+  it('rejects proposedHorizonUntil in the past', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseAuthorityRequestDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        proposedHorizonUntil: '2020-01-01T00:00:00Z',
+        requesterName: 'Op',
+      }),
+    ).toThrow(/after requestedAt/);
+  });
+
+  it('rejects invalid identityLeafEnvelopeId when provided', () => {
+    const op = newWalletAs('Op');
+    expect(() =>
+      buildReleaseAuthorityRequestDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        identityLeafEnvelopeId: 'not-hex',
+        proposedHorizonUntil: ONE_YEAR_FROM_NOW,
+        requesterName: 'Op',
+      }),
+    ).toThrow(/64-char hex/);
+  });
+
+  it('identityLeafEnvelopeId is optional and defaults to empty string', () => {
+    const op = newWalletAs('Op');
+    const draft = buildReleaseAuthorityRequestDraft({
+      identityPubkey: op.identity.subject,
+      identityLeaf: 'foo',
+      proposedHorizonUntil: ONE_YEAR_FROM_NOW,
+      requesterName: 'Op',
+    });
+    const signed = op.wallet.sign(draft);
+    expect(readReleaseAuthorityRequest(signed).identityLeafEnvelopeId).toBe('');
+  });
+
+  it('isReleaseAuthorityRequest isolates from other release-authority kinds', () => {
+    const op = newWalletAs('Op');
+    const peer = newWalletAs('Peer');
+    const attest = peer.wallet.sign(
+      buildAttestReleaseAuthorityDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        attestorName: 'Peer',
+        horizonUntil: ONE_YEAR_FROM_NOW,
+      }),
+    );
+    const revoke = peer.wallet.sign(
+      buildRevokeReleaseAuthorityDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        revokesAttestEnvelopeId: 'x'.repeat(64),
+      }),
+    );
+    const imposter = peer.wallet.sign(
+      buildImposterSignalDraft({ identityPubkey: op.identity.subject }),
+    );
+    const request = op.wallet.sign(
+      buildReleaseAuthorityRequestDraft({
+        identityPubkey: op.identity.subject,
+        identityLeaf: 'foo',
+        proposedHorizonUntil: ONE_YEAR_FROM_NOW,
+        requesterName: 'Op',
+      }),
+    );
+    expect(isReleaseAuthorityRequest(attest)).toBe(false);
+    expect(isReleaseAuthorityRequest(revoke)).toBe(false);
+    expect(isReleaseAuthorityRequest(imposter)).toBe(false);
+    expect(isReleaseAuthorityRequest(request)).toBe(true);
+    expect(isAttestReleaseAuthority(request)).toBe(false);
+    expect(isRevokeReleaseAuthority(request)).toBe(false);
+    expect(isImposterSignal(request)).toBe(false);
   });
 });

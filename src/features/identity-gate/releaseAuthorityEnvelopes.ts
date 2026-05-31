@@ -37,6 +37,7 @@ const CRED_TYPES = {
   attest: 'release_authority_attest',
   revoke: 'release_authority_revoke',
   imposter: 'imposter_signal',
+  request: 'release_authority_request',
 } as const;
 
 const HEX_64 = /^[0-9a-f]{64}$/i;
@@ -265,6 +266,124 @@ export function readImposterSignal(att: Attestation): ImposterSignalView {
   return {
     identityPubkey: leafValue(att, 'identity_id'),
     signaledAt: leafValue(att, 'signaled_at'),
+    reason: leafValue(att, 'reason'),
+  };
+}
+
+// ---------------------------------------------------------------
+// release-authority-request (sub-cut D.1, 2026-05-29)
+// ---------------------------------------------------------------
+//
+// Operator-signed envelope that asks a peer to sign an
+// attest-release-authority for a specific identity-leaf. Sent
+// to the peer over NIP-17 gift-wrap (sub-cut D.2 wires the
+// transport routing; D.3 wires the peer-side modal). The peer
+// receives the request, sees a "Please attest" surface showing
+// the operator's name, the requested leaf, the proposed horizon,
+// and the operator's optional reason, then either one-taps
+// accept (which signs an attest-release-authority envelope per
+// the request's parameters and sends it back) or declines.
+//
+// Note the SIGNER is the OPERATOR (the identity whose release
+// authority is being requested), unlike the other three release-
+// authority envelope kinds which are all peer-signed. The
+// identity_id leaf and the subject pubkey both name the
+// operator's identity.
+
+export interface ReleaseAuthorityRequestInput {
+  /**
+   * 64-char hex of the operator's identity pubkey — they will
+   * sign the request envelope; the leaf names them for the
+   * peer's display.
+   */
+  identityPubkey: string;
+  /** Same identity-leaf name the attestation will cover. */
+  identityLeaf: string;
+  /**
+   * Optional 64-char hex envelopeId of the current signed leaf
+   * credential the attestation should bind to (sub-cut C.3
+   * binding). Passed through so the peer's attest envelope
+   * binds to the same leaf — without it, the peer has no way
+   * to know which leaf envelope they are attesting for.
+   */
+  identityLeafEnvelopeId?: string;
+  /**
+   * ISO 8601 horizon the operator proposes. The peer's wallet
+   * defaults the attest envelope's horizon_until to this value
+   * at sign time but the peer can shorten it (never lengthen,
+   * because the gate verifier's policy-freshness rule wins
+   * anyway).
+   */
+  proposedHorizonUntil: string;
+  /** Operator's display name at request time. */
+  requesterName: string;
+  /** Optional free-text reason / context. */
+  reason?: string;
+}
+
+export interface ReleaseAuthorityRequestView {
+  identityPubkey: string;
+  identityLeaf: string;
+  identityLeafEnvelopeId: string;
+  proposedHorizonUntil: string;
+  requesterName: string;
+  requestedAt: string;
+  reason: string;
+}
+
+export function buildReleaseAuthorityRequestDraft(
+  input: ReleaseAuthorityRequestInput,
+): Attestation {
+  if (!HEX_64.test(input.identityPubkey)) {
+    throw new Error('identityPubkey must be 64-char hex');
+  }
+  if (input.identityLeaf.trim().length === 0) {
+    throw new Error('identityLeaf must not be empty');
+  }
+  if (input.requesterName.trim().length === 0) {
+    throw new Error('requesterName must not be empty');
+  }
+  const requestedAt = new Date().toISOString();
+  if (Number.isNaN(Date.parse(input.proposedHorizonUntil))) {
+    throw new Error('proposedHorizonUntil must be ISO 8601');
+  }
+  if (Date.parse(input.proposedHorizonUntil) <= Date.parse(requestedAt)) {
+    throw new Error('proposedHorizonUntil must be after requestedAt');
+  }
+  const leafEnvelopeId = input.identityLeafEnvelopeId?.trim() ?? '';
+  if (leafEnvelopeId.length > 0 && !HEX_64.test(leafEnvelopeId)) {
+    throw new Error('identityLeafEnvelopeId must be 64-char hex when provided');
+  }
+  return credentialAttestation({
+    subject: input.identityPubkey.toLowerCase(),
+    tier: 'notable',
+    fields: {
+      credential_type: CRED_TYPES.request,
+      identity_id: input.identityPubkey.toLowerCase(),
+      identity_leaf: input.identityLeaf.trim(),
+      identity_leaf_envelope_id: leafEnvelopeId.toLowerCase(),
+      proposed_horizon_until: input.proposedHorizonUntil,
+      requester_name: input.requesterName.trim(),
+      requested_at: requestedAt,
+      reason: input.reason?.trim() ?? '',
+    },
+  });
+}
+
+export function isReleaseAuthorityRequest(att: Attestation): boolean {
+  return isCredentialType(att, CRED_TYPES.request);
+}
+
+export function readReleaseAuthorityRequest(
+  att: Attestation,
+): ReleaseAuthorityRequestView {
+  return {
+    identityPubkey: leafValue(att, 'identity_id'),
+    identityLeaf: leafValue(att, 'identity_leaf'),
+    identityLeafEnvelopeId: leafValue(att, 'identity_leaf_envelope_id'),
+    proposedHorizonUntil: leafValue(att, 'proposed_horizon_until'),
+    requesterName: leafValue(att, 'requester_name'),
+    requestedAt: leafValue(att, 'requested_at'),
     reason: leafValue(att, 'reason'),
   };
 }
