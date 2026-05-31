@@ -174,7 +174,10 @@ export async function unwrapGiftWrap(
   if (!(await verifyEvent(giftWrap))) return null;
   let sealJson: string;
   try {
-    sealJson = recipient.nip44DecryptFrom(giftWrap.content, giftWrap.pubkey);
+    // AnyKey: a peer who connected before a rotation addresses the gift
+    // wrap to the recipient's pre-rotation key, so we must try every
+    // key the wallet has held, not just the active one.
+    sealJson = recipient.nip44DecryptFromAnyKey(giftWrap.content, giftWrap.pubkey);
   } catch {
     return null;
   }
@@ -190,7 +193,10 @@ export async function unwrapGiftWrap(
   if (!(await verifyEvent(seal))) return null;
   let rumorJson: string;
   try {
-    rumorJson = recipient.nip44DecryptFrom(seal.content, seal.pubkey);
+    // AnyKey for the same rotation reason as the gift-wrap layer above:
+    // the seal was NIP-44-encrypted to whichever recipient key the
+    // sender knew at send time, which may be a now-retired key.
+    rumorJson = recipient.nip44DecryptFromAnyKey(seal.content, seal.pubkey);
   } catch {
     return null;
   }
@@ -208,10 +214,15 @@ export async function unwrapGiftWrap(
   if (typeof r.content !== 'string') return null;
   if (typeof r.created_at !== 'number' || !Number.isFinite(r.created_at)) return null;
   if (!Array.isArray(r.tags)) return null;
+  // The rumor must name one of THIS wallet's keys as a recipient. After
+  // a rotation the sender named a now-retired key, so accept any key in
+  // keyHistory, not just the active one — otherwise a correctly
+  // decrypted old-key message would be dropped here as "mis-routed."
+  const myKeys = new Set(recipient.keyHistory);
   let recipientNamed = false;
   for (const t of r.tags) {
     if (!Array.isArray(t)) continue;
-    if (t[0] === 'p' && t[1] === recipient.publicKey) {
+    if (t[0] === 'p' && typeof t[1] === 'string' && myKeys.has(t[1])) {
       recipientNamed = true;
       break;
     }

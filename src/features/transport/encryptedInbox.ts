@@ -149,7 +149,10 @@ async function handleIncoming(
   if (!(await verifyEvent(event))) return;
   let plaintext: string;
   try {
-    plaintext = recipient.nip44DecryptFrom(event.content, event.pubkey);
+    // AnyKey: envelopes a peer addressed to a pre-rotation key must
+    // still decrypt — the subscribeInbox filter already accepts every
+    // key in keyHistory, and this is the matching decrypt half.
+    plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
   } catch {
     return;
   }

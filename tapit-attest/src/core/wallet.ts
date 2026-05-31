@@ -53,6 +53,19 @@ export interface WalletSnapshot {
   activeKeypair: Keypair;
   /** Key-succession history; empty until the first rotation. */
   succession: SuccessionLink[];
+  /**
+   * Keypairs the wallet has retired through rotation, oldest first.
+   * Retained so the wallet can still DECRYPT messages a peer addressed
+   * to a pre-rotation key — a peer who connected before the rotation
+   * keeps sending to the old key until they learn of the new one, and
+   * without the old PRIVATE key those messages are permanently
+   * unreadable (NIP-44 decryption needs the recipient's private key).
+   * Optional for backward compatibility: snapshots written before this
+   * field existed simply have no retired keypairs, and a wallet that
+   * has never rotated has none either. Encrypted at rest exactly like
+   * activeKeypair — these never leave the device unencrypted (D-03).
+   */
+  retiredKeypairs?: Keypair[];
   /** Every attestation the wallet holds. */
   holdings: Attestation[];
 }
@@ -77,6 +90,13 @@ export class Wallet {
   // the same context). D-03: keys never leave the wallet unencrypted.
   // The escape hatches are explicit: snapshot() / exportEncrypted().
   #keypair: Keypair;
+  // Private keys of every retired (pre-rotation) signing key, oldest
+  // first. Hard-private with the JS # field for the same reason as
+  // #keypair — old private keys are as sensitive as the active one and
+  // must be unreachable from any code holding a Wallet reference. They
+  // exist so the wallet can still decrypt messages addressed to a key
+  // it has since rotated away from.
+  #retiredKeypairs: Keypair[];
   private readonly _identity: string;
   private readonly succession: SuccessionLink[];
   private readonly store: AttestationStore;
@@ -86,9 +106,12 @@ export class Wallet {
     /** The genesis identity key; defaults to the keypair's public key. */
     identity?: string;
     succession?: SuccessionLink[];
+    /** Pre-rotation keypairs retained for decrypting old messages. */
+    retiredKeypairs?: Keypair[];
     store?: AttestationStore;
   }) {
     this.#keypair = config.keypair;
+    this.#retiredKeypairs = config.retiredKeypairs ? [...config.retiredKeypairs] : [];
     this._identity = config.identity ?? config.keypair.publicKey;
     this.succession = config.succession ?? [];
     this.store = config.store ?? new MemoryStore();
@@ -176,6 +199,39 @@ export class Wallet {
     return decryptFrom(payload, senderPubkey, this.#keypair.privateKey);
   }
 
+  /**
+   * Decrypt a NIP-44 v2 payload addressed to ANY key this wallet has
+   * ever held — the active key first, then each retired key newest to
+   * oldest. Returns the first successful decryption; throws only if no
+   * key opens it.
+   *
+   * This is the rotation-safe receive path. A peer who connected before
+   * the wallet rotated still addresses messages to the pre-rotation
+   * key, and NIP-44 decryption needs the matching private key — so
+   * after a rotation nip44DecryptFrom (active key only) would throw
+   * MAC-failure on every such message and they would be silently lost.
+   * Trying the retired keys recovers them. The order (active first)
+   * means the common case — a message to the current key — succeeds on
+   * the first try with no extra work.
+   */
+  nip44DecryptFromAnyKey(payload: string, senderPubkey: string): string {
+    const candidates = [
+      this.#keypair.privateKey,
+      ...[...this.#retiredKeypairs].reverse().map((k) => k.privateKey),
+    ];
+    let lastErr: unknown;
+    for (const priv of candidates) {
+      try {
+        return decryptFrom(payload, senderPubkey, priv);
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr instanceof Error
+      ? lastErr
+      : new Error('decryption failed under every key in this wallet');
+  }
+
   // --- holding attestations (the Merkle holder) ---
 
   /**
@@ -236,6 +292,15 @@ export class Wallet {
       previous: this.succession[this.succession.length - 1],
     });
     this.succession.push(link);
+    // Retain the retiring keypair (private key included) so the wallet
+    // can still decrypt messages peers addressed to it before they
+    // learned of the rotation. Push BEFORE replacing #keypair so the
+    // about-to-be-retired key is captured. Retaining old keys does not
+    // weaken security: if a rotation was prompted by a key compromise,
+    // the attacker already has the old key, and the new key is what
+    // protects future messages — this is the same posture every
+    // messenger that keeps old keys to read old messages takes.
+    this.#retiredKeypairs.push(this.#keypair);
     this.#keypair = next;
     return link;
   }
@@ -260,6 +325,7 @@ export class Wallet {
       identity: this._identity,
       activeKeypair: this.#keypair,
       succession: [...this.succession],
+      retiredKeypairs: [...this.#retiredKeypairs],
       holdings: await this.holdings(),
     };
   }
@@ -282,6 +348,7 @@ export class Wallet {
       keypair: snapshot.activeKeypair,
       identity: snapshot.identity,
       succession: snapshot.succession,
+      retiredKeypairs: snapshot.retiredKeypairs,
       store,
     });
     for (const attestation of snapshot.holdings) {
