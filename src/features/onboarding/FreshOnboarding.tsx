@@ -52,6 +52,27 @@ const SPLASH_MS = 3000;
 export function FreshOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('splash');
+  // 'onboard' = the compose-first new-user flow (default). 'signin' =
+  // a RETURNING operator who already has a wallet and just needs to
+  // re-authenticate (session expired, new device, signed out). Before
+  // this, the only sign-in path was walking the entire new-user
+  // gauntlet, which dumped returning users into onboarding as if they
+  // were new — operator field-test 2026-05-31: "there's no login old
+  // wallet, it dumps you like you're a new user." In signin mode we
+  // jump straight to the email step and DO NOT stash an onboarding
+  // bundle, so WalletProvider lands on the unlock screen for the
+  // restored wallet instead of trying to mint a fresh identity.
+  const [mode, setMode] = useState<'onboard' | 'signin'>('onboard');
+
+  function enterSignIn() {
+    if (splashTimer.current !== null) {
+      window.clearTimeout(splashTimer.current);
+      splashTimer.current = null;
+    }
+    setError(null);
+    setMode('signin');
+    setStep('email');
+  }
 
   // Volatile pre-sign-in bundle. React state only. Cleared on
   // unmount when the user navigates away mid-flow; cleared
@@ -214,21 +235,27 @@ export function FreshOnboarding() {
     e.preventDefault();
     setEmailStatus('busy');
     setError(null);
-    // Stash the bundle BEFORE verifyOtp so a fast
-    // onAuthStateChange firing inside the same tick finds the
-    // bundle already in place. WalletProvider mounts after the
-    // session flips signed-in and reads the bundle on its first
-    // useEffect run.
-    setPendingOnboarding({
-      text,
-      attachment,
-      displayName: displayName.trim(),
-      birthday: birthday.trim() || undefined,
-      passphrase,
-      ...(importedPrivateKeyHex
-        ? { importedPrivateKeyHex }
-        : {}),
-    });
+    // Returning-user sign-in: do NOT stash an onboarding bundle.
+    // WalletProvider will find the existing encrypted snapshot and
+    // land on the unlock screen for it. Stashing a bundle here would
+    // make it try to mint a brand-new identity over the top.
+    if (mode === 'onboard') {
+      // Stash the bundle BEFORE verifyOtp so a fast
+      // onAuthStateChange firing inside the same tick finds the
+      // bundle already in place. WalletProvider mounts after the
+      // session flips signed-in and reads the bundle on its first
+      // useEffect run.
+      setPendingOnboarding({
+        text,
+        attachment,
+        displayName: displayName.trim(),
+        birthday: birthday.trim() || undefined,
+        passphrase,
+        ...(importedPrivateKeyHex
+          ? { importedPrivateKeyHex }
+          : {}),
+      });
+    }
     const { error: err } = await supabase().auth.verifyOtp({
       email: email.trim(),
       token: code.trim(),
@@ -259,7 +286,24 @@ export function FreshOnboarding() {
 
   return (
     <FreshOnboardingShell onSplashSkip={step === 'splash' ? skipSplash : null}>
-      {step === 'splash' && <SplashStep />}
+      {step === 'splash' && (
+        <>
+          <SplashStep />
+          <p className="mt-10 text-center text-sm text-fresh-text-secondary">
+            Already have a wallet?{' '}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                enterSignIn();
+              }}
+              className="font-medium text-fresh-accent-primary underline transition hover:text-fresh-text-primary"
+            >
+              Sign in
+            </button>
+          </p>
+        </>
+      )}
 
       {step === 'compose' && (
         <>
@@ -285,6 +329,16 @@ export function FreshOnboarding() {
               className="font-medium text-fresh-accent-primary underline transition hover:text-fresh-text-primary"
             >
               Import it
+            </button>
+          </p>
+          <p className="mt-2 text-center text-xs text-fresh-text-tertiary">
+            Already have a Tapit wallet?{' '}
+            <button
+              type="button"
+              onClick={enterSignIn}
+              className="font-medium text-fresh-accent-primary underline transition hover:text-fresh-text-primary"
+            >
+              Sign in
             </button>
           </p>
         </>
@@ -366,7 +420,18 @@ export function FreshOnboarding() {
           email={email}
           onEmailChange={setEmail}
           onSubmit={submitEmail}
-          onBack={() => setStep('passphrase-warn')}
+          onBack={() => {
+            setError(null);
+            if (mode === 'signin') {
+              // Returning-user path has no preceding onboarding steps
+              // to walk back through — return to the splash entry.
+              setMode('onboard');
+              setStep('splash');
+            } else {
+              setStep('passphrase-warn');
+            }
+          }}
+          signInMode={mode === 'signin'}
           busy={emailStatus === 'busy'}
           error={error}
         />

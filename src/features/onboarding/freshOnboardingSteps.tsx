@@ -255,17 +255,22 @@ function EmailStep(props: {
   onEmailChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onBack: () => void;
+  /** Returning-user re-authentication rather than new-user onboarding.
+   *  Changes the heading + copy so it reads as "welcome back" and not
+   *  "last step" of an onboarding the operator is not doing. */
+  signInMode?: boolean;
   busy: boolean;
   error: string | null;
 }) {
   return (
     <form onSubmit={props.onSubmit}>
       <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-        Last step.
+        {props.signInMode ? 'Welcome back.' : 'Last step.'}
       </h1>
       <p className="mt-3 text-sm text-fresh-text-secondary">
-        Your email keeps the wallet linked to you across devices. We mail you
-        a code — no password, nothing to remember besides your passphrase.
+        {props.signInMode
+          ? 'Enter the email you signed up with. We mail you a code — then your wallet asks for your passphrase to unlock.'
+          : 'Your email keeps the wallet linked to you across devices. We mail you a code — no password, nothing to remember besides your passphrase.'}
       </p>
       <label className="mt-8 block">
         <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">
