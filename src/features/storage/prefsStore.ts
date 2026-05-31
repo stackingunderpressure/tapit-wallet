@@ -103,7 +103,7 @@ const DEFAULT_PREFS: Prefs = {
   lastRemoteSync: null,
   lastLocalSync: null,
   idleTimeoutMs: 30 * 60 * 1000,
-  nostrTransportEnabled: false,
+  nostrTransportEnabled: true,
   nostrRelays: [...DEFAULT_RELAYS],
   theme: 'fresh',
   streaksEnabled: true,
@@ -114,7 +114,23 @@ const DEFAULT_PREFS: Prefs = {
 export const prefsStore = {
   async load(ownerId: string): Promise<Prefs> {
     const found = await idb.get<Prefs>(KEY(ownerId));
-    return { ...DEFAULT_PREFS, ...(found ?? {}) };
+    const merged: Prefs = { ...DEFAULT_PREFS, ...(found ?? {}) };
+    // Defensive recovery for wallets that previously persisted an
+    // empty nostrRelays array (a race between the WalletProvider's
+    // initial-state `nostrRelays: []` placeholder and any
+    // updatePrefs call firing before the disk-load completes). An
+    // empty relay set means the wallet has no transport substrate
+    // — operator + daughter both report seeing their own messages
+    // but never each other's because their wallets publish to
+    // zero relays. Restore DEFAULT_RELAYS so the wallet always
+    // has at least the baseline substrate to publish to + subscribe
+    // on. Operators who explicitly customized their relay list and
+    // intentionally have one entry stay unaffected — only literal
+    // empty arrays get repaired.
+    if (merged.nostrRelays.length === 0) {
+      merged.nostrRelays = [...DEFAULT_RELAYS];
+    }
+    return merged;
   },
   async save(ownerId: string, prefs: Prefs): Promise<void> {
     await idb.put(KEY(ownerId), prefs);

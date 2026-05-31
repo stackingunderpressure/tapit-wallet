@@ -5,6 +5,7 @@ import { envelopeId } from 'tapit-attest';
 import { createInboxEnvelopeHandler } from './inboxEnvelopeHandler.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
+import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 import { useSession } from '../auth/useSession.ts';
 import { PassphrasePrompt } from './PassphrasePrompt.tsx';
 import { UnlockPrompt } from './UnlockPrompt.tsx';
@@ -71,8 +72,16 @@ export function WalletProvider({ children }: Props) {
     lastRemoteSync: null,
     lastLocalSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
-    nostrTransportEnabled: false,
-    nostrRelays: [],
+    // Initial state matches DEFAULT_PREFS so any updatePrefs call
+    // firing before the disk-prefs-load completes does not persist
+    // the stale-empty placeholders to disk. Operator bug 2026-05-30:
+    // the prior `nostrRelays: []` initial placeholder was racing
+    // with updatePrefs writes, persisting empty arrays that the
+    // object-spread merge in prefsStore.load could not heal —
+    // resulting in wallets with zero relays that could not deliver
+    // messages or envelopes in either direction.
+    nostrTransportEnabled: true,
+    nostrRelays: [...DEFAULT_RELAYS],
     theme: 'classic',
     streaksEnabled: true,
     memoriesEnabled: true,
@@ -258,7 +267,12 @@ export function WalletProvider({ children }: Props) {
     let conn: WalletConnection | null = null;
     let cancelled = false;
     setInboxEnvelopes([]);
-    const relays = prefs.nostrRelays;
+    // Defensive guard: never call connectWallet with an empty relay
+    // set even if prefs.nostrRelays somehow slipped through empty.
+    // Operator bug 2026-05-30 — see the prefsStore.load recovery
+    // path comment for the race that introduced empty arrays.
+    const relays =
+      prefs.nostrRelays.length > 0 ? prefs.nostrRelays : DEFAULT_RELAYS;
     const onEnvelope = createInboxEnvelopeHandler({
       wallet,
       ownerId,
