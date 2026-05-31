@@ -299,16 +299,25 @@ export function FamilyIdentitySections({
                   </p>
                 )}
 
-                {/* CRUD action row — Edit (founder, sole-signer) and the
-                    destructive Delete / Leave (everyone, own copy). */}
+                {/* CRUD action row. Edit is a bordered button rather
+                    than a hover-underline link because the label "Edit"
+                    by itself does not telegraph that the surface behind
+                    it carries per-member Remove + Role + As-of editing —
+                    the operator surfaced this directly 2026-05-31
+                    ("I see Edit on the card but didn't realize it opens
+                    per-member editing"). The expanded label + button
+                    chrome makes the scope discoverable without changing
+                    behavior. Delete stays as a subtler red link because
+                    destructive should be less prominent than the
+                    constructive editing path. */}
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-ink/5 pt-3">
                   {canEdit ? (
                     <button
                       type="button"
                       onClick={() => onEditFamily(a)}
-                      className="text-xs font-medium text-accent hover:underline"
+                      className="rounded-md border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/10"
                     >
-                      Edit
+                      Edit family & members
                     </button>
                   ) : isFounder ? (
                     <span className="text-[10px] text-muted">
