@@ -323,6 +323,33 @@ html[data-theme='fresh'] .text-accent {
    styling so focus contrast survives on the dark body — they
    are excluded from the surface rule above by element tag. */
 
+/* iOS Safari / Chrome autofill text rendering. When the system
+   autofills an email or password field, the browser overrides
+   the field's background and text-fill color with its own pair
+   — on iOS Safari in dark mode it paints near-white text on its
+   own near-white autofill background, which renders the typed /
+   autofilled email as invisible. Operator: "Email field on sign
+   up is white can't see words." The override below paints autofill
+   text with the theme's primary text colour and forces an opaque
+   inset box-shadow as the visible background so contrast holds.
+   The variables resolve per-theme via the :root / [data-theme="fresh"]
+   blocks above, so one rule covers Classic and Fresh. The 9999s
+   background-color transition is the well-known trick to defer
+   the browser's own background-color animation past the user's
+   plausible session lifetime, keeping the inset shadow as the
+   visible surface. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--fresh-text-primary) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--fresh-surface-raised) inset !important;
+  caret-color: var(--fresh-text-primary) !important;
+  transition: background-color 9999s ease-in-out 0s !important;
+}
+
 /* iOS Safari zoom-prevention. iOS auto-zooms on tap whenever a form
    field's font-size is below 16px, and once the page is zoomed a
    position:fixed modal lands relative to the layout viewport while

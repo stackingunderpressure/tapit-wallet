@@ -70,7 +70,15 @@ const BUDGETS = [
   // OrgIdentitySections joined-members section + the publish-roster
   // amber chip introduced into the content scanner. Measured 7.34KB
   // gz post-cut, +16 bytes over the prior budget.
-  { pattern: /^index-.*\.css$/, gz: 8_000, label: 'css' },
+  // 2026-05-31 bumps 8KB -> 8.3KB to absorb the :-webkit-autofill
+  // text-fill-color override added to index.css. The override fixes
+  // iOS Safari rendering autofilled email/password fields as white
+  // text on its own white background under both themes. The fix is
+  // ~40 bytes gz after minification — small but pushed total past
+  // the 8KB boundary. The fix is the right shape (one CSS rule
+  // covers every form input across the whole app) so the budget
+  // moves rather than the fix shrinking.
+  { pattern: /^index-.*\.css$/, gz: 8_300, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
