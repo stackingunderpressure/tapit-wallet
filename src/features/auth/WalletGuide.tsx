@@ -527,18 +527,28 @@ function Account() {
 
 function SignedInAccount({ email }: { email: string | null }) {
   const [signingOut, setSigningOut] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
-  async function doSignOut() {
-    setSigningOut(true);
+  // Both buttons clear the Supabase session via signOut(); the session
+  // change fires onAuthStateChange and Account re-renders into
+  // SignInForm at the email-entry step, which is exactly the
+  // "sign in with a different email" surface. The only difference is
+  // framing + which busy label shows, so a returning operator who
+  // wants to switch the email this device is bound to has a discoverable
+  // path instead of having to reason that "Sign out" is the way to do it.
+  async function clearSession(which: 'out' | 'switch') {
+    if (which === 'out') setSigningOut(true);
+    else setSwitching(true);
     setSignOutError(null);
     const { error } = await supabase().auth.signOut();
     if (error) {
       setSignOutError(error.message);
       setSigningOut(false);
+      setSwitching(false);
     }
-    // On success the session change fires onAuthStateChange and the
-    // surface re-renders into the signed-out form.
+    // On success the surface re-renders into the signed-out form; no
+    // further state work needed here.
   }
 
   return (
@@ -550,11 +560,19 @@ function SignedInAccount({ email }: { email: string | null }) {
           : "Your wallet's keypair and attestations live on this device, encrypted under your passphrase."}
       </Lede>
 
-      <div className="mt-5">
+      <div className="mt-5 space-y-3">
         <button
           type="button"
-          onClick={() => void doSignOut()}
-          disabled={signingOut}
+          onClick={() => void clearSession('switch')}
+          disabled={signingOut || switching}
+          className="w-full rounded-xl bg-gradient-to-b from-accent to-[#22503b] py-3 text-sm font-medium text-paper shadow-lg shadow-accent/30 transition active:scale-[0.99] disabled:opacity-40 disabled:shadow-none"
+        >
+          {switching ? 'Switching…' : 'Sign in with a different email'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void clearSession('out')}
+          disabled={signingOut || switching}
           className="w-full rounded-xl border border-ink/15 bg-white py-3 text-sm font-medium text-ink hover:bg-ink/5 disabled:opacity-40"
         >
           {signingOut ? 'Signing out…' : 'Sign out'}
@@ -567,10 +585,12 @@ function SignedInAccount({ email }: { email: string | null }) {
       )}
 
       <p className="mt-5 text-xs leading-relaxed text-muted">
-        Signing out clears the Supabase session on this device. Your
-        wallet's encrypted snapshot stays in IndexedDB and in cloud backup
-        — signing back in restores everything and the wallet asks for your
-        passphrase to unlock.
+        Signing in with a different email sends a fresh code to that
+        address and binds this device to that account. Either action
+        clears the Supabase session on this device — your wallet's
+        encrypted snapshot stays in IndexedDB and in cloud backup, and
+        signing back in with the original email restores everything and
+        asks for your passphrase to unlock.
       </p>
     </section>
   );
