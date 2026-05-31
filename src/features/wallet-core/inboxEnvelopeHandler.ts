@@ -55,53 +55,95 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
       return;
     }
     void (async () => {
+      const incomingId = envelopeId(item.envelope);
+
+      // Step 1: read holdings. If this itself throws, conservatively
+      // surface the envelope so the operator can decide.
+      let holdings: Attestation[];
       try {
-        const incomingId = envelopeId(item.envelope);
-        const holdings = await wallet.holdings();
-        // Silent-drop relay replays of handshake requests from peers
-        // we already have a completed handshake with. The Nostr relay
-        // re-delivers these on every wallet unlock; surfacing them as
-        // still-pending rows confuses the operator into thinking the
-        // connection did not complete when it actually did.
-        if (
-          isHandshake(item.envelope) &&
-          findCompletedHandshakeWith(holdings, wallet.identity, item.senderPubkey)
-        ) {
-          return;
-        }
-        const held = holdings.find((a) => envelopeId(a) === incomingId);
-        if (!held) {
-          setInboxEnvelopes((prev) =>
-            prev.some((p) => p.eventId === item.eventId)
-              ? prev
-              : [item, ...prev],
-          );
-          return;
-        }
-        const { merged, newSignatures } = mergeSignatures(held, item.envelope);
-        if (newSignatures.length === 0) {
-          setInboxEnvelopes((prev) =>
-            prev.filter((p) => envelopeId(p.envelope) !== incomingId),
-          );
-          return;
-        }
-        await wallet.hold(merged);
-        const pass = passphraseRef.current;
-        if (pass && ownerId) {
-          await saveWallet(wallet, pass, ownerId);
-        }
-        setHoldings(await wallet.holdings());
-        setInboxEnvelopes((prev) =>
-          prev.filter((p) => envelopeId(p.envelope) !== incomingId),
-        );
+        holdings = await wallet.holdings();
       } catch (err) {
-        console.warn('silent-absorb on inbox arrival failed', err);
+        console.warn('silent-absorb: holdings() failed', err);
         setInboxEnvelopes((prev) =>
           prev.some((p) => p.eventId === item.eventId)
             ? prev
             : [item, ...prev],
         );
+        return;
       }
+
+      // Silent-drop relay replays of handshake requests from peers
+      // we already have a completed handshake with. The Nostr relay
+      // re-delivers these on every wallet unlock; surfacing them as
+      // still-pending rows confuses the operator into thinking the
+      // connection did not complete when it actually did.
+      if (
+        isHandshake(item.envelope) &&
+        findCompletedHandshakeWith(holdings, wallet.identity, item.senderPubkey)
+      ) {
+        return;
+      }
+
+      const held = holdings.find((a) => envelopeId(a) === incomingId);
+
+      // No held copy — unknown envelope. Surface as an inbox row so
+      // the operator can act on it (or copy/paste it elsewhere).
+      if (!held) {
+        setInboxEnvelopes((prev) =>
+          prev.some((p) => p.eventId === item.eventId)
+            ? prev
+            : [item, ...prev],
+        );
+        return;
+      }
+
+      // We HOLD a copy with the same envelopeId. From this branch
+      // we NEVER re-add to inbox — the held copy is canonical, the
+      // operator already absorbed this entry (manually or silently),
+      // and re-surfacing it on every relay re-delivery is the
+      // "old absorb signature reappears next session" bug operator
+      // surfaced 2026-05-31. Even if mergeSignatures throws (rare
+      // pathological verification case) or hold/save fails, the
+      // held copy stands and the inbox row stays out.
+      let mergeResult: ReturnType<typeof mergeSignatures>;
+      try {
+        mergeResult = mergeSignatures(held, item.envelope);
+      } catch (err) {
+        console.warn(
+          'silent-absorb: merge threw on a held envelope; held copy stands',
+          err,
+        );
+        setInboxEnvelopes((prev) =>
+          prev.filter((p) => envelopeId(p.envelope) !== incomingId),
+        );
+        return;
+      }
+
+      if (mergeResult.newSignatures.length === 0) {
+        setInboxEnvelopes((prev) =>
+          prev.filter((p) => envelopeId(p.envelope) !== incomingId),
+        );
+        return;
+      }
+
+      // Incoming has new signatures — merge into holdings, persist,
+      // refresh the consumer state.
+      try {
+        await wallet.hold(mergeResult.merged);
+        const pass = passphraseRef.current;
+        if (pass && ownerId) {
+          await saveWallet(wallet, pass, ownerId);
+        }
+        setHoldings(await wallet.holdings());
+      } catch (err) {
+        console.warn(
+          'silent-absorb: hold/save failed; held copy stands',
+          err,
+        );
+      }
+      setInboxEnvelopes((prev) =>
+        prev.filter((p) => envelopeId(p.envelope) !== incomingId),
+      );
     })();
   };
 }
