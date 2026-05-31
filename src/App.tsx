@@ -43,6 +43,11 @@ const CaptureScreen = lazy(() =>
     default: m.CaptureScreen,
   })),
 );
+const JoinScreen = lazy(() =>
+  import('./features/connections/JoinScreen.tsx').then((m) => ({
+    default: m.JoinScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -62,6 +67,14 @@ export function App() {
           element={
             <Suspense fallback={Pending}>
               <VerifyProofScreen />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/join"
+          element={
+            <Suspense fallback={Pending}>
+              <JoinScreen />
             </Suspense>
           }
         />
