@@ -417,6 +417,30 @@ body {
   line-height: 1.55 !important;
 }
 
+/* Login-input text legibility on the always-dark aurora surface.
+   The Fresh login + onboarding inputs (email, name, passphrase,
+   compose) sit on .fresh-aurora-bg, which is unconditionally dark.
+   Their text relies on the --fresh-text-primary token resolving to
+   the LIGHT value — but that only happens when <html data-theme="fresh">
+   is set. On the pre-auth login surface the attribute is applied by
+   useDeviceTheme AFTER React mounts, and on the very first paint (or
+   if the device theme resolved to classic while the Fresh shell still
+   rendered) the token falls back to the :root LIGHT-MODE value
+   (#0f1419, near-black) — dark text on a dark background, invisible.
+   Operator field-test 2026-05-31: "the text you type on email" cannot
+   be seen. Pin light text + caret + autofill fill for every input on
+   the aurora surface directly, independent of the theme attribute, so
+   typed text is always legible regardless of paint timing. */
+.fresh-aurora-bg :is(input, textarea, select) {
+  color: #f4f4f5 !important;
+  -webkit-text-fill-color: #f4f4f5 !important;
+  caret-color: #9be63d !important;
+}
+.fresh-aurora-bg :is(input, textarea, select)::placeholder {
+  color: #71717a !important;
+  -webkit-text-fill-color: #71717a !important;
+}
+
 /* Aurora-drift background for the Fresh landing surface. Replaces
    the Classic float-glows (the two `animate-float` blurred orbs in
    `WalletGuide`) with a slow gradient sweep across deep neutrals
