@@ -5,6 +5,7 @@ import { envelopeId } from 'tapit-attest';
 import { createInboxEnvelopeHandler } from './inboxEnvelopeHandler.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
+import { dismissedInboxStore } from '../storage/dismissedInboxStore.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 import { useSession } from '../auth/useSession.ts';
 import { PassphrasePrompt } from './PassphrasePrompt.tsx';
@@ -103,6 +104,14 @@ export function WalletProvider({ children }: Props) {
   // Holds the relay-status unsubscribe so the effect cleanup can call
   // it before closing the transport.
   const statusUnsubRef = useRef<(() => void) | null>(null);
+  // Live set of envelopeIds the operator has permanently dismissed.
+  // Loaded from dismissedInboxStore on owner change and consulted
+  // synchronously by the inbox handler so a relay replay of a
+  // dismissed envelope is dropped on arrival — the only path that
+  // suppresses an envelope the wallet holds no copy of (e.g. a
+  // handshake whose peer wallet was deleted). A ref so the handler,
+  // built once when the transport opens, always sees the latest set.
+  const dismissedRef = useRef<Set<string>>(new Set());
   // Stable content-keyed string for the relay list so the transport
   // effect re-runs when the list content changes (not its reference).
   const relaysKey = useMemo(
@@ -144,6 +153,24 @@ export function WalletProvider({ children }: Props) {
         );
       },
     );
+    return () => {
+      alive = false;
+    };
+  }, [ownerId]);
+
+  // Load the operator's permanently-dismissed inbox envelopeIds into
+  // the live ref so the inbox handler suppresses relay replays of them
+  // from the first arrival. Re-runs on owner change; clears to empty
+  // when signed out so one account's dismissals never leak to another.
+  useEffect(() => {
+    if (!ownerId) {
+      dismissedRef.current = new Set();
+      return;
+    }
+    let alive = true;
+    void dismissedInboxStore.load(ownerId).then((set) => {
+      if (alive) dismissedRef.current = set;
+    });
     return () => {
       alive = false;
     };
@@ -278,6 +305,7 @@ export function WalletProvider({ children }: Props) {
       wallet,
       ownerId,
       passphraseRef,
+      dismissedRef,
       setInboxEnvelopes,
       setHoldings,
     });
@@ -317,9 +345,25 @@ export function WalletProvider({ children }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, prefs.nostrTransportEnabled, relaysKey, activeKey]);
 
-  const dismissInboxEnvelope = useCallback((eventId: string) => {
-    setInboxEnvelopes((prev) => prev.filter((p) => p.eventId !== eventId));
-  }, []);
+  // Permanent dismiss. Resolve the row to its envelope, persist the
+  // stable envelopeId to dismissedInboxStore, update the live ref so
+  // the handler suppresses future relay replays, and clear every
+  // currently-shown row that shares that envelopeId (a single envelope
+  // can arrive under several relay event-ids). Falls back to the
+  // by-eventId filter when the row is already gone from state.
+  const dismissInboxEnvelope = useCallback(
+    (eventId: string) => {
+      setInboxEnvelopes((prev) => {
+        const target = prev.find((p) => p.eventId === eventId);
+        if (!target) return prev.filter((p) => p.eventId !== eventId);
+        const id = envelopeId(target.envelope);
+        dismissedRef.current.add(id);
+        if (ownerId) void dismissedInboxStore.add(ownerId, id);
+        return prev.filter((p) => envelopeId(p.envelope) !== id);
+      });
+    },
+    [ownerId],
+  );
 
   const sendEnvelope = useCallback(
     async (recipientPubkey: string, envelope: Attestation) => {

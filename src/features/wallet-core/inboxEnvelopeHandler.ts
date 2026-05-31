@@ -30,6 +30,15 @@ export interface InboxHandlerDeps {
   wallet: Wallet;
   ownerId: string | undefined;
   passphraseRef: MutableRefObject<string | null>;
+  /**
+   * Live set of envelopeIds the operator has permanently dismissed.
+   * Read synchronously on each arrival so a relay replay of a
+   * dismissed envelope is dropped before it can reach the inbox UI.
+   * A ref (not a value) so the handler — created once when the
+   * transport opens — always sees the latest set without being
+   * rebuilt. Optional for callers/tests that don't wire persistence.
+   */
+  dismissedRef?: MutableRefObject<Set<string>>;
   setInboxEnvelopes: (
     update: (prev: InboxEnvelope[]) => InboxEnvelope[],
   ) => void;
@@ -37,8 +46,19 @@ export interface InboxHandlerDeps {
 }
 
 export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
-  const { wallet, ownerId, passphraseRef, setInboxEnvelopes, setHoldings } = deps;
+  const { wallet, ownerId, passphraseRef, dismissedRef, setInboxEnvelopes, setHoldings } =
+    deps;
   return (item: InboxEnvelope): void => {
+    // Permanently-dismissed envelopes never come back, regardless of
+    // whether the wallet holds a copy. This is the only suppression
+    // that works for an envelope the wallet has NO held copy of (e.g. a
+    // handshake whose peer wallet was deleted) — the held-copy and
+    // completed-handshake paths below cannot fire without a local copy
+    // to match against. Keyed by the stable envelopeId so every relay
+    // replay of the same envelope is caught.
+    if (dismissedRef && dismissedRef.current.has(envelopeId(item.envelope))) {
+      return;
+    }
     if (item.senderPubkey === wallet.publicKey) {
       void (async () => {
         try {
