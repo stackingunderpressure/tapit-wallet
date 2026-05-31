@@ -250,24 +250,42 @@ export function dedupeHandshakesByPeer(
 // independent so it does not matter who initiated.
 export function findCompletedHandshakeWith(
   holdings: readonly Attestation[],
-  myIdentity: string,
+  ownerKeys: string | readonly string[],
   peerPubkey: string,
 ): Attestation | null {
-  const me = myIdentity.trim().toLowerCase();
+  // Accept the operator's whole key set, not just one key. A completed
+  // handshake records the operator (as a named party AND as a signer)
+  // under whichever key was active at handshake time; after a key
+  // rotation that is no longer wallet.identity. Comparing a single key
+  // let a relay re-delivery of an already-completed connection keep
+  // surfacing as an "Absorb signature" row that Dismiss could not
+  // silence — it returned every session (operator bug 2026-05-31).
+  // Passing wallet.keyHistory makes the guard recognize the connection
+  // regardless of which of the operator's keys signed it. The string
+  // overload is retained so single-identity callers still work.
+  const owners = new Set(
+    (typeof ownerKeys === 'string' ? [ownerKeys] : ownerKeys)
+      .map((k) => k.trim().toLowerCase())
+      .filter((k) => k.length > 0),
+  );
   const peer = peerPubkey.trim().toLowerCase();
-  if (!me || !peer || me === peer) return null;
+  if (owners.size === 0 || !peer || owners.has(peer)) return null;
   for (const a of holdings) {
     if (!isHandshake(a)) continue;
     const v = readHandshake(a);
     const init = v.initiatorId.trim().toLowerCase();
     const resp = v.responderId.trim().toLowerCase();
-    const namesBoth =
-      (init === me && resp === peer) || (init === peer && resp === me);
-    if (!namesBoth) continue;
+    // One side must be the peer; the other side must be one of the
+    // operator's keys. Capture which owner key it was so the signer
+    // check below matches the same key.
+    let ownerSide: string | undefined;
+    if (init === peer && owners.has(resp)) ownerSide = resp;
+    else if (resp === peer && owners.has(init)) ownerSide = init;
+    if (ownerSide === undefined) continue;
     const signers = new Set(
       a.signatures.map((s) => s.signer.trim().toLowerCase()),
     );
-    if (signers.has(me) && signers.has(peer)) return a;
+    if (signers.has(ownerSide) && signers.has(peer)) return a;
   }
   return null;
 }

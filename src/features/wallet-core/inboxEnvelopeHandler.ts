@@ -79,7 +79,7 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
       // connection did not complete when it actually did.
       if (
         isHandshake(item.envelope) &&
-        findCompletedHandshakeWith(holdings, wallet.identity, item.senderPubkey)
+        findCompletedHandshakeWith(holdings, wallet.keyHistory, item.senderPubkey)
       ) {
         return;
       }
