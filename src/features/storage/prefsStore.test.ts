@@ -30,6 +30,7 @@ function basePrefs(overrides: Partial<Prefs> = {}): Prefs {
     cloudSync: true,
     lastRemoteSync: null,
     lastLocalSync: null,
+    lastRemoteFailedSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
     nostrTransportEnabled: true,
     nostrRelays: ['wss://default.example'],

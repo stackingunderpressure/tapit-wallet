@@ -63,15 +63,26 @@ export const walletStore = {
     }
     try {
       await remoteStore.put(ownerId, value);
+      // Success clears any sticky failure flag so the red Retry
+      // banner disappears the moment the cloud accepts a save again.
       await prefsStore.save(ownerId, {
         ...prefs,
         lastRemoteSync: now,
         lastLocalSync: now,
+        lastRemoteFailedSync: null,
       });
       return { localSyncedAt: now, remoteSyncedAt: now, remoteFailed: false };
     } catch (err) {
+      // Persist the failure timestamp so it survives reload — the
+      // home-screen banner reads lastRemoteFailedSync as its loudest
+      // case rather than letting a multi-day rejection lurk behind
+      // only the soft local-newer note.
       console.warn('remoteStore.put failed; local save succeeded', err);
-      await prefsStore.save(ownerId, { ...prefs, lastLocalSync: now });
+      await prefsStore.save(ownerId, {
+        ...prefs,
+        lastLocalSync: now,
+        lastRemoteFailedSync: now,
+      });
       return { localSyncedAt: now, remoteSyncedAt: null, remoteFailed: true };
     }
   },

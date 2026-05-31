@@ -71,6 +71,7 @@ export function WalletProvider({ children }: Props) {
     cloudSync: true,
     lastRemoteSync: null,
     lastLocalSync: null,
+    lastRemoteFailedSync: null,
     idleTimeoutMs: 30 * 60 * 1000,
     // Initial state matches DEFAULT_PREFS so any updatePrefs call
     // firing before the disk-prefs-load completes does not persist

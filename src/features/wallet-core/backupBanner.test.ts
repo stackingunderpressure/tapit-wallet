@@ -13,14 +13,48 @@ function prefs(partial: Partial<BackupBannerInput> = {}): BackupBannerInput {
     cloudSync: true,
     lastRemoteSync: T0,
     lastLocalSync: T0,
+    lastRemoteFailedSync: null,
     ...partial,
   };
 }
 
 describe('backupBanner', () => {
   test('cloudSync off wins over everything', () => {
-    const banner = backupBanner(prefs({ cloudSync: false }));
+    const banner = backupBanner(
+      prefs({ cloudSync: false, lastRemoteFailedSync: T0 }),
+    );
     expect(banner?.text).toMatch(/Cloud backup is off/);
+  });
+
+  test('remote-failure fires as a red retry banner when lastRemoteFailedSync is set', () => {
+    const banner = backupBanner(prefs({ lastRemoteFailedSync: T0 }));
+    expect(banner?.tone).toBe('error');
+    expect(banner?.action).toBe('retry');
+    expect(banner?.text).toMatch(/Cloud backup is failing/);
+  });
+
+  test('remote-failure wins over local-newer-than-cloud', () => {
+    const banner = backupBanner(
+      prefs({
+        lastRemoteFailedSync: T0,
+        lastRemoteSync: '2026-05-26T12:00:00.000Z',
+        lastLocalSync: '2026-05-28T11:59:00.000Z',
+      }),
+    );
+    expect(banner?.tone).toBe('error');
+  });
+
+  test('remote-failure wins over stale-cloud', () => {
+    const old = new Date(T0_MS - STALE_AFTER_MS - 1000).toISOString();
+    const banner = backupBanner(
+      prefs({ lastRemoteFailedSync: T0, lastRemoteSync: old, lastLocalSync: old }),
+      T0_MS,
+    );
+    expect(banner?.tone).toBe('error');
+  });
+
+  test('no banner once a later success clears lastRemoteFailedSync to null', () => {
+    expect(backupBanner(prefs({ lastRemoteFailedSync: null }), T0_MS)).toBeNull();
   });
 
   test('first-sync-pending fires when cloudSync on and lastRemoteSync null', () => {

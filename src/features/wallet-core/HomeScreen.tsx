@@ -308,14 +308,25 @@ export function HomeScreen() {
           hidden behind a tab the operator might not be looking at. */}
       {banner && (
         <div
-          className={`mt-3 rounded-md px-3 py-2 text-sm ${
-            banner.tone === 'warn'
+          className={`mt-3 flex items-start gap-3 rounded-md px-3 py-2 text-sm ${
+            banner.tone === 'error'
+              ? 'bg-red-50 text-red-900 border border-red-300'
+              : banner.tone === 'warn'
               ? 'bg-amber-50 text-amber-900 border border-amber-200'
               : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
           }`}
-          role="status"
+          role={banner.tone === 'error' ? 'alert' : 'status'}
         >
-          {banner.text}
+          <span className="flex-1">{banner.text}</span>
+          {banner.action === 'retry' && (
+            <button
+              type="button"
+              onClick={() => { void save(); }}
+              className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-100"
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 

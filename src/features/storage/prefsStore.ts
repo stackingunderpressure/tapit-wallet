@@ -34,6 +34,23 @@ export interface Prefs {
    */
   lastLocalSync: string | null;
   /**
+   * ISO 8601 of the most recent remote save that was ATTEMPTED and
+   * threw, or null when the most recent attempt succeeded (or none
+   * has happened). walletStore.save sets this on the remote-catch
+   * branch and clears it back to null on a successful remote write,
+   * so it is a sticky "the cloud is actively rejecting us" flag that
+   * survives reload. The home-screen backupBanner reads it as the
+   * highest-priority warn case (under cloudSync-off) and paints a red
+   * Retry banner — before this, a multi-day remote failure only ever
+   * surfaced as the soft local-newer-than-cloud note plus the
+   * day-late staleness banner, so a persistent failure could lurk
+   * almost silently. Added 2026-05-31. Migration-safe: prefsStore.load
+   * merges defaults under saved prefs so pre-2026-05-31 wallets
+   * inherit null and the banner branch stays inactive until the next
+   * failed push sets it.
+   */
+  lastRemoteFailedSync: string | null;
+  /**
    * Milliseconds of inactivity before the wallet re-locks and the
    * passphrase prompt comes back. 0 means never (only sign-out or
    * a fresh browser session locks). Default 30 minutes per
@@ -102,6 +119,7 @@ const DEFAULT_PREFS: Prefs = {
   cloudSync: true,
   lastRemoteSync: null,
   lastLocalSync: null,
+  lastRemoteFailedSync: null,
   idleTimeoutMs: 30 * 60 * 1000,
   nostrTransportEnabled: true,
   nostrRelays: [...DEFAULT_RELAYS],

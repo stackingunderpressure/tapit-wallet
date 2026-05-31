@@ -199,7 +199,12 @@ const BUDGETS = [
   // ships in its own chunk (FamilyRatifyModal- prefix); the hook
   // wraps the lazy import alongside VouchWitnessModal and
   // RecoveryResponderModal which already shipped as their own chunks.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 22_500, label: 'HomeScreen' },
+  // 2026-05-31 backup-failure hardening bumped 22.5KB -> 22.75KB to
+  // absorb the red Retry banner branch in HomeScreen's backup-health
+  // block — the error-tone styling plus the Retry button that re-runs
+  // save() so a persistent Supabase rejection is loud and actionable
+  // rather than lurking behind only the soft local-newer note.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 22_750, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
