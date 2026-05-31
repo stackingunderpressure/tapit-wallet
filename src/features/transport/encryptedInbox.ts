@@ -255,7 +255,17 @@ export function subscribeChatMessages(
   return transport.subscribe(
     {
       kinds: [NIP17_GIFT_WRAP_KIND],
-      '#p': [recipient.publicKey],
+      // Subscribe on EVERY key this wallet has ever used, not just the
+      // active one. After a key rotation the active key changes, but
+      // peers who connected before the rotation still address their
+      // gift-wraps to the wallet's pre-rotation key in the #p tag.
+      // Filtering on recipient.publicKey alone silently dropped every
+      // message — chat AND envelope deliveries — addressed to a retired
+      // key, which is exactly what broke chat after the operator
+      // rotated their signing key. keyHistory = [genesis, ...rotated]
+      // so messages to any past or current key still match. (Operator
+      // bug 2026-05-31: rotated key, chat went silent.)
+      '#p': recipient.keyHistory,
       ...(options.since !== undefined ? { since: options.since } : {}),
     },
     handler,
