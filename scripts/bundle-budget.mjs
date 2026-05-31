@@ -217,7 +217,11 @@ const BUDGETS = [
   // date, per-member badges, inline Delete/Leave confirm, Edit gating)
   // is statically imported by HomeScreen, plus the editFamily state +
   // second StartFamilyModal mount in edit mode. Measured 22.91KB gz.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 24_064, label: 'HomeScreen' },
+  // 2026-05-31 invite-by-link cut bumped 23.5KB -> 24.5KB: the People
+  // tab gained the InviteShareButton card + the useAcceptPendingInvite
+  // hook (auto-completes a /join-accepted invite via remote handshake)
+  // in HomeScreen's static graph. Measured 23.96KB gz.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 25_088, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

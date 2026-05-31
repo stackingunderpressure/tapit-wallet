@@ -23,6 +23,8 @@ const VouchingCircleSection = lazy(() =>
 );
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
+import { InviteShareButton } from '../connections/InviteShareButton.tsx';
+import { useAcceptPendingInvite } from '../connections/useAcceptPendingInvite.ts';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
 import {
   dedupeHandshakesByPeer,
@@ -130,6 +132,11 @@ function isCapture(att: Attestation): boolean {
 export function HomeScreen() {
   const { wallet, ownerId, holdings, identity, prefs, updatePrefs, anchorWorker, save, refresh, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
+  // Complete any invite the operator accepted from a /join link: once
+  // the wallet is unlocked this consumes the sessionStorage-bridged
+  // invite and remote-handshakes back to the founder. No-op when there
+  // is no pending invite. Status surfaces on the People tab below.
+  const acceptInvite = useAcceptPendingInvite();
   // Inbox-routed modal stack + dispatcher extracted to useInboxRouting
   // (2026-05-27) when the family-ratify route landed and the six modal
   // mounts plus their state would have crossed the 800-line hard limit
@@ -541,7 +548,46 @@ export function HomeScreen() {
       )}
 
       {tab === 'people' && (
-        <PeopleTabBody
+        <>
+          {acceptInvite.status.kind !== 'idle' && (
+            <div
+              className="mt-4 flex items-start gap-3 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-sm"
+              role="status"
+            >
+              <span className="flex-1">
+                {acceptInvite.status.kind === 'connecting' &&
+                  `Connecting with ${acceptInvite.status.founderName}…`}
+                {acceptInvite.status.kind === 'sent' &&
+                  (acceptInvite.status.familyName
+                    ? `Sent your connection to ${acceptInvite.status.founderName}. Once they accept, they can add you to ${acceptInvite.status.familyName}.`
+                    : `Sent your connection to ${acceptInvite.status.founderName}. Once they accept, you're linked.`)}
+                {acceptInvite.status.kind === 'error' &&
+                  `Couldn't reach ${acceptInvite.status.founderName}: ${acceptInvite.status.message}`}
+              </span>
+              <button
+                type="button"
+                onClick={acceptInvite.dismiss}
+                className="shrink-0 text-xs font-medium text-accent hover:underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium">Invite someone to Tapit</div>
+            <p className="mt-1 text-xs text-muted">
+              Share a link. Whoever opens it gets their own wallet and
+              connects back to you — no need to scan a code in person.
+            </p>
+            <div className="mt-3">
+              <InviteShareButton
+                founderPubkey={wallet.identity}
+                founderName={identity ? displayNameOf(identity) : 'A Tapit user'}
+                variant="primary"
+              />
+            </div>
+          </div>
+          <PeopleTabBody
           connectionEntries={connectionEntries}
           holdings={holdings}
           myIdentity={wallet.identity}
@@ -556,6 +602,7 @@ export function HomeScreen() {
           resolvedTheme={resolvedTheme}
           onPromote={handlePromote}
         />
+        </>
       )}
 
       {tab === 'lattice' && (
