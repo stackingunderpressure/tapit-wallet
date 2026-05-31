@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import type { Wallet } from 'tapit-attest';
 import type { AnyEncryptedBlob } from '../storage/localStore.ts';
+import { SignOutEscape } from './SignOutEscape.tsx';
 
 const RecoveryInitiatorModal = lazy(() =>
   import('../recovery/RecoveryInitiatorModal.tsx').then((m) => ({
@@ -19,16 +20,6 @@ interface Props {
   storedBlob: AnyEncryptedBlob;
   relays: readonly string[];
   onRecovered: (wallet: Wallet, passphrase: string) => Promise<void>;
-  /**
-   * Escape hatch: sign out of the email account this device is bound to
-   * and return to the login screen. Without this the unlock screen is a
-   * dead-end — an operator who does not have THIS account's passphrase
-   * (e.g. landed on the wrong account, or wants to sign in as someone
-   * else) has no way off the screen but the exact passphrase or a
-   * recovery ceremony (operator field-test 2026-05-31: "no place to
-   * send a new link or log out, if you can't get in you're stuck").
-   */
-  onSignOut: () => Promise<void>;
 }
 
 // Returning-user passphrase prompt. Single field. The unlock failure
@@ -41,24 +32,12 @@ interface Props {
 // choreography. The modal closes back to this prompt on cancel; on
 // successful recovery it calls onRecovered which transitions the
 // WalletProvider to the unlocked phase with the restored wallet.
-export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovered, onSignOut }: Props) {
+export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovered }: Props) {
   const [pass, setPass] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showKeyImport, setShowKeyImport] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-
-  async function handleSignOut() {
-    setSigningOut(true);
-    setError(null);
-    try {
-      await onSignOut();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not sign out.');
-      setSigningOut(false);
-    }
-  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -128,16 +107,7 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
             restores it. Separated by a divider and de-emphasized so it
             reads as the last resort it is. */}
         <div className="my-6 h-px bg-ink/10" />
-        <button
-          type="button"
-          onClick={() => void handleSignOut()}
-          disabled={signingOut || busy}
-          className="block w-full text-center text-sm text-muted hover:text-ink underline-offset-2 hover:underline disabled:opacity-40"
-        >
-          {signingOut
-            ? 'Signing out…'
-            : 'Not your wallet? Sign out and use a different email'}
-        </button>
+        <SignOutEscape />
       </form>
 
       {showRecovery && (

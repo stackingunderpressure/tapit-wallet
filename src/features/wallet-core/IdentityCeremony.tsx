@@ -5,6 +5,7 @@ import {
   webauthnSupported,
   type EnrollResult,
 } from '../presence/webauthn.ts';
+import { SignOutEscape } from './SignOutEscape.tsx';
 
 interface Props {
   /** The wallet's public key — needed as the WebAuthn user.id when the
@@ -138,6 +139,10 @@ export function IdentityCeremony({ walletPubkey, onComplete }: Props) {
             >
               Begin
             </button>
+            {/* Escape so the identity ceremony is never a dead-end —
+                an operator who reached it on the wrong email account
+                can sign out instead of being forced to mint an identity. */}
+            <SignOutEscape label="Wrong account? Sign out and use a different email" />
           </>
         )}
 

@@ -8,7 +8,6 @@ import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
 import { dismissedInboxStore } from '../storage/dismissedInboxStore.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 import { useSession } from '../auth/useSession.ts';
-import { supabase } from '../../shared/lib/supabase.ts';
 import { PassphrasePrompt } from './PassphrasePrompt.tsx';
 import { UnlockPrompt } from './UnlockPrompt.tsx';
 import { IdentityCeremony } from './IdentityCeremony.tsx';
@@ -734,14 +733,6 @@ export function WalletProvider({ children }: Props) {
         storedBlob={phase.stored.blob}
         relays={prefs.nostrRelays}
         onRecovered={onRecovered}
-        onSignOut={async () => {
-          // Clears the Supabase session; onAuthStateChange fires and
-          // the app re-renders to the login screen. The local encrypted
-          // snapshot stays in IndexedDB + cloud backup, so signing back
-          // in with the original email restores it.
-          const { error } = await supabase().auth.signOut();
-          if (error) throw new Error(error.message);
-        }}
       />
     );
   }

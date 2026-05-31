@@ -21,6 +21,7 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/createWalletFromImport.ts',
     'src/features/wallet-core/UnlockPrompt.tsx',
     'src/features/wallet-core/IdentityCeremony.tsx',
+    'src/features/wallet-core/SignOutEscape.tsx',
     'src/features/wallet-core/HomeScreen.tsx',
     'src/features/wallet-core/backupBanner.ts',
     'src/features/wallet-core/backupBanner.test.ts',

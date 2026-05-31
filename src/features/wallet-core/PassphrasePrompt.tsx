@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { PassphraseCommitWarnings } from './PassphraseCommitWarnings.tsx';
+import { SignOutEscape } from './SignOutEscape.tsx';
 
 // Lazy-loaded so the import-existing-nsec substrate (bech32 codec,
 // publicKeyFromPrivate, the disclose + enter + confirm UI) stays
@@ -151,6 +152,10 @@ export function PassphrasePrompt({ onSubmit, onImport }: Props) {
             </button>
           </p>
         )}
+        {/* Escape so first-login is never a dead-end if the operator
+            landed on the wrong email account. Wording avoids "your
+            wallet" since none exists for this account yet. */}
+        <SignOutEscape label="Wrong account? Sign out and use a different email" />
       </form>
     </div>
   );
