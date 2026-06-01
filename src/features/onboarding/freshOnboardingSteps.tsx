@@ -404,30 +404,27 @@ function ImportDiscloseStep(props: {
   return (
     <div>
       <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-        Bring your existing Nostr identity in.
+        Bring your existing account in.
       </h1>
       <p className="mt-3 text-sm text-fresh-text-secondary">
-        You can import a Nostr nsec you already use somewhere else —
-        Primal, Damus, Amethyst, an nsec-bunker. Your existing follows,
-        profile, and post history come with you. Tapit's signed-attestation
-        substrate then decorates the identity you already have rather than
-        starting you fresh.
+        If you already use an app like Primal, Damus, or Amethyst, you can
+        bring that account here with its private key. Your profile,
+        follows, and history come with you, and Tapit builds your signed
+        records on top of who you already are instead of starting over.
       </p>
       <div className="mt-5 rounded-2xl border border-fresh-accent-danger/40 bg-fresh-accent-danger/[0.08] px-4 py-3 text-sm text-fresh-text-primary">
         <p className="font-semibold">Read this before you continue.</p>
         <p className="mt-2 text-fresh-text-secondary">
-          For a fresh Tapit identity, your private key never leaves this
-          wallet unencrypted — that is rule one. For an IMPORTED identity,
-          that rule becomes more nuanced because your nsec already exists
-          outside Tapit (in whichever client you have been using). Tapit
-          holds an encrypted local copy; the original copy lives wherever
-          you have used it.
+          When Tapit makes you a brand-new account, your secret key never
+          leaves this device unprotected — that's the core rule. When you
+          import a key from another app, that key already exists in that app
+          too, so now there are two copies: an encrypted one here, and the
+          original wherever you've been using it.
         </p>
         <p className="mt-2 text-fresh-text-secondary">
-          You are making an informed tradeoff: continuity of your existing
-          Nostr identity in exchange for the keys-never-leave-the-wallet
-          discipline being weakened for this one key. Pick fresh-generate
-          if that tradeoff is not worth it to you.
+          That's a fair trade if keeping your existing account matters to
+          you — but it's a little less private than a fresh key made only
+          here. Choose "start fresh" if that trade isn't worth it.
         </p>
       </div>
       <div className="mt-6 flex flex-col gap-3">
@@ -436,14 +433,14 @@ function ImportDiscloseStep(props: {
           onClick={props.onContinue}
           className="rounded-2xl bg-fresh-accent-primary py-3.5 font-medium text-fresh-text-inverse shadow-[0_8px_30px_-8px_rgba(192,252,77,0.6)] transition active:animate-fresh-press motion-reduce:active:animate-none"
         >
-          I understand — import my existing identity
+          I understand — bring my account in
         </button>
         <button
           type="button"
           onClick={props.onBack}
           className="rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass py-3 text-sm text-fresh-text-primary backdrop-blur-xl"
         >
-          Generate a fresh identity instead
+          Start fresh instead
         </button>
       </div>
     </div>
@@ -461,36 +458,39 @@ function ImportEnterStep(props: {
   return (
     <form onSubmit={props.onSubmit}>
       <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-        Paste your nsec.
+        Paste your account key.
       </h1>
       <p className="mt-3 text-sm text-fresh-text-secondary">
-        Paste your nsec (nsec1…) or your 64-character hex private key. The
-        pubkey we derive shows below so you can verify before continuing.
+        Paste the private key from your other app. It usually starts with
+        "nsec1…", or it may be a long string of letters and numbers. We'll
+        show your public ID below so you can check it before continuing.
       </p>
       <label className="mt-8 block">
         <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">
-          Private key
+          Account key
         </span>
         <input
-          type="password"
+          type="text"
           required
           autoFocus
           autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={props.keyInput}
           onChange={(e) => props.onKeyInputChange(e.target.value)}
-          placeholder="nsec1… or 64-char hex"
+          placeholder="nsec1… or a long string of letters and numbers"
           className="mt-2 w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 font-fresh-mono text-xs text-fresh-text-primary backdrop-blur-xl placeholder:text-fresh-text-tertiary focus:border-fresh-accent-primary focus:outline-none focus:ring-2 focus:ring-fresh-accent-primary/30"
         />
       </label>
       {props.derivedPubkey && (
         <div className="mt-3 rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 text-xs text-fresh-text-primary backdrop-blur-xl">
-          <div className="text-fresh-text-tertiary">Derived pubkey:</div>
+          <div className="text-fresh-text-tertiary">Your public ID:</div>
           <div className="mt-1 font-fresh-mono break-all">
             {props.derivedPubkey}
           </div>
           <div className="mt-1 text-fresh-text-tertiary">
-            Verify this matches the pubkey of the Nostr identity you intend
-            to import.
+            Check this matches the account you meant to bring in.
           </div>
         </div>
       )}

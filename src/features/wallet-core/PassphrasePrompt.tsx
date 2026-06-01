@@ -142,7 +142,7 @@ export function PassphrasePrompt({ onSubmit, onImport }: Props) {
         )}
         {onImport && (
           <p className="mt-5 text-center text-xs text-muted">
-            Already have a Nostr nsec?{' '}
+            Already have an account in another app?{' '}
             <button
               type="button"
               onClick={() => setImportMode(true)}

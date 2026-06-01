@@ -319,7 +319,7 @@ export function FreshOnboarding() {
             error={error}
           />
           <p className="mt-6 text-center text-xs text-fresh-text-tertiary">
-            Already have a Nostr identity?{' '}
+            Already have an account in another app?{' '}
             <button
               type="button"
               onClick={() => {
