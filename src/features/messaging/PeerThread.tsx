@@ -6,6 +6,7 @@ import { readHandshake } from '../connections/createHandshake.ts';
 import { MessageBubble } from './MessageBubble.tsx';
 import { MessageComposer } from './MessageComposer.tsx';
 import { PromoteMenu } from './PromoteMenu.tsx';
+import { AddToFamilyModal } from '../connections/AddToFamilyModal.tsx';
 import { formatBubbleHeader } from './bubbleFormat.ts';
 import type { ThreadMessage } from './threadMessage.ts';
 import type { PromotePayload, PromoteTarget } from './promoteTarget.ts';
@@ -49,6 +50,7 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
   const [removeConfirming, setRemoveConfirming] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [addFamilyOpen, setAddFamilyOpen] = useState(false);
 
   async function handleRemove() {
     setRemoveError(null);
@@ -161,15 +163,31 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setRemoveConfirming(true)}
-          aria-label="Remove this person"
-          className="shrink-0 text-xs text-red-600 hover:underline"
-        >
-          Remove
-        </button>
+        <div className="shrink-0 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setAddFamilyOpen(true)}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            Add to family
+          </button>
+          <button
+            type="button"
+            onClick={() => setRemoveConfirming(true)}
+            aria-label="Remove this person"
+            className="text-xs text-red-600 hover:underline"
+          >
+            Remove
+          </button>
+        </div>
       </div>
+      {addFamilyOpen && (
+        <AddToFamilyModal
+          peerPubkey={peerPubkey}
+          peerName={peerName}
+          onClose={() => setAddFamilyOpen(false)}
+        />
+      )}
       {removeConfirming && (
         <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-xs">
           <p className="text-red-900">
