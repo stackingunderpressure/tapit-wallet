@@ -318,3 +318,48 @@ export function findFamilyUnitsForMember(
     return view.members.some((m) => m.pubkey.toLowerCase() === lowered);
   });
 }
+
+/**
+ * Build a fresh unsigned family-unit draft that is the given family
+ * PLUS one new member appended. Used by the "Add to family" affordance
+ * on a connection (the founder-driven path for the invite-link family
+ * flow): adding a member to an immutable family envelope means
+ * rebuilding the whole thing and re-signing, exactly as the Edit flow
+ * does. The caller is responsible for the same sole-signer gate the
+ * Edit flow enforces — re-signing mints a new envelopeId, so any
+ * ratifications already collected are orphaned; only do this while the
+ * founder is the sole signer (familyOtherRatifierCount === 0).
+ *
+ * Founder-only: the rebuilt envelope's subject stays the original
+ * founder, so `founder` MUST be the operator's identity attestation and
+ * the operator must be the family's founder. Throws (via
+ * buildFamilyUnitDraft's validation) if the new member is already in
+ * the family (duplicate pubkey) or the pubkey is not 64-char hex — the
+ * caller should check membership first to show a friendly message.
+ *
+ * The existing members keep their stored name / role / as_of verbatim;
+ * only the new member is added with the caller-supplied role and an
+ * optional as_of. founded_at resets to now because this is a fresh
+ * envelope (the same property the Edit rebuild has).
+ */
+export function buildFamilyWithAddedMember(
+  founder: Attestation,
+  existing: Attestation,
+  newMember: FamilyMember,
+): Attestation {
+  const view = readFamilyUnit(existing);
+  const members: FamilyMember[] = view.members.map((m) => ({
+    pubkey: m.pubkey,
+    name: m.name,
+    role: m.role,
+    ...(m.as_of ? { as_of: m.as_of } : {}),
+  }));
+  members.push({
+    pubkey: newMember.pubkey.toLowerCase(),
+    name: newMember.name,
+    role: newMember.role,
+    ...(newMember.as_of ? { as_of: newMember.as_of } : {}),
+  });
+  return buildFamilyUnitDraft(founder, view.familyName, members);
+}
+

@@ -7,6 +7,7 @@ import {
 import type { Attestation } from 'tapit-attest';
 import {
   buildFamilyUnitDraft,
+  buildFamilyWithAddedMember,
   familyOtherRatifierCount,
   familySignatureProgress,
   familySignersComplete,
