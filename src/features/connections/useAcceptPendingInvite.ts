@@ -88,6 +88,7 @@ export function useAcceptPendingInvite(): AcceptInviteState {
         identity,
         { pubkey: invite.founderPubkey, name: invite.founderName },
         invite.familyName ? 'family' : undefined,
+        invite.familyName,
       );
       const signed = wallet.sign(draft);
       await holdAndAnchor(wallet, ownerId ?? '', anchorWorker, signed);

@@ -194,6 +194,7 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
           <AddToFamilyModal
             peerPubkey={peerPubkey}
             peerName={peerName}
+            preselectFamilyName={view.familyHint || undefined}
             onClose={() => setAddFamilyOpen(false)}
           />
         </Suspense>

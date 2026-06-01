@@ -41,10 +41,19 @@ const ROLE_LABELS: Record<FamilyRole, string> = {
 interface Props {
   peerPubkey: string;
   peerName: string;
+  /** When set (from a family-named invite handshake's family_hint
+   *  leaf), pre-select the eligible family whose name matches, so the
+   *  founder lands on the family the person was actually invited to. */
+  preselectFamilyName?: string;
   onClose: () => void;
 }
 
-export function AddToFamilyModal({ peerPubkey, peerName, onClose }: Props) {
+export function AddToFamilyModal({
+  peerPubkey,
+  peerName,
+  preselectFamilyName,
+  onClose,
+}: Props) {
   const { wallet, ownerId, holdings, identity, save, refresh, sendEnvelope } =
     useWallet();
   const anchorWorker = useAnchorWorker();
@@ -68,9 +77,19 @@ export function AddToFamilyModal({ peerPubkey, peerName, onClose }: Props) {
     });
   }, [holdings, wallet.identity, keyAliases, peerLower]);
 
-  const [selectedId, setSelectedId] = useState<string>(
-    () => (eligibleFamilies[0] ? envelopeId(eligibleFamilies[0]) : ''),
-  );
+  const [selectedId, setSelectedId] = useState<string>(() => {
+    // Prefer the family named in the invite hint when one of the
+    // eligible families matches it; otherwise fall back to the first.
+    if (preselectFamilyName) {
+      const match = eligibleFamilies.find(
+        (a) =>
+          readFamilyUnit(a).familyName.trim().toLowerCase() ===
+          preselectFamilyName.trim().toLowerCase(),
+      );
+      if (match) return envelopeId(match);
+    }
+    return eligibleFamilies[0] ? envelopeId(eligibleFamilies[0]) : '';
+  });
   const [role, setRole] = useState<FamilyRole>('child');
   const [asOf, setAsOf] = useState('');
   const [busy, setBusy] = useState(false);

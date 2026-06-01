@@ -76,6 +76,7 @@ export function readHandshake(att: Attestation): HandshakeView {
     verification: leafValue(att, 'verification'),
     handshakeAt: leafValue(att, 'handshake_at'),
     relationship: leafValue(att, 'relationship'),
+    familyHint: leafValue(att, 'family_hint'),
   };
 }
 
@@ -124,6 +125,7 @@ export function buildRemoteHandshakeDraft(
   initiatorIdentity: Attestation,
   responder: { pubkey: string; name: string },
   relationship?: string,
+  familyHint?: string,
 ): Attestation {
   const fields: Record<string, string> = {
     verification: 'remote',
@@ -135,6 +137,18 @@ export function buildRemoteHandshakeDraft(
   };
   if (relationship && relationship.length > 0) {
     fields.relationship = relationship;
+  }
+  // Optional family_hint leaf (2026-06-01): when a remote handshake is
+  // born from a family-named invite link, the invitee carries the
+  // family name they were invited to. Both parties' signatures cover
+  // it (same envelope), so the founder receiving the handshake can
+  // honestly read "this person accepted your invite to [family]" and
+  // pre-target the Add-to-family flow at that family rather than
+  // guessing. Display-only hint — the family-unit envelope itself is
+  // still built + signed founder-side; this leaf does not add anyone
+  // to anything by itself.
+  if (familyHint && familyHint.length > 0) {
+    fields.family_hint = familyHint;
   }
   return relationshipAttestation({
     subject: initiatorIdentity.subject,
