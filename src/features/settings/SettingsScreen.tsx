@@ -216,9 +216,9 @@ export function SettingsScreen() {
         <div className="font-medium">Sovereignty</div>
         <p className="mt-1 text-sm text-muted">
           Every lever below moves the wallet toward sovereign. Turn off cloud
-          backup to keep your blob only on this device. Enable Mycelium and
-          point it at your own Nostr relays in the editor below. Declare a
-          recovery cohort and reveal your recovery key — both close the gap
+          backup to keep your encrypted wallet only on this device. Turn on
+          staying reachable and point it at your own servers in the editor
+          below. Set up trusted helpers and reveal your recovery key — both close the gap
           between "I trust the cloud" and "I trust myself and my people." A
           first-run sovereign-mode picker, opt-in peer-shard backup storage,
           custom OpenTimestamps calendar URLs, and a custom remote-backup
@@ -360,23 +360,24 @@ export function SettingsScreen() {
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="font-medium">Mycelium network</div>
+            <div className="font-medium">Stay reachable</div>
             <p className="mt-1 text-sm text-muted">
-              Let peers reach your wallet over encrypted Nostr relays — so
-              a co-sign, a handshake, or a membership can travel when you
-              are not in the same room. Messages stay encrypted to you;
-              relays see ciphertext only.
+              Let people reach you when you're not in the same room — so a
+              connection, a family invite, or a signing request can find
+              you. Everything stays encrypted to you; the servers that
+              carry it only ever see scrambled data.
             </p>
             <p className="mt-2 text-xs text-muted">
-              Privacy note: subscribing tells the relay set your public
-              key is online. Keep this off until you want to be reachable.
+              Privacy note: turning this on lets the network know you're
+              online and reachable. Keep it off until you want to be
+              reached.
             </p>
           </div>
           <button
             type="button"
             onClick={() => updatePrefs({ nostrTransportEnabled: !prefs.nostrTransportEnabled })}
             aria-pressed={prefs.nostrTransportEnabled}
-            aria-label="Toggle Mycelium network"
+            aria-label="Toggle staying reachable"
             className={`shrink-0 w-12 h-7 rounded-full transition-colors ${
               prefs.nostrTransportEnabled ? 'bg-accent' : 'bg-ink/15'
             }`}

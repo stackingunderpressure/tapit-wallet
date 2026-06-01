@@ -134,7 +134,7 @@ export function FamilyIdentitySections({
     if (failed > 0) {
       const text =
         sent === 0
-          ? `Could not send to any of the ${failed} member${failed === 1 ? '' : 's'}. Is Mycelium on?`
+          ? `Could not reach any of the ${failed} member${failed === 1 ? '' : 's'}. Check your connection and try again.`
           : `Sent to ${sent}, ${failed} failed. Try again.`;
       setErrorByIndex((prev) => ({ ...prev, [idx]: { text } }));
     }
@@ -268,9 +268,9 @@ export function FamilyIdentitySections({
                           {m.role}
                           {m.as_of ? ` · since ${m.as_of}` : ''}
                           {signed ? (
-                            <span className="text-emerald-700"> · signed</span>
+                            <span className="text-emerald-700"> · confirmed</span>
                           ) : (
-                            <span className="text-amber-700"> · awaiting signature</span>
+                            <span className="text-amber-700"> · waiting for them</span>
                           )}
                         </div>
                       </li>
@@ -289,7 +289,7 @@ export function FamilyIdentitySections({
                     >
                       {sendBusy
                         ? 'Sending…'
-                        : `Send to ${unsignedNonFounder.length} awaiting member${unsignedNonFounder.length === 1 ? '' : 's'}`}
+                        : `Ask ${unsignedNonFounder.length} ${unsignedNonFounder.length === 1 ? 'member' : 'members'} to confirm`}
                     </button>
                   </div>
                 )}
@@ -321,9 +321,9 @@ export function FamilyIdentitySections({
                     </button>
                   ) : isFounder ? (
                     <span className="text-[10px] text-muted">
-                      Edit locked — {otherRatifiers} member
-                      {otherRatifiers === 1 ? ' has' : 's have'} ratified.
-                      Delete &amp; recreate to change membership.
+                      Editing is locked — {otherRatifiers} member
+                      {otherRatifiers === 1 ? ' has' : 's have'} confirmed.
+                      Delete and recreate to change who's in it.
                     </span>
                   ) : (
                     <span />

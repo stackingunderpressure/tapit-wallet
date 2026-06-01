@@ -59,14 +59,13 @@ export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
       <div className="flex items-center justify-between">
         <div className={`text-sm font-medium ${isFresh ? 'text-fresh-accent-secondary' : 'text-accent'}`}>
           {envelopes.length === 1
-            ? '1 envelope waiting'
-            : `${envelopes.length} envelopes waiting`}
+            ? '1 item waiting'
+            : `${envelopes.length} items waiting`}
         </div>
       </div>
       <p className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>
-        Encrypted to you and verified. Open routes a handshake to the
-        right step; Copy puts the JSON on your clipboard for envelopes
-        the wallet does not yet auto-route.
+        Encrypted to you and verified. Tap Open to handle it — the wallet
+        takes you to the right next step.
       </p>
       <ul className="mt-3 space-y-2">
         {envelopes.map((item) => (
@@ -148,7 +147,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             type="button"
             onClick={() => onDismiss(item.eventId)}
             className={`rounded-md px-3 py-1 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
-            aria-label="Dismiss envelope"
+            aria-label="Dismiss"
           >
             Dismiss
           </button>

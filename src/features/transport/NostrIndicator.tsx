@@ -66,17 +66,17 @@ export function NostrIndicator({ status }: Props) {
 
   const label =
     tone === 'live'
-      ? `${total === 1 ? 'Relay' : 'Relays'} live`
+      ? 'Connected'
       : tone === 'partial'
-        ? `${open}/${total} relays`
-        : 'Relays offline';
+        ? 'Connecting'
+        : 'Offline';
 
   const title =
     tone === 'live'
-      ? `Mycelium connected to ${open} of ${total} ${total === 1 ? 'relay' : 'relays'}.`
+      ? `You're connected and able to send and receive (${open} of ${total} ${total === 1 ? 'server' : 'servers'}).`
       : tone === 'partial'
-        ? `Mycelium connected to ${open} of ${total} relays. The rest are reconnecting in the background.`
-        : 'No Mycelium relays connected right now. The transport is retrying with backoff.';
+        ? `Partly connected (${open} of ${total} servers). The rest are reconnecting in the background.`
+        : 'Not connected right now. Retrying automatically.';
 
   const pillClass = isFresh
     ? 'inline-flex items-center gap-1.5 rounded-full bg-fresh-surface-glass border border-fresh-surface-edge backdrop-blur px-2.5 py-1 text-xs text-fresh-text-secondary'
