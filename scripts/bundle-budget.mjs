@@ -417,9 +417,11 @@ const BUDGETS = [
   // PeerThread is the per-peer chat surface (sub-cut 2b + 2c).
   // 2026-05-25 sub-cut 2c brought it to ~3KB gz with the
   // PromoteMenu, useLongPress hook, and bubble long-press wiring.
-  // Headroom to 4KB covers the remaining promote targets that
-  // will plug into the same data-driven menu in later cuts.
-  { pattern: /^PeerThread-.*\.js$/, gz: 4_000, label: 'PeerThread' },
+  // 2026-06-01: "Add to family" header button + state + lazy
+  // Suspense mount bumped it to 4.25KB gz. The AddToFamilyModal body
+  // is React.lazy in its own chunk; only the button + mount wiring
+  // lands here. Bumped 4.0KB -> 4.5KB.
+  { pattern: /^PeerThread-.*\.js$/, gz: 4_500, label: 'PeerThread' },
 
   // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org
   // creation UI lazy-loaded from SettingsScreen when the operator
