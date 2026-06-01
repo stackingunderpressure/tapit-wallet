@@ -247,6 +247,16 @@ export function ImportNostrIdentityPrompt({ onSubmit, onCancel }: Props) {
                 className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none"
               />
             </label>
+            {confirmPass.length > 0 && (
+              <p
+                className={`mt-2 text-xs ${pass === confirmPass ? 'text-emerald-700' : 'text-red-600'}`}
+                role="status"
+              >
+                {pass === confirmPass
+                  ? '✓ Passphrases match'
+                  : "Passphrases don't match yet"}
+              </p>
+            )}
             <button
               type="submit"
               className="mt-4 w-full rounded-md bg-ink py-3 text-paper font-medium"

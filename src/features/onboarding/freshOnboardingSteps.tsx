@@ -226,6 +226,23 @@ function PassphraseStep(props: {
           className="mt-2 w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 text-base text-fresh-text-primary backdrop-blur-xl placeholder:text-fresh-text-tertiary focus:border-fresh-accent-primary focus:outline-none focus:ring-2 focus:ring-fresh-accent-primary/30"
         />
       </label>
+      {/* Live match feedback so a mismatched autofill is caught BEFORE
+          submit — a passphrase you can't reproduce locks the wallet
+          forever, so the confirm field earns an immediate signal. */}
+      {props.confirmPassphrase.length > 0 && (
+        <p
+          className={`mt-2 text-xs ${
+            props.passphrase === props.confirmPassphrase
+              ? 'text-fresh-accent-primary'
+              : 'text-fresh-accent-danger'
+          }`}
+          role="status"
+        >
+          {props.passphrase === props.confirmPassphrase
+            ? '✓ Passphrases match'
+            : "Passphrases don't match yet"}
+        </p>
+      )}
       <div className="mt-6 flex gap-3">
         <button
           type="submit"
