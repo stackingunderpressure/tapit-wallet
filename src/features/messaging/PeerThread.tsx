@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
@@ -6,8 +6,16 @@ import { readHandshake } from '../connections/createHandshake.ts';
 import { MessageBubble } from './MessageBubble.tsx';
 import { MessageComposer } from './MessageComposer.tsx';
 import { PromoteMenu } from './PromoteMenu.tsx';
-import { AddToFamilyModal } from '../connections/AddToFamilyModal.tsx';
 import { formatBubbleHeader } from './bubbleFormat.ts';
+
+// Lazy so the add-to-family rebuild surface (familyUnit builders +
+// anchorQueue + the role/family picker) stays out of the PeerThread
+// chunk — most thread opens never add anyone to a family.
+const AddToFamilyModal = lazy(() =>
+  import('../connections/AddToFamilyModal.tsx').then((m) => ({
+    default: m.AddToFamilyModal,
+  })),
+);
 import type { ThreadMessage } from './threadMessage.ts';
 import type { PromotePayload, PromoteTarget } from './promoteTarget.ts';
 
@@ -182,11 +190,13 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
         </div>
       </div>
       {addFamilyOpen && (
-        <AddToFamilyModal
-          peerPubkey={peerPubkey}
-          peerName={peerName}
-          onClose={() => setAddFamilyOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <AddToFamilyModal
+            peerPubkey={peerPubkey}
+            peerName={peerName}
+            onClose={() => setAddFamilyOpen(false)}
+          />
+        </Suspense>
       )}
       {removeConfirming && (
         <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-xs">

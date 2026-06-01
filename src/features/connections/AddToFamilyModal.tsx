@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { envelopeId, type Attestation } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
