@@ -399,3 +399,71 @@ describe('findFamilyUnitsForMember', () => {
     ).toEqual([]);
   });
 });
+
+describe('buildFamilyWithAddedMember', () => {
+  it('appends a new member, founder + family name unchanged', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const newKid = newWalletAs('NewKid');
+    const family = dad.wallet.sign(
+      buildFamilyUnitDraft(dad.identity, 'Test', [
+        memberOf(dad, 'dad'),
+        memberOf(kid, 'child'),
+      ]),
+    );
+    const rebuilt = buildFamilyWithAddedMember(dad.identity, family, {
+      pubkey: newKid.identity.subject,
+      name: 'NewKid',
+      role: 'child',
+    });
+    const view = readFamilyUnit(rebuilt);
+    expect(view.familyName).toBe('Test');
+    expect(view.founderId.toLowerCase()).toBe(dad.identity.subject.toLowerCase());
+    expect(view.members).toHaveLength(3);
+    expect(
+      view.members.some(
+        (m) => m.pubkey.toLowerCase() === newKid.identity.subject.toLowerCase(),
+      ),
+    ).toBe(true);
+  });
+
+  it('preserves an existing member as_of + role verbatim', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const newKid = newWalletAs('NewKid');
+    const family = dad.wallet.sign(
+      buildFamilyUnitDraft(dad.identity, 'Test', [
+        memberOf(dad, 'dad'),
+        { pubkey: kid.identity.subject, name: 'Kid', role: 'child', as_of: '2015-03-02' },
+      ]),
+    );
+    const rebuilt = buildFamilyWithAddedMember(dad.identity, family, {
+      pubkey: newKid.identity.subject,
+      name: 'NewKid',
+      role: 'sibling',
+    });
+    const kidEntry = readFamilyUnit(rebuilt).members.find(
+      (m) => m.pubkey.toLowerCase() === kid.identity.subject.toLowerCase(),
+    );
+    expect(kidEntry?.as_of).toBe('2015-03-02');
+    expect(kidEntry?.role).toBe('child');
+  });
+
+  it('throws when the new member is already in the family', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const family = dad.wallet.sign(
+      buildFamilyUnitDraft(dad.identity, 'Test', [
+        memberOf(dad, 'dad'),
+        memberOf(kid, 'child'),
+      ]),
+    );
+    expect(() =>
+      buildFamilyWithAddedMember(dad.identity, family, {
+        pubkey: kid.identity.subject,
+        name: 'Kid',
+        role: 'child',
+      }),
+    ).toThrow(/duplicate member pubkey/);
+  });
+});

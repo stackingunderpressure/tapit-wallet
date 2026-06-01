@@ -102,9 +102,15 @@ describe('verifyReleaseAuthorityBundle', () => {
   it('rejects stale attestations (horizon_until in the past)', () => {
     const op = newWalletAs('Op');
     const peer = newWalletAs('Peer');
-    // Build with a far-future horizon then force the verifier's "now"
-    // to be later than that horizon — proves the staleness check.
-    const horizon = '2026-06-01T00:00:00Z';
+    // Build with a horizon a day out from the (real) attest time, then
+    // force the verifier's "now" to be well past that horizon — proves
+    // the staleness check. Dates are relative to Date.now() so the test
+    // is not a time bomb: buildAttestReleaseAuthorityDraft requires
+    // horizonUntil > attestedAt (attestedAt is the real signing time),
+    // and the verifier's now must be after the horizon. A previous
+    // hardcoded '2026-06-01' horizon broke the instant the wall clock
+    // reached that date because horizonUntil was no longer after now.
+    const horizon = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const attest = signAttest(peer, op.identity.subject, {
       horizonUntil: horizon,
     });
@@ -112,7 +118,7 @@ describe('verifyReleaseAuthorityBundle', () => {
       attestations: [attest],
       identityPubkey: op.identity.subject,
       eligiblePubkeys: [peer.identity.subject],
-      now: Date.parse('2027-01-01T00:00:00Z'),
+      now: Date.now() + 7 * 24 * 60 * 60 * 1000,
     });
     expect(result.validCount).toBe(0);
     const verdict = result.verdicts[0];
