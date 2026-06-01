@@ -235,3 +235,44 @@ describe('dedupeHandshakesByPeer', () => {
     expect(out).toEqual([]);
   });
 });
+
+describe('buildRemoteHandshakeDraft family_hint leaf', () => {
+  it('omits family_hint when none is given', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const draft = buildRemoteHandshakeDraft(a.identity, {
+      pubkey: b.identity.subject,
+      name: 'B',
+    });
+    expect(readHandshake(draft).familyHint).toBe('');
+  });
+
+  it('carries the family name through a sign + read round-trip', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const draft = buildRemoteHandshakeDraft(
+      a.identity,
+      { pubkey: b.identity.subject, name: 'B' },
+      'family',
+      'The Lovelaces',
+    );
+    const signed = a.wallet.sign(draft);
+    expect(isHandshake(signed)).toBe(true);
+    expect(readHandshake(signed).familyHint).toBe('The Lovelaces');
+    expect(readHandshake(signed).relationship).toBe('family');
+  });
+
+  it('the family_hint is covered by both signatures (co-signer sees it)', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const draft = buildRemoteHandshakeDraft(
+      a.identity,
+      { pubkey: b.identity.subject, name: 'B' },
+      'family',
+      'Crew',
+    );
+    const cosigned = b.wallet.sign(a.wallet.sign(draft));
+    expect(cosigned.signatures.length).toBe(2);
+    expect(readHandshake(cosigned).familyHint).toBe('Crew');
+  });
+});

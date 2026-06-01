@@ -64,6 +64,10 @@ export interface HandshakeView {
    * leaf read as empty string here.
    */
   relationship: string;
+  /** Family the initiator was invited to, when this handshake was born
+   *  from a family-named invite link. '' when absent. Display-only —
+   *  lets the founder pre-target Add-to-family at the right family. */
+  familyHint: string;
 }
 
 /** Read a handshake attestation's fields into a plain view. */
