@@ -284,7 +284,20 @@ cloud blob, or (b) document the single-active-device assumption
 in the wallet guide. Pick one; do not let the assumption stay
 silent.
 
-### 7. kind-0 Nostr profile metadata
+### 7. kind-0 Nostr profile metadata — SHIPPED 2026-06-01
+
+Shipped: `src/features/transport/nostrProfile.ts` —
+`profileFromIdentity` (pure: identity attestation -> NIP-01
+{name, display_name, about} seeded from display_name + full_name
++ location leaves) and `buildProfileEvent` (signs a kind-0 event
+via wallet.signDigest, returns null when there's no display name).
+WalletProvider's transport effect publishes it best-effort on
+every connect — kind-0 is replaceable per NIP-01, so re-publish
+refreshes the relay copy; re-publish-on-edit is covered because a
+saved identity edit re-runs holdings and the next connect carries
+the new profile. Picture deferred honestly: the identity
+attestation carries no image leaf yet, so `picture` is omitted
+rather than fabricated. 7 tests in nostrProfile.test.ts.
 
 Added 2026-05-29 doctrine reframing. The wallet's BIP340 pubkey
 IS its Nostr identity per D-11d, but today that identity has no

@@ -11,6 +11,8 @@ export const manifest: FeatureManifest = {
     'src/features/transport/nostrTransport.ts',
     'src/features/transport/nip17.ts',
     'src/features/transport/encryptedInbox.ts',
+    'src/features/transport/nostrProfile.ts',
+    'src/features/transport/nostrProfile.test.ts',
     'src/features/transport/connectWallet.ts',
     'src/features/transport/defaultRelays.ts',
     'src/features/transport/InboxPanel.tsx',

@@ -312,14 +312,41 @@ export function WalletProvider({ children }: Props) {
     void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
       if (cancelled) return;
       conn = connectWallet(wallet, { relays, onEnvelope });
-      setTransport(conn.transport);
-      const unsubStatus = conn.transport.subscribeStatus((statuses) => {
+      const transport = conn.transport;
+      setTransport(transport);
+      const unsubStatus = transport.subscribeStatus((statuses) => {
         setRelayStatus(statuses);
       });
       statusUnsubRef.current = unsubStatus;
       // Chat-kind subscription is owned by useChatTransport (see
       // src/features/messaging/useChatTransport.ts) — it watches the
       // `transport` state above and subscribes/teardown automatically.
+      //
+      // PLAN.md Tier 1 item 7 — publish a kind-0 Nostr profile so the
+      // wallet's pubkey resolves to a real named profile in other Nostr
+      // clients instead of a naked key. Seeded from the operator's
+      // identity attestation (read from the wallet's own holdings, not
+      // the `holdings` state, so this doesn't widen the effect deps).
+      // Best-effort + fire-and-forget: a publish failure is silently
+      // swallowed (the profile re-publishes on the next connect), and a
+      // wallet with no identity yet (needs-identity phase) produces no
+      // event. kind-0 is replaceable by NIP-01, so re-publishing on
+      // every connect just refreshes the relay's copy.
+      void (async () => {
+        try {
+          const held = await wallet.holdings();
+          const id = findIdentity(held, wallet.identity);
+          if (!id) return;
+          const { buildProfileEvent } = await import(
+            '../transport/nostrProfile.ts'
+          );
+          const event = await buildProfileEvent(wallet, id);
+          if (!event || cancelled) return;
+          await transport.publish(event);
+        } catch {
+          // Best-effort — profile re-publishes on the next connect.
+        }
+      })();
     });
     return () => {
       cancelled = true;
