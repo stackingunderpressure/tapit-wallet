@@ -302,7 +302,7 @@ export function RecoveryInitiatorModal({
 
   function validateConfig(): string | null {
     if (!HEX_64.test(oldIdentity.trim())) {
-      return 'Old wallet pubkey must be 64-character hex.';
+      return "That doesn't look like a valid wallet ID. Paste your old wallet's full public ID.";
     }
     const cleaned = cohort
       .map((c) => ({
@@ -311,22 +311,22 @@ export function RecoveryInitiatorModal({
       }))
       .filter((c) => c.pubkey.length > 0);
     if (cleaned.length < 2) {
-      return 'Add at least two cohort members.';
+      return 'Add at least two helpers.';
     }
     for (const c of cleaned) {
       if (!HEX_64.test(c.pubkey)) {
-        return `Each cohort pubkey must be 64-character hex. Check "${c.name || shortKey(c.pubkey)}".`;
+        return `One helper's wallet ID doesn't look valid. Check "${c.name || shortKey(c.pubkey)}".`;
       }
     }
     const pubkeys = new Set(cleaned.map((c) => c.pubkey));
     if (pubkeys.size !== cleaned.length) {
-      return 'Duplicate cohort pubkey.';
+      return 'You listed the same helper twice.';
     }
     if (threshold < 2 || threshold > cleaned.length) {
-      return `Threshold must be between 2 and ${cleaned.length}.`;
+      return `The number who must help has to be between 2 and ${cleaned.length}.`;
     }
     if (operatorName.trim().length === 0) {
-      return 'Add your name so cohort members know who is asking.';
+      return 'Add your name so your helpers know who is asking.';
     }
     return null;
   }
