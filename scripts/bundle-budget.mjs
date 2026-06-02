@@ -127,7 +127,10 @@ const BUDGETS = [
   // codec) are React.lazy'd via PassphrasePrompt so they ship in
   // their own chunk and only load when the operator taps the
   // import link.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 10_500, label: 'WalletProvider' },
+  // 2026-06-01: Show/Hide passphrase toggle on the Unlock screen
+  // (showPass state + inline button) nudged the chunk to 10.26KB gz.
+  // Bumped 10.25 -> 10.5KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 10_750, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence

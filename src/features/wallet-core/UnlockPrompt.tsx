@@ -34,6 +34,7 @@ interface Props {
 // WalletProvider to the unlocked phase with the restored wallet.
 export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovered }: Props) {
   const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
@@ -60,9 +61,18 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
           Enter the passphrase you set when you created this wallet.
         </p>
         <label className="mt-6 block">
-          <span className="text-sm font-medium">Passphrase</span>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Passphrase</span>
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="text-xs text-muted hover:text-ink"
+            >
+              {showPass ? 'Hide' : 'Show'}
+            </button>
+          </div>
           <input
-            type="password"
+            type={showPass ? 'text' : 'password'}
             required
             autoComplete="current-password"
             autoFocus
