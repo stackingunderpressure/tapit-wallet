@@ -230,14 +230,14 @@ export function JournalDetail() {
           onClick={() => setModal('request')}
           className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium"
         >
-          Request a co-sign
+          Ask someone to confirm this
         </button>
         <button
           type="button"
           onClick={() => setModal('absorb')}
           className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5"
         >
-          Add a co-signer's signature
+          Add someone's confirmation
         </button>
         {!aboutSelf && (
           <button

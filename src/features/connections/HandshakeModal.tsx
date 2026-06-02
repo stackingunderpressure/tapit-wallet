@@ -197,7 +197,7 @@ export function HandshakeModal({ onClose }: Props) {
       setBusy(false);
       setStep('done');
     } catch (err) {
-      fail(err, 'Could not read the co-signed code.');
+      fail(err, 'Could not read the confirmed code.');
     }
   }
 
@@ -239,7 +239,7 @@ export function HandshakeModal({ onClose }: Props) {
       setBusy(false);
       setStep('i-show-cosigned');
     } catch (err) {
-      fail(err, 'Could not co-sign the handshake.');
+      fail(err, 'Could not confirm the connection.');
     }
   }
 
@@ -486,7 +486,7 @@ export function HandshakeModal({ onClose }: Props) {
               Connect with {peerName || 'this person'}?
             </h3>
             <p className="mt-1 text-sm text-muted">
-              Co-signing records an in-person connection that both of
+              Confirming records an in-person connection that both of
               you have signed. It's anchored to Bitcoin like every
               other entry.
             </p>
@@ -496,7 +496,7 @@ export function HandshakeModal({ onClose }: Props) {
                 <span className="font-medium">
                   {relationshipLabel(readHandshake(handshake).relationship)}
                 </span>
-                <span className="text-muted">. Co-signing means you agree.</span>
+                <span className="text-muted">. Confirming means you agree.</span>
               </div>
             )}
             <button
@@ -505,7 +505,7 @@ export function HandshakeModal({ onClose }: Props) {
               disabled={busy}
               className={`mt-4 ${primaryBtn}`}
             >
-              {busy ? 'Co-signing…' : 'Co-sign this handshake'}
+              {busy ? 'Confirming…' : 'Confirm this connection'}
             </button>
           </>
         )}
@@ -515,12 +515,12 @@ export function HandshakeModal({ onClose }: Props) {
             <div className={`mt-2 ${eyebrow}`}>Step 3 of 3</div>
             <p className="mt-1 text-sm text-muted">
               Show this back to {peerName || 'them'} so their wallet
-              gets the final, co-signed copy. Then you're done.
+              gets the final, confirmed copy. Then you're done.
             </p>
             {handshake && (
               <QrShow
                 text={canonicalEnvelope(handshake)}
-                label="Co-signed handshake"
+                label="Confirmed connection"
               />
             )}
             <button
@@ -594,7 +594,7 @@ export function HandshakeModal({ onClose }: Props) {
               disabled={busy}
               className={`mt-4 ${primaryBtn}`}
             >
-              {busy ? 'Saving…' : 'Next: scan their co-signed code'}
+              {busy ? 'Saving…' : 'Next: scan their confirmed code'}
             </button>
           </>
         )}
