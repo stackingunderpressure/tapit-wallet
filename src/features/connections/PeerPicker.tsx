@@ -116,7 +116,9 @@ export function PeerPicker({ holdings, myIdentity, value, onChange }: Props) {
                   }`}
                 >
                   <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-muted">{shortKey(p.pubkey)}</div>
+                  {p.name === 'Unknown' && (
+                    <div className="text-xs text-muted font-mono">{shortKey(p.pubkey)}</div>
+                  )}
                 </button>
               </li>
             ))}

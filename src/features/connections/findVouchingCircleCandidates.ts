@@ -60,7 +60,11 @@ function record(
     return;
   }
   acc.set(lower, {
-    name: name.trim() || pubkey.slice(0, 8),
+    // No resolved name -> show "Unknown" rather than a raw hex stub.
+    // The short-key sub-line under the name still carries the honest
+    // key reference, so we don't lose identifiability — we just stop
+    // leaking a meaningless hex fragment as the primary label.
+    name: name.trim() || 'Unknown',
     namePriority: NAME_PRIORITY[source],
     sources: new Set([source]),
   });
