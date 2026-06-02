@@ -110,7 +110,7 @@ export function MarkPresenceModal({ onClose, prefill }: Props) {
           <h2 className="text-base font-semibold">
             {prefill
               ? `Mark presence with ${prefill.peerName || 'them'}`
-              : 'Mark presence (Tier V)'}
+              : 'Mark presence'}
           </h2>
           <button
             type="button"
@@ -123,21 +123,21 @@ export function MarkPresenceModal({ onClose, prefill }: Props) {
 
         {!platformOk && (
           <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            This browser does not support passkeys or geolocation. Tier V
-            requires both. Try Safari on iOS, or a recent Chrome / Edge
-            with location permission.
+            This browser does not support Face ID / passkeys or location.
+            Marking presence needs both. Try Safari on iOS, or a recent
+            Chrome / Edge with location permission.
           </div>
         )}
 
         {step.kind === 'overview' && platformOk && (
           <>
             <p className="mt-3 text-sm text-muted">
-              Tier V binds three things into one signed event: your passkey
-              (so your device knows it was really you authenticating, not
-              just whoever was holding it), a fresh location reading, and
-              the moment in time. The math is honest about its limits —
-              location can be spoofed; the passkey proves you authenticated
-              in this moment, not that this is unspoofable presence.
+              Marking presence binds three things into one signed proof:
+              your Face ID / passkey (so it's confirmed it was really you,
+              not just whoever was holding the phone), a fresh location
+              reading, and the moment in time. It's honest about its limits
+              — location can be faked; this proves you confirmed it was you
+              in this moment, not that the spot is impossible to spoof.
             </p>
             {!existingPasskey ? (
               <>
@@ -158,8 +158,8 @@ export function MarkPresenceModal({ onClose, prefill }: Props) {
               <>
                 <p className="mt-3 text-sm">
                   This device has a passkey enrolled. Tap below to capture a
-                  Tier V presence event — you'll be asked for the passkey
-                  authentication, then for location permission.
+                  presence proof — you'll be asked to confirm with your
+                  passkey, then for location permission.
                 </p>
                 <button
                   type="button"
@@ -205,7 +205,7 @@ export function MarkPresenceModal({ onClose, prefill }: Props) {
         {step.kind === 'done' && (
           <>
             <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
-              <div className="font-medium">Tier V presence captured.</div>
+              <div className="font-medium">Presence captured.</div>
               <div className="mt-1 text-xs">
                 The event is signed by your wallet and the passkey, and it
                 is queued for Bitcoin anchoring. A verifier reading it sees

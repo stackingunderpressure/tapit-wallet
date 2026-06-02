@@ -481,9 +481,9 @@ export function HomeScreen() {
             </div>
             {presenceEvents.length === 0 ? (
               <p className="mt-2 text-sm text-muted">
-                No Tier V presence events yet. Mark one to bind a passkey
-                authentication, a fresh location reading, and the moment
-                in time into one signed event — to the best of the device's
+                No presence proofs yet. Mark one to bind your Face ID /
+                passkey, a fresh location reading, and the moment in time
+                into one signed proof — to the best of the device's
                 ability.
               </p>
             ) : (

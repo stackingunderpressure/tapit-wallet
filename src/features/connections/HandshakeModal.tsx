@@ -446,7 +446,7 @@ export function HandshakeModal({ onClose }: Props) {
 
         {step === 'remote-sent' && (
           <div className="mt-3 text-center">
-            <div className={eyebrow}>Sent · Tier R</div>
+            <div className={eyebrow}>Sent · Online connection</div>
             <h3 className="mt-1 text-lg font-semibold">
               Handshake sent to {peerName || 'them'}
             </h3>
