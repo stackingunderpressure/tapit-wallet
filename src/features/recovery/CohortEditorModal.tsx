@@ -77,7 +77,7 @@ export function CohortEditorModal({ onClose }: Props) {
   async function publish() {
     setError(null);
     if (N < 2) {
-      setError('Pick at least 2 peers — a 2-of-2 cohort is the smallest meaningful threshold.');
+      setError('Pick at least 2 people — recovery needs more than one helper to be meaningful.');
       return;
     }
     if (N > 255) {
@@ -102,7 +102,7 @@ export function CohortEditorModal({ onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Recovery cohort</h2>
+          <h2 className="text-base font-semibold">Trusted helpers</h2>
           <button
             type="button"
             onClick={onClose}
@@ -112,21 +112,17 @@ export function CohortEditorModal({ onClose }: Props) {
           </button>
         </div>
         <p className="mt-2 text-sm text-muted">
-          Pick the people you would trust to help you recover this wallet
-          on a new device. Any M of N of them will be able to put you back
-          together. They never see anything of yours on their own — only
-          combined.
-        </p>
-        <p className="mt-2 text-xs text-muted">
-          This cut records WHO. Distributing shares + the actual
-          recoverable backup wiring lands in the next cut.
+          Pick the people you'd trust to help you get back into this wallet
+          on a new device. You choose how many of them have to agree — and
+          none of them can see anything of yours on their own. It only
+          works when enough of them help together.
         </p>
 
         {candidates.length === 0 ? (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            No handshakes on file. Meet someone in person and tap New
-            handshake on the People tab; once you have at least 2
-            connections you can build a recovery cohort.
+            No connections yet. Connect with someone on the People tab;
+            once you have at least 2 connections you can choose your
+            trusted helpers.
           </div>
         ) : (
           <>
@@ -156,7 +152,7 @@ export function CohortEditorModal({ onClose }: Props) {
 
             <div className="mt-4">
               <label className="block text-sm">
-                Threshold (M of N) — how many peers must cooperate
+                How many of them have to agree to recover you
                 <div className="mt-1 flex items-center gap-3">
                   <input
                     type="range"
@@ -173,9 +169,9 @@ export function CohortEditorModal({ onClose }: Props) {
                 </div>
               </label>
               <p className="mt-1 text-xs text-muted">
-                Lower M = easier to recover, easier to collude. Higher M =
-                harder to recover, harder to collude. 3 of 5 is the
-                operator-grade default; 4 of 7 is the spec-grade tier.
+                Fewer means easier for you to recover — but easier for
+                others to team up without you. More is safer but harder to
+                round up. 3 of 5 is a good balance for most people.
               </p>
             </div>
 
@@ -185,7 +181,7 @@ export function CohortEditorModal({ onClose }: Props) {
               disabled={busy || N < 2}
               className="mt-4 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
             >
-              {busy ? 'Publishing…' : 'Publish cohort'}
+              {busy ? 'Saving…' : 'Save my helpers'}
             </button>
             {initialView && (
               <button
@@ -193,7 +189,7 @@ export function CohortEditorModal({ onClose }: Props) {
                 onClick={() => setDistributeOpen(true)}
                 className="mt-2 w-full rounded-md border border-ink/15 py-2 text-sm font-medium hover:bg-ink/5"
               >
-                Distribute shares to cohort…
+                Send each helper their piece…
               </button>
             )}
           </>

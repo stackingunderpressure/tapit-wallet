@@ -132,10 +132,10 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
         </div>
 
         <p className="mt-2 text-sm text-muted">
-          Someone is asking you to help recover their wallet. They named you in
-          their recovery cohort and you are holding one piece of their backup.
-          Releasing your piece is safe on its own — only the threshold of
-          cohort members together can put their key back.
+          Someone is asking you to help recover their wallet. They picked you
+          as a trusted helper and you're holding one piece of their backup.
+          Releasing your piece is safe on its own — their wallet only comes
+          back when enough helpers do the same.
         </p>
 
         <div className="mt-4 rounded-md border border-ink/15 bg-white px-3 py-3 text-sm">
@@ -158,9 +158,9 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
 
         {!myShare && (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            You are not holding a recovery share for this person. Either you
-            were never in their cohort, or you have not received your share
-            envelope yet.
+            You're not holding a backup piece for this person. Either they
+            didn't pick you as a trusted helper, or your piece hasn't
+            arrived yet.
           </div>
         )}
 
@@ -246,7 +246,7 @@ export function RecoveryResponderModal({ request, onSuccess, onClose }: Props) {
 
         {sent && (
           <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
-            Share released. Once enough cohort members have done the same,
+            Your piece is released. Once enough helpers have done the same,
             their wallet will be back.
           </div>
         )}

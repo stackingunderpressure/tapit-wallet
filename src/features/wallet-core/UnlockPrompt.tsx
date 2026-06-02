@@ -89,7 +89,7 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
             onClick={() => setShowRecovery(true)}
             className="block w-full text-sm text-muted hover:text-ink underline-offset-2 hover:underline"
           >
-            Lost your passphrase? Start recovery with your cohort
+            Forgot your passphrase? Recover with your trusted helpers
           </button>
           <button
             type="button"
