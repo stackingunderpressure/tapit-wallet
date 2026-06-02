@@ -48,7 +48,10 @@ const BUDGETS = [
   // tab additions extend the lazy-load pattern (one tab per chunk
   // or one shared chunk both work — pick by what makes sense for
   // the tab's content).
-  { pattern: /^index-.*\.js$/, gz: 12_000, label: 'login bundle (main)' },
+  // 2026-06-01: the global UpdateBanner (new-version checker + banner,
+  // mounted in App so it floats above every route) added ~0.1KB gz to
+  // the main entry. Bumped 11.72 -> 12.2KB (measured 11.81KB).
+  { pattern: /^index-.*\.js$/, gz: 12_500, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
   // variable blocks plus the aurora-drift keyframes + background.
