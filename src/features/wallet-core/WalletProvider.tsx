@@ -411,6 +411,25 @@ export function WalletProvider({ children }: Props) {
     [phase, transport],
   );
 
+  // Publish a PUBLIC kind-1 Nostr note (Tier 1 item 8) — world-readable,
+  // unencrypted, the opposite of sendEnvelope. Body lives in
+  // nostrNote.publishNote; see WalletContext for the full contract.
+  const publishPublicNote = useCallback(
+    async (content: string) => {
+      if (!transport) {
+        throw new Error(
+          "You're not connected — turn on staying reachable in Settings.",
+        );
+      }
+      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
+        throw new Error('wallet must be unlocked');
+      }
+      const { publishNote } = await import('../transport/nostrNote.ts');
+      return publishNote(transport, phase.wallet, content);
+    },
+    [phase, transport],
+  );
+
   const syncEnvelope = useCallback(
     async (envelope: Attestation) => {
       // Opportunistic — when Mycelium is off, sync is a no-op and
@@ -692,6 +711,7 @@ export function WalletProvider({ children }: Props) {
       dismissInboxEnvelope,
       relayStatus,
       sendEnvelope,
+      publishPublicNote,
       syncEnvelope,
       save,
       updatePrefs,
@@ -718,6 +738,7 @@ export function WalletProvider({ children }: Props) {
     dismissInboxEnvelope,
     relayStatus,
     sendEnvelope,
+    publishPublicNote,
     syncEnvelope,
     resolvedTheme,
     chatThreadsByPeer,

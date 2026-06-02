@@ -15,6 +15,8 @@ export const manifest: FeatureManifest = {
     'src/features/storage/messagesStore.ts',
     'src/features/storage/dismissedInboxStore.ts',
     'src/features/storage/dismissedInboxStore.test.ts',
+    'src/features/storage/sharedNotesStore.ts',
+    'src/features/storage/sharedNotesStore.test.ts',
     'supabase/migrations/20260521000001_create_wallet_blobs.sql',
     'supabase/migrations/20260522000001_create_wallet_media_bucket.sql',
   ],

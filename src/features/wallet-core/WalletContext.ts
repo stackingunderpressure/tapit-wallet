@@ -49,6 +49,17 @@ export interface WalletContextValue {
    */
   sendEnvelope: (recipientPubkey: string, envelope: Attestation) => Promise<PublishResult>;
   /**
+   * Publish a PUBLIC kind-1 Nostr text note (Tier 1 item 8). World-
+   * readable, signed by the wallet's real key with no encryption — the
+   * opposite of sendEnvelope. Resolves with the published note event id
+   * plus the relay PublishResult so the caller can record the share and
+   * show honest relay-acceptance status. Throws when the transport is
+   * not connected or the wallet is locked.
+   */
+  publishPublicNote: (
+    content: string,
+  ) => Promise<{ eventId: string; publish: PublishResult }>;
+  /**
    * Multi-device sync (5c-iii-b). Publish an envelope encrypted to
    * this wallet's own pubkey so other devices catch it through their
    * inbox subscription. Returns null when the Mycelium network is

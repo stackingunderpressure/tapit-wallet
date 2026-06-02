@@ -310,7 +310,29 @@ attestation (display name from `name`, picture from
 operator edits their identity. Without this the published Nostr
 identity is structurally incomplete.
 
-### 8. kind-1 publish helper + "Share to Nostr" affordance
+### 8. kind-1 publish helper + "Share to Nostr" affordance — SHIPPED 2026-06-01
+
+Shipped: `src/features/transport/nostrNote.ts` (buildNoteEvent
+signs a kind-1 note via wallet.signDigest; noteTextFromEntry
+composes title + body — both pure/tested, 7 tests). WalletContext
+gains `publishPublicNote(content)` -> { eventId, publish } using
+the live transport (world-readable, unencrypted, opposite of
+sendEnvelope). JournalDetail gets a "Share to Nostr" button
+(disabled + hinted when not connected); on success it records the
+share in `sharedNotesStore` (idb, keyed by entry envelopeId ->
+note event id; 6 tests) and shows ✓ shared / "Post again". The
+entry is NOT mutated — stamping a leaf would change its
+envelopeId, so the share record lives beside it, same pattern as
+dismissedInboxStore.
+
+HONEST DEVIATION from the original spec: no NIP-19 reference back
+to the signed envelope yet. The tapit-attest envelope is not
+itself published to a public relay in this flow, so a "fetch the
+bytes and verify" link would resolve to nothing — embedding it
+would be a dead link. The note publishes its text under the
+operator's named kind-0 identity (item 7); the verifiable-
+envelope-reference lands when envelope-publishing exists. Comment
+in nostrNote.ts marks the seam.
 
 The substrate primitive plus the visible surface. A
 `NostrTransport.publish` helper that wraps a kind-1 event built

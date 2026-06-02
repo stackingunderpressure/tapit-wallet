@@ -16,6 +16,9 @@ import { CosignRequestModal } from '../cosigning/CosignRequestModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
 import { ShareProofModal } from '../disclosure/ShareProofModal.tsx';
+import { noteTextFromEntry } from '../transport/nostrNote.ts';
+import { sharedNotesStore } from '../storage/sharedNotesStore.ts';
+import { summarizePublish } from '../transport/publishStatus.ts';
 
 function readString(claim: FieldBranch, name: string): string | undefined {
   const child = claim.children.find((c) => c.name === name);
@@ -25,13 +28,21 @@ function readString(claim: FieldBranch, name: string): string | undefined {
 
 export function JournalDetail() {
   const { digest } = useParams<{ digest: string }>();
-  const { wallet, holdings, ownerId, passphrase } = useWallet();
+  const { wallet, holdings, ownerId, passphrase, relayStatus, publishPublicNote } =
+    useWallet();
   const worker = useAnchorWorker();
   const [modal, setModal] = useState<
     'request' | 'absorb' | 'custody' | 'share-proof' | null
   >(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
+  // Share-to-Nostr (Tier 1 item 8). `shared` is non-null once this
+  // entry has been published as a public note (loaded from
+  // sharedNotesStore, keyed by the entry's envelopeId). shareStatus
+  // carries the in-flight / result message.
+  const [shared, setShared] = useState<boolean>(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
 
   const entry = useMemo<Attestation | undefined>(() => {
     if (!digest) return undefined;
@@ -72,6 +83,22 @@ export function JournalDetail() {
     };
   }, [attachmentHash, ownerId, passphrase]);
 
+  // Load whether this entry has already been shared to Nostr, keyed by
+  // its envelopeId (== the route digest). Re-runs on owner / entry change.
+  useEffect(() => {
+    let alive = true;
+    if (!ownerId || !digest) {
+      setShared(false);
+      return;
+    }
+    void sharedNotesStore.load(ownerId).then((map) => {
+      if (alive) setShared(Boolean(map[digest]));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [ownerId, digest]);
+
   const row = useAnchorStatus(ownerId, digest ?? null, worker);
 
   if (!entry) {
@@ -105,6 +132,37 @@ export function JournalDetail() {
   const verification = deriveVerificationStatus(entry, row);
   const verifiedAnchor =
     verification.kind === 'verified' ? verification.anchor : null;
+
+  const title = readString(entry.claim, 'title');
+  const noteText = noteTextFromEntry({ title, text });
+  const anyRelayLive = (relayStatus ?? []).some((s) => s.open);
+
+  async function handleShareToNostr() {
+    if (!noteText || !digest) return;
+    setSharing(true);
+    setShareStatus(null);
+    try {
+      const { eventId, publish } = await publishPublicNote(noteText);
+      const summary = summarizePublish(publish);
+      if (summary.tone === 'fail') {
+        setShareStatus(summary.detail);
+      } else {
+        if (ownerId) await sharedNotesStore.markShared(ownerId, digest, eventId);
+        setShared(true);
+        setShareStatus(
+          summary.tone === 'ok'
+            ? 'Posted to Nostr. It now shows on your profile in apps like Damus and Primal.'
+            : 'Sending… it may take a moment to appear.',
+        );
+      }
+    } catch (err) {
+      setShareStatus(
+        err instanceof Error ? err.message : 'Could not post to Nostr.',
+      );
+    } finally {
+      setSharing(false);
+    }
+  }
 
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto">
@@ -239,6 +297,37 @@ export function JournalDetail() {
         >
           Add someone's confirmation
         </button>
+        {noteText && (
+          <>
+            <button
+              type="button"
+              onClick={() => void handleShareToNostr()}
+              disabled={sharing || !anyRelayLive}
+              className="w-full rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5 disabled:opacity-50"
+            >
+              {sharing
+                ? 'Posting…'
+                : shared
+                  ? 'Post to Nostr again'
+                  : 'Share to Nostr'}
+            </button>
+            {!anyRelayLive && (
+              <p className="text-xs text-muted">
+                Turn on staying reachable in Settings to post.
+              </p>
+            )}
+            {shared && !sharing && (
+              <p className="text-xs text-emerald-700">
+                ✓ Already shared to Nostr.
+              </p>
+            )}
+            {shareStatus && (
+              <p className="text-xs text-muted" role="status">
+                {shareStatus}
+              </p>
+            )}
+          </>
+        )}
         {!aboutSelf && (
           <button
             type="button"
