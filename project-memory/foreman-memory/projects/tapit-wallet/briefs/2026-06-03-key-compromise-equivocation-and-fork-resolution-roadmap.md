@@ -110,6 +110,23 @@ branch does the trusted graph endorse" instead of "may this leaf be
 released." This is the cut that lets us answer "yes, we can prove it" for
 strangers.
 
+**The scoring model for this cut is the graph-interlock idea (ideas.md
+2026-06-03).** Resolution must not merely COUNT vouches for each
+competing key — an attacker mints an island of fresh keys that all vouch
+for each other. It must WEIGHT vouches by graph-interlock and discount
+self-referential islands: the operator's branch is endorsed by peers who
+interlock with the verifier's own real graph; the attacker's is endorsed
+only by an island with no edges into it. This is per-verifier evidence,
+not a global proof — connection-weight is always relative to who is
+asking, which is the property that makes it unforgeable (no
+globally-valid trust score to manufacture) but also means a stranger
+with a partial graph view gets a partial answer, stated honestly. This
+graph-interlock centrality is exactly the reserved `advancedWeighting()`
+v1.1 slot in `tapit-attest/src/core/weighting.ts`
+(`corroborationBonus` / centrality) — the idea is the spec for that
+empty slot. `findVouchingCircleCandidates.ts` already computes the seed
+(overlap across family/cohort/handshake sources).
+
 ### Cut 4 — Rotation-announcement broadcast
 A signed, optionally-anchored "I rotated to K_new" event the wallet
 publishes to the operator's peers on a legitimate switch (also closes

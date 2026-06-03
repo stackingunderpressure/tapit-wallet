@@ -748,3 +748,75 @@ legitimate switch. Resurface when item 11's release-ceremony UX is
 cut — fork resolution is the same judge-weight machinery pointed at
 a different question.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: Graph-interlock sybil resistance — the lone-wolf-is-a-chicken-
+and-egg trust model, and the scoring engine behind fork resolution.
+Operator's framing: "a lone wolf is a chicken-and-egg and that's
+fine — it shouldn't be hard to lobby for real-world connections.
+Once you have real connections, we can judge mathematically where
+and how many connections you have that overlap with US and the
+people around you. An attacker who just spun up a wallet would have
+none of the connection-level you'd expect — blatantly obvious
+they're a spammer. The catch is they have NO deep connections, and
+even if they fabricate them they can't be interconnected the way
+they're supposed to be with the people around you who vouch for you.
+Once flagged by someone, it's automatically not-a-trusted-source by
+nature, then it has to prove itself, and if it has no cryptographic
+proof on its side it's just bad information with no credibility."
+  Where this is RIGHT (and it's the core insight): the unforgeable
+property is INTERCONNECTION, not vouch count. An attacker can mint
+1000 keys that all vouch for each other, but that cluster is an
+ISLAND — no edges into the verifier's real graph — so from the
+verifier's vantage it carries ~zero weight regardless of internal
+density. This is genuine sybil resistance: it can't be beaten by
+volume, only by actually being embedded in the real social graph,
+which is exactly the slow real-world work an attacker can't shortcut.
+findVouchingCircleCandidates.ts already computes the seed: it ranks
+peers by OVERLAP across multiple trust sources (family AND cohort
+AND handshake = more meaningfully connected than a one-source
+contact). computeWeight (weighting.ts) sums distinct-signer weight.
+The richer engine is the reserved advancedWeighting() v1.1 slot,
+whose stated job is "corroboration-graph centrality" — THIS IDEA IS
+THE SPEC FOR THAT EMPTY SLOT.
+  Where the intuition needs sharpening (honest): "mathematically
+improvable" has a hard ceiling. Graph connectivity is EVIDENCE
+WEIGHTED FROM A VIEWPOINT, not a cryptographic PROOF. There is no
+signature proving "this person is well-connected in the absolute";
+there is only "from MY graph, their vouchers are people I already
+weight, and they interlock." Connection-weight is always RELATIVE to
+who is asking. That's actually a feature — the attacker can't
+manufacture a globally-valid trust score — but it means we must
+never display a universal trust number, only a per-verifier computed
+one, and be honest that a stranger with only a partial view of the
+graph gets a partial answer.
+  The expensive open problem: computing graph-overlap / centrality
+at verification time, especially for a stranger with a partial graph
+view, is genuinely hard and probably not fully trustless. It likely
+needs the verifier to bring their own graph, or to trust a relay's
+view of the graph, and that boundary must be drawn explicitly so we
+never pretend a partial graph gives a complete answer.
+Context: Operator 2026-06-03, immediately after the key-compromise
+equivocation / fork-resolution brief. This is the SCORING-MODEL
+COMPANION to that brief: fork resolution (cut 3) doesn't merely
+count vouches for the competing keys — it weights them by
+graph-interlock and discounts self-referential islands, which is
+precisely how a stranger tells the real operator's branch (endorsed
+by an interlocked real graph) from the attacker's (endorsed only by
+an island of fresh keys). Also the same engine that powers the
+trusted-knowledge bot (Layer 4) and the witnessed-correctness ledger
+(2026-06-03 verification-page idea) — every "how much do we trust
+this" question routes through the same graph-weight engine.
+Feature: connections / weighting (tapit-attest advancedWeighting
+v1.1 slot) + identity-gate fork resolution + verifier path
+Stage: sprouting — conceptual model captured, maps onto an existing
+reserved code slot (advancedWeighting). Named pieces: (a) define
+graph-interlock / island-discount centrality as the advancedWeighting
+policy, (b) per-verifier (not global) weight computation, (c) the
+flag -> must-prove-itself state transition driven by imposter_signal,
+(d) explicit partial-graph honesty boundary. Resurface when
+advancedWeighting v1.1 or fork-resolution cut 3 is scoped — they are
+the same engine.
+```
