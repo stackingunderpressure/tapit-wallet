@@ -678,3 +678,73 @@ Stage: raw insight — captured 2026-06-03, not yet scoped into a
 cut. Resurface when the verifier-path teaching surface comes up or
 when HEARTWOOD judge-weight gets its first concrete implementation.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: Key-compromise equivocation gap — the succession-fork threat
+and the social-graph backstop. The operator articulated the
+self-custody recovery theory: "even if an attacker had my key, I'd
+immediately denounce it as not-me, all my friends would
+unsubscribe from the attacker's key and re-attach to my new key,
+I could redo this ten times until the attacker tired — long-term
+they do zero damage, only short-term could they take any control,
+and I'd immediately have control back." The honest grounded
+assessment after reading succession.ts: the theory is DIRECTIONALLY
+right and the social backstop is genuinely strong, but there is a
+real cryptographic gap that must be named, not papered over.
+  The gap: a succession link is signed by the RETIRING key
+(succession.ts createSuccessionLink — fromPrivateKey signs). So an
+attacker who holds the compromised key can ALSO sign a valid
+rotation. The operator and the attacker can each fork a valid chain
+from the same compromised key: K->K_operator and K->K_attacker.
+verifySuccessionChain validates EACH chain independently and has NO
+fork-resolution logic (grep confirmed: no longest-chain, no
+equivocation detection, no conflict adjudication anywhere). There
+is also NO Bitcoin anchoring on succession links (confirmed empty),
+so neither party can prove "mine was timestamped first," and NO
+automatic rotation broadcast (confirmed empty), so the
+"friends re-attach" step is entirely manual/out-of-band today.
+  Why the operator still wins against their real circle: each
+re-attach round resolves on a HUMAN out-of-band verification (voice,
+video, in person) that the attacker categorically cannot forge —
+they cannot be the operator to people who know the operator. So
+against the actual social graph the operator wins every round
+indefinitely. The "ten times until they tire" model holds
+SOCIALLY. The unresolved part is STRANGERS: a cold verifier with no
+out-of-band channel sees two validly-signed chains and the math
+alone cannot say which is the real person. That is the proof we
+cannot currently provide.
+  Two further honest limits inside the compromise window: (1)
+anything the attacker signs while holding the key produces
+permanent valid signatures attributed to the operator; undoing them
+needs explicit revocations (createRevocation exists — cleanup after
+the fact, not prevention). (2) Rotating forward does NOT invalidate
+the attacker's copy of the old key, so they can keep forking each
+round; they are never locked out by rotation itself, only defeated
+by the circle ignoring their branch.
+Context: Operator 2026-06-03, self-custody threat-model probe ("are
+there gaps in our theory we cannot provide that proof"). This is
+the precise problem Tier 1 item 11 (peer-mediated identity
+substrate) + HEARTWOOD judge-weight are designed to close: a cold
+verifier resolves the fork by "the judges/peers whose weight counts
+all vouch for K_operator and none vouch for K_attacker," turning
+the social resolution the operator already relies on into something
+cryptographically checkable by a stranger. The envelope-kind
+substrate (release-authority, imposter_signal) is shipped as
+primitives in identity-gate/; the LIVE fork-detection +
+judge-weighted resolution at verify time is NOT yet wired. See the
+2026-06-03 roadmap brief
+"key-compromise-equivocation-and-fork-resolution-roadmap.md".
+Feature: identity-gate / succession (tapit-attest chassis +
+verifier path)
+Stage: raw insight -> sprouting (brief written 2026-06-03). The
+named first cuts: (a) Bitcoin-anchor succession links for objective
+time-order, (b) fork DETECTION at verify time (surface "this key
+has a competing chain"), (c) judge-weighted fork RESOLUTION so a
+stranger can see which branch the weighted social graph endorses,
+(d) rotation-announcement broadcast so peers auto-learn of a
+legitimate switch. Resurface when item 11's release-ceremony UX is
+cut — fork resolution is the same judge-weight machinery pointed at
+a different question.
+```

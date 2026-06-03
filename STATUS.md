@@ -120,7 +120,18 @@ its cache with the update-probe's nonce'd requests.
    journal entry, profile the identity with kind-0, publish it as a
    kind-1 note referencing the signed envelope. The narrative loop-close.
 
-6. **Tier 2 polish backlog** (none block a credible demo): tap-for-detail
+6. **Key-compromise equivocation & fork resolution (NEW, 2026-06-03
+   threat-model probe — see the brief + ideas.md).** After a key
+   compromise the operator and attacker can each fork a valid succession
+   chain; today resolution is 100% social/out-of-band — which wins
+   against the operator's own circle indefinitely but cannot be proven to
+   a STRANGER. The arc: Bitcoin-anchor succession links (time-order),
+   fork detection at verify time, judge-weighted fork resolution (the
+   keystone — reuses item 11's machinery), and rotation-announcement
+   broadcast. Cut 3 depends on item 11 being real; Cut 2 (detection) is
+   shippable cheaply first.
+
+7. **Tier 2 polish backlog** (none block a credible demo): tap-for-detail
    on family-ring nodes, add-birthday-now backdated credential, over-18/21
    quick-share presets, succession-proof leaf for cosigning members, and
    the accumulated field-test copy/UX threads.
