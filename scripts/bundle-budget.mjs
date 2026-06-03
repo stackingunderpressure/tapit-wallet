@@ -240,7 +240,12 @@ const BUDGETS = [
   // tab gained the InviteShareButton card + the useAcceptPendingInvite
   // hook (auto-completes a /join-accepted invite via remote handshake)
   // in HomeScreen's static graph. Measured 23.96KB gz.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 25_088, label: 'HomeScreen' },
+  // 2026-06-03 item-11 D2: useInboxRouting (static in HomeScreen) gained
+  // the release-authority-respond route + envelopeRoute now imports the
+  // identity-gate request typeguard, measured 24.92KB gz. The responder
+  // MODAL itself is React.lazy so only its routing edge rides here.
+  // Bumped 24.5 -> 25.5KB.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 26_112, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

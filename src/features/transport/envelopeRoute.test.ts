@@ -12,6 +12,7 @@ import {
   buildSelfMembershipDraft,
 } from '../connections/createMembership.ts';
 import { buildFamilyUnitDraft } from '../connections/familyUnit.ts';
+import { buildReleaseAuthorityRequestDraft } from '../identity-gate/releaseAuthorityEnvelopes.ts';
 
 // envelopeRoute is the kind-to-action dispatcher both the Mycelium
 // inbox and the in-person QR scan path consume. Adding a new
@@ -299,5 +300,27 @@ describe('routeFor — family-unit ratification routing', () => {
 
     const route = routeFor(founderSigned);
     expect(route).toBeNull();
+  });
+});
+
+describe('routeFor — item 11 release-authority request (D2)', () => {
+  it('routes a release-authority-request to the respond action', () => {
+    const op = Wallet.generate();
+    op.sign(
+      identityAttestation({
+        subject: op.publicKey,
+        tier: 'notable',
+        fields: { display_name: 'Operator' },
+      }),
+    );
+    const draft = buildReleaseAuthorityRequestDraft({
+      identityPubkey: op.identity,
+      identityLeaf: 'bitcoin_spending_authority',
+      proposedHorizonUntil: new Date(Date.now() + 86_400_000).toISOString(),
+      requesterName: 'Operator',
+    });
+    const signed = op.sign(draft);
+    const route = routeFor(signed);
+    expect(route?.action).toBe('release-authority-respond');
   });
 });

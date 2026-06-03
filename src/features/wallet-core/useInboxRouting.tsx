@@ -22,6 +22,11 @@ const FamilyRatifyModal = lazy(() =>
     default: m.FamilyRatifyModal,
   })),
 );
+const ReleaseAuthorityResponderModal = lazy(() =>
+  import('../identity-gate/ReleaseAuthorityResponderModal.tsx').then((m) => ({
+    default: m.ReleaseAuthorityResponderModal,
+  })),
+);
 
 // Inbox-arrival routing concentrated in one hook (extracted from
 // HomeScreen 2026-05-27 when the family-ratify route landed and the
@@ -115,6 +120,11 @@ export function useInboxRouting(
   // back to the founder via Mycelium.
   const [incomingForFamilyRatify, setIncomingForFamilyRatify] = useState<Attestation | null>(null);
   const [incomingEventIdForFamilyRatify, setIncomingEventIdForFamilyRatify] = useState<string | null>(null);
+  // Item 11 D2 — release-authority-request from an operator's D1 surface.
+  // The responder walks an out-of-band verification gate before signing
+  // an attest-release-authority back to the requesting operator.
+  const [incomingForReleaseAuth, setIncomingForReleaseAuth] = useState<Attestation | null>(null);
+  const [incomingEventIdForReleaseAuth, setIncomingEventIdForReleaseAuth] = useState<string | null>(null);
 
   function routeInbox(
     envelope: Attestation,
@@ -144,6 +154,9 @@ export function useInboxRouting(
     } else if (action === 'recovery-request-respond') {
       setIncomingForRecovery(envelope);
       setIncomingEventIdForRecovery(eventId);
+    } else if (action === 'release-authority-respond') {
+      setIncomingForReleaseAuth(envelope);
+      setIncomingEventIdForReleaseAuth(eventId);
     }
   }
 
@@ -202,6 +215,22 @@ export function useInboxRouting(
             onClose={() => {
               setIncomingForRecovery(null);
               setIncomingEventIdForRecovery(null);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {incomingForReleaseAuth && (
+        <Suspense fallback={null}>
+          <ReleaseAuthorityResponderModal
+            request={incomingForReleaseAuth}
+            onSuccess={() => {
+              if (incomingEventIdForReleaseAuth)
+                dismissInboxEnvelope(incomingEventIdForReleaseAuth);
+            }}
+            onClose={() => {
+              setIncomingForReleaseAuth(null);
+              setIncomingEventIdForReleaseAuth(null);
             }}
           />
         </Suspense>

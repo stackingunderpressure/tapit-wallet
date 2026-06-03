@@ -4,6 +4,7 @@ import { isMembership, isSelfMembership } from '../connections/createMembership.
 import { isFamilyUnit, readFamilyUnit } from '../connections/familyUnit.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
 import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
+import { isReleaseAuthorityRequest } from '../identity-gate/releaseAuthorityEnvelopes.ts';
 
 // Envelope routing — kind-to-action mapping used by both the Mycelium
 // inbox (InboxPanel) and the in-person scan path (ScanEnvelopeModal).
@@ -47,7 +48,8 @@ export type InboxRouteAction =
   | 'vouch-witness'
   | 'family-ratify'
   | 'recovery-share-receive'
-  | 'recovery-request-respond';
+  | 'recovery-request-respond'
+  | 'release-authority-respond';
 
 export interface EnvelopeRoute {
   action: InboxRouteAction;
@@ -201,6 +203,13 @@ export function routeFor(
       action: 'recovery-request-respond',
       label: 'Help recover',
       hint: 'A peer is recovering their wallet on a new device and asking for your share.',
+    };
+  }
+  if (isReleaseAuthorityRequest(att)) {
+    return {
+      action: 'release-authority-respond',
+      label: 'Vouch',
+      hint: 'A peer is asking you to vouch that they control something important.',
     };
   }
   return null;

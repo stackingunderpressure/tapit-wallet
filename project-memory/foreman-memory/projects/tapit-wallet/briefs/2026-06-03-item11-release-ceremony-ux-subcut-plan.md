@@ -81,7 +81,17 @@ picks a gated identity-leaf, picks N peers from the vouching circle
 Deliverable: the operator can ASK. No collection yet — that's D3.
 Gate-safe: no new crypto, composes shipped builder + shipped transport.
 
-### D2 — Peer RESPOND surface (the inbox half of D1)
+### D2 — Peer RESPOND surface (the inbox half of D1) — SHIPPED 2026-06-03
+envelopeRoute classifies an inbound release-authority-request to a new
+`release-authority-respond` action; useInboxRouting dispatches it to
+ReleaseAuthorityResponderModal (lazy), which walks an out-of-band
+verification gate then signs `buildAttestReleaseAuthorityDraft` (bound to
+the request's leaf envelopeId, honoring the proposed horizon) and sends it
+back to the operator's identity pubkey. Mirrors RecoveryResponderModal.
+HomeScreen budget bumped 24.5->25.5KB (routing edge only; modal is lazy).
+Original spec below.
+
+
 Add a `release-authority-request-respond` action to `routeInbox` + a
 `ReleaseAuthorityResponderModal` mirroring RecoveryResponderModal: shows
 "X asks you to attest they control leaf Y until date Z," gates on an
