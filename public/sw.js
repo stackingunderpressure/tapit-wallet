@@ -35,6 +35,19 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
+  // version.json is the update-checker's freshness probe. The app
+  // already fetches it with a cache-busting nonce + cache:'no-store';
+  // the SW must NOT shadow-cache the response. Without this bypass the
+  // stale-while-revalidate branch below does a cache.put for every
+  // distinct nonced URL, so the shell cache grows by one dead entry per
+  // check (every 15 min + every tab-focus) and never reclaims them.
+  // Network-only, no cache write, no cache read — a failed fetch just
+  // surfaces as "couldn't check" which fetchVersion treats as no-update.
+  if (url.pathname === '/version.json') {
+    event.respondWith(fetch(req));
+    return;
+  }
+
   // Navigation requests fall back to the shell when offline.
   if (req.mode === 'navigate') {
     event.respondWith(
