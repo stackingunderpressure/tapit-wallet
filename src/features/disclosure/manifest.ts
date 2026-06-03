@@ -8,6 +8,7 @@ export const manifest: FeatureManifest = {
   touches: [
     'src/features/disclosure/ShareProofModal.tsx',
     'src/features/disclosure/VerifyProofScreen.tsx',
+    'src/features/disclosure/HowVerificationWorks.tsx',
     'src/features/disclosure/parseDisclosureProof.ts',
     'src/features/disclosure/leafIndex.ts',
     'src/features/disclosure/ShareCard.tsx',

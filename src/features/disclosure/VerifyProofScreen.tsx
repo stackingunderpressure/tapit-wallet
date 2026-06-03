@@ -10,6 +10,7 @@ import {
 } from 'tapit-attest';
 import { parseDisclosureProof } from './parseDisclosureProof.ts';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
+import { HowVerificationWorks } from './HowVerificationWorks.tsx';
 
 interface VerifiedField {
   path: string;
@@ -156,29 +157,8 @@ export function VerifyProofScreen() {
         <p className="text-sm text-muted">
           Paste a proof someone shared with you. The math will check whether
           the fields they revealed really are part of a signed entry by the
-          key you would expect.
+          key you would expect — without you having to trust this page.
         </p>
-        <details className="mt-3 rounded-md border border-ink/10 bg-ink/[0.02] px-3 py-2 text-xs text-muted">
-          <summary className="cursor-pointer font-medium text-ink">
-            How does this work?
-          </summary>
-          <p className="mt-2">
-            Every signed entry commits to a fingerprint of all its fields. A
-            proof carries one or more disclosed fields, plus the math needed
-            to re-derive that same fingerprint from them. If the
-            re-derivation matches what the signer's key actually signed, the
-            proof is valid — green panel. If even one character of any
-            disclosed field is changed, the fingerprint doesn't match, the
-            signature check fails, and the panel turns red. No trust in this
-            site or in the sharer is required; the math either lines up or
-            it doesn't.
-          </p>
-          <p className="mt-2">
-            Try it: verify a proof once to see green, then change a single
-            character of any value inside the JSON and verify again. The
-            panel will flip.
-          </p>
-        </details>
         <textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
@@ -302,6 +282,15 @@ export function VerifyProofScreen() {
             </>
           )}
         </section>
+      )}
+
+      {outcome.kind === 'result' && (
+        <HowVerificationWorks
+          digest={outcome.digest}
+          disclosedCount={outcome.fields.length}
+          valid={outcome.valid}
+          signers={outcome.signers}
+        />
       )}
     </div>
   );
