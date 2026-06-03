@@ -1060,3 +1060,80 @@ guardrails is the dangerous version. Resurface when Layer 4
 (trusted-knowledge bot) or the witnessed-correctness ledger is
 scoped — this is the same engine aimed at events.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: Signed preference / taste / skill leaves weighted by your real
+graph — the everyday, consumer-facing face of the provenance engine
+(the honest replacement for fake reviews + ratings). Operator's
+riff: put a leaf like "I don't like Chipotle" (or "I do") and post
+that cryptographic leaf to a Nostr relay. Everyone subscribed who
+weights you — mom, dad, an Instagram follower — sees it. Then you can
+aggregate: "73% of my friends hate Chipotle, and they definitely hate
+the one here." A leaf that is TOTALLY benign (not spam, not a witness
+to an event) becomes WEIGHT AND GOLD to the people who weight that
+person, and noise to a stranger who has no clue who they are. Extends
+to every domain: judging carpenters on how good they build houses,
+etc. — "the truth emerges because other people said so, not a false
+narrative from an attacker."
+  Why it's the unifying insight: a leaf doesn't have to be identity or
+event-witness — it can be PREFERENCE, TASTE, OPINION, SKILL-VOUCH, and
+the SAME provenance + graph-weight machinery makes it valuable to those
+who know you and noise to those who don't. Same signed leaf, opposite
+value depending on the EDGE between poster and reader — the
+relative-to-the-asker principle in its most everyday form. The "73% of
+my friends" step is aggregation = a recommendation engine whose inputs
+are cryptographically signed by real trusted humans, not fake reviews /
+bot ratings. Strictly better than Yelp/Google reviews: every input is a
+real accountable human in YOUR graph. The carpenter-rating case is the
+serious version — "is this carpenter good," answered by signed vouches
+from people who actually hired him, with in-person + domain tiers
+meaning a vouch from someone who SAW the work weighs more than gossip.
+Four kinds of claim (preference, taste, skill-vouch, event-witness) —
+ONE substrate, ONE engine, not four features.
+  THE HONEST SHARPENING (operator said "the truth is what emerges" —
+sharpen): the engine doesn't PRODUCE truth, it produces legible,
+accountable, hard-to-fake CONSENSUS AMONG PEOPLE YOU TRUST. Usually
+aligned with truth, not identical to it. For taste/experience questions
+(is this carpenter reliable, is this restaurant good, does my friend
+like Chipotle) trusted-belief-from-people-who'd-know IS the answer you
+want — those are matters of experience + taste, not fact, so the engine
+is perfect. Danger is ONLY when a taste-engine output is treated as a
+truth-oracle output on a question with an actual fact behind it (a town
+sincerely vouching for a quack). Same guardrail: show WHO + HOW they'd
+know ("rated by 12 people you trust, 4 hired him directly"), never a
+bare "73%" with no faces — the faces let the reader judge whether these
+people's taste/expertise bears on the question.
+  WHY IT BEATS ATTACKERS (operator's instinct, fully correct): a bad
+actor flooding fake "great carpenter" vouches is an ISLAND with no
+edges into your graph — fake consensus weighs ZERO to you while real
+consensus from people you know rises. You don't need the system to
+DETECT lies; you just need fabricated trust to be WEIGHTLESS, and the
+real signal wins by default. Elegant: the truth (honest trusted-belief)
+outcompetes the fabricated narrative not because the system judges
+truth, but because fabricated trust can't get graph-weight from people
+who'd actually know.
+Context: Operator 2026-06-03, immediately after the provenance-engine
+entry. This is the CONSUMER-FACING, everyday version — the one a
+non-technical person (mom) would actually use and love. Same engine as
+provenance/witness + graph-interlock weighting + Layer 4 bot, pointed
+at benign preference/skill claims. Likely the most ACCESSIBLE on-ramp
+of the whole vision (taste-sharing is fun + low-stakes), and it
+piggybacks on share-to-Nostr (item 8, shipped) — a preference leaf is
+just another signed envelope published to relays.
+Feature: NEW — preference/taste/skill leaves + graph-weighted
+aggregation (recommendation engine). Composes: attestation leaves +
+share-to-Nostr (shipped) + graph-interlock weighting. New primitives:
+(a) a preference/opinion leaf shape (subject = the thing rated, value =
+like/dislike/score), (b) a skill-vouch attestation (domain-tagged: "X
+is good at Y"), (c) graph-weighted aggregation query ("what do people I
+trust think of Z"), (d) the same show-the-faces honesty UI.
+Stage: raw insight -> sprouting. Lower-stakes + more fun than the
+news/provenance version, so it may be the better FIRST consumer surface
+for the weighting engine — but it still needs graph-interlock weighting
+to be real to aggregate honestly. Resurface when graph-interlock
+weighting (advancedWeighting v1.1) or the recommendation/aggregation
+surface is scoped. Could be a killer demo: "ask your trusted graph,
+not strangers."
+```
