@@ -90,14 +90,19 @@ its cache with the update-probe's nonce'd requests.
    the auto-backup-on-unlock fix actually clears the day-old banner.
 
 2. **Finish Tier 1 item 11 (the architectural core) — the release
-   ceremony + liveness layer.** The envelope kinds and verifier wrappers
-   are in `identity-gate/`; what remains is the release-request UX, the
-   one-tap peer attest/ping flow, the imposter-signal surface, and the
-   peer-picker drawing from existing trust networks. PLAN.md estimates
-   6–10 sessions; it's mostly UI plumbing over crypto already in prod.
-   This is the highest-leverage substrate cut — every high-value custody
-   story downstream (DynastyTrust, Bitcoin recovery, Wealth Strategy
-   auth) composes against it.
+   ceremony UX.** The envelope kinds, identity-leaf credential, and
+   verifier wrappers are ALL shipped + tested in `identity-gate/`;
+   vouching-circle sign-on-save (C.2) is mounted. Confirmed gap: zero UI
+   consumes the release-authority builders — the ceremony is unbuilt.
+   **Sub-cut plan written 2026-06-03
+   (`briefs/2026-06-03-item11-release-ceremony-ux-subcut-plan.md`):**
+   D1 operator request surface (start here) → D2 peer respond modal →
+   D3 collect+compose to M-of-N → D4 present gated release to a verifier,
+   with the imposter-signal sideband (F) and revocation folded in. Mirrors
+   the proven recovery-ceremony transport pattern (sendEnvelopeTo +
+   routeInbox + per-type responder modal). ~4–6 sessions; each sub-cut
+   independently gate-green. Highest-leverage cut — every downstream
+   custody story + fork-resolution composes against it.
 
 3. **Tier 1 item 10 — NIP-05 verification surface.** The last unshipped
    Nostr-substrate item; smaller than item 11.
