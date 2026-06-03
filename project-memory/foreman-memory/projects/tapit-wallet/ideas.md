@@ -900,3 +900,77 @@ bottleneck and this is the adoption thesis. First cut candidate:
 cinematic first-connection. Second: background "web discovery"
 cards. Third: the per-persona "five front doors" onboarding framing.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: The edge that gets HEAVIER — remote-first connection, in-person
+upgrade, and circles fusing when you physically bridge them. Operator's
+refinement of the captivation thesis: the FIRST connection doesn't have
+to be the magical one. It might be over Nostr, with someone you've never
+met. The magic comes later — when you meet that person in real life at a
+Bitcoin meetup and CLOSE THE LOOP by signing an in-person attestation,
+the edge becomes heavier. The old remote link isn't discarded; the
+in-person verification layers on top. One friend from Philadelphia, one
+from California — when the operator physically meets people who bridge
+those circles, the two webs grow together and start making hops, and
+even though a link started over one medium it's been upgraded to a
+personal in-person attestation from then on.
+  Why this is RIGHT and closer than it feels (grounded in
+createHandshake.ts): the substrate ALREADY signs two verification
+tiers — verification:'remote' (Tier R, buildRemoteHandshakeDraft) and
+verification:'in-person' (Tier P, the 3-QR exchange). Both are real
+signed attestations TODAY. So "starts remote, gets heavier in person"
+is NOT new crypto — the two weights already exist in the data. Exactly
+three things are missing, none deep: (1) the graph doesn't SHOW the
+difference — peopleTreeLayout/PeopleTree ignore the verification leaf,
+so a remote and an in-person edge render identically; (2) the trust math
+doesn't COUNT in-person heavier — that's just a bigger multiplier on the
+in-person edge in the same weighting engine already specced
+(advancedWeighting v1.1); (3) there's no UPGRADE gesture — meeting your
+Nostr friend in person can't yet add the heavier in-person attestation
+ON TOP of the existing remote one. That upgrade is the magic moment, and
+it's beautiful because the remote edge stays as "we knew each other
+online since March" while the in-person layers on as "verified face to
+face in October" — the edge ACCUMULATES history and weight over time.
+  The circle-fusion picture: each friend-cluster is its own web; the
+moment the operator stands in a room and signs in-person with someone
+bridging two clusters, that single HEAVIEST edge fuses two islands into
+one graph, and because it carries the most weight it propagates the most
+trust across the join. This is the literal mechanism behind "Philadelphia
+and California circles grow together."
+  KEY REFRAME — this solves last session's worry: the carpenter worried
+the FIRST connection had to be cinematic or you lose people. This insight
+is better: a low-stakes remote first link is FINE because the emotional
+payoff is DEFERRED to the in-person upgrade — the close-the-loop moment
+at the meetup, which is inherently meaningful because you actually
+traveled and met a human. Dopamine lives at the MEETUP, not at signup.
+Stronger, more honest hook: it rewards real-world connection, which is
+the whole point, and it can't be faked or rushed.
+  HONEST WORRIES (operator's, validated): (a) PWA vs App Store friction
+is real — a web app can't do rich haptics or true phone-to-phone NFC
+tap; the satisfying "tap your phones and feel it" needs a native app.
+On PWA today the in-person path is the 3-QR scan — real and working but
+a scan-and-show dance, not a tap. Make the QR exchange ceremonial NOW;
+treat App Store as a real growth milestone, not someday. (b) Copy-paste
+is the weakest, least-magical gesture — operator is right to flinch.
+In-person QR (and eventually NFC) is where delight lives; copy-paste
+should be the remote FALLBACK, never the headline.
+Context: Operator 2026-06-03, refining the captivation/growth thesis.
+Builds directly on the same-day "graph is the toy" entry and the
+graph-interlock trust model. The in-person-upgrade gesture is the
+concrete, near-term, substrate-exists cut that makes the whole
+captivation story land without waiting on multi-hop graph data or a
+native app.
+Feature: connections (createHandshake tiers + peopleTreeLayout +
+PeopleTree) + weighting (in-person multiplier) + a new upgrade gesture
+Stage: sprouting. Named cuts: (1) render verification tier visually on
+the graph (remote = thin/dashed, in-person = bold/solid/glowing) — pure
+visual on data that exists; (2) in-person UPGRADE gesture — at a meetup,
+add an in-person attestation on top of an existing remote handshake,
+keeping both; (3) weight in-person > remote in the trust engine; (4)
+make the QR exchange ceremonial; (5) App Store / native for NFC-tap +
+haptics as the growth milestone. Belongs in the UX/growth roadmap brief
+with the "graph is the toy" thesis. First cut candidate: visual tier
+distinction (cheapest, all data present).
+```
