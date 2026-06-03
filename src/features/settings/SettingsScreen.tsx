@@ -285,11 +285,12 @@ export function SettingsScreen() {
                 path back.
               </li>
               <li>
-                Cohort cascade recovery decrypts the cloud blob to
-                restore on a new device. With cloud backup off there is
-                no cloud blob, so the cohort cannot bring you back unless
-                you also distribute shares of the blob itself out-of-band
-                — a future feature, not shipped today.
+                Your trusted-helper recovery works by decrypting the cloud
+                blob on a new device. With cloud backup off there is no
+                cloud blob, so even helpers who hold their shares have
+                nothing to decrypt — the recovery key on its own has the
+                same limit. Keep cloud backup on, or keep a downloaded
+                encrypted-file backup, so there is something to restore into.
               </li>
               <li>
                 Clearing browser data while in this mode wipes the wallet
@@ -455,9 +456,9 @@ export function SettingsScreen() {
             <p className="mt-1 text-sm text-muted">
               {cohortView.threshold} of {cohortView.totalShares} peers
               declared to help if you ever need to recover this wallet on
-              a new device. No shares move yet — the ceremony that
-              actually distributes them and uses them lands in the next
-              recovery cuts.
+              a new device. Use "Send each helper their piece" to actually
+              hand out the encrypted shares — until you do, the cohort is
+              declared but cannot yet bring you back.
             </p>
             <ul className="mt-3 space-y-1">
               {cohortView.members.map((m) => (
@@ -497,6 +498,11 @@ export function SettingsScreen() {
         </p>
 
         <div className="mt-4 text-sm font-medium">Encrypted file</div>
+        <p className="mt-1 text-xs text-muted">
+          You still need your passphrase to open this file on a new device —
+          it protects against a lost device, not a forgotten passphrase. For
+          a forgotten passphrase, use the recovery key or your trusted helpers.
+        </p>
         {!showExportForm ? (
           <button
             type="button"

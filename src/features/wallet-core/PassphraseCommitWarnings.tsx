@@ -75,13 +75,15 @@ export function PassphraseCommitWarnings({
         ) : (
           <>
             <h1 className="text-xl font-semibold">
-              Last check: this is the only way back in.
+              Last check: your passphrase is the everyday way in.
             </h1>
             <p className="mt-3 text-sm text-muted">
-              If you forget this passphrase, your wallet is gone forever. There
-              is no reset, no support team that can help, and no email recovery.
-              Your keys are encrypted under this passphrase and nothing else
-              can decrypt them.
+              Your keys are encrypted under this passphrase — no reset, no
+              support team, no email recovery can undo a forgotten one. The
+              wallet gives you two safety nets for exactly that day: a written
+              recovery key and a circle of trusted helpers. Right after this,
+              the wallet will help you set one up. If you forget the passphrase
+              and never set up either, the wallet is gone for good.
             </p>
             <button
               type="button"
@@ -145,13 +147,15 @@ export function PassphraseCommitWarnings({
       ) : (
         <>
           <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-            Last check: this is the only way back in.
+            Last check: your passphrase is the everyday way in.
           </h1>
           <p className="mt-3 text-sm text-fresh-text-secondary">
-            If you forget this passphrase, your wallet is gone forever. There
-            is no reset, no support team that can help, and no email recovery.
-            Your keys are encrypted under this passphrase and nothing else
-            can decrypt them.
+            Your keys are encrypted under this passphrase — no reset, no
+            support team, no email recovery can undo a forgotten one. The
+            wallet gives you two safety nets for exactly that day: a written
+            recovery key and a circle of trusted helpers. Right after this,
+            the wallet will help you set one up. If you forget the passphrase
+            and never set up either, the wallet is gone for good.
           </p>
           <div className="mt-8 flex flex-col gap-3">
             <button
