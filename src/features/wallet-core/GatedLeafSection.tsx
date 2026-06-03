@@ -1,6 +1,12 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
+
+const RequestVouchesModal = lazy(() =>
+  import('./RequestVouchesModal.tsx').then((m) => ({
+    default: m.RequestVouchesModal,
+  })),
+);
 import {
   findLatestVouchingCircleLeaf,
   readVouchingCircleLeaf,
@@ -54,6 +60,7 @@ export function GatedLeafSection({
   const [threshold, setThreshold] = useState(2);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestFor, setRequestFor] = useState<Attestation | null>(null);
   const [open, setOpen] = useState(false);
 
   // The eligible pool is the operator's SIGNED vouching circle — not the
@@ -142,15 +149,33 @@ export function GatedLeafSection({
           {existing.map((p) => {
             const v = readReleaseGatePolicyLeaf(p);
             return (
-              <li key={v.forLeaf} className="rounded-md bg-white/60 px-3 py-2 text-xs">
-                <span className="font-medium">{v.forLeaf}</span>{' '}
-                <span className="text-muted">
-                  — {v.threshold} of {v.eligiblePubkeys.length} peers
+              <li
+                key={v.forLeaf}
+                className="flex items-center justify-between gap-2 rounded-md bg-white/60 px-3 py-2 text-xs"
+              >
+                <span>
+                  <span className="font-medium">{v.forLeaf}</span>{' '}
+                  <span className="text-muted">
+                    — {v.threshold} of {v.eligiblePubkeys.length} peers
+                  </span>
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setRequestFor(p)}
+                  className="shrink-0 rounded border border-ink/15 px-2 py-1 font-medium hover:bg-ink/5"
+                >
+                  Request vouches
+                </button>
               </li>
             );
           })}
         </ul>
+      )}
+
+      {requestFor && (
+        <Suspense fallback={null}>
+          <RequestVouchesModal policy={requestFor} onClose={() => setRequestFor(null)} />
+        </Suspense>
       )}
 
       {signedCircle.length === 0 ? (

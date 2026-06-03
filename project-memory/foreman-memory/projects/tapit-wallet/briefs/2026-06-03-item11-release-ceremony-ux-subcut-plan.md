@@ -66,7 +66,13 @@ the shipped `buildReleaseGatePolicyLeafDraft`. Add a
 Self-contained; builder + reader (`findLatestReleaseGatePolicyLeaf`)
 already shipped + tested. **This is the cut being built now.**
 
-### D1 — Operator REQUEST surface
+### D1 — Operator REQUEST surface — SHIPPED 2026-06-03
+RequestVouchesModal: opened per designated gate from GatedLeafSection,
+signs a `buildReleaseAuthorityRequestDraft` bound to the gate-policy
+leaf's envelopeId and sends it to each eligible peer via context
+`sendEnvelope`, with per-peer send status (summarizePublish). Additive-
+proof copy applied. No collection yet (D3). Original spec below.
+
 A surface (likely an Identity-tab section or modal) where the operator:
 picks a gated identity-leaf, picks N peers from the vouching circle
 (reuse `findVouchingCircleCandidates`), sets a horizon, and fires
