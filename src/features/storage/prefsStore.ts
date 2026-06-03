@@ -132,7 +132,11 @@ export interface Prefs {
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
 
-const DEFAULT_PREFS: Prefs = {
+// Exported so WalletProvider can seed its initial useState with the
+// exact same defaults rather than re-typing the literal — the prior
+// hand-copied literal drifted every time a pref was added (2026-06-03
+// recovery fields were the third such drift). One source of truth.
+export const DEFAULT_PREFS: Prefs = {
   cloudSync: true,
   lastRemoteSync: null,
   lastLocalSync: null,

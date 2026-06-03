@@ -4,7 +4,7 @@ import type { RelayStatus, Transport } from '../transport/transport.ts';
 import { envelopeId } from 'tapit-attest';
 import { createInboxEnvelopeHandler } from './inboxEnvelopeHandler.ts';
 import { walletStore } from '../storage/walletStore.ts';
-import { prefsStore, type Prefs } from '../storage/prefsStore.ts';
+import { prefsStore, DEFAULT_PREFS, type Prefs } from '../storage/prefsStore.ts';
 import { dismissedInboxStore } from '../storage/dismissedInboxStore.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 import { useSession } from '../auth/useSession.ts';
@@ -14,6 +14,8 @@ import { IdentityCeremony } from './IdentityCeremony.tsx';
 import { createWallet } from './createWallet.ts';
 import { createWalletFromImport } from './createWalletFromImport.ts';
 import { adoptExistingKey } from './adoptExistingKey.ts';
+import { SecureWalletPrompt } from './SecureWalletPrompt.tsx';
+import { WalletLoadingSplash, WalletOnboardingSplash } from './WalletSplash.tsx';
 import { useTransportPublish } from './useTransportPublish.ts';
 import { unlockWallet } from './unlockWallet.ts';
 import {
@@ -71,30 +73,23 @@ export function WalletProvider({ children }: Props) {
 
   const [phase, setPhase] = useState<Phase>({ kind: 'checking' });
   const [holdings, setHoldings] = useState<Attestation[]>([]);
+  // Seed from DEFAULT_PREFS (the single source of truth in prefsStore)
+  // so any updatePrefs call firing before the disk-prefs-load completes
+  // does not persist stale placeholders. Operator bug 2026-05-30: a
+  // prior hand-copied `nostrRelays: []` initial placeholder raced with
+  // updatePrefs writes, persisting empty arrays the load-merge could not
+  // heal — wallets ended up with zero relays and could not deliver in
+  // either direction. theme overridden to 'classic' here: pre-load we do
+  // not yet know the saved theme and Classic is the safe pre-paint
+  // default for the provider's own (non-onboarding) surfaces.
   const [prefs, setPrefs] = useState<Prefs>({
-    cloudSync: true,
-    lastRemoteSync: null,
-    lastLocalSync: null,
-    lastRemoteFailedSync: null,
-    idleTimeoutMs: 30 * 60 * 1000,
-    // Initial state matches DEFAULT_PREFS so any updatePrefs call
-    // firing before the disk-prefs-load completes does not persist
-    // the stale-empty placeholders to disk. Operator bug 2026-05-30:
-    // the prior `nostrRelays: []` initial placeholder was racing
-    // with updatePrefs writes, persisting empty arrays that the
-    // object-spread merge in prefsStore.load could not heal —
-    // resulting in wallets with zero relays that could not deliver
-    // messages or envelopes in either direction.
-    nostrTransportEnabled: true,
-    nostrRelays: [...DEFAULT_RELAYS],
+    ...DEFAULT_PREFS,
     theme: 'classic',
-    streaksEnabled: true,
-    memoriesEnabled: true,
-    vouchingCirclePubkeys: [],
-    recoveryKeySeen: false,
-    localBackupDownloaded: false,
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
+  // Set once, by onCreateIdentity, so the post-setup secure-your-wallet
+  // step shows exactly once between the ceremony and the home screen.
+  const [justCreatedIdentity, setJustCreatedIdentity] = useState(false);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);
   // Mycelium transport relay-status snapshot. Null when the operator
   // has not opted into the network — UI uses this to hide the live
@@ -550,6 +545,11 @@ export function WalletProvider({ children }: Props) {
       await saveWallet(phase.wallet, passphrase, ownerId);
       await landAfterUnlock(phase.wallet);
       setPrefs(await prefsStore.load(ownerId));
+      // Mark that identity was just created THIS session so the
+      // post-setup secure-your-wallet step shows once, between the
+      // ceremony and the home screen. Only set here — normal unlock and
+      // recovery never trip it, so a returning operator is not nagged.
+      setJustCreatedIdentity(true);
     },
     [phase, ownerId, anchorWorker],
   );
@@ -729,33 +729,13 @@ export function WalletProvider({ children }: Props) {
     sendChatMessage,
   ]);
 
-  if (!ownerId || phase.kind === 'checking') {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
-        Loading your wallet…
-      </div>
-    );
-  }
+  if (!ownerId || phase.kind === 'checking') return <WalletLoadingSplash />;
 
   if (phase.kind === 'first-login') {
     return <PassphrasePrompt onSubmit={onCreate} onImport={onImport} />;
   }
 
-  if (phase.kind === 'onboarding-setup') {
-    return (
-      <div className="relative min-h-screen overflow-hidden fresh-aurora-bg flex items-center justify-center px-6">
-        <div className="text-center animate-fresh-rise motion-reduce:animate-none">
-          <p className="text-fresh-title font-fresh-display text-fresh-text-primary">
-            Signing your first entry…
-          </p>
-          <p className="mt-3 text-sm text-fresh-text-secondary">
-            Generating your keypair, signing your founding declaration, and
-            anchoring your first moment to Bitcoin.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (phase.kind === 'onboarding-setup') return <WalletOnboardingSplash />;
 
   if (phase.kind === 'locked') {
     return (
@@ -774,6 +754,25 @@ export function WalletProvider({ children }: Props) {
       <IdentityCeremony
         walletPubkey={phase.wallet.publicKey}
         onComplete={onCreateIdentity}
+      />
+    );
+  }
+
+  // Post-setup secure-your-wallet step. Shows once, right after the
+  // identity ceremony, when the operator has not yet established a
+  // recovery key — the one reliable moment to get a nontechnical user to
+  // write down a way back in before they forget the wallet needs one.
+  const needsSecureStep =
+    phase.kind === 'unlocked' && justCreatedIdentity && !prefs.recoveryKeySeen;
+  if (needsSecureStep && passphrase && ownerId) {
+    return (
+      <SecureWalletPrompt
+        ownerId={ownerId}
+        passphrase={passphrase}
+        onDone={(secured) => {
+          setJustCreatedIdentity(false);
+          if (secured) void updatePrefs({ recoveryKeySeen: true });
+        }}
       />
     );
   }

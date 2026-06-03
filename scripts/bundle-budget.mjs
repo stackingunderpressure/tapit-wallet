@@ -140,7 +140,13 @@ const BUDGETS = [
   // (small, leans on chassis primitives already in the attest chunk),
   // and the paste/confirm UI (AdoptExistingKeySection) ships in the
   // SettingsScreen chunk, not here. Bumped 10.5 -> 11.25KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 11_520, label: 'WalletProvider' },
+  // 2026-06-03 recovery-hardening: the post-setup SecureWalletPrompt
+  // (recovery-key reveal right after the ceremony) + the two extracted
+  // WalletSplash screens + the useAutoBackup edge are statically in the
+  // provider graph, pushing it to 11.90KB gz. These are load-bearing
+  // recovery UX a nontechnical user can't reach any other way; the cost
+  // is justified. Bumped 11.25 -> 12.25KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 12_544, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence

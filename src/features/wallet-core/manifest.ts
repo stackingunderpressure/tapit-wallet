@@ -25,6 +25,8 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/UnlockPrompt.tsx',
     'src/features/wallet-core/IdentityCeremony.tsx',
     'src/features/wallet-core/SignOutEscape.tsx',
+    'src/features/wallet-core/SecureWalletPrompt.tsx',
+    'src/features/wallet-core/WalletSplash.tsx',
     'src/features/wallet-core/UpdateBanner.tsx',
     'src/features/wallet-core/useUpdateAvailable.ts',
     'src/features/wallet-core/checkForUpdate.ts',
