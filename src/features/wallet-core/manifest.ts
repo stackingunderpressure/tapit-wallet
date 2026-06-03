@@ -13,6 +13,8 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/WalletProvider.tsx',
     'src/features/wallet-core/WalletContext.ts',
     'src/features/wallet-core/useTransportPublish.ts',
+    'src/features/wallet-core/useAutoBackup.ts',
+    'src/features/wallet-core/useAutoBackup.test.ts',
     'src/features/wallet-core/useWallet.ts',
     'src/features/wallet-core/PassphrasePrompt.tsx',
     'src/features/wallet-core/PassphraseCommitWarnings.tsx',

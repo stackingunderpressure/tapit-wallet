@@ -603,3 +603,78 @@ collapse for trees that grow past one screen, multi-hop expansion
 to your denomination belongs to ...), tap-a-node-for-detail.
 ```
 
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: The public verification page as a teaching surface AND a
+witnessed-correctness ledger — for the person who does NOT have a
+Tapit wallet and does NOT want to download one, but clicks a link
+to "verify the math." Two intertwined ideas the operator surfaced
+together. (1) The /verify page a wallet-less visitor lands on
+should TEACH — not just spit "valid ✓" but walk them through HOW
+they can know for sure: here is the hash, here is the Merkle path,
+here is the Bitcoin block this was anchored in, here is the
+signature, and here is what each step proves, in plain language,
+so a sovereignty-curious person learns to trust the math instead
+of trusting our app's say-so. (2) The deeper idea: stack
+WITNESSED attestations of correctness on top of the raw math. When
+someone uses the page and verifies a proof and it shows correct,
+that act can itself be recorded — a growing history of approved
+hashes, almost a testvariation/testimony station where verifiers
+attest "I ran the verification, the code is accurate, the math
+checks out, the anchor in the Bitcoin blockchain is real." Get a
+hundred independent attestations that the verify code is accurate
+and the math is verified and a given proof's Bitcoin anchor is
+this-and-that, and the claim starts to carry more weight than "my
+app says it does." Operator's framing: it shifts trust from
+"trust me / trust my app" to "trust the math, AND here are N
+independent humans who checked the math and the code and signed
+that it holds."
+Context: Operator 2026-06-03, surfaced alongside a roadmap-
+consolidation + cloud-backup-banner session. Grounds against the
+already-shipped verifier path: PLAN.md "Where we are today" lists
+selective-leaf disclosure proofs "with the verifier path running
+OUTSIDE AuthGate so external parties can verify without a wallet
+of their own" — the /verify route already exists for the wallet-
+less visitor; this idea is about what that page DOES once they're
+there. Connects to three existing doctrine threads. First,
+HEARTWOOD's judge-weight reputation — the "hundred attestations"
+are exactly judge-weight applied to a NEW object class (not
+governance acts, not knowledge claims, but "this verification code
++ this math + this anchor is correct"), which echoes the Layer 4
+bot framing where judge-weight was already extended from
+governance to knowledge. Second, the tapit-attest substrate itself
+— an "I verified this proof" attestation is just another signed
+envelope kind; the verifiers don't need Tapit wallets to READ the
+page but the ones who WANT to add a witnessed attestation would
+sign one (which is itself a soft on-ramp: "liked verifying? the
+people who vouch for correctness hold a wallet"). Third, Bitcoin-
+as-public-clock (SATOSHI.md) — the attestations-of-correctness can
+themselves be OpenTimestamps-anchored, so "100 people attested
+this code was correct as of block N" is itself tamper-evident and
+walk-backable. Open design questions, named honestly so they don't
+get lost: (a) what exactly is being attested — the specific proof?
+the verifier CODE at a specific commit/hash? the math/algorithm in
+the abstract? these are three different objects and probably want
+three different attestation shapes; (b) sybil resistance — 100
+attestations from 100 throwaway keys is worth less than 5 from
+known judges, so judge-weight has to gate this or the count is
+gameable; (c) what does the wallet-less visitor SEE — a raw count,
+a weighted score, the actual list of signer identities, a "audited
+by X, Y, Z" badge?; (d) does verifying-in-browser require running
+the verify code client-side (good — trustless) and if so how do we
+make "here is the exact code that ran, audit it yourself" legible
+to a non-coder. Natural smallest-useful first cut: make the
+existing /verify page TEACH (idea 1) — expand the valid/invalid
+result into a plain-language step-by-step of what was checked and
+why each step is trustworthy, with the Bitcoin anchor block linked
+out to a public explorer. The witnessed-correctness ledger (idea
+2) is a larger second arc that wants its own roadmap brief once
+the teaching surface exists to attach it to.
+Feature: disclosure / verify (verifier path, currently outside
+AuthGate)
+Stage: raw insight — captured 2026-06-03, not yet scoped into a
+cut. Resurface when the verifier-path teaching surface comes up or
+when HEARTWOOD judge-weight gets its first concrete implementation.
+```

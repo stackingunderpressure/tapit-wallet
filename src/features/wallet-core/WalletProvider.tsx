@@ -30,6 +30,7 @@ import {
 } from '../anchoring/anchorWorker.ts';
 import type { StoredBlob } from '../storage/localStore.ts';
 import { useIdleLock } from './useIdleLock.ts';
+import { useAutoBackup } from './useAutoBackup.ts';
 import { useTheme } from '../theme/useTheme.ts';
 import {
   consumePendingOnboarding,
@@ -660,6 +661,12 @@ export function WalletProvider({ children }: Props) {
     setHoldings([]);
     setPhase(stored ? { kind: 'locked', stored } : { kind: 'first-login' });
   });
+
+  // Auto-backup-on-unlock — fires one quiet save() per unlock when the
+  // cloud copy is never-synced / actively-failing / stale, so a backup
+  // that went stale clears its banner without the operator having to
+  // change anything. Logic + rationale live in useAutoBackup.
+  useAutoBackup(phase.kind === 'unlocked', prefs, save);
 
   // Paint the operator's chosen presentation theme. Reads from
   // prefs.theme; flips `<html data-theme>` whenever the operator
