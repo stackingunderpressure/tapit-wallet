@@ -131,7 +131,19 @@ its cache with the update-probe's nonce'd requests.
    broadcast. Cut 3 depends on item 11 being real; Cut 2 (detection) is
    shippable cheaply first.
 
-7. **Tier 2 polish backlog** (none block a credible demo): tap-for-detail
+7. **Captivation & growth — UX (NEW, 2026-06-03 — see the growth brief +
+   ideas.md).** The adoption thesis: the graph is the toy, the connecting
+   gesture IS the security primitive, and the in-person "close the loop"
+   upgrade is the deferred emotional payoff. Phase A (cheap, all data
+   present, start here): A1 render verification tier on the graph
+   (remote faint / in-person bold), A2 in-person upgrade gesture, A3
+   weight in-person heavier, A4 local discovery cards. Phase B deferred +
+   heavy (sovereign multi-hop graph, native app for NFC-tap). Phase C is
+   the trust backbone (graph-interlock weighting, honesty guardrails) and
+   follows item 11. Phase D the five-front-doors onboarding (parallel to
+   A). First real cut: A1.
+
+8. **Tier 2 polish backlog** (none block a credible demo): tap-for-detail
    on family-ring nodes, add-birthday-now backdated credential, over-18/21
    quick-share presets, succession-proof leaf for cosigning members, and
    the accumulated field-test copy/UX threads.
