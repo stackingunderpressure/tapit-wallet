@@ -338,7 +338,14 @@ const BUDGETS = [
   { pattern: /^CohortEditorModal-.*\.js$/, gz: 4_000, label: 'CohortEditorModal' },
   // 5e-iii-a createCohort helpers get hoisted once both
   // CohortEditorModal and LatticePanel import from the same file.
-  { pattern: /^createCohort-.*\.js$/, gz: 3_000, label: 'createCohort helpers' },
+  // 2026-06-03: the recovery-hardening home-screen backup nudge calls
+  // findLatestCohort from HomeScreen (eagerly, not lazy) to decide
+  // whether the operator has any recovery path yet, pulling the cohort
+  // helpers into the home graph and nudging the chunk to 3.20KB gz.
+  // Bumped 2.93 -> 3.5KB. The helper is small and read-only; the cost
+  // buys the one nudge a nontechnical user who never opens Settings
+  // would otherwise never see.
+  { pattern: /^createCohort-.*\.js$/, gz: 3_584, label: 'createCohort helpers' },
   // 5e-iv LatticePanel — React.lazy from HomeScreen, only loads
   // when the operator opens the Lattice tab. Aggregates handshakes,
   // memberships, and recovery cohort into one read-only view.

@@ -91,6 +91,8 @@ export function WalletProvider({ children }: Props) {
     streaksEnabled: true,
     memoriesEnabled: true,
     vouchingCirclePubkeys: [],
+    recoveryKeySeen: false,
+    localBackupDownloaded: false,
   });
   const [anchorWorker, setAnchorWorker] = useState<WorkerHandle | null>(null);
   const [inboxEnvelopes, setInboxEnvelopes] = useState<InboxEnvelope[]>([]);

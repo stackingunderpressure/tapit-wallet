@@ -100,6 +100,8 @@ import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/pro
 import { PromoteRouter, type PromoteRouterHandle } from '../messaging/PromoteRouter.tsx';
 import type { PromotePayload } from '../messaging/promoteTarget.ts';
 import { backupBanner } from './backupBanner.ts';
+import { BackupNudgeBanner } from './BackupNudgeBanner.tsx';
+import { findLatestCohort } from '../recovery/createCohort.ts';
 
 // Top-level tabs separate the kinds of things the wallet holds.
 // Journal is the diary, Identity the founding card plus memberships,
@@ -168,6 +170,11 @@ export function HomeScreen() {
   const [presenceDetail, setPresenceDetail] = useState<Attestation | null>(null);
 
   const banner = backupBanner(prefs);
+  // Persistent "set up a way back in" nudge — retires once the operator
+  // has revealed the recovery key, downloaded a backup, or declared a
+  // cohort. Catches the nontechnical user who sailed past Settings and
+  // has cloud backup only (which a forgotten passphrase makes useless).
+  const hasCohort = !!findLatestCohort(holdings, wallet.identity);
   // Retry feedback for the cloud-backup-failing banner. Without this
   // the Retry button voided its promise and a continued rejection left
   // the operator with zero on-screen signal — the banner looked frozen.
@@ -366,6 +373,15 @@ export function HomeScreen() {
           )}
         </div>
       )}
+
+      {/* Set-up-a-way-back-in nudge — retires once any recovery path is
+          established. The one prompt a nontechnical user who never opens
+          Settings would otherwise never see. */}
+      <BackupNudgeBanner
+        recoveryKeySeen={prefs.recoveryKeySeen}
+        localBackupDownloaded={prefs.localBackupDownloaded}
+        hasCohort={hasCohort}
+      />
 
       {tab === 'journal' && (
         <section className="mt-5">

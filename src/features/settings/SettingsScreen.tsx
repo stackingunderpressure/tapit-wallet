@@ -82,6 +82,12 @@ export function SettingsScreen() {
       for (const b of kData) hex += b.toString(16).padStart(2, '0');
       setRevealedKey(hex);
       setPassphraseForKey('');
+      // Mark that the operator has seen their recovery key so the
+      // home-screen "set up a way back in" nudge retires. Revealing it
+      // is the act of establishing this recovery path.
+      if (!prefs.recoveryKeySeen) {
+        void updatePrefs({ recoveryKeySeen: true });
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'reveal failed';
       const friendly = /wrong passphrase/i.test(message)
@@ -187,6 +193,11 @@ export function SettingsScreen() {
       await downloadEncryptedBackup(wallet, passphraseForExport);
       setPassphraseForExport('');
       setShowExportForm(false);
+      // Record that an encrypted-file backup exists so the home-screen
+      // nudge retires — this is one of the recovery paths it asks for.
+      if (!prefs.localBackupDownloaded) {
+        void updatePrefs({ localBackupDownloaded: true });
+      }
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Export failed.');
     } finally {

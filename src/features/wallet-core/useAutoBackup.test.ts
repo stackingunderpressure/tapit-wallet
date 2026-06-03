@@ -20,6 +20,8 @@ function prefs(over: Partial<Prefs>): Prefs {
     streaksEnabled: true,
     memoriesEnabled: true,
     vouchingCirclePubkeys: [],
+    recoveryKeySeen: false,
+    localBackupDownloaded: false,
     ...over,
   };
 }

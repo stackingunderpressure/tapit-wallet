@@ -111,6 +111,23 @@ export interface Prefs {
    * bootstrap step.
    */
   vouchingCirclePubkeys: string[];
+  /**
+   * True once the operator has revealed (and presumably written down)
+   * their 64-character recovery key from Settings → Local backup, or
+   * completed the post-setup secure-your-wallet step. One of the
+   * independent-of-cloud recovery paths. Drives the home-screen
+   * "set up a way back in" nudge, which hides once any backup action
+   * has been taken. Added 2026-06-03. Migration-safe: defaults false,
+   * so existing wallets see the nudge until they secure a path (which
+   * is the honest state — they may never have written the key down).
+   */
+  recoveryKeySeen: boolean;
+  /**
+   * True once the operator has downloaded an encrypted-file backup from
+   * Settings → Local backup. The passphrase-protected lost-device path.
+   * Added 2026-06-03.
+   */
+  localBackupDownloaded: boolean;
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -127,6 +144,8 @@ const DEFAULT_PREFS: Prefs = {
   streaksEnabled: true,
   memoriesEnabled: true,
   vouchingCirclePubkeys: [],
+  recoveryKeySeen: false,
+  localBackupDownloaded: false,
 };
 
 export const prefsStore = {

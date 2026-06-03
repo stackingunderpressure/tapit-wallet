@@ -38,6 +38,8 @@ function basePrefs(overrides: Partial<Prefs> = {}): Prefs {
     streaksEnabled: true,
     memoriesEnabled: true,
     vouchingCirclePubkeys: [],
+    recoveryKeySeen: false,
+    localBackupDownloaded: false,
     ...overrides,
   };
 }
