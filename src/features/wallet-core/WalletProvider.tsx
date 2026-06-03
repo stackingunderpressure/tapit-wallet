@@ -732,7 +732,14 @@ export function WalletProvider({ children }: Props) {
   if (!ownerId || phase.kind === 'checking') return <WalletLoadingSplash />;
 
   if (phase.kind === 'first-login') {
-    return <PassphrasePrompt onSubmit={onCreate} onImport={onImport} />;
+    return (
+      <PassphrasePrompt
+        onSubmit={onCreate}
+        onImport={onImport}
+        ownerId={ownerId}
+        onRecovered={onRecovered}
+      />
+    );
   }
 
   if (phase.kind === 'onboarding-setup') return <WalletOnboardingSplash />;

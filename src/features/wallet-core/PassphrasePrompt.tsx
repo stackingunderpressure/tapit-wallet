@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import type { Wallet } from 'tapit-attest';
 import { PassphraseCommitWarnings } from './PassphraseCommitWarnings.tsx';
 import { SignOutEscape } from './SignOutEscape.tsx';
 
@@ -13,10 +14,22 @@ const ImportNostrIdentityPrompt = lazy(() =>
   })),
 );
 
+// Lazy too — the restore-from-file path is a fresh-device recovery
+// affordance most first-logins never touch.
+const RestoreFromFileModal = lazy(() =>
+  import('../recovery/RestoreFromFileModal.tsx').then((m) => ({
+    default: m.RestoreFromFileModal,
+  })),
+);
+
 interface Props {
   onSubmit: (passphrase: string) => Promise<void>;
   /** Import an existing Nostr nsec instead of generating a fresh keypair. */
   onImport?: (passphrase: string, privateKeyHex: string) => Promise<void>;
+  /** Owner id + lander for the fresh-device restore-from-backup-file path.
+   *  When absent, the "recovering an existing wallet?" affordance hides. */
+  ownerId?: string;
+  onRecovered?: (wallet: Wallet, passphrase: string) => Promise<void>;
 }
 
 // First-login passphrase capture. Two fields with confirmation. The
@@ -32,13 +45,15 @@ interface Props {
 // import-existing-nsec flow via the link below the form (PLAN.md
 // Tier 1 item 9, 2026-05-29). The import path runs through its own
 // disclosure-and-warning gate before committing the imported key.
-export function PassphrasePrompt({ onSubmit, onImport }: Props) {
+export function PassphrasePrompt({ onSubmit, onImport, ownerId, onRecovered }: Props) {
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [importMode, setImportMode] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const canRestoreFromFile = !!ownerId && !!onRecovered;
 
   if (importMode && onImport) {
     return (
@@ -164,11 +179,33 @@ export function PassphrasePrompt({ onSubmit, onImport }: Props) {
             </button>
           </p>
         )}
+        {canRestoreFromFile && (
+          <p className="mt-3 text-center text-xs text-muted">
+            Recovering an existing wallet on this device?{' '}
+            <button
+              type="button"
+              onClick={() => setRestoreOpen(true)}
+              className="text-accent underline hover:text-ink"
+            >
+              Restore from a backup file
+            </button>
+          </p>
+        )}
         {/* Escape so first-login is never a dead-end if the operator
             landed on the wrong email account. Wording avoids "your
             wallet" since none exists for this account yet. */}
         <SignOutEscape label="Wrong account? Sign out and use a different email" />
       </form>
+
+      {restoreOpen && ownerId && onRecovered && (
+        <Suspense fallback={null}>
+          <RestoreFromFileModal
+            ownerId={ownerId}
+            onRecovered={onRecovered}
+            onClose={() => setRestoreOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

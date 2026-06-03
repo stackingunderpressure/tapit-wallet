@@ -23,6 +23,7 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/RecoveryNamingStep.tsx',
     'src/features/recovery/recoveryInitiatorTypes.ts',
     'src/features/recovery/RecoveryKeyImportModal.tsx',
+    'src/features/recovery/RestoreFromFileModal.tsx',
     'src/features/recovery/createRecoverySuccession.ts',
     'src/features/recovery/createRecoverySuccession.test.ts',
   ],
