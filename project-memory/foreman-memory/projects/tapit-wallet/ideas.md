@@ -1259,3 +1259,75 @@ Feature: doctrine (positioning + copy stance) -> applies to identity-gate
 ceremony UX, the verify page, and every trust/reputation surface.
 Stage: doctrine — adopt now, apply to the item-11 cut starting D1.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: Edge gossip via handshake hand-off + Nostr refresh — the sovereign
+answer to Phase B multi-hop graph data (how you get edges you don't hold
+without a central server). Operator's insight: every time you handshake
+someone, you ALSO receive a piece of their graph history — not all of it,
+but the leaves/edges they've marked PUBLIC. You might later become those
+people's direct contact; but regardless, each handshake reveals more of
+the graph and their side's interconnectedness through people they already
+knew. And it keeps refreshing continuously over the Mycelium/Nostr: peers
+post their new little history-trees, which are meaningless to non-
+subscribers but cryptographically verifiable by anyone subscribed, so
+everything they say/do can be checked as true.
+  Why it's the Phase B unlock + why it's SAFE: this is a gossip /
+epidemic-propagation protocol for signed edges. The thing that makes it
+safe — and lets you accept graph data from ANYONE — is that every edge is
+a SIGNED attestation. "Bob handshaked Carol" carries Bob's signature, so
+your phone verifies it LOCALLY regardless of who relayed it: you trust the
+MATH, not the messenger. Forged edges fail the signature check and drop.
+That's the property that lets a graph propagate peer-to-peer with no
+central authority. It does NOT break sybil resistance: you now RECEIVE a
+fake island's edges, but they're signed by zero-weight island keys, so the
+interlock math still discounts them — gossip spreads data, weight stays
+relative-to-you. The operator's "meaningless unless subscribed" instinct
+is exactly that: edges are universally readable + verifiable, but only
+MEANINGFUL to someone whose own graph they connect to.
+  Already in the doctrine: MYCELIUM.md line 33 — "every Hearth maintains
+its own local view of the lattice as it has explored it, refreshed by
+federation queries," no master view. The operator independently re-derived
+mycelium propagation; the NEW precision is the mechanism (handshake hands
+over public graph history + Nostr continuous refresh).
+  TWO SHARP EDGES (must be designed in, not bolted on):
+  1. COLLIDES WITH THE PRIVACY DOCTRINE — and the operator anticipated
+  the fix. MYCELIUM.md line 51: attestations are "stored in both endpoints
+  and NEVER broadcast publicly… content stays private to the two parties."
+  Your social graph is sensitive (who you know often reveals more than
+  what you said), so private-by-default is deliberate. The reconciliation
+  is the operator's "only leaves open to the public": a per-edge, opt-in
+  PUBLIC flag layered on a private-by-default base. Most of the graph
+  stays yours; only edges you explicitly mark shareable enter the gossip.
+  This is what keeps the surveillance model OUT while the discovery toy
+  works.
+  2. BILATERAL CONSENT. A handshake is bilateral — publishing "I know
+  Sarah" exposes SARAH'S connection to you, not just yours. The honest
+  version needs BOTH parties to have consented to that edge being public,
+  or you've leaked someone else's relationship. Real consent-design
+  problem, must be built in from the start because the whole pitch is the
+  NON-surveillance version.
+  Practical plumbing (solvable, not philosophy): wallet accumulates many
+  edges over time -> needs bounds + pruning (N-hop cap, public-only,
+  drop stale); revocations must gossip too (rotated/removed edge must not
+  linger as a zombie — carry revocation envelopes in the gossip).
+Context: Operator 2026-06-03, solving the hardest open question in the
+growth arc (Phase B in the captivation/growth brief). Turns "multi-hop
+graph needs a server we don't want" into "multi-hop graph propagates as
+signed, opt-in-public, bilaterally-consented edges over the mycelium."
+Feature: NEW — edge-gossip / lattice propagation. Composes: handshake
+attestations (createHandshake) + share-to-Nostr transport (shipped) +
+graph-interlock weighting + revocation primitive. New primitives: (a)
+per-edge public/private flag + bilateral-consent handshake step, (b) a
+"my public edges" published set (kind-? Nostr event) peers subscribe to,
+(c) edge-merge + dedup + prune on receipt, (d) revocation propagation, (e)
+the local lattice store the overlap math (intersection + fading BFS) runs
+against.
+Stage: sprouting — the Phase B mechanism, faithful to MYCELIUM doctrine.
+Gated: do NOT ship public-edge gossip without the opt-in + bilateral-
+consent design, or it becomes the surveillance graph it's meant to
+replace. Resurface when Phase B (multi-hop) or the lattice/discovery
+surface is scoped. Belongs in the captivation/growth brief Phase B.
+```
