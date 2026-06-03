@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
@@ -168,6 +168,24 @@ export function HomeScreen() {
   const [presenceDetail, setPresenceDetail] = useState<Attestation | null>(null);
 
   const banner = backupBanner(prefs);
+  // Retry feedback for the cloud-backup-failing banner. Without this
+  // the Retry button voided its promise and a continued rejection left
+  // the operator with zero on-screen signal — the banner looked frozen.
+  // 'retrying' shows progress; 'failed' tells them the push was rejected
+  // again (almost always an expired Supabase session — re-sign-in). A
+  // success needs no message: save() reloads prefs and the banner clears.
+  const [retryState, setRetryState] = useState<'idle' | 'retrying' | 'failed'>('idle');
+  const handleRetryBackup = useCallback(async () => {
+    setRetryState('retrying');
+    try {
+      const outcome = await save();
+      setRetryState(outcome.remoteFailed ? 'failed' : 'idle');
+    } catch {
+      // save() throws before reaching the push when the passphrase was
+      // cleared by idle-lock — surface the same re-auth nudge.
+      setRetryState('failed');
+    }
+  }, [save]);
 
   const journalEntries = useMemo(
     () =>
@@ -328,14 +346,22 @@ export function HomeScreen() {
           }`}
           role={banner.tone === 'error' ? 'alert' : 'status'}
         >
-          <span className="flex-1">{banner.text}</span>
+          <span className="flex-1">
+            {banner.text}
+            {banner.action === 'retry' && retryState === 'failed' && (
+              <span className="mt-1 block font-medium">
+                Still failing — your session may have expired. Sign out and back in, then try again.
+              </span>
+            )}
+          </span>
           {banner.action === 'retry' && (
             <button
               type="button"
-              onClick={() => { void save(); }}
-              className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-100"
+              onClick={() => { void handleRetryBackup(); }}
+              disabled={retryState === 'retrying'}
+              className="shrink-0 rounded border border-red-300 bg-white px-2 py-1 text-xs font-medium text-red-900 hover:bg-red-100 disabled:opacity-60"
             >
-              Retry
+              {retryState === 'retrying' ? 'Retrying…' : 'Retry'}
             </button>
           )}
         </div>
