@@ -820,3 +820,83 @@ flag -> must-prove-itself state transition driven by imposter_signal,
 advancedWeighting v1.1 or fork-resolution cut 3 is scoped — they are
 the same engine.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: The graph IS the toy — captivation-first UX where the dumb-fun
+hook and the sovereign primitive are the same gesture. Operator's
+framing: people pick up Tapit to "play with" their friends and
+family connections — see how many connections they share, how many
+hops to someone in Alaska or France, family vs friends vs 5th-hop
+strangers. It doesn't have to be useful; it has to be CAPTIVATING,
+the way humans are captivated by dumb games. And by the time they're
+playing, "oh hey it's also a testimony/diary, a family org, a
+governance system, it's Nostr, proof-of-existence, your own medical
+records without a corporation" — whatever the shiny thing is for
+THAT person is the door they walk through. Operator: "I don't know
+how to make that cool and awesome." The substrate is real and
+unglamorous; the work is the UX that makes sovereignty feel like a
+game.
+  Key reframes (carpenter's response, captured): (1) The graph is
+already half-built — PeopleTree renders operator-at-center, handshake
+inner ring, org outer ring. The captivating version is making that
+map feel ALIVE, not new substrate. (2) First-connection moment is
+the whole ballgame: open onto a single glowing dot (you), "tap a
+friend's phone to grow your web," and the first edge animates out
+with haptic + sound. That gesture IS the security primitive AND the
+dopamine hit — the dumb-fun thing and the sovereign thing are the
+same tap. (3) Captivation = discovery you didn't author: background-
+compute the surprising facts and surface them like fitness-app
+streak cards — "4 friends in common with Sarah," "your web reaches
+France in 3 hops," "connected to Alaska through Mike's cousin,"
+"your family ring just closed a loop." The honest sovereign version
+of Facebook's "People You May Know" uncanny mirror — same
+fascination, but data never leaves the person, no corporation
+mining it. (4) Visual/physical: pinch-zoom the web like a map,
+watch it bloom, clusters glow by category (family/church/work),
+zoom out till your town is one node, discover you're 2 hops from
+someone. (5) Non-coercive quests that each secretly teach a
+primitive: "add 3 people to unlock your family ring" (=cohort),
+"first sealed entry" (=diary/proof-of-existence), "get one vouch"
+(=trust-graph bootstrap), "verify a friend's proof" (=teach the
+math). Feels like leveling up a character that is YOU, XP = real
+relationships. (6) Sell the FEELING not the noun: nobody wants "a
+decentralized identity wallet," everybody wants "the receipts" — I
+was here, I knew these people, this happened, nobody can erase it or
+charge me. Emotional hooks already in the substrate: "your kid's
+whole childhood signed + timestamped, no company can lock you out,"
+"a family tree that's cryptographically TRUE not Ancestry's
+guesses," "proof you said it first," "your medical history that's
+yours." Diary + Bitcoin anchor = sleeper killer feature (permanent,
+private, provably-yours memory). (7) Nostr = distribution cheat
+code: every share-to-Nostr proof is an ad to exactly the audience
+that cares. FIVE FRONT DOORS, one substrate: Bitcoiner comes for
+keys, new parent for baby-memory vault, prepper for family recovery
+web, genealogy nerd for the real family tree, privacy person for
+"no corporation in the middle" — all end up holding a sovereign key
+without being asked to care about crypto.
+  The honest hard part: graph-bloom + discovery is buildable on the
+first hop or two from data we already have, but multi-hop ("Alaska 5
+hops away") needs graph data the wallet doesn't gather yet, AND
+doing it sovereignly — not phoning home to a server that sees
+everyone's web — is the core tension. The cheap way to build the
+addictive version is exactly the surveillance model we're replacing;
+the discipline is compute-it-locally / peer-to-peer even when
+harder.
+Context: Operator 2026-06-03, the captivation/distribution thesis —
+arguably THE product question, since the substrate is built and
+adoption is the bottleneck. Connects: PeopleTree (connections), the
+share-to-Nostr substrate (items 7/8 shipped), the graph-interlock
+trust model (same 2026-06-03), and THE_THESIS (time-saving /
+new-project inheritance framing). Highest-leverage SINGLE cut named:
+make the FIRST connection moment cinematic (tap + animation +
+haptic + "2 mutual friends" card) — mostly polish on existing
+PeopleTree, and it's the exact moment a human is captured or lost.
+Feature: connections (PeopleTree) + onboarding + theme/UX
+Stage: raw insight -> sprouting. This wants its own UX/growth
+roadmap brief before cutting. Resurface NEXT — adoption is the
+bottleneck and this is the adoption thesis. First cut candidate:
+cinematic first-connection. Second: background "web discovery"
+cards. Third: the per-persona "five front doors" onboarding framing.
+```
