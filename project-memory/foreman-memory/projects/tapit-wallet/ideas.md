@@ -974,3 +974,89 @@ haptics as the growth milestone. Belongs in the UX/growth roadmap brief
 with the "graph is the toy" thesis. First cut candidate: visual tier
 distinction (cheapest, all data present).
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: A verified network as a PROVENANCE engine for information —
+witness, corroboration, and source-of-truth, with the
+trust-is-not-correctness trap named. Operator's question: beyond
+identity, what does having a verified network of real people around
+you unlock for information delivery and verification — news, source
+of truth, group-verified data, eyewitness signals? The big unlock:
+a verified graph turns PROVENANCE into a first-class signal, which
+is exactly what's missing from how information reaches people today.
+Today a claim spreads by VIRALITY (how many amplifications), which
+is trivially gamed by bots / bought reach / rage algorithms. A
+verified graph replaces "how many" with "WHO, and were they actually
+there." The strongest possible signal becomes "three people you
+actually trust were physically present and signed an eyewitness
+attestation" — categorically different from "this went viral." The
+first-hand-witness vs relayed-hearsay distinction has never been
+cryptographically expressible at internet scale; this substrate can
+express it (in-person attestation + timestamp + location leaf =
+"I, a real graph-weighted person, saw this with my own eyes here,
+then").
+  Use cases that stack: (1) LOCAL GROUND-TRUTH — neighbors signing
+"road flooded, store closed, protest on Main St" carry real weight
+because socially + geographically close and key-accountable. (2)
+DISTRIBUTED FACT-CHECKING — not one central arbiter (platform
+community notes) but the GRAPH weighting independent corroboration;
+five witnesses who DON'T funnel through one source >> five who do
+(island vs interlock, pointed at claims). (3) EXPERTISE ROUTING —
+your doctor-friend's vouch on a medical claim weighs heavier IN
+THAT DOMAIN than a stranger's (domain-tagged expertise weight). (4)
+REPUTATION PORTABILITY — credibility follows your KEY across every
+platform instead of being a follower count a company owns. (5)
+COUNTER-DEEPFAKE (the one about to matter most) — in an AI-flooded
+world, "a real human I can trace through my own trust graph
+personally attested to this" is the scarce, unfakeable signal:
+proof-of-human + proof-of-witness no model can synthesize, because
+it requires being embedded in a real graph an AI has no edges into.
+Same island/interlock math, pointed at claims.
+  THE TRAP (carve in stone): this system is excellent at PROVENANCE
++ WITNESS (who said it, were they there, who corroborates, can it
+be traced) and WEAK at CORRECTNESS (is it actually true). Different
+questions; conflating them is dangerous. A tight graph of people who
+all trust each other can be confidently, collectively, sincerely
+WRONG. Trusted != correct. "Everyone I know believes this" is the
+exact feeling that masquerades as truth and builds echo chambers.
+Social trust != epistemic trust (your uncle: flawless eyewitness to
+a crash, unreliable on virology). A naive version just builds
+cryptographically-verified filter bubbles — arguably WORSE than the
+status quo because it wraps groupthink in a trust score.
+  THE DESIGN PRINCIPLE (the honest reframe): the system's job is NOT
+to tell people what's true — it's to MAKE TRUST LEGIBLE. Replace
+opaque algorithmic trust ("the feed decided you should see this")
+with transparent social trust ("you see this because Alice, who was
+THERE, signed it, and Bob + Carol independently corroborated, and
+here's the chain"). Strictly better than what exists, but a
+PROVENANCE ENGINE, NOT A TRUTH ORACLE. UX must always show the WHY —
+the path, the witnesses, first-hand vs relayed, the domain — and
+NEVER collapse to a single "73% true" number (that number is a lie
+and launders groupthink into false authority). Same honesty
+guardrail as the trust-graph: show the path + the humans, never a
+global score; "well-sourced" must read clearly distinct from "true."
+Context: Operator 2026-06-03, extending the verified-network thesis
+to information/news. Arguably the LARGEST thing the substrate
+enables — bigger than the wallet. Same engine as: the
+trusted-knowledge-propagator bot (Layer 4), the witnessed-
+correctness ledger (verification-page idea), and graph-interlock
+weighting (fork-resolution). What's NEW: pointing it at CLAIMS +
+EVENTS, not identities, and the witness primitives.
+Feature: NEW domain — information provenance / witness layer.
+Composes: attestation substrate + graph-interlock weighting +
+identity-gate. New primitives needed: (a) first-hand-WITNESS
+attestation kind (saw-it, with time + location leaves), (b)
+relayed-vs-witnessed distinction in the claim shape, (c)
+domain-tagged expertise weighting (a vouch carries weight IN a
+named domain), (d) explicit "well-sourced != true" honesty layer in
+any UI that surfaces it.
+Stage: raw insight — large, foundational, downstream of Layer 4 +
+graph-interlock weighting. Do NOT build before the trust backbone
+(graph-interlock weighting + honesty guardrails) is real — pointing
+a provenance engine at news WITHOUT the "not a truth oracle"
+guardrails is the dangerous version. Resurface when Layer 4
+(trusted-knowledge bot) or the witnessed-correctness ledger is
+scoped — this is the same engine aimed at events.
+```
