@@ -133,7 +133,14 @@ const BUDGETS = [
   // 2026-06-01: Show/Hide passphrase toggle on the Unlock screen
   // (showPass state + inline button) nudged the chunk to 10.26KB gz.
   // Bumped 10.25 -> 10.5KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 10_750, label: 'WalletProvider' },
+  // 2026-06-03: adopt-existing-Nostr-key ("Switch to my existing key")
+  // added the adoptExistingKey import edge + the adoptKey context
+  // callback to WalletProvider's static graph, pushing the chunk to
+  // 10.86KB gz. The succession-link assembly lives in adoptExistingKey
+  // (small, leans on chassis primitives already in the attest chunk),
+  // and the paste/confirm UI (AdoptExistingKeySection) ships in the
+  // SettingsScreen chunk, not here. Bumped 10.5 -> 11.25KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 11_520, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -253,7 +260,13 @@ const BUDGETS = [
   // JoinPolicyPicker-lazy wrapper + the rule-count-with-join-policy
   // prose + the new Suspense boundary all ride this chunk). Measured
   // 10.31KB gz post-extraction, +57 bytes over the prior budget.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 11_000, label: 'SettingsScreen' },
+  // 2026-06-03: AdoptExistingKeySection ("Switch to my existing Nostr
+  // key") mounted statically under RotateKeySection adds the paste +
+  // confirm + honest-disclosure UI (and a parseNostrPrivateKey import
+  // edge) to this chunk, measured 11.90KB gz. The cryptographic work is
+  // in adoptExistingKey (WalletProvider chunk), not here. Bumped
+  // 11 -> 12.25KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 12_544, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.

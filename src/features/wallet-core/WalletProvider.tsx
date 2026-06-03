@@ -13,6 +13,8 @@ import { UnlockPrompt } from './UnlockPrompt.tsx';
 import { IdentityCeremony } from './IdentityCeremony.tsx';
 import { createWallet } from './createWallet.ts';
 import { createWalletFromImport } from './createWalletFromImport.ts';
+import { adoptExistingKey } from './adoptExistingKey.ts';
+import { useTransportPublish } from './useTransportPublish.ts';
 import { unlockWallet } from './unlockWallet.ts';
 import {
   createIdentityAttestation,
@@ -392,60 +394,13 @@ export function WalletProvider({ children }: Props) {
     [ownerId],
   );
 
-  const sendEnvelope = useCallback(
-    async (recipientPubkey: string, envelope: Attestation) => {
-      if (!transport) {
-        throw new Error(
-          'Mycelium network is not connected — enable it in Settings.',
-        );
-      }
-      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
-        throw new Error('wallet must be unlocked');
-      }
-      const { sendEnvelopeTo } = await import(
-        '../transport/encryptedInbox.ts'
-      );
-      const result = await sendEnvelopeTo(transport, envelope, recipientPubkey, phase.wallet);
-      return result.publish;
-    },
-    [phase, transport],
-  );
-
-  // Publish a PUBLIC kind-1 Nostr note (Tier 1 item 8) — world-readable,
-  // unencrypted, the opposite of sendEnvelope. Body lives in
-  // nostrNote.publishNote; see WalletContext for the full contract.
-  const publishPublicNote = useCallback(
-    async (content: string) => {
-      if (!transport) {
-        throw new Error(
-          "You're not connected — turn on staying reachable in Settings.",
-        );
-      }
-      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
-        throw new Error('wallet must be unlocked');
-      }
-      const { publishNote } = await import('../transport/nostrNote.ts');
-      return publishNote(transport, phase.wallet, content);
-    },
-    [phase, transport],
-  );
-
-  const syncEnvelope = useCallback(
-    async (envelope: Attestation) => {
-      // Opportunistic — when Mycelium is off, sync is a no-op and
-      // returns null. Callers do not need to gate on this; the cloud-
-      // sync via walletStore.save still delivers eventually.
-      if (!transport) return null;
-      if (phase.kind !== 'unlocked' && phase.kind !== 'needs-identity') {
-        return null;
-      }
-      const { sendEnvelopeToSelf } = await import(
-        '../transport/encryptedInbox.ts'
-      );
-      const result = await sendEnvelopeToSelf(transport, envelope, phase.wallet);
-      return result.publish;
-    },
-    [phase, transport],
+  // The three outbound-publish callbacks (sendEnvelope / publishPublicNote
+  // / syncEnvelope) live in useTransportPublish — a cohesive unit, all
+  // gated on transport + active wallet. Extracted to keep this provider
+  // under the 800-line hard limit.
+  const { sendEnvelope, publishPublicNote, syncEnvelope } = useTransportPublish(
+    transport,
+    activeWallet,
   );
 
   // Attach confirmed anchors back onto held attestations and persist
@@ -619,6 +574,24 @@ export function WalletProvider({ children }: Props) {
     setPrefs(await prefsStore.load(ownerId));
   }, [phase, ownerId]);
 
+  // Adopt an operator-supplied existing Nostr key as the active signing
+  // key. adoptExistingKey rebuilds a NEW Wallet around the old keypair
+  // (persisting via saveWallet with K_data reuse), so we land the rebuilt
+  // wallet into context the same way unlock/recovery do.
+  const adoptKey = useCallback(
+    async (oldPrivateKeyHex: string) => {
+      if (phase.kind !== 'unlocked') throw new Error('wallet must be unlocked to switch keys');
+      if (!ownerId) throw new Error('no session');
+      const passphrase = passphraseRef.current;
+      if (!passphrase) throw new Error('passphrase not in memory; re-unlock');
+      const result = await adoptExistingKey(phase.wallet, passphrase, ownerId, oldPrivateKeyHex);
+      await landAfterUnlock(result.wallet);
+      setPrefs(await prefsStore.load(ownerId));
+      return result;
+    },
+    [phase, ownerId],
+  );
+
   const updatePrefs = useCallback(
     async (next: Partial<Prefs>) => {
       if (!ownerId) throw new Error('no session');
@@ -716,6 +689,7 @@ export function WalletProvider({ children }: Props) {
       save,
       updatePrefs,
       refresh,
+      adoptKey,
       unholdEnvelope,
       removePeerConnection,
       resolvedTheme,
@@ -730,6 +704,7 @@ export function WalletProvider({ children }: Props) {
     save,
     updatePrefs,
     refresh,
+    adoptKey,
     unholdEnvelope,
     removePeerConnection,
     anchorWorker,

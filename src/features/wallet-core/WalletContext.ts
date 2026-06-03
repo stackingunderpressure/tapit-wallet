@@ -6,6 +6,7 @@ import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 import type { PublishResult, RelayStatus } from '../transport/transport.ts';
 import type { ThreadMessage } from '../messaging/threadMessage.ts';
+import type { AdoptExistingKeyResult } from './adoptExistingKey.ts';
 
 export interface WalletContextValue {
   wallet: Wallet;
@@ -74,6 +75,17 @@ export interface WalletContextValue {
   updatePrefs: (next: Partial<Prefs>) => Promise<void>;
   /** Reload holdings + identity after a mutation. */
   refresh: () => Promise<void>;
+  /**
+   * Switch the wallet's active signing key to an operator-supplied
+   * existing key (their old Nostr nsec, as 64-char hex). Non-destructive:
+   * the wallet's stable identity and all holdings are preserved via the
+   * succession chain; the prior active key is retired (still able to
+   * decrypt older messages) and the supplied key becomes active, so
+   * future Nostr events publish under the operator's old npub. Rebuilds
+   * the in-context Wallet instance and persists with K_data reuse.
+   * Resolves with the adopted + retired pubkeys for confirmation UI.
+   */
+  adoptKey: (oldPrivateKeyHex: string) => Promise<AdoptExistingKeyResult>;
   /**
    * Remove an envelope from this wallet's holdings by its envelope id,
    * then save + refresh so the UI reflects the change. Local-only —
