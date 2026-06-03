@@ -14,6 +14,7 @@ import {
   isIdentityLeafOfType,
   isReleaseGatePolicyLeaf,
   isVouchingCircleLeaf,
+  listEffectiveReleaseGatePolicies,
   readReleaseGatePolicyLeaf,
   readVouchingCircleLeaf,
 } from './identityLeafCredential.ts';
@@ -447,5 +448,52 @@ describe('findLatestReleaseGatePolicyLeaf', () => {
     );
     expect(found?.issuedAt).toBe(newer.issuedAt);
     expect(readReleaseGatePolicyLeaf(found!).threshold).toBe(2);
+  });
+});
+
+describe('listEffectiveReleaseGatePolicies (item 11 D0)', () => {
+  function policy(op: { wallet: Wallet; identity: Attestation }, forLeaf: string, threshold: number, issuedAt: string): Attestation {
+    return op.wallet.sign({
+      ...buildReleaseGatePolicyLeafDraft({
+        identityPubkey: op.identity.subject,
+        forLeaf,
+        eligiblePubkeys: [HEX_64('aa'), HEX_64('bb'), HEX_64('cc')],
+        threshold,
+      }),
+      issuedAt,
+    });
+  }
+
+  it('returns one effective policy per distinct leaf', () => {
+    const op = newWalletAs('Operator');
+    const a = policy(op, 'spend_key', 2, '2026-06-01T00:00:00.000Z');
+    const b = policy(op, 'recovery_share', 1, '2026-06-01T00:00:00.000Z');
+    const list = listEffectiveReleaseGatePolicies([a, b], op.wallet.identity);
+    expect(list.length).toBe(2);
+    const leaves = list.map((p) => readReleaseGatePolicyLeaf(p).forLeaf).sort();
+    expect(leaves).toEqual(['recovery_share', 'spend_key']);
+  });
+
+  it('keeps only the latest policy per leaf (supersession)', () => {
+    const op = newWalletAs('Operator');
+    const older = policy(op, 'spend_key', 2, '2026-06-01T00:00:00.000Z');
+    const newer = policy(op, 'spend_key', 3, '2026-06-02T00:00:00.000Z');
+    const list = listEffectiveReleaseGatePolicies([older, newer], op.wallet.identity);
+    expect(list.length).toBe(1);
+    expect(readReleaseGatePolicyLeaf(list[0]!).threshold).toBe(3);
+  });
+
+  it('ignores policies signed by someone else', () => {
+    const op = newWalletAs('Operator');
+    const other = newWalletAs('Impostor');
+    const mine = policy(op, 'spend_key', 2, '2026-06-01T00:00:00.000Z');
+    const theirs = policy(other, 'spend_key', 2, '2026-06-01T00:00:00.000Z');
+    const list = listEffectiveReleaseGatePolicies([mine, theirs], op.wallet.identity);
+    expect(list.length).toBe(1);
+  });
+
+  it('returns empty when there are no policies', () => {
+    const op = newWalletAs('Operator');
+    expect(listEffectiveReleaseGatePolicies([op.identity], op.wallet.identity)).toEqual([]);
   });
 });

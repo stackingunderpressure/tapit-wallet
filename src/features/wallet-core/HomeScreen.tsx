@@ -16,11 +16,7 @@ import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 // helper + section UI) only ships when the operator opens the
 // Identity tab. Matches the bundle-budget discipline used for the
 // Bitcoin tab and ImportNostrIdentityPrompt.
-const VouchingCircleSection = lazy(() =>
-  import('../connections/VouchingCircleSection.tsx').then((m) => ({
-    default: m.VouchingCircleSection,
-  })),
-);
+import { IdentityGateSections } from './IdentityGateSections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { InviteShareButton } from '../connections/InviteShareButton.tsx';
@@ -418,29 +414,20 @@ export function HomeScreen() {
             location={identity ? leafValue(identity, 'location') || undefined : undefined}
           />
           {identity && <AttestationCard attestation={identity} />}
-          <Suspense
-            fallback={
-              <div className="rounded-2xl border border-ink/10 bg-paper/50 p-4 text-xs text-muted">
-                Loading vouching circle…
-              </div>
+          <IdentityGateSections
+            wallet={wallet}
+            ownerId={ownerId}
+            anchorWorker={anchorWorker}
+            holdings={holdings}
+            vouchingDraft={prefs.vouchingCirclePubkeys}
+            onVouchingDraftChange={(next) =>
+              void updatePrefs({ vouchingCirclePubkeys: [...next] })
             }
-          >
-            <VouchingCircleSection
-              wallet={wallet}
-              ownerId={ownerId}
-              anchorWorker={anchorWorker}
-              holdings={holdings}
-              myKey={wallet.identity}
-              draft={prefs.vouchingCirclePubkeys}
-              onDraftChange={(next) =>
-                void updatePrefs({ vouchingCirclePubkeys: [...next] })
-              }
-              saveAndRefresh={async () => {
-                await save();
-                await refresh();
-              }}
-            />
-          </Suspense>
+            saveAndRefresh={async () => {
+              await save();
+              await refresh();
+            }}
+          />
 
           {orgDeclaration && (
             <OrgIdentitySections

@@ -1211,3 +1211,51 @@ when reputation/vouch surfaces or the Layer 4 bot is scoped. Worth
 lifting toward AppCommander doctrine — the honest-scope principle is
 fleet-general, not Tapit-specific.
 ```
+
+```
+Date: 2026-06-03
+Section: doctrine
+Entry: Additive-proof positioning — the verifier keeps their burden, we
+are extra proof that earns its way to substrate. Operator's framing
+before cutting item 11, sharpening the honest-scope doctrine into a
+product-positioning rule:
+  - THE BURDEN STAYS ON THE VERIFIER. The person trying to decide if
+    someone is trustworthy already has their own method/system they've
+    deemed usable. We do NOT take that burden from them or replace it.
+  - OURS IS EXTRA, ABOVE-AND-BEYOND PROOF ON ITS OWN MERITS — at first an
+    optional additional signal a person can offer, NOT the thing anyone
+    is required to rely on. Eventually, as it earns traction, it becomes
+    substrate. But you start as the new option that has to prove itself,
+    not the assumed authority. (Mirrors the system's own values: it has
+    to earn weight the way a person does.)
+  - WE DON'T SOLVE EVERY PROBLEM. We make sure the verifier CAN SEE an
+    approvable path — a good track record / good service / whatever the
+    use case needs — and decide for themselves. Showing the path is the
+    product; rendering a verdict is not.
+  - THE USE CASE IS DELIBERATELY BROAD SO OTHERS BUILD ON THE PRIMITIVE.
+    People run their own servers, their own things, their own wallet UI —
+    doesn't matter; the PRIMITIVES are the same. You are protected
+    because your group of peers (and your organizations) can always set
+    the record straight and help re-attest your identity to a new key if
+    it ever comes to that.
+  - ATTACK ECONOMICS BY DESIGN. Low-value claims (do you like Chipotle)
+    have near-zero attack reward — not worth impersonating someone for.
+    As the operator accrues more/heavier verification, the GATES RISE
+    with the stakes; many high-stakes gates are already brutal in the
+    real world ("you gotta give blood"). We are simply ANOTHER WAY to
+    provide your proof, slotting into that existing escalation, not
+    replacing it. The cost-to-fake rises with the value-of-faking, which
+    is the right shape.
+Context: Operator 2026-06-03, green-lighting the item-11 cut with this
+positioning held. This is the honest-scope doctrine applied to GO-TO-
+MARKET + design stance: build every gate surface so it presents an
+OPTIONAL, ADDITIVE, self-proving signal the verifier weighs with their
+own judgment — never a surface that implies "trust this because our
+system says so." Bake into item-11 ceremony copy (D1-D4): the operator
+OFFERS proof; the verifier (or their own system) decides. Companion to
+the Uncle-Jim-mesh + honest-scope entry. Fleet-general — worth lifting
+toward AppCommander doctrine alongside honest-scope.
+Feature: doctrine (positioning + copy stance) -> applies to identity-gate
+ceremony UX, the verify page, and every trust/reputation surface.
+Stage: doctrine — adopt now, apply to the item-11 cut starting D1.
+```

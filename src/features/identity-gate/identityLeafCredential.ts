@@ -478,3 +478,86 @@ export function findLatestReleaseGatePolicyLeaf(
   }
   return latest;
 }
+
+/**
+ * Every CURRENTLY-EFFECTIVE release-gate policy the operator has signed,
+ * one per distinct `for_leaf` (latest-by-issuedAt wins; superseded
+ * policies stay held as audit chain but are not returned). Item 11 D0 —
+ * the designation surface lists these so the operator sees which leaves
+ * they have already gated. Read-only; pure.
+ */
+export function listEffectiveReleaseGatePolicies(
+  holdings: readonly Attestation[],
+  walletIdentity: string,
+): readonly Attestation[] {
+  const latestByLeaf = new Map<string, { att: Attestation; ms: number }>();
+  for (const a of holdings) {
+    if (!isReleaseGatePolicyLeaf(a)) continue;
+    if (a.subject.toLowerCase() !== walletIdentity.toLowerCase()) continue;
+    if (
+      !a.signatures.some(
+        (s) => s.signer.toLowerCase() === walletIdentity.toLowerCase(),
+      )
+    ) {
+      continue;
+    }
+    const forLeaf = leafValue(a, 'for_leaf');
+    if (forLeaf.length === 0) continue;
+    const ms = new Date(a.issuedAt).getTime();
+    if (!Number.isFinite(ms)) continue;
+    const existing = latestByLeaf.get(forLeaf);
+    if (!existing || ms > existing.ms) latestByLeaf.set(forLeaf, { att: a, ms });
+  }
+  return Array.from(latestByLeaf.values()).map((v) => v.att);
+}
+
+/**
+ * Sign + hold + anchor a release-gate-policy leaf. Item 11 D0 (the
+ * designation step). Mirrors publishVouchingCircleLeaf exactly: supersedes
+ * the prior policy for the same leaf so leaf rotation invalidates stale
+ * peer attestations (the verifier in E.2 enforces the binding). The
+ * eligible set MUST be a subset of the operator's signed vouching circle;
+ * the caller sources eligiblePubkeys from there, and the E.2 verifier
+ * re-checks the subset so a tampered policy can't widen it.
+ */
+export async function publishReleaseGatePolicyLeaf(
+  wallet: Wallet,
+  ownerId: string,
+  anchorWorker: WorkerHandle | null,
+  input: {
+    forLeaf: string;
+    eligiblePubkeys: readonly string[];
+    threshold: number;
+    freshnessHorizonHours?: number;
+  },
+  holdings: readonly Attestation[],
+): Promise<Attestation> {
+  const prior = findLatestReleaseGatePolicyLeaf(
+    holdings,
+    wallet.identity,
+    input.forLeaf,
+  );
+  const draft = buildReleaseGatePolicyLeafDraft({
+    identityPubkey: wallet.identity,
+    forLeaf: input.forLeaf,
+    eligiblePubkeys: input.eligiblePubkeys,
+    threshold: input.threshold,
+    ...(input.freshnessHorizonHours !== undefined
+      ? { freshnessHorizonHours: input.freshnessHorizonHours }
+      : {}),
+    ...(prior ? { supersedes: envelopeId(prior) } : {}),
+  });
+  const signed = wallet.sign(draft);
+  await wallet.hold(signed);
+  const digestHex = envelopeId(signed);
+  await anchorQueue.upsert(ownerId, {
+    digestHex,
+    state: 'queued',
+    anchor: null,
+    attempts: 0,
+    last_attempt: null,
+    last_error: null,
+  });
+  if (anchorWorker) void anchorWorker.kick();
+  return signed;
+}

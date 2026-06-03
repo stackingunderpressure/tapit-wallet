@@ -52,7 +52,21 @@ peers can fire an IMPOSTER-SIGNAL.
 
 ## Sub-cut sequence (smallest-useful, each independently landable)
 
-### D1 — Operator REQUEST surface (start here)
+### D0 — DESIGNATE a gated leaf (the true first cut — grounding caught this)
+GROUNDING CORRECTION (2026-06-03): D1 (request attestations) is
+meaningless without a gated leaf + policy to request FOR, and a grep
+confirmed NO UI creates a `release_gate_policy` leaf today. So the real
+first cut is designation: a surface where the operator names an
+identity-leaf to gate (e.g. `dynasty_trust_spend_key`), picks the
+eligible peers from their signed vouching circle, and sets the M-of-N
+threshold + freshness horizon — signing a `release_gate_policy` leaf via
+the shipped `buildReleaseGatePolicyLeafDraft`. Add a
+`publishReleaseGatePolicyLeaf` helper mirroring `publishVouchingCircleLeaf`
+(sign + hold + anchor). Deliverable: the operator can DESIGNATE a gate.
+Self-contained; builder + reader (`findLatestReleaseGatePolicyLeaf`)
+already shipped + tested. **This is the cut being built now.**
+
+### D1 — Operator REQUEST surface
 A surface (likely an Identity-tab section or modal) where the operator:
 picks a gated identity-leaf, picks N peers from the vouching circle
 (reuse `findVouchingCircleCandidates`), sets a horizon, and fires
