@@ -1137,3 +1137,77 @@ weighting (advancedWeighting v1.1) or the recommendation/aggregation
 surface is scoped. Could be a killer demo: "ask your trusted graph,
 not strangers."
 ```
+
+```
+Date: 2026-06-03
+Section: ideas / doctrine
+Entry: The Uncle Jim mesh + the honest-scope doctrine (claim what you
+provide, never imply what you don't). Two intertwined ideas the
+operator surfaced together.
+  (1) THE UNCLE JIM MESH. In Bitcoin culture "Uncle Jim" is the
+trusted technical person in a community who runs his own node, helps
+relatives onboard, and vets things for people who can't vet for
+themselves. Trust there is EARNED, LOCAL, and ACCOUNTABLE — Uncle Jim
+isn't a certificate authority or a platform, he's a specific human the
+community has watched behave well over years, with every reason to keep
+behaving well because his standing IS his reward. Operator's insight:
+the verified-network substrate lets EVERY community grow its own Uncle
+Jim — the person who runs down sources, keeps records straight, checks
+things are logged right — and makes his diligence LEGIBLE and PORTABLE
+instead of trapped in his head. Today an Uncle Jim's judgment helps only
+the handful who personally know him; with signed attestations weighted
+by the real graph, his vetting becomes a signal others can lean on, and
+his track record of being right + honest ACCRUES AS WEIGHT rather than
+evaporating. Now imagine every community having one, vouching for each
+other across communities: "everybody's shields up" — a MESH of
+accountable local diligence where security comes not from one fortress
+but from overlapping watchful neighbors, each covering gaps the others
+can't see. This is how resilient human trust has always worked at
+folk-scale; the substrate lets it span distance and survive the
+platforms that currently middle-man it. (Directly serves THE_THESIS +
+HEARTH_SPEC folk-scale framing; the Uncle Jim is the human node in the
+Mycelium network.)
+  (2) THE HONEST-SCOPE DOCTRINE (carve as standing principle, not just
+an idea). Operator: "it doesn't solve every problem — you could still
+get mugged going down the road and a bottle's not gonna stop that, even
+a gun might not, and our thing doesn't stop that either — but what it
+does do, it does; it provides the things we claim it provides, not the
+things it doesn't. That's not what we're trying to do." This scoping
+discipline is the maturity that separates a real tool from snake oil.
+The most DANGEROUS thing a trust/security system can do is OVER-CLAIM:
+the moment you tell someone "this keeps you safe" in the absolute, they
+stop applying their own judgment, drop their other defenses, and the one
+gap you didn't cover becomes catastrophic PRECISELY BECAUSE you implied
+there were no gaps. Honest tools state what they do AND what they don't
+with equal clarity — "this makes fabricated trust weightless and real
+diligence portable; it does NOT verify objective truth, does NOT stop
+physical harm, does NOT make a foolish community wise." That honesty is
+not a weakness in the pitch — it IS the pitch, because it's what makes
+the things you DO claim believable. A tool honest about its edges is one
+you can trust at its center.
+  This doctrine already runs through everything shipped: the verify page
+("well-sourced != true"), the trust graph (show the faces, never a fake
+confidence number), the recovery flows (state the cloud-blob floor
+everyone hits instead of pretending there's always a way back), the
+adopt-key + rotation honest-limitations disclosures. The operator has
+been applying it consistently WITHOUT naming it. Name it: every future
+feature passes through the lens "claim what you provide, refuse to imply
+what you don't." It is the trust-graph honesty guardrail
+(unknown != untrusted; provenance != truth) generalized to the whole
+product's voice.
+Context: Operator 2026-06-03, the culminating framing of the
+verified-network / provenance / preference-leaf thread. The Uncle Jim
+mesh is the human-scale picture of the graph-interlock trust model; the
+honest-scope doctrine is the voice/ethics rule that keeps all of it from
+becoming the over-promising surveillance-trust thing it's meant to
+replace. Companion to the captivation/growth brief and the
+provenance-engine entries.
+Feature: doctrine (product voice + scope) + connections (Uncle Jim as
+weighted graph node) + weighting
+Stage: doctrine (adopt as standing principle) + sprouting (Uncle Jim
+mesh as a framing for the trust/reputation surfaces). The honest-scope
+doctrine should be applied NOW to all copy; the Uncle Jim mesh resurfaces
+when reputation/vouch surfaces or the Layer 4 bot is scoped. Worth
+lifting toward AppCommander doctrine — the honest-scope principle is
+fleet-general, not Tapit-specific.
+```
