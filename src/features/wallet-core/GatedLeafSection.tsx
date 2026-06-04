@@ -51,6 +51,22 @@ function shortKey(hex: string): string {
   return `${hex.slice(0, 8)}…${hex.slice(-4)}`;
 }
 
+// Concrete things a person recognizes, instead of asking them to invent
+// and name an abstract "leaf." Each maps to a stable internal slug the
+// gate substrate stores as for_leaf; the friendly label is shown back.
+// "Something else" (custom) lets a power user name their own.
+const APPROVAL_PRESETS: { slug: string; label: string }[] = [
+  { slug: 'bitcoin_spend', label: 'A big Bitcoin transaction' },
+  { slug: 'wallet_recovery', label: 'Getting back into this wallet' },
+  { slug: 'sensitive_account', label: 'A sensitive account or login' },
+];
+
+/** Friendly label for a stored gate's leaf slug; falls back to the raw
+ *  value for custom ("something else") gates. */
+function labelForLeaf(slug: string): string {
+  return APPROVAL_PRESETS.find((p) => p.slug === slug)?.label ?? slug;
+}
+
 export function GatedLeafSection({
   wallet,
   ownerId,
@@ -58,7 +74,10 @@ export function GatedLeafSection({
   holdings,
   saveAndRefresh,
 }: Props) {
+  // leafName holds the effective for_leaf value: a preset slug, or the
+  // operator's own text in custom mode.
   const [leafName, setLeafName] = useState('');
+  const [customMode, setCustomMode] = useState(false);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [threshold, setThreshold] = useState(2);
   const [busy, setBusy] = useState(false);
@@ -121,11 +140,11 @@ export function GatedLeafSection({
     setError(null);
     const name = leafName.trim();
     if (name.length === 0) {
-      setError('Name the thing you want your peers to protect.');
+      setError('Choose what needs approval first.');
       return;
     }
     if (selected.length < threshold) {
-      setError(`Pick at least ${threshold} eligible ${threshold === 1 ? 'peer' : 'peers'}.`);
+      setError(`Pick at least ${threshold} ${threshold === 1 ? 'person' : 'people'} who can approve.`);
       return;
     }
     setBusy(true);
@@ -139,11 +158,12 @@ export function GatedLeafSection({
       );
       await saveAndRefresh();
       setLeafName('');
+      setCustomMode(false);
       setSelected([]);
       setThreshold(2);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not designate the gate.');
+      setError(err instanceof Error ? err.message : 'Could not save the approval rule.');
     } finally {
       setBusy(false);
     }
@@ -152,17 +172,18 @@ export function GatedLeafSection({
   return (
     <section className="rounded-2xl border border-ink/10 bg-paper/50 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">Peer-protected gates</h3>
+        <h3 className="text-sm font-semibold text-ink">Approvals from your circle</h3>
         <span className="text-xs text-muted">
-          {existing.length} designated
+          {existing.length} set up
         </span>
       </div>
       <p className="mt-1 text-xs text-muted">
-        Pick something important — a spending authority, a sensitive
-        credential — and require that several people you trust vouch before
-        it can be released. This is an extra, above-and-beyond proof you can
-        offer; it does not replace however someone already decides to trust
-        you, it gives them one more thing to check.
+        For something important — a big Bitcoin transaction, getting back
+        into this wallet — you can require a few people you trust to
+        personally approve it first. An attacker who got your key still
+        couldn't clear it without fooling your real circle. It's an extra
+        proof you can show; it doesn't replace how someone already decides
+        to trust you, it gives them one more thing to check.
       </p>
 
       {existing.length > 0 && (
@@ -185,10 +206,10 @@ export function GatedLeafSection({
                 className="flex items-center justify-between gap-2 rounded-md bg-white/60 px-3 py-2 text-xs"
               >
                 <span>
-                  <span className="font-medium">{v.forLeaf}</span>{' '}
+                  <span className="font-medium">{labelForLeaf(v.forLeaf)}</span>{' '}
                   <span className={resolved ? 'text-emerald-700' : 'text-muted'}>
-                    — {collected} of {v.threshold} vouched
-                    {resolved ? ' · resolved ✓' : ''}
+                    — {collected} of {v.threshold} approved
+                    {resolved ? ' · ready ✓' : ''}
                   </span>
                 </span>
                 <div className="flex shrink-0 items-center gap-1">
@@ -206,7 +227,7 @@ export function GatedLeafSection({
                     onClick={() => setRequestFor(p)}
                     className="rounded border border-ink/15 px-2 py-1 font-medium hover:bg-ink/5"
                   >
-                    Request vouches
+                    Ask for approval
                   </button>
                 </div>
               </li>
@@ -224,7 +245,7 @@ export function GatedLeafSection({
       {signedCircle.length === 0 ? (
         <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           First choose the people who can vouch for you (above) and save
-          them — the people who can protect a gate are picked from there.
+          them — the people who can approve are picked from there.
         </p>
       ) : !open ? (
         <button
@@ -232,26 +253,65 @@ export function GatedLeafSection({
           onClick={() => setOpen(true)}
           className="mt-3 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
         >
-          Designate a gate
+          Add an approval
         </button>
       ) : (
         <div className="mt-3 space-y-3">
-          <label className="block">
-            <span className="text-xs font-medium">What are you protecting?</span>
-            <input
-              type="text"
-              value={leafName}
-              onChange={(e) => setLeafName(e.target.value)}
-              placeholder="e.g. bitcoin_spending_authority"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none"
-            />
-          </label>
+          <div>
+            <span className="text-xs font-medium">What needs approval?</span>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {APPROVAL_PRESETS.map((preset) => {
+                const active = !customMode && leafName === preset.slug;
+                return (
+                  <button
+                    key={preset.slug}
+                    type="button"
+                    onClick={() => {
+                      setCustomMode(false);
+                      setLeafName(preset.slug);
+                      setError(null);
+                    }}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                      active
+                        ? 'border-accent bg-accent/10 text-ink'
+                        : 'border-ink/15 hover:bg-ink/5'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomMode(true);
+                  setLeafName('');
+                  setError(null);
+                }}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  customMode
+                    ? 'border-accent bg-accent/10 text-ink'
+                    : 'border-ink/15 hover:bg-ink/5'
+                }`}
+              >
+                Something else
+              </button>
+            </div>
+            {customMode && (
+              <input
+                type="text"
+                value={leafName}
+                onChange={(e) => setLeafName(e.target.value)}
+                placeholder="Describe it in a few words"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
+              />
+            )}
+          </div>
 
           <div>
-            <span className="text-xs font-medium">Who can vouch?</span>
+            <span className="text-xs font-medium">Who can approve?</span>
             <ul className="mt-1 space-y-1">
               {signedCircle.map((pk) => {
                 const lower = pk.toLowerCase();
@@ -279,7 +339,7 @@ export function GatedLeafSection({
 
           <label className="block">
             <span className="text-xs font-medium">
-              How many of them must vouch?
+              How many of them must approve?
             </span>
             <select
               value={threshold}
@@ -295,7 +355,7 @@ export function GatedLeafSection({
               )}
             </select>
             <span className="mt-1 block text-xs text-muted">
-              Fewer is easier for you; more is harder for anyone to forge.
+              Fewer is easier for you; more is harder for anyone to fake.
             </span>
           </label>
 
@@ -306,7 +366,7 @@ export function GatedLeafSection({
               disabled={busy}
               className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium disabled:opacity-40"
             >
-              {busy ? 'Signing…' : 'Sign this gate'}
+              {busy ? 'Saving…' : 'Save this rule'}
             </button>
             <button
               type="button"
