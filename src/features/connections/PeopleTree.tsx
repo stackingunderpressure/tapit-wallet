@@ -138,8 +138,14 @@ export function PeopleTree({
                 x2={pos.x}
                 y2={pos.y}
                 stroke={CATEGORY_COLOR[p.category]}
-                strokeWidth={2}
-                strokeOpacity={0.55}
+                // In-person ties read bold + solid; remote (online-only)
+                // ties read thinner, fainter, and dashed — the same
+                // "lighter" visual register as the dashed org edges. The
+                // verified-in-person edge is the one you'd trust more, so
+                // it carries more visual weight.
+                strokeWidth={p.verification === 'in-person' ? 3 : 1.5}
+                strokeOpacity={p.verification === 'in-person' ? 0.85 : 0.4}
+                strokeDasharray={p.verification === 'in-person' ? undefined : '4 4'}
               />
             );
           })}
@@ -337,6 +343,24 @@ export function PeopleTree({
             }}
           />
           Organization
+        </span>
+      </div>
+
+      {/* A1: line STYLE encodes how a tie was verified — a bold solid
+          line is someone you met in person (the strongest tie), a thin
+          dashed line is an online-only connection. Color still encodes
+          relationship; thickness/dash encodes trust strength. */}
+      <div className="mx-auto mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-[3px] w-5 rounded-full bg-current opacity-80" />
+          Met in person
+        </span>
+        <span className="flex items-center gap-1">
+          <span
+            className="inline-block h-0.5 w-5"
+            style={{ borderTop: '1.5px dashed currentColor', opacity: 0.6 }}
+          />
+          Online only
         </span>
       </div>
     </div>

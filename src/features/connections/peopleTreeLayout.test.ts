@@ -33,9 +33,10 @@ function signedHandshake(
   initiator: { wallet: Wallet; identity: Attestation },
   responder: { wallet: Wallet; identity: Attestation },
   relationship?: string,
+  verification: string = 'in-person',
 ): Attestation {
   const fields: Record<string, string> = {
-    verification: 'in-person',
+    verification,
     handshake_at: new Date().toISOString(),
     initiator_id: initiator.identity.subject,
     initiator_name: 'I',
@@ -139,6 +140,18 @@ describe('extractPeers', () => {
     const peers = extractPeers([h], alice.identity.subject);
     expect(peers).toHaveLength(1);
     expect(peers[0]?.pubkey).toBe(bob.identity.subject.toLowerCase());
+  });
+
+  it('carries the verification tier (A1 — drives in-person vs online edge style)', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const carol = newWalletAs('Carol');
+    const inPerson = signedHandshake(alice, bob);
+    const remote = signedHandshake(alice, carol, 'friend', 'remote');
+    const peers = extractPeers([inPerson, remote], alice.identity.subject);
+    const byKey = Object.fromEntries(peers.map((p) => [p.pubkey, p.verification]));
+    expect(byKey[bob.identity.subject.toLowerCase()]).toBe('in-person');
+    expect(byKey[carol.identity.subject.toLowerCase()]).toBe('remote');
   });
 
   it('returns the initiator when the operator is the responder', () => {

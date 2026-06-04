@@ -81,7 +81,9 @@ const BUDGETS = [
   // the 8KB boundary. The fix is the right shape (one CSS rule
   // covers every form input across the whole app) so the budget
   // moves rather than the fix shrinking.
-  { pattern: /^index-.*\.css$/, gz: 8_300, label: 'css' },
+  // 2026-06-03 A1 people-tree tier legend: new dashed/solid edge legend
+  // utility classes nudged the css to 8.12KB gz. Bumped to 8.5KB.
+  { pattern: /^index-.*\.css$/, gz: 8_704, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;

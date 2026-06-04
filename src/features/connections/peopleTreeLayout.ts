@@ -43,6 +43,14 @@ export interface TreePeer {
   category: PeerCategory;
   /** Angle on the ring in radians. Deterministic from pubkey hash. */
   angle: number;
+  /**
+   * How this connection was verified — 'in-person' (the 3-QR exchange,
+   * the strongest tie) or 'remote' (online-only, over Nostr). Drives the
+   * edge weight on the tree: in-person edges render bold + solid,
+   * remote edges thin + dashed. Empty string for legacy handshakes with
+   * no verification leaf.
+   */
+  verification: string;
 }
 
 export interface TreeOrg {
@@ -127,6 +135,7 @@ export function extractPeers(
       name: peer.name,
       category: categorize(view.relationship),
       angle: angleFromPubkey(k),
+      verification: view.verification,
     });
   }
   return out;
