@@ -1,10 +1,12 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
-import { multiDisclosureProof } from 'tapit-attest';
+import { multiDisclosureProof, envelopeId } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
+import { anchorQueue } from '../anchoring/anchorQueue.ts';
+import { deriveVerificationStatus } from '../anchoring/verificationStatus.ts';
 
 // Cut 7 of the Fresh roadmap — when the operator is under Fresh,
 // the "View as share card" button in the generated state opens
@@ -57,7 +59,7 @@ function asString(v: unknown): string {
 }
 
 export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
-  const { resolvedTheme } = useWallet();
+  const { resolvedTheme, ownerId } = useWallet();
   const leaves = useMemo(() => leafIndex(attestation.claim), [attestation]);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [step, setStep] = useState<Step>({ kind: 'pick' });
@@ -75,7 +77,7 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
     });
   }
 
-  function generate() {
+  async function generate() {
     if (selected.size === 0) {
       setError('pick at least one field to disclose');
       return;
@@ -87,10 +89,16 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
       // Carry the Bitcoin anchor alongside the proof so /verify can show
       // "anchored in block N" (verifyProofAnchor re-verifies it against the
       // proven digest — it's not trusted blindly). App-layer field; the
-      // chassis verifier ignores it.
-      const shared = attestation.anchor
-        ? { ...bundle, anchor: attestation.anchor }
-        : bundle;
+      // chassis verifier ignores it. Source the confirmed anchor via
+      // deriveVerificationStatus, which checks the attestation AND the live
+      // anchor row — the row is where a freshly-confirmed anchor lives
+      // before the write-back copies it onto the held attestation, so this
+      // attaches the block even when attestation.anchor isn't populated yet.
+      const row = ownerId
+        ? await anchorQueue.get(ownerId, envelopeId(attestation))
+        : undefined;
+      const anchor = deriveVerificationStatus(attestation, row).anchor;
+      const shared = anchor ? { ...bundle, anchor } : bundle;
       const json = JSON.stringify(shared, null, 2);
       setStep({ kind: 'generated', paths, json });
     } catch (err) {
@@ -167,7 +175,7 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
             )}
             <button
               type="button"
-              onClick={generate}
+              onClick={() => void generate()}
               disabled={selected.size === 0}
               className="mt-4 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
             >
