@@ -223,8 +223,8 @@ export function GatedLeafSection({
 
       {signedCircle.length === 0 ? (
         <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          First sign your vouching circle above — the people eligible to
-          protect a gate are drawn from it.
+          First choose the people who can vouch for you (above) and save
+          them — the people who can protect a gate are picked from there.
         </p>
       ) : !open ? (
         <button

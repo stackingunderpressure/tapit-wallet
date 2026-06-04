@@ -42,10 +42,13 @@ interface Props {
   saveAndRefresh: () => Promise<void>;
 }
 
+// Plain-language badges for WHERE the wallet already knows this person
+// from — no jargon. 'cohort' (recovery-helper) -> "Recovery helper";
+// 'handshake' (a peer connection) -> "Connection".
 const SOURCE_LABELS: Record<VouchingSource, string> = {
   family: 'Family',
-  cohort: 'Cohort',
-  handshake: 'Handshake',
+  cohort: 'Recovery helper',
+  handshake: 'Connection',
 };
 
 const SOURCE_CLASSES: Record<VouchingSource, string> = {
@@ -151,19 +154,18 @@ export function VouchingCircleSection({
   return (
     <section className="rounded-2xl border border-ink/10 bg-paper/50 p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">Your vouching circle</h3>
+        <h3 className="text-sm font-semibold text-ink">People who can vouch for you</h3>
         <span className="text-xs text-muted">
-          {draftSet.size} of {candidates.length} selected
+          {draftSet.size} of {candidates.length} chosen
         </span>
       </div>
       <p className="mt-1 text-xs text-muted">
-        These are the people in your existing trust networks who could vouch
-        for your identity in high-value contexts later — release authority
-        for Bitcoin spending keys, recovery ceremony attestations, identity
-        leaf disclosure gates. Pick the people you would actually want in
-        front of that gate, then sign your vouching circle to commit it
-        cryptographically. The signed leaf is the source of truth the gate
-        substrate reads from.
+        Pick a handful of people you truly trust — family, close friends,
+        the people you'd call in a crisis. Later, if you ever need to prove
+        you're really you for something that matters, the wallet can ask
+        these people to confirm it, and an attacker can't fake them. Choose
+        the ones you'd actually want vouching for you, then tap save to lock
+        in your choice.
       </p>
 
       <SignedStatusLine
@@ -174,9 +176,9 @@ export function VouchingCircleSection({
 
       {candidates.length === 0 ? (
         <div className="mt-3 rounded-md border border-ink/10 bg-white px-3 py-3 text-xs text-muted">
-          No vouching candidates yet. As you complete handshakes, declare a
-          recovery cohort, or sign family-unit envelopes, the people you
-          name there will appear here as candidates.
+          No one to choose from yet. As you connect with people in person,
+          add helpers who could get you back into your wallet, or set up a
+          family, those people will show up here to pick from.
         </div>
       ) : (
         <ul className="mt-3 space-y-2">
@@ -201,10 +203,10 @@ export function VouchingCircleSection({
             className="flex-1 rounded-md bg-ink py-2.5 text-paper text-sm font-medium disabled:opacity-40"
           >
             {busy
-              ? 'Signing…'
+              ? 'Saving…'
               : signedLeaf
-                ? 'Sign updated vouching circle'
-                : 'Sign my vouching circle'}
+                ? 'Save changes'
+                : 'Save my circle'}
           </button>
           <button
             type="button"
@@ -238,8 +240,8 @@ function SignedStatusLine({
   if (!signedLeaf) {
     return (
       <p className="mt-2 text-xs text-muted">
-        <span className="font-medium text-ink">Not yet signed.</span> Pick
-        your circle below and sign to commit it cryptographically.
+        <span className="font-medium text-ink">Not saved yet.</span> Choose
+        your people below and tap save to lock it in.
       </p>
     );
   }
@@ -247,9 +249,9 @@ function SignedStatusLine({
   return (
     <p className="mt-2 text-xs text-muted">
       <span className="font-medium text-ink">
-        {signedCount} {signedCount === 1 ? 'peer' : 'peers'} currently signed
+        {signedCount} {signedCount === 1 ? 'person' : 'people'} in your circle
       </span>{' '}
-      · last updated {signedAt}
+      · last saved {signedAt}
       {hasUnsavedChanges && (
         <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amber-900 border border-amber-200">
           unsaved changes
@@ -287,7 +289,7 @@ function CandidateRow({
           ))}
           {signed && (
             <span className="text-[10px] uppercase tracking-wide rounded-full px-1.5 py-0.5 border bg-emerald-50 text-emerald-900 border-emerald-200">
-              Signed
+              In your circle
             </span>
           )}
         </div>
@@ -301,7 +303,7 @@ function CandidateRow({
           checked={checked}
           onChange={(e) => onToggle(e.target.checked)}
           className="h-4 w-4 rounded border-ink/30 text-accent focus:ring-accent/30"
-          aria-label={`Toggle ${candidate.name} in vouching circle`}
+          aria-label={`Choose ${candidate.name} to vouch for you`}
         />
       </label>
     </li>
