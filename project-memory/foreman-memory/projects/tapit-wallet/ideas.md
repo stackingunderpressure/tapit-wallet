@@ -1331,3 +1331,60 @@ consent design, or it becomes the surveillance graph it's meant to
 replace. Resurface when Phase B (multi-hop) or the lattice/discovery
 surface is scoped. Belongs in the captivation/growth brief Phase B.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: Family shared-secret / "safe word" — the concrete everyday face of
+the circle primitive, built on the Shamir recovery substrate (NOT the
+approval gate). Operator spitballing a concrete use for the abstract
+"approval gate": a school pickup SAFE WORD. Set up as M-of-N across, say,
+{me, husband, my mom, his mom} (e.g. 2-of-4 or 3-of-5); any qualifying
+combination of those trusted people can come together to unlock/confirm
+the secret word and give it to the school; no single person can leak or
+change it alone; it can be reset later; it's a fail-safe. Operator also
+flagged the teenager version: friend-group cliques jointly holding a
+secret/clubhouse password where it takes a few of them together to admit
+someone or reveal it.
+  THE KEY DISTINCTION (the sharpening): the codeword is NOT the approval
+  gate I built (item 11 D0-D4 = "my circle ATTESTS/approves an action,
+  people vouch yes"). It is the OTHER flavor of the circle primitive: "my
+  circle JOINTLY HOLDS a secret" = Shamir secret sharing, which the
+  recovery cohort ALREADY implements (split the backup key M-of-N, any
+  threshold reconstructs, fewer cannot — createShares.ts GF(256) Shamir +
+  the recovery ceremony). So the safe-word is that same Shamir engine
+  pointed at an ARBITRARY secret string instead of the backup key. Two
+  flavors, do not conflate:
+    1. Circle APPROVES an action  -> release-authority gate (built).
+    2. Circle JOINTLY GUARDS a secret -> Shamir shares (recovery substrate).
+  The codeword wants #2, and #2 is the more immediately normal-person-
+  legible flavor — it may be the everyday consumer the abstract gate was
+  missing.
+  Use cases once seen as "a secret my people jointly hold": school pickup
+  safe-word; spare-key location / house alarm code (survives one person
+  forgetting, no single point of leak); family password any 2-of-4 can
+  recover; break-glass "where the will / safe combo is" the kids can only
+  open together when it's time; duress / "I'm okay" check-in word;
+  teen friend-group clubhouse secret (clique admits/reveals jointly).
+  HONEST SCOPE (keep): the wallet is great at "this secret is jointly
+  held and provably recoverable by your people"; it does NOT enforce what
+  a third party (the school) does with the word once revealed. It's the
+  sovereign, no-company-in-the-middle shared family secret, not a magic
+  real-world lock.
+Context: Operator 2026-06-03, immediately after flagging the abstract
+"gate a leaf" as unusable and choosing to anchor it to concrete uses.
+This entry is the candidate concrete consumer. Reuses recovery/Shamir
+(createShares.ts, createCohort.ts, the recovery ceremony) pointed at a
+user-supplied secret string. Distinct primitive from the approval gate —
+flag for whoever cuts it.
+Feature: NEW (family-shared-secret) on recovery/Shamir substrate +
+connections (the circle). Composes: createShares (GF(256) split/combine),
+the cohort declaration + distribution + the recovery ceremony pattern,
+pointed at an arbitrary secret instead of K_data. New: a "set a shared
+secret" surface, M-of-N reveal/reset ceremony, plain "family safe word"
+framing.
+Stage: raw insight -> sprouting. Strong candidate for the everyday face
+of the circle. Resurface when scoping the gate's concrete consumer OR a
+general-purpose Shamir-shared-secret feature. Operator said don't go too
+far down it yet — this is captured, not scoped.
+```
