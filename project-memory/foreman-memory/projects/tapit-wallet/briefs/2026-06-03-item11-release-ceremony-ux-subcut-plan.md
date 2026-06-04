@@ -100,7 +100,16 @@ explicit human verification check (you know this is really X), then signs
 C.3) and sends it back via the inbox. Classify incoming via
 `isReleaseAuthorityRequest`. Deliverable: a peer can one-tap ATTEST.
 
-### D3 — Operator COLLECT + compose
+### D3 — Operator COLLECT + compose — SHIPPED 2026-06-03
+Incoming attest-release-authority envelopes route to a new
+`release-authority-collect` action that auto-holds + anchors them
+(holdReleaseAuthorityAttest + acceptReleaseAuthorityAttest in
+useInboxAccepts), so they persist and count. GatedLeafSection renders a
+live per-gate tally via verifyReleaseAuthorityBundle (dedup-by-signer,
+eligibility + freshness + leaf-binding enforced): "N of M vouched ·
+resolved ✓". GatedLeafSection budget named at 4KB. Original spec below.
+
+
 Extend the D1 surface to subscribe for inbound attestations, accumulate
 distinct-peer attestations toward the leaf's M-of-N threshold, show
 live "3 of 5 collected," and when threshold is met, compose the bundle

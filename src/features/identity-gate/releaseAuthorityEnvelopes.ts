@@ -1,5 +1,7 @@
-import type { Attestation } from 'tapit-attest';
-import { credentialAttestation } from 'tapit-attest';
+import type { Attestation, Wallet } from 'tapit-attest';
+import { credentialAttestation, envelopeId, verifyEnvelope } from 'tapit-attest';
+import { anchorQueue } from '../anchoring/anchorQueue.ts';
+import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 // Three envelope kinds for the peer-mediated identity gate
 // substrate (PLAN.md Founding Vision + Tier 1 item 11 sub-cut B,
@@ -386,4 +388,40 @@ export function readReleaseAuthorityRequest(
     requestedAt: leafValue(att, 'requested_at'),
     reason: leafValue(att, 'reason'),
   };
+}
+
+// ---------------------------------------------------------------
+// collect (operator side, item 11 D3)
+// ---------------------------------------------------------------
+
+/**
+ * Hold + anchor an incoming attest-release-authority a peer signed back
+ * for one of the operator's gates, so it persists across reload and
+ * counts toward the gate's M-of-N threshold (verifyReleaseAuthorityBundle
+ * reads from holdings). Verifies the envelope's signature before holding —
+ * a malformed or unsigned envelope is rejected rather than collected.
+ * Mirrors holdRecoveryShare's hold-and-anchor shape.
+ */
+export async function holdReleaseAuthorityAttest(
+  wallet: Wallet,
+  ownerId: string,
+  anchorWorker: WorkerHandle | null,
+  envelope: Attestation,
+): Promise<void> {
+  if (!isAttestReleaseAuthority(envelope)) {
+    throw new Error('not an attest-release-authority envelope');
+  }
+  if (!verifyEnvelope(envelope).valid) {
+    throw new Error('attest-release-authority signature does not verify');
+  }
+  await wallet.hold(envelope);
+  await anchorQueue.upsert(ownerId, {
+    digestHex: envelopeId(envelope),
+    state: 'queued',
+    anchor: null,
+    attempts: 0,
+    last_attempt: null,
+    last_error: null,
+  });
+  if (anchorWorker) void anchorWorker.kick();
 }

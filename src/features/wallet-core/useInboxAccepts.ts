@@ -5,6 +5,7 @@ import {
   receiveSelfMembership,
 } from '../connections/createMembership.ts';
 import { holdRecoveryShare } from '../recovery/createShares.ts';
+import { holdReleaseAuthorityAttest } from '../identity-gate/releaseAuthorityEnvelopes.ts';
 
 // Extracted from HomeScreen 2026-05-27 to keep HomeScreen.tsx under
 // the 800-line hard limit while the peer-side vouch-witness surface
@@ -27,6 +28,7 @@ export interface InboxAcceptHandlers {
   acceptRecoveryShare(envelope: Attestation): Promise<void>;
   acceptMembership(envelope: Attestation): Promise<void>;
   acceptSelfMembership(envelope: Attestation): Promise<void>;
+  acceptReleaseAuthorityAttest(envelope: Attestation): Promise<void>;
 }
 
 export function useInboxAccepts(
@@ -117,5 +119,26 @@ export function useInboxAccepts(
     }
   }
 
-  return { acceptRecoveryShare, acceptMembership, acceptSelfMembership };
+  // Item 11 D3 — collect a vouch a peer signed back for one of the
+  // operator's gates. Hold + anchor so it persists and counts toward the
+  // gate's threshold (the GatedLeafSection resolve display reads holdings
+  // via verifyReleaseAuthorityBundle).
+  async function acceptReleaseAuthorityAttest(envelope: Attestation): Promise<void> {
+    try {
+      await holdReleaseAuthorityAttest(wallet, ownerId, anchorWorker, envelope);
+      await save();
+      await refresh();
+      const item = inboxEnvelopes.find((x) => x.envelope === envelope);
+      if (item) dismissInboxEnvelope(item.eventId);
+    } catch (err) {
+      console.warn('release-authority collect failed', err);
+    }
+  }
+
+  return {
+    acceptRecoveryShare,
+    acceptMembership,
+    acceptSelfMembership,
+    acceptReleaseAuthorityAttest,
+  };
 }

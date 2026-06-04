@@ -87,8 +87,12 @@ export function useInboxRouting(
   orgDeclaration: Attestation | null,
 ): InboxRoutingHandle {
   const { inboxEnvelopes, dismissInboxEnvelope } = useWallet();
-  const { acceptRecoveryShare, acceptMembership, acceptSelfMembership } =
-    useInboxAccepts(orgDeclaration);
+  const {
+    acceptRecoveryShare,
+    acceptMembership,
+    acceptSelfMembership,
+    acceptReleaseAuthorityAttest,
+  } = useInboxAccepts(orgDeclaration);
 
   // 5c-i-ε — inbox routing. When an envelope is routed from the
   // InboxPanel, the matching modal opens pre-filled with the envelope.
@@ -157,6 +161,8 @@ export function useInboxRouting(
     } else if (action === 'release-authority-respond') {
       setIncomingForReleaseAuth(envelope);
       setIncomingEventIdForReleaseAuth(eventId);
+    } else if (action === 'release-authority-collect') {
+      void acceptReleaseAuthorityAttest(envelope);
     }
   }
 

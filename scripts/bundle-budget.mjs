@@ -389,6 +389,12 @@ const BUDGETS = [
   // headroom for the gate-policy composition that lands in
   // subsequent sub-cuts and may also flow through this surface.
   { pattern: /^VouchingCircleSection-.*\.js$/, gz: 4_500, label: 'VouchingCircleSection' },
+  // Item 11 D0-D3 — GatedLeafSection (designate gates + request vouches +
+  // live resolve display). Lazy from IdentityGateSections. D3 pulled in
+  // verifyReleaseAuthorityBundle for the per-gate collected/threshold
+  // tally, measured 3.45KB gz. RequestVouchesModal + the responder are
+  // their own lazy chunks. Budget 4KB.
+  { pattern: /^GatedLeafSection-.*\.js$/, gz: 4_096, label: 'GatedLeafSection' },
   // 5e-v RecoveryInitiatorModal — React.lazy from UnlockPrompt;
   // loads when the operator hits "Lost passphrase? Start recovery"
   // on the locked screen. Heavier than the responder because it

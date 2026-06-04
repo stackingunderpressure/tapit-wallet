@@ -15,6 +15,8 @@ import {
   publishReleaseGatePolicyLeaf,
 } from '../identity-gate/identityLeafCredential.ts';
 import { findVouchingCircleCandidates } from '../connections/findVouchingCircleCandidates.ts';
+import { verifyReleaseAuthorityBundle } from '../identity-gate/verifyReleaseAuthorityBundle.ts';
+import { envelopeId } from 'tapit-attest';
 
 // Item 11 sub-cut D0 — designate a gated identity-leaf (the first cut of
 // the release-ceremony arc, 2026-06-03). The operator names a high-value
@@ -148,6 +150,16 @@ export function GatedLeafSection({
         <ul className="mt-3 space-y-1">
           {existing.map((p) => {
             const v = readReleaseGatePolicyLeaf(p);
+            // D3 — count valid vouches collected toward this gate. The
+            // verifier dedupes by signer, enforces eligibility + freshness
+            // + leaf binding, so collected is the honest M-of-N tally.
+            const collected = verifyReleaseAuthorityBundle({
+              attestations: holdings,
+              identityPubkey: wallet.identity,
+              eligiblePubkeys: v.eligiblePubkeys,
+              currentLeafEnvelopeId: envelopeId(p),
+            }).validCount;
+            const resolved = collected >= v.threshold;
             return (
               <li
                 key={v.forLeaf}
@@ -155,8 +167,9 @@ export function GatedLeafSection({
               >
                 <span>
                   <span className="font-medium">{v.forLeaf}</span>{' '}
-                  <span className="text-muted">
-                    — {v.threshold} of {v.eligiblePubkeys.length} peers
+                  <span className={resolved ? 'text-emerald-700' : 'text-muted'}>
+                    — {collected} of {v.threshold} vouched
+                    {resolved ? ' · resolved ✓' : ''}
                   </span>
                 </span>
                 <button
