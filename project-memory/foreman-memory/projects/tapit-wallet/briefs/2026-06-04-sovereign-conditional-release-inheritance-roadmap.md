@@ -1,224 +1,203 @@
-# Sovereign Conditional-Release / Inheritance Engine — roadmap brief
+# Sovereign Conditional-Release engine — roadmap brief
 
 *Written 2026-06-04 by Carpenter with the operator. Supersedes the
-narrow "family safe word" framing. The safe word is one cell of this
-matrix; this brief names the matrix and the honest build path.*
+narrow "family safe word" framing. v2 of this brief — see the CORRECTION
+note below; the v1 draft wrongly put a timelock on the Tapit side.*
 
-Status: VISION CAPTURED + honestly grounded. No code yet. Smallest-useful
-first cut named at the end, awaiting the operator's template pick.
+Status: VISION CAPTURED + honestly grounded. No code yet. Re-scoped
+2026-06-04 after operator correction. Smallest-useful first cut named at
+the end.
 
 ---
 
-## 1. The realization
+## 0. CORRECTION 2026-06-04 (operator) — read this first
 
-We did not build "a safe word." We built the first cell of a **sovereign
-conditional-disclosure / conditional-release engine**: the thing that
-decides who can learn *what*, *when*, on *what condition*, with a trusted
-circle as the threshold and the wallet as the sovereign key-holder. It
-has four knobs, not one:
+The first draft of this brief made the classic mistake the operator
+called out: it drilled into ONE case (inheritance) with ONE mechanism (a
+timelock on the Tapit side) and missed the forest. Corrected
+understanding, in the operator's framing:
+
+- **There is NO timelock on the Tapit side.** On this side, release
+  happens when the circle *knows* the triggering event occurred (a death,
+  an emergency, whatever the situation is — human, out-of-band knowledge)
+  and a **threshold of them decides together** to release. The trigger is
+  knowledge + consensus, not a clock.
+- **The timelock lives only on Bitcoin.** The tapscript layer is where
+  "the one key all the peers control can be assembled once the chain says
+  the date has come" (maybe 10 years out), with the owner having told the
+  circle out-of-band what to do. That is a separate, complementary,
+  trustless layer for a different situation — NOT a knob on this engine.
+- **This is a general configurable engine + a template library, not an
+  inheritance feature.** "All situations are different — you're not going
+  to build something for every single thing." It might be you holding one
+  friend's secret as a 1-of-2, or ten friends holding a club secret, or a
+  care circle's break-glass packet, or a hundred other arrangements. The
+  job is the configurable primitive plus opinionated templates over it.
+- **Don't get hung up on one case or one way of seeing it.** Forest, not
+  trees.
+
+Everything below is rewritten to honor this.
+
+---
+
+## 1. The primitive
+
+A **sovereign conditional-disclosure / release engine**: a circle holds a
+secret, and a threshold of them release it under a condition. Knobs:
 
 - **Payload** — a word, a file/pic (envelope-encrypt the blob, Shamir the
-  key — the K_data pattern we already have), a **hash** (don't reveal —
-  *commit*, prove-later, anchor), or a **bearer secret** (a Lightning
-  preimage — revealing it *moves value*). What "reveal" means changes per
-  type: read / decrypt-content / prove-without-revealing / move-money.
-- **Custody vs access** — "hold it and give it back to me later" (holders
-  carry a piece they *cannot read*; only the owner/designated key
-  reconstructs — the recovery-cohort pattern) versus "we jointly hold it"
-  (at threshold the holders themselves can open it — the school word).
-  Same Shamir math, opposite trust model. The wallet already contains
-  both faces; we never exposed them as one deliberate choice.
-- **Who may open it / to whom revealed** — the gatherer, a named
-  beneficiary, the owner only, or everyone-together.
-- **Release condition** — on demand, on a timelock, on a dead-man's
-  switch, on a consensus of the circle, on a payment — **all
-  configurable**, with opinionated templates over a general rule-builder.
+  key — the K_data pattern we already have), a hash (commit / prove-later
+  / anchor), or a bearer secret (a Lightning preimage — revealing it moves
+  value). What "reveal" means changes per type.
+- **Custody vs access** — "hold it and give it back later" (holders carry
+  a piece they cannot read; reconstructs to a claimant — the recovery-
+  cohort pattern) versus "we jointly hold it" (at threshold the holders
+  themselves can open it — the safe word). Same Shamir math, opposite
+  trust model. Both faces already exist in the wallet.
+- **The circle** — any size, any arrangement: 1-of-2 (you keep a friend's
+  secret), N friends, a care circle, a club. Fully configurable.
+- **Threshold** — M-of-N, the operator's choice per secret.
+- **Released to whom** — holder-judgment is the primary model (the circle
+  decides, at release time, to reconstruct to whoever is claiming).
+  Named-beneficiary and both-named-and-threshold are possible later
+  configurations, not cut-1 requirements.
+- **Release trigger (THIS side)** — the circle knows the event happened
+  and a threshold consents. No timer. (Bitcoin tapscript timelock is the
+  separate layer, section 4.)
 
 The product range, in the operator's words: "Might be a Netflix password
-or a missile code." Same engine, the entire stakes spectrum.
+or a missile code." Same engine, the whole stakes spectrum, expressed as
+templates.
 
 ---
 
 ## 2. The operator's vision (preserved framing, 2026-06-04)
 
-> "All configurations. For Bitcoin it can be the last key of a tapscript.
-> After a long timelock your peers can come together to assemble the key.
-> Pointless if still alive. Every 5 years you need less peers. If you're
-> alive you can rotate any secret you want among as many people as you
-> want and set any rule you want. But we provide the obvious templates for
-> obvious uses. And leave it open to use however. Might be a Netflix
-> password or a missile code."
-
-Decoded into design primitives:
-
-1. **Policy is configurable, not hardcoded.** The engine supports every
-   trigger model; the operator (or a template) sets the rule.
-2. **Tapscript-enforced dead-man's switch (north star).** A Taproot
-   spend tree where one leaf is the owner's key (spend/rotate anytime)
-   and other leaves are `timelock + peer-threshold` paths. The chain
-   itself enforces "peers cannot act before the timelock; the owner
-   always can." "Pointless if still alive" — a living owner spends/rotates
-   before maturity, so the peer path never activates.
-3. **Decaying thresholds.** Nested timelock tiers, each at a longer
-   locktime with a *lower* required quorum (5-of-7 now → 4-of-7 at +5y →
-   3-of-7 at +10y …). Solves the "decades later some holders have died
-   too" problem gracefully.
-4. **Liveness = rotation.** Being alive is demonstrated by rotating the
-   secret / re-issuing the policy, which resets the timelocks. No separate
-   "proof-of-life" daemon needed — the veto *is* the rotation.
-5. **Templates over a general engine.** Ship opinionated presets for the
-   obvious uses; leave the rule-builder open underneath.
+> "The time lock is on the bitcoin side. We do not have a time lock on
+> this one. This one is just when we know that the friend is dead or dad
+> or whoever it is then that's when we all decide. We can release the keys
+> when the time lock of the bitcoin is up and he will have told us that
+> the person would have let those know what to do. All situations are
+> different you are not gonna be able to build something for every single
+> thing... might just be you and a friend keeps a secret and you keep it
+> for the other person or there's 10 friends or there's just a whole
+> boatload of things to configure and time lock is not one of them... The
+> one key that all of the peers control can be assembled once they know
+> that that date has come... don't get too hung up on one single thing or
+> one single case or one single way of looking at something."
 
 ---
 
-## 3. Honest grounding — chassis reality vs the vision
+## 3. Honest grounding — we're closer than it looked
 
-### Reusable today (the pipes)
+Once the timelock comes off this side, the Tapit-side release model is
+"a circle holds a secret and a threshold decides to release it to a
+claimant" — which is most of what we already have:
 
-- **Shamir custody** — shares encrypted to each holder, held, decrypted,
-  recombined (`recovery/createShares.ts`, `createCohort.ts`). The
-  blind-custody "give it back to me" face is here.
-- **Recovery ceremony** — request → respond → collect-to-threshold →
-  reconstruct → succession, over the existing transport
-  (`createRecoveryRequest.ts`, `RecoveryInitiator/ResponderModal`,
-  `createRecoverySuccession.ts`).
-- **Policy engine (item 11)** — a signed `release_gate_policy` leaf
-  (eligible set, M-of-N threshold, **freshness horizon**), a verifier
-  (`verifyGatedRelease.ts`) that yields released/refused with an
-  injectable `now`, and a **stranger-verifiable bundle**
-  (`gatedReleaseBundle.ts`). This is a real declarative-policy +
-  threshold + time-window engine, currently pointed at "approve a claim."
-- **Envelope encryption / split-the-key** — backups already encrypt the
-  blob with K_data and Shamir-split K_data. Arbitrary files/pics are
-  reachable by splitting the key, not the data.
-- **Bitcoin clock** — OpenTimestamps anchoring + `verifyProofAnchor.ts`
-  reads the confirming block. SATOSHI.md: "the chain is a public clock,
-  not a database." A timelock measured in block height is the doctrine-
-  perfect, un-fast-forwardable timer.
+- **Safe word / sharedSecret** — holders gather pieces and reconstruct
+  (co-access face). Built.
+- **Recovery ceremony** — holders release their shares to a requester's
+  pubkey over the transport; requester combines to threshold (custody
+  face, reconstruct-to-an-arbitrary-key). Built (`createRecoveryRequest`,
+  `RecoveryInitiator/ResponderModal`).
+- **Policy engine (item 11)** — a signed policy leaf (eligible set,
+  threshold) + a released/refused verifier + a stranger-verifiable
+  bundle. Built; pointed at "approve a claim," reusable for "release a
+  secret."
+- **Envelope encryption** — backups split K_data, not the blob; files are
+  reachable by splitting the key.
 
-### Missing (the valve, the timer, the authorization)
+So the real work is NOT a timelock engine. It is: (a) generalize the
+existing custody + consensus-release into ONE configurable primitive;
+(b) add the claimant-by-consensus release path (holders agree → release to
+the claimant); (c) build the template library over it; (d) keep the
+honest enforcement caveat. No clock on this side.
 
-- **No Bitcoin wallet / tapscript / on-chain spend paths.** The
-  trustless, chain-enforced version is the **north star and is blocked**
-  on the Bitcoin-wallet layer SATOSHI.md names as "the largest single
-  block of remaining work." Not buildable on the current chassis.
-- **No time-scheduled / decaying-threshold policy.** Item 11 has a
-  freshness *horizon* (gets stricter with age); inheritance needs the
-  inverse — tiers that get *more permissive* past locktimes, with
-  stepped-down thresholds.
-- **No beneficiary declaration** (who *receives*, separate from who
-  *holds*) and **no heir-initiated release** — today the ceremony is
-  owner-initiated and gated on "is this really the owner?"
-- **No liveness-as-rotation wiring** as the dead-man's mechanism.
-- **No templates / rule-builder UI.**
+### Honest enforcement caveat (load-bearing)
+
+On the Tapit side the gate is the circle's judgment + a signed policy +
+the tooling — NOT math that physically stops a colluding threshold from
+reconstructing early. For "your people, best interest" cases that is the
+right and sufficient model. For adversarial-holder cases you want the
+Bitcoin tapscript layer. Never overclaim this side as trustless.
 
 ---
 
-## 4. The two-backend design (the honest bridge)
+## 4. The Bitcoin tapscript layer (separate, north star)
 
-Model the policy as a **declarative structure** with two enforcement
-backends behind one interface:
-
-- **Backend A — attestation-enforced (buildable now).** The policy is a
-  signed leaf (tiers of `{after: blockheight, threshold, beneficiaries}`,
-  liveness-by-rotation, freshness). Custody + the heir-claim ceremony run
-  at the attestation/Shamir layer over the existing transport; the
-  OTS/Bitcoin clock supplies time. Ships real value on today's chassis and
-  reuses the item-11 policy engine + the recovery ceremony.
-- **Backend B — tapscript-enforced (north star, later).** The *same*
-  policy object compiles to a Taproot spend tree once the Bitcoin-wallet
-  layer lands. Math, not social contract, enforces the timelock.
-
-**The honest caveat that must ride on every screen:** at Backend A the
-timelock is enforced by the signed policy + the tooling + the social
-contract of your trusted circle — a determined colluding M *could*
-reconstruct early because plain Shamir doesn't physically stop them. For
-"your people, best interest" + Netflix-password + family-inheritance
-cases (the operator's own framing: "you know all those people are best
-interest"), that is the correct and sufficient model. For adversarial-
-holder / missile-code cases you need Backend B's chain enforcement. Same
-policy, two guarantees; the UI states which one is in force.
-
-This is the doctrine-honest path: ship the useful thing now, forward-
-compatible with the trustless thing when the Satoshi layer is built.
+A Taproot spend tree where one leaf is the owner's key (spend/rotate
+anytime — liveness is rotation) and other leaves are timelock paths a
+peer-threshold can assemble once the chain reaches the locktime, with
+thresholds that can decay over time (fewer peers needed every few years).
+The chain enforces the timer trustlessly. This is **blocked** on the
+Bitcoin-wallet layer SATOSHI.md names as "the largest single block of
+remaining work" — there is no Bitcoin wallet / tapscript / UTXO handling
+in this app today. It is a complementary layer for the long-horizon /
+adversarial case, NOT part of the Tapit-side engine, and NOT cut 1.
 
 ---
 
-## 5. Policy data model (sketch)
+## 5. Templates (the actual product surface)
 
-```
-ReleasePolicy {
-  secretRef            // which shared secret this governs
-  beneficiaries[]      // who it releases TO (pubkeys; may differ from holders)
-  holders[]            // who guards the pieces (the cohort)
-  tiers: [             // decaying-threshold schedule, evaluated against the Bitcoin clock
-    { afterBlocks: N0, threshold: M0 },   // e.g. +6 months, 5-of-7
-    { afterBlocks: N1, threshold: M1 },   // e.g. +5 years,   4-of-7
-    { afterBlocks: N2, threshold: M2 },   // e.g. +10 years,  3-of-7
-  ]
-  livenessResetsOnRotation: true   // owner re-issue bumps the epoch, restarting the clock
-  enforcement: 'attestation' | 'tapscript'
-}
-```
+The engine is general; the product is the template library. Examples the
+operator named or implied — none hardcoded, all thin configs over the
+engine:
 
-Owner-anytime is implicit (the owner holds the secret / can always
-re-issue). Heir claim succeeds only when the current block height passes a
-tier's `afterBlocks` AND a fresh `threshold` of holders respond AND no
-fresher owner re-issue has superseded the policy.
+- Hold-a-friend's-secret (1-of-2): you and a friend each keep the other's
+  secret; either can return it.
+- Family break-glass / ICE packet released by any 2 of a care circle.
+- A club / clique secret held by N friends, few needed to use it.
+- The letter / inheritance-by-consensus: the circle releases to the heirs
+  when they know it's time and agree.
+- Shared household password (Netflix) held by the family.
+- ... open rule-builder underneath for everything else.
 
 ---
 
-## 6. Staged build order
+## 6. Build order (re-scoped, no timelock on this side)
 
-- **Cut 1 (smallest useful, Backend A):** one template — recommend "the
-  letter" / inheritance — with a **single timelock tier** (no decay yet),
-  beneficiary declaration, liveness-by-rotation, and the heir claim
-  reusing the recovery request/respond/collect ceremony gated on the
-  policy's timelock + threshold. Honest enforcement caveat on-screen.
-  Ships the inheritance flow end-to-end at the attestation layer.
-- **Cut 2:** decaying-threshold tiers (the every-5-years-fewer-peers
-  schedule) + a second template (shared password / Netflix).
-- **Cut 3:** the general rule-builder UI behind the templates.
-- **Cut 4:** commit-and-prove (hash) payload face — seal a commitment,
-  anchor it, prove-later. Smallest crypto lift (OTS exists).
-- **Cut N (north star):** Backend B — compile the policy to a Taproot
-  tapscript once the Bitcoin-wallet layer exists. Trustless enforcement.
-  Lightning-preimage payload → socially-gated sovereign money.
+- **Cut 1 (smallest useful):** the pure configurable release-policy +
+  consensus-release evaluation core — given a policy (holders, threshold,
+  custody-vs-access, claimant model) and a set of holder responses, decide
+  releasable-or-not and to whom — plus full tests. No timer, no UI, no
+  transport. Mirrors how `sharedSecret.ts` was built before any modal.
+  Reuses item-11 policy patterns + the Shamir core.
+- **Cut 2:** wire the consensus-release ceremony (holders agree → release
+  to claimant) over the existing recovery request/respond/collect
+  transport; minimal author + claim UI; honest enforcement caveat
+  on-screen.
+- **Cut 3:** the template library + a general rule-builder behind it.
+- **Cut 4:** commit-and-prove (hash) payload face — anchor a commitment,
+  prove-later. Smallest crypto lift (OTS exists).
+- **Cut N (north star, blocked):** the Bitcoin tapscript layer +
+  decaying-threshold timelocks + Lightning-preimage money face, once the
+  Bitcoin-wallet substrate exists.
 
 ---
 
-## 7. Risks / open questions
+## 7. Invariants
 
-- **Catastrophic in both directions.** Release too eagerly → a living
-  owner's whole digital life is exposed. Release too reluctantly → heirs
-  locked out forever. The owner-veto-by-rotation + threshold + timelock
-  triad must make premature release require *both* the timer to mature
-  *and* the trusted threshold to act, while a single owner rotation always
-  cancels.
-- **Time granularity.** OTS confirmation is ~hours; fine for month/year
-  timelocks, useless for short windows. Inheritance timelocks are long, so
-  this is acceptable.
-- **The enforcement caveat is a trust statement, not a math statement, at
-  Backend A.** It must never be overclaimed as trustless. This is the one
-  place the honest-scope doctrine is load-bearing.
-- **Beneficiary key rotation over decades** — heirs' keys may change
-  across the very long timelocks; the claim must tolerate key history.
+- A fresher owner re-issue always supersedes a prior policy (the owner
+  stays in control while alive).
+- Release requires a threshold of holders to actively consent — never one.
+- The holder/eligible set is bounded by the owner's own signed leaf
+  (mirror item 11's subset rule) so a tampered policy can't widen the
+  circle.
+- Enforcement on this side is the circle's judgment, never overclaimed as
+  trustless. The Bitcoin layer is where trustless lives.
 
 ---
 
 ## 8. Doctrine fit
 
-- **SATOSHI** — the chain as a public clock (timelocks), and the north-
-  star Lightning-preimage payload is the socially-gated-money substrate.
-- **MYCELIUM** — every holder needs a wallet, so each inheritance secret
-  pulls more people onto the network; the circle becomes load-bearing for
-  the heaviest human stakes (death, money, legacy) → honest retention,
-  not slot-machine retention.
-- **THE_THESIS** — sovereign over rented: this is the anti-extractive
-  replacement for the entire category of SaaS (password managers, escrow
-  agents, "digital legacy" services, inactive-account managers) that
-  exists only because someone central has to be trusted to hold the thing.
-  Here nobody central holds it; your people do, and the math (eventually
-  the chain) enforces it.
-- **Sleep-at-night ethics** — the honest enforcement caveat, stated
-  plainly per use case, is what keeps this from overclaiming.
+- **MYCELIUM** — every holder needs a wallet, so each secret pulls more
+  people onto the network; the circle becomes load-bearing → honest
+  retention.
+- **THE_THESIS** — sovereign over rented: the anti-extractive replacement
+  for the whole category of SaaS (password managers, escrow agents,
+  digital-legacy services) that exists only because someone central is
+  trusted to hold the thing. Here your people hold it.
+- **SATOSHI** — the tapscript/timelock + Lightning-preimage layer is the
+  trustless, money-bearing extension, kept honestly separate.
+- **Sleep-at-night ethics** — the enforcement caveat, stated per template,
+  keeps it from overclaiming.
