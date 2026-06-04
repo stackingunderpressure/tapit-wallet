@@ -1458,3 +1458,67 @@ the circle legible.
 Stage: raw catalog — capture, not scoped. Resurface when scoping the
 shared-secret feature or choosing concrete presets for the circle.
 ```
+
+```
+Date: 2026-06-04
+Tag: shared-secret / ACCESS-MODEL scoping (who-gets-the-secret)
+Summary: Operator challenged the "family safe word" framing — "is safe
+word the only use case? who gets the secret, the person who started it
+or everyone? did we lazily build without proper scope?" The honest
+read: the CORE (Shamir split/combine over an arbitrary string with an
+integrity marker) is general and sound, NOT lazy. But we shipped it
+framed as ONE use case with ONE implicit access model that we never
+deliberately chose — Shamir's default "whoever possesses M shares
+reconstructs locally." The 2026-06-03 use-case catalog (above) proves
+the surface spans at least THREE distinct mechanics, and they imply
+DIFFERENT access models we have not designed for:
+  1. SECRET-REVEAL, gatherer-holds (what we built): anyone who collects
+     M pieces in one place pastes them and sees it. No designated owner,
+     no consent step, no record of who contributed. In a 2-of-3 family
+     word, if mom collects grandma's + dad's pieces, MOM sees it and
+     grandma/dad had no approval moment. The creator already knows it
+     (they typed it), so "rebuild" really serves OTHERS recovering it
+     or the creator on a NEW device.
+  2. SECRET-REVEAL, consent + named requester (the parked full
+     round-trip): one person requests, each holder taps approve, the
+     secret reconstitutes ONLY on the requester's device, with an
+     auditable record of who helped. ("released by any 2 adults",
+     break-glass.)
+  3. SECRET-REVEAL, everyone-together (group consensus): all
+     participants see it simultaneously when M agree. ("kids open the
+     letter only TOGETHER when it's time.")
+  4. (separate substrate) ACTION-APPROVAL, not secret at all —
+     release-authority / item 11. "2-of-3 partners approve a purchase",
+     "neither parent can unilaterally change the pickup auth." This is
+     NOT the shared-secret primitive; conflating them is a trap.
+THE SCOPING GAP: we let possession = access by omission, and the narrow
+"safe word" naming hid that (a) the primitive is general and (b) the
+access/consent/reveal-target dimension is a real design axis we skipped.
+LIKELY DIRECTION: name it a general "shared secret / vault" primitive
+with concrete presets, and decide the access model EXPLICITLY rather
+than inheriting Shamir's default silently. Gatherer-reveal is an honest
+base; consent+requester and reveal-to-all are deliberate stronger modes.
+Reset-vs-reveal and who-may-initiate are sub-decisions inside each.
+Context: Operator 2026-06-04, after the DM-as-chat cut shipped. This is
+a healthy "stop and scope before stacking more" challenge. Surfaced as a
+chip-form direction question this same turn.
+OPERATOR CORRECTION (same turn): operator re-quoted their original
+school-codeword framing and said "don't go too far down that road" — it
+was ONE spitballed example. Reading it carefully, the gatherer-reveal
+model we built is CORRECT for it, not lazy: any of those people could
+come together to unlock the word, it doesn't matter which combination,
+the circle is trusted, it can be changed/reset later, it was just the
+fail safe. Possession = access with NO consent ceremony is the INTENDED
+behavior here because trust in the circle is assumed; treating
+gatherer-reveal as a gap was carpenter over-reach. The one genuinely
+missing piece the operator's own words name is a first-class
+CHANGE/RESET — today reset = make a new one + redistribute manually.
+Consent / named-requester / everyone-together stay real for OTHER catalog
+entries (break-glass, "open the letter together") but are NOT to be
+chased off this one example.
+Stage: sprouting — corrected. Base model (gatherer-reveal, any M of a
+trusted circle, resettable fail-safe) is RIGHT and shipped. Open thread:
+a clearer first-class reset/change flow.
+Resurface: when we touch reset/change, or when a specific catalog use
+case is explicitly chosen for a build.
+```
