@@ -1522,3 +1522,49 @@ a clearer first-class reset/change flow.
 Resurface: when we touch reset/change, or when a specific catalog use
 case is explicitly chosen for a build.
 ```
+
+```
+Date: 2026-06-04
+Tag: THESIS - peer-consensus as a covenant layer OUTSIDE bitcoin (two-layer serial consensus)
+Summary: Operator's theory. If a Bitcoin key (or a Lightning preimage)
+exists ONLY as Shamir shares across a Tapit peer group, then a threshold
+of that group (e.g. 7-of-10) is a CONSENSUS LAYER that sits IN FRONT OF
+Bitcoin's - prior, orthogonal, invisible to the chain. You must clear the
+Tapit social-threshold gate BEFORE you can even produce the signature
+Bitcoin/Lightning then validates. So we've effectively built "covenants
+outside Bitcoin" - covenant-like conditional spend enforced by a peer
+group, not by Bitcoin script. You pick your security level by your quorum
+(100 keys harder to fake than 3); Bitcoin consensus is a separate,
+second-order concern only reached AFTER Tapit consensus is achieved.
+Cashu/Fedimint are steps toward this; the unlock is personal, configurable,
+human-gated access you can turn on and off.
+Carpenter refinements (honest, to make the thesis stronger):
+ 1. Strongest form THRESHOLD-SIGNS (FROST/MuSig2) - never reconstructs the
+    key, so no single-point-of-assembly, and Bitcoin still sees ONE Schnorr
+    sig so the whole 7-of-10 policy is invisible on-chain. Wallet TODAY is
+    Shamir-RECONSTRUCTION only (no FROST in chassis, verified) - that's the
+    upgrade that turns this from clever to bulletproof.
+ 2. The social layer's security = realness/independence/non-collusion of the
+    holders -> underwritten by Tapit's IDENTITY GRAPH (handshakes, vouches,
+    anchored history = Sybil/collusion resistance). Quorum size only buys
+    security if the holders are genuinely independent humans, not sockpuppets.
+    The web-of-trust is what gives the threshold its meaning.
+ 3. Real edge over ON-CHAIN covenants = MUTABILITY: turn the gate on/off,
+    rotate, re-split, change the threshold, swap a bad member - zero on-chain
+    cost, zero fee. Rigid Bitcoin covenants (fixed at UTXO creation) can't.
+ 4. It's personal, configurable BYZANTINE FAULT TOLERANCE: dial M against how
+    many of your people could go crazy/be coerced/collude, per stakes.
+ 5. Precision so it's defensible: NOT literally a Bitcoin SCRIPT covenant
+    (which nodes enforce on a UTXO). It's off-chain social/threshold custody
+    as a pre-spend gate - you constrain WHO can ever produce the signature,
+    not the coin on-chain. Same outcome, different mechanism; the difference
+    (no Bitcoin permission needed) is the whole point.
+ 6. Fedimint already = threshold-guardian custody of BTC; Cashu = mint-
+    custodied ecash. Both are STANDING INSTITUTIONS you JOIN. Tapit
+    generalizes to AD-HOC, PERSONAL, payload-agnostic consensus gates woven
+    into your OWN identity graph, for ANY secret, not just ecash.
+Stage: matured thesis. This is the conceptual spine under the
+conditional-release engine brief (2026-06-04).
+Resurface: when scoping threshold-signing (FROST) vs reconstruction, and
+when writing any "what is Tapit" positioning.
+```
