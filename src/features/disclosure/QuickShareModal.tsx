@@ -120,7 +120,7 @@ export function QuickShareModal({ preset, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-md sm:items-center">
-      <div className="w-full max-w-md rounded-3xl border border-fresh-surface-edge bg-fresh-surface-raised p-5 shadow-2xl shadow-black/40">
+      <div className="w-full max-w-md rounded-3xl border border-fresh-surface-edge bg-fresh-surface-raised p-5 shadow-2xl shadow-black/40 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-medium text-fresh-text-primary">
             Share this proof
