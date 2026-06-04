@@ -1568,3 +1568,57 @@ conditional-release engine brief (2026-06-04).
 Resurface: when scoping threshold-signing (FROST) vs reconstruction, and
 when writing any "what is Tapit" positioning.
 ```
+
+```
+Date: 2026-06-04
+Tag: FROST RECONSIDERATION - revisit the shelved threshold-signing unlock, lighter + social-first
+Summary: Operator revisiting FROST. History (grounded): the
+2026-05-25-frost-first-and-charter-governance-roadmap.md brief planned it
+fully - operator-locked to vendor RFC 9591 FROST-secp256k1 (Rust->WASM),
+four phases (A primitives -> B wallet quorum scaffolding/DKG -> C
+quorum-controlled orgs -> D charter governance). It was shelved
+("supposedly wasn't worth it") for bundle WEIGHT + load. BUT that same
+brief already named the mitigation in its risk section: "lazy-load only
+into quorum-aware screens so Classic single-key operators never pay the
+bytes," and listed lighter TS libs (frostlib ~30-50KB, cmdcode/frost
+~40-60KB) vs the heavy reference (zcash Rust->WASM ~150-250KB). So the
+"not worth it" verdict likely attached to the HEAVY full-DKG + reference-
+WASM combo, and the escape hatch may never have been exhausted.
+Carpenter's fresh angles:
+ 1. The weight is bounded + one-time: a lazily-loaded chunk that only
+    loads during a RARE group ceremony, not main-bundle weight, not
+    per-op cost. Classic users pay zero. The wallet already lazy-loads
+    aggressively (everything shipped this session does).
+ 2. Possible dodge of what actually broke it: TRUSTED-DEALER FROST - reuse
+    today's Shamir-style dealer share distribution but make the shares
+    FROST SIGNING shares, so the key is never reconstructed at signing,
+    WITHOUT the heavy multi-round interactive DKG. Pair with a light TS
+    lib + lazy load. Gives ~80% of the benefit (group-as-signer, key never
+    assembled, Bitcoin sees one Schnorr sig) at a fraction of the weight.
+    Honest cost: trusted-dealer reintroduces a gen-time single point (the
+    dealer briefly knows the key) - same as Shamir today; full DKG removes
+    it but is the heavy part.
+ 3. SOCIAL-LAYER-FIRST is the right framing and the old brief already had
+    it: Phase B gives the wallet "the role of participant in a multi-party
+    key WITHOUT yet knowing what the key is FOR." FROST's first unlock is
+    GROUP IDENTITY - a family/club/Hearth/org that signs as ONE
+    cryptographic agent (attestations, charters, vouches, governance) - the
+    Heartwood/Mycelium governance backbone. A Bitcoin key, a Lightning
+    channel, a descriptor, 12 words are just PAYLOADS that group key can
+    later authorize. Operator: using FROST at the social layer before ever
+    touching Bitcoin "is just as interesting as doing it only on Bitcoin."
+ 4. THE FRONTIER GAP the operator's "change out our social layer the way we
+    want" exposes: MUTABLE membership with a STABLE group public key
+    (proactive resharing - add/remove a member or change threshold WITHOUT
+    changing the org's identity). This was EXPLICITLY OUT of the 2026-05-25
+    plan ("no in-place authority-transfer ceremony in scope"). Cheap
+    version: new DKG -> new group pubkey -> migrate/re-authorize (identity
+    changes). Expensive version: resharing protocol preserving the pubkey
+    (advanced, may not be in off-the-shelf libs). This is the genuinely
+    hard piece and the one to go in eyes-open on.
+Stage: matured -> actionable reconsideration. Pairs with the
+conditional-release engine thesis (same session) and the existing FROST
+brief.
+Resurface: next time we scope quorum/threshold-signing or governance;
+decide trusted-dealer-first vs full-DKG, and light-lib vs reference-WASM.
+```
