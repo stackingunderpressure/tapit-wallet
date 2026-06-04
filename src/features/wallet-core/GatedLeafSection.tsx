@@ -16,6 +16,7 @@ import {
 } from '../identity-gate/identityLeafCredential.ts';
 import { findVouchingCircleCandidates } from '../connections/findVouchingCircleCandidates.ts';
 import { verifyReleaseAuthorityBundle } from '../identity-gate/verifyReleaseAuthorityBundle.ts';
+import { buildGatedReleaseBundle } from '../identity-gate/gatedReleaseBundle.ts';
 import { envelopeId } from 'tapit-attest';
 
 // Item 11 sub-cut D0 — designate a gated identity-leaf (the first cut of
@@ -63,6 +64,24 @@ export function GatedLeafSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requestFor, setRequestFor] = useState<Attestation | null>(null);
+  const [presentedLeaf, setPresentedLeaf] = useState<string | null>(null);
+
+  // D4 — package a resolved gate into a shareable, independently-
+  // verifiable bundle and copy it. A verifier pastes it into /verify and
+  // re-runs the math: "N people this person trusts vouched they control X."
+  async function presentGate(forLeaf: string) {
+    const bundle = buildGatedReleaseBundle(holdings, wallet.identity, forLeaf);
+    if (!bundle) return;
+    const json = JSON.stringify(bundle);
+    try {
+      await navigator.clipboard.writeText(json);
+      setPresentedLeaf(forLeaf);
+      setTimeout(() => setPresentedLeaf(null), 2500);
+    } catch {
+      // Clipboard blocked — fall back to a prompt the operator can copy.
+      window.prompt('Copy this gated-release proof:', json);
+    }
+  }
   const [open, setOpen] = useState(false);
 
   // The eligible pool is the operator's SIGNED vouching circle — not the
@@ -172,13 +191,24 @@ export function GatedLeafSection({
                     {resolved ? ' · resolved ✓' : ''}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setRequestFor(p)}
-                  className="shrink-0 rounded border border-ink/15 px-2 py-1 font-medium hover:bg-ink/5"
-                >
-                  Request vouches
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {resolved && (
+                    <button
+                      type="button"
+                      onClick={() => void presentGate(v.forLeaf)}
+                      className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 font-medium text-emerald-900 hover:bg-emerald-100"
+                    >
+                      {presentedLeaf === v.forLeaf ? 'Copied ✓' : 'Present'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setRequestFor(p)}
+                    className="rounded border border-ink/15 px-2 py-1 font-medium hover:bg-ink/5"
+                  >
+                    Request vouches
+                  </button>
+                </div>
               </li>
             );
           })}

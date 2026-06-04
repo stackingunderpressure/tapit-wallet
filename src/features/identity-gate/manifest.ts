@@ -16,6 +16,8 @@ export const manifest: FeatureManifest = {
     'src/features/identity-gate/verifyGatedRelease.ts',
     'src/features/identity-gate/verifyGatedRelease.test.ts',
     'src/features/identity-gate/ReleaseAuthorityResponderModal.tsx',
+    'src/features/identity-gate/gatedReleaseBundle.ts',
+    'src/features/identity-gate/gatedReleaseBundle.test.ts',
   ],
   depends_on: ['wallet-core', 'connections'],
   pause_safe: true,

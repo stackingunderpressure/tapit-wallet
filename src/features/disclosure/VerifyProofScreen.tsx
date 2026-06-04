@@ -11,6 +11,10 @@ import {
 import { parseDisclosureProof } from './parseDisclosureProof.ts';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
 import { HowVerificationWorks } from './HowVerificationWorks.tsx';
+import {
+  verifyGatedReleaseBundle,
+  type GatedReleaseBundle,
+} from '../identity-gate/gatedReleaseBundle.ts';
 
 interface VerifiedField {
   path: string;
@@ -30,7 +34,57 @@ type Outcome =
       digest: string;
       signers: { signer: string; valid: boolean }[];
       errors: string[];
+    }
+  | {
+      kind: 'gate';
+      released: boolean;
+      forLeaf: string;
+      identityPubkey: string;
+      validCount: number;
+      threshold: number;
+      detail: string;
     };
+
+// Detect + verify a gated-release bundle (item 11 D4). Returns a 'gate'
+// outcome when the text is a gated_release bundle, or null when it isn't
+// one (so the caller falls through to the disclosure-proof path).
+function tryVerifyGateBundle(text: string): Outcome | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text.trim());
+  } catch {
+    return null;
+  }
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    (parsed as Record<string, unknown>).bundle_type !== 'gated_release'
+  ) {
+    return null;
+  }
+  const bundle = parsed as unknown as GatedReleaseBundle;
+  const verdict = verifyGatedReleaseBundle(bundle);
+  if (verdict.kind === 'released') {
+    return {
+      kind: 'gate',
+      released: true,
+      forLeaf: bundle.forLeaf,
+      identityPubkey: bundle.identityPubkey,
+      validCount: verdict.validCount,
+      threshold: verdict.threshold,
+      detail: `${verdict.validCount} of the people this identity designated have vouched.`,
+    };
+  }
+  return {
+    kind: 'gate',
+    released: false,
+    forLeaf: bundle.forLeaf ?? '(unknown)',
+    identityPubkey: bundle.identityPubkey ?? '',
+    validCount: verdict.bundleResult?.validCount ?? 0,
+    threshold: 0,
+    detail: verdict.detail,
+  };
+}
 
 function shortKey(s: string): string {
   if (s.length <= 16) return s;
@@ -71,6 +125,13 @@ export function VerifyProofScreen() {
 
   function verifyText(text: string) {
     try {
+      // A gated-release bundle (item 11 D4) is a different shape than a
+      // disclosure proof — detect it first and run its own verifier.
+      const gate = tryVerifyGateBundle(text);
+      if (gate) {
+        setOutcome(gate);
+        return;
+      }
       const parsed = parseDisclosureProof(text);
       if (parsed.kind === 'multi') {
         const result = verifyMultiDisclosureProof(parsed.bundle);
@@ -200,6 +261,44 @@ export function VerifyProofScreen() {
         <section className="mt-4 rounded-2xl bg-white border border-amber-200 p-5 shadow-sm">
           <p className="text-sm font-medium">This is not a valid proof.</p>
           <p className="mt-2 text-xs text-muted">{outcome.detail}</p>
+        </section>
+      )}
+
+      {outcome.kind === 'gate' && (
+        <section
+          className={`mt-4 rounded-2xl border p-5 shadow-sm ${
+            outcome.released
+              ? 'bg-emerald-50 border-emerald-200'
+              : 'bg-red-50 border-red-200'
+          }`}
+        >
+          <p className="text-sm font-medium">
+            {outcome.released
+              ? 'Peer-vouched gate: released.'
+              : 'Peer-vouched gate: NOT released.'}
+          </p>
+          <p
+            className={`mt-1 text-xs ${
+              outcome.released ? 'text-emerald-800' : 'text-red-800'
+            }`}
+          >
+            {outcome.released
+              ? `The math checks out: ${outcome.validCount} of ${outcome.threshold} required people — each one in this identity's own designated circle, each signing a fresh, unexpired vouch — attested that this identity controls "${outcome.forLeaf}." The policy and the circle are both signed by the identity itself, so a forged policy can't widen who counts.`
+              : outcome.detail}
+          </p>
+          <div className="mt-3 text-xs uppercase tracking-wide text-muted">
+            Identity
+          </div>
+          <div className="mt-1 font-mono text-sm break-all">
+            {outcome.identityPubkey}
+          </div>
+          <p className="mt-3 rounded-md border border-ink/10 bg-ink/[0.02] px-3 py-2 text-xs text-muted">
+            What this proves and does NOT: it proves people this person
+            designated vouched they control this — not that the underlying
+            claim is true, and not that you must act on it. It is one extra
+            thing you can check, alongside however you already decide to
+            trust someone.
+          </p>
         </section>
       )}
 

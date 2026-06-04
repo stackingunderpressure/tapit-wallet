@@ -117,7 +117,19 @@ and run `verifyReleaseAuthorityBundle` to prove it resolves. Deliverable:
 the operator sees the gate RESOLVE. Mirrors RecoveryInitiatorModal's
 awaiting→combine phases.
 
-### D4 — PRESENT the gated release
+### D4 — PRESENT the gated release — SHIPPED 2026-06-03
+gatedReleaseBundle.ts: buildGatedReleaseBundle packages the signed policy
+leaf + signed vouching-circle leaf + peer attestations + identity into a
+shareable JSON; verifyGatedReleaseBundle re-roots BOTH leaves in the
+identity's own signature (forged-policy/forged-circle rejection — 6 tests)
+before running verifyGatedRelease. GatedLeafSection gains a "Present"
+button on resolved gates (copies the bundle). VerifyProofScreen detects a
+`bundle_type: gated_release` paste and renders a released/not-released
+verdict with the honest-scope "proves peer-authorization, not truth"
+framing. The public verifier path now does gated release too. Original
+spec below.
+
+
 The payoff: with a resolved bundle, `verifyGatedRelease` lets the
 operator present the gated leaf (disclosure proof + the M-of-N bundle)
 to a verifier — the same /verify-style surface, extended to check a
