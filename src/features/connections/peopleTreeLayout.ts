@@ -110,8 +110,14 @@ export function extractPeers(
   holdings: readonly Attestation[],
   myIdentity: string,
 ): TreePeer[] {
-  const seen = new Set<string>();
-  const out: TreePeer[] = [];
+  // Accumulate per peer rather than first-seen-wins, so the STRONGEST
+  // verification across all handshakes with a peer is what the tree shows
+  // (A2 — the "close the loop" upgrade). If you knew someone remotely and
+  // later met them in person, the in-person handshake upgrades their edge
+  // from dashed to solid; an in-person tie is never downgraded by a later
+  // remote one. Order in `out` follows first appearance for stable layout.
+  const byKey = new Map<string, TreePeer>();
+  const order: string[] = [];
   const me = myIdentity.toLowerCase();
   for (const a of holdings) {
     if (!isHandshake(a)) continue;
@@ -128,17 +134,27 @@ export function extractPeers(
     }
     if (!peer || !peer.pubkey) continue;
     const k = peer.pubkey.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push({
-      pubkey: k,
-      name: peer.name,
-      category: categorize(view.relationship),
-      angle: angleFromPubkey(k),
-      verification: view.verification,
-    });
+    const existing = byKey.get(k);
+    if (!existing) {
+      order.push(k);
+      byKey.set(k, {
+        pubkey: k,
+        name: peer.name,
+        category: categorize(view.relationship),
+        angle: angleFromPubkey(k),
+        verification: view.verification,
+      });
+      continue;
+    }
+    // Upgrade an existing entry: in-person wins over remote and never
+    // gets downgraded; fill in a name if the earlier record lacked one.
+    if (view.verification === 'in-person' && existing.verification !== 'in-person') {
+      existing.verification = 'in-person';
+      existing.category = categorize(view.relationship);
+    }
+    if (!existing.name && peer.name) existing.name = peer.name;
   }
-  return out;
+  return order.map((k) => byKey.get(k)!);
 }
 
 /**

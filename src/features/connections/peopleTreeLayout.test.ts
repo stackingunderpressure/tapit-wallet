@@ -154,6 +154,28 @@ describe('extractPeers', () => {
     expect(byKey[carol.identity.subject.toLowerCase()]).toBe('remote');
   });
 
+  it('upgrades a remote tie to in-person when both exist (A2 — close the loop)', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const remoteFirst = signedHandshake(alice, bob, 'friend', 'remote');
+    const metInPerson = signedHandshake(alice, bob, 'friend', 'in-person');
+    // Remote handshake comes first in holdings; the later in-person one
+    // must upgrade the edge, not be dropped as a duplicate.
+    const peers = extractPeers([remoteFirst, metInPerson], alice.identity.subject);
+    expect(peers).toHaveLength(1);
+    expect(peers[0]?.verification).toBe('in-person');
+  });
+
+  it('never downgrades in-person to remote regardless of order (A2)', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const metInPerson = signedHandshake(alice, bob, 'friend', 'in-person');
+    const laterRemote = signedHandshake(alice, bob, 'friend', 'remote');
+    const peers = extractPeers([metInPerson, laterRemote], alice.identity.subject);
+    expect(peers).toHaveLength(1);
+    expect(peers[0]?.verification).toBe('in-person');
+  });
+
   it('returns the initiator when the operator is the responder', () => {
     const alice = newWalletAs('Alice');
     const bob = newWalletAs('Bob');
