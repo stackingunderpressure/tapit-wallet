@@ -388,10 +388,14 @@ const BUDGETS = [
   // 2026-06-03 SharedSecretModal — the family "safe word" create/recover
   // UI, React.lazy from the SharedSecretSection launcher on the Identity
   // tab. Carries the split/combine form + the encoded-share list with a
-  // lazy QrShow per piece. Measured 2.99KB gz — just past the 2.93KB
-  // generic catch-all because of the two-mode form body. Self-contained
-  // (no wallet/transport), so the size is inherent to the UI, not a leak.
-  { pattern: /^SharedSecretModal-.*\.js$/, gz: 3_500, label: 'SharedSecretModal' },
+  // lazy QrShow per piece.
+  // 2026-06-04 "more seamless and nostr" bump 3.5KB -> 5KB: the per-piece
+  // "Send over chat" path pulls in findVouchingCircleCandidates and its
+  // handshake/family/cohort leaf readers to list the circle picker, plus
+  // useWallet + sendChatMessage wiring. Measured 4.27KB gz; the growth is
+  // the circle-finder + readers, inherent to the DM-a-piece feature, not a
+  // leak (those readers are also shared with the connections chunks).
+  { pattern: /^SharedSecretModal-.*\.js$/, gz: 5_000, label: 'SharedSecretModal' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from
