@@ -16,7 +16,7 @@ export function BackupNudgeBanner(props: BackupNudgeInput) {
       role="status"
     >
       <span className="flex-1">{nudge.text}</span>
-      <span className="shrink-0 self-center rounded border border-amber-400 bg-white px-2 py-1 text-xs font-medium">
+      <span className="shrink-0 self-center rounded border border-amber-400 px-2 py-1 text-xs font-semibold text-amber-900">
         {nudge.cta}
       </span>
     </Link>
