@@ -145,6 +145,19 @@ the operator-side surface that surfaces received imposter signals.
 Deliverable: the network can SCREAM. Also the substrate the future
 fork-resolution arc (equivocation brief) consumes.
 
+### Revocation — SHIPPED 2026-06-03 (item 11 F, revocation half)
+The responder now holds its own signed vouch. MyVouchesSection lists
+"vouches you've given" with one-tap Withdraw → publishRevokeReleaseAuthority
+(sign + hold + anchor) + send the revoke to the operator. envelopeRoute's
+release-authority-collect + holdReleaseAuthorityAttest now accept revokes
+too, so the operator holds them and the gate recompute
+(verifyReleaseAuthorityBundle same-peer revoke-supersedes) drops the
+voucher and the gate de-resolves. findMyGivenVouches (pure, 2 tests).
+IMPOSTER-SIGNAL BROADCAST still pending: the builder exists but a true
+multi-party "scream to the gate-peer set" delivery depends on the
+gossip/Phase-B propagation layer — deliberately NOT faked here. Original
+spec below.
+
 ### Revocation (small, fold into D2/D3)
 `buildRevokeReleaseAuthorityDraft` — a peer withdraws a prior
 attestation; a revoke immediately stales it so the gate stops resolving

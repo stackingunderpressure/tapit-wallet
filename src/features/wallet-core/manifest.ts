@@ -33,6 +33,7 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/checkForUpdate.test.ts',
     'src/features/wallet-core/HomeScreen.tsx',
     'src/features/wallet-core/GatedLeafSection.tsx',
+    'src/features/wallet-core/MyVouchesSection.tsx',
     'src/features/wallet-core/RequestVouchesModal.tsx',
     'src/features/wallet-core/IdentityGateSections.tsx',
     'src/features/wallet-core/backupBanner.ts',

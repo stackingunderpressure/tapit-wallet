@@ -65,6 +65,14 @@ export function ReleaseAuthorityResponderModal({ request, onSuccess, onClose }: 
         horizonUntil: view.proposedHorizonUntil,
       });
       const signed = wallet.sign(draft);
+      // Keep our own record of the vouch we gave, so we can withdraw it
+      // later (MyVouchesSection reads these). Best-effort hold; the send
+      // is what matters for the operator's gate.
+      try {
+        await wallet.hold(signed);
+      } catch {
+        // non-fatal — the operator still receives the vouch
+      }
       const result = await sendEnvelope(view.identityPubkey, signed);
       setPhase({ kind: 'done', summary: summarizePublish(result) });
       onSuccess?.();

@@ -14,7 +14,9 @@ import {
   readImposterSignal,
   readReleaseAuthorityRequest,
   readRevokeReleaseAuthority,
+  findMyGivenVouches,
 } from './releaseAuthorityEnvelopes.ts';
+import { envelopeId } from 'tapit-attest';
 
 function newWalletAs(name: string): { wallet: Wallet; identity: Attestation } {
   const wallet = Wallet.generate();
@@ -428,5 +430,59 @@ describe('release-authority-request', () => {
     expect(isAttestReleaseAuthority(request)).toBe(false);
     expect(isRevokeReleaseAuthority(request)).toBe(false);
     expect(isImposterSignal(request)).toBe(false);
+  });
+});
+
+describe('findMyGivenVouches (item 11 F)', () => {
+  it('lists the attests this wallet signed and marks withdrawn ones', () => {
+    const me = newWalletAs('Voucher');
+    const op = newWalletAs('Operator');
+    const attest1 = me.wallet.sign(
+      buildAttestReleaseAuthorityDraft({
+        identityPubkey: op.wallet.identity,
+        identityLeaf: 'spend_key',
+        attestorName: 'Voucher',
+        horizonUntil: ONE_YEAR_FROM_NOW,
+      }),
+    );
+    const attest2 = me.wallet.sign(
+      buildAttestReleaseAuthorityDraft({
+        identityPubkey: op.wallet.identity,
+        identityLeaf: 'recovery_share',
+        attestorName: 'Voucher',
+        horizonUntil: ONE_YEAR_FROM_NOW,
+      }),
+    );
+    // Withdraw attest1.
+    const revoke = me.wallet.sign(
+      buildRevokeReleaseAuthorityDraft({
+        identityPubkey: op.wallet.identity,
+        identityLeaf: 'spend_key',
+        revokesAttestEnvelopeId: envelopeId(attest1),
+      }),
+    );
+    const given = findMyGivenVouches(
+      [me.identity, attest1, attest2, revoke],
+      me.wallet.publicKey,
+    );
+    expect(given.length).toBe(2);
+    const byLeaf = Object.fromEntries(given.map((g) => [g.identityLeaf, g.withdrawn]));
+    expect(byLeaf['spend_key']).toBe(true);
+    expect(byLeaf['recovery_share']).toBe(false);
+  });
+
+  it('does not list vouches signed by other people', () => {
+    const me = newWalletAs('Me');
+    const other = newWalletAs('Other');
+    const op = newWalletAs('Operator');
+    const theirAttest = other.wallet.sign(
+      buildAttestReleaseAuthorityDraft({
+        identityPubkey: op.wallet.identity,
+        identityLeaf: 'spend_key',
+        attestorName: 'Other',
+        horizonUntil: ONE_YEAR_FROM_NOW,
+      }),
+    );
+    expect(findMyGivenVouches([me.identity, theirAttest], me.wallet.publicKey)).toEqual([]);
   });
 });

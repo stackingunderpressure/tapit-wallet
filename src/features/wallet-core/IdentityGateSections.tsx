@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import type { Attestation, Wallet } from 'tapit-attest';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
+import { useWallet } from './useWallet.ts';
 
 // The two identity-gate substrate sections shown on the Identity tab —
 // the vouching circle (who could vouch for you) and the peer-protected
@@ -17,6 +18,11 @@ const VouchingCircleSection = lazy(() =>
 const GatedLeafSection = lazy(() =>
   import('./GatedLeafSection.tsx').then((m) => ({
     default: m.GatedLeafSection,
+  })),
+);
+const MyVouchesSection = lazy(() =>
+  import('./MyVouchesSection.tsx').then((m) => ({
+    default: m.MyVouchesSection,
   })),
 );
 
@@ -39,6 +45,7 @@ export function IdentityGateSections({
   onVouchingDraftChange,
   saveAndRefresh,
 }: Props) {
+  const { sendEnvelope } = useWallet();
   return (
     <Suspense
       fallback={
@@ -66,6 +73,14 @@ export function IdentityGateSections({
           saveAndRefresh={saveAndRefresh}
         />
       </div>
+      <MyVouchesSection
+        wallet={wallet}
+        ownerId={ownerId}
+        anchorWorker={anchorWorker}
+        holdings={holdings}
+        sendEnvelope={sendEnvelope}
+        saveAndRefresh={saveAndRefresh}
+      />
     </Suspense>
   );
 }

@@ -408,8 +408,12 @@ export async function holdReleaseAuthorityAttest(
   anchorWorker: WorkerHandle | null,
   envelope: Attestation,
 ): Promise<void> {
-  if (!isAttestReleaseAuthority(envelope)) {
-    throw new Error('not an attest-release-authority envelope');
+  // Accept both attests (a peer vouching) and revokes (a peer
+  // withdrawing) — the operator must hold both so the gate recompute
+  // (verifyReleaseAuthorityBundle) applies the same-peer revoke-supersedes
+  // and the gate de-resolves when a voucher pulls out.
+  if (!isAttestReleaseAuthority(envelope) && !isRevokeReleaseAuthority(envelope)) {
+    throw new Error('not an attest- or revoke-release-authority envelope');
   }
   if (!verifyEnvelope(envelope).valid) {
     throw new Error('attest-release-authority signature does not verify');
@@ -424,4 +428,86 @@ export async function holdReleaseAuthorityAttest(
     last_error: null,
   });
   if (anchorWorker) void anchorWorker.kick();
+}
+
+// ---------------------------------------------------------------
+// revocation (peer side, item 11 F)
+// ---------------------------------------------------------------
+
+export interface GivenVouch {
+  /** The held attest-release-authority envelope this peer signed. */
+  attest: Attestation;
+  /** envelopeId of that attest — what a revoke references. */
+  attestId: string;
+  /** The identity the vouch was for. */
+  identityPubkey: string;
+  /** The leaf the vouch covered. */
+  identityLeaf: string;
+  /** Whether this peer has already withdrawn it (a held revoke exists). */
+  withdrawn: boolean;
+}
+
+/**
+ * The vouches THIS wallet has given — attest-release-authority envelopes
+ * it signed and held a copy of (the responder holds its own copy). Pairs
+ * each with whether a matching revoke is already held, so the UI can show
+ * an honest "withdrawn" state. Pure.
+ */
+export function findMyGivenVouches(
+  holdings: readonly Attestation[],
+  myPubkey: string,
+): readonly GivenVouch[] {
+  const mine = myPubkey.toLowerCase();
+  const revokedAttestIds = new Set<string>();
+  for (const a of holdings) {
+    if (!isRevokeReleaseAuthority(a)) continue;
+    if (!a.signatures.some((s) => s.signer.toLowerCase() === mine)) continue;
+    revokedAttestIds.add(readRevokeReleaseAuthority(a).revokesAttestEnvelopeId);
+  }
+  const out: GivenVouch[] = [];
+  for (const a of holdings) {
+    if (!isAttestReleaseAuthority(a)) continue;
+    if (!a.signatures.some((s) => s.signer.toLowerCase() === mine)) continue;
+    const view = readAttestReleaseAuthority(a);
+    const attestId = envelopeId(a);
+    out.push({
+      attest: a,
+      attestId,
+      identityPubkey: view.identityPubkey,
+      identityLeaf: view.identityLeaf,
+      withdrawn: revokedAttestIds.has(attestId),
+    });
+  }
+  return out;
+}
+
+/**
+ * Sign + hold + anchor a revoke-release-authority withdrawing a prior
+ * vouch this peer gave. Mirrors the attest hold-and-anchor shape. The
+ * caller sends the returned envelope to the operator so their gate
+ * recomputes (the bundle verifier applies same-peer revoke-supersedes).
+ */
+export async function publishRevokeReleaseAuthority(
+  wallet: Wallet,
+  ownerId: string,
+  anchorWorker: WorkerHandle | null,
+  vouch: GivenVouch,
+): Promise<Attestation> {
+  const draft = buildRevokeReleaseAuthorityDraft({
+    identityPubkey: vouch.identityPubkey,
+    identityLeaf: vouch.identityLeaf,
+    revokesAttestEnvelopeId: vouch.attestId,
+  });
+  const signed = wallet.sign(draft);
+  await wallet.hold(signed);
+  await anchorQueue.upsert(ownerId, {
+    digestHex: envelopeId(signed),
+    state: 'queued',
+    anchor: null,
+    attempts: 0,
+    last_attempt: null,
+    last_error: null,
+  });
+  if (anchorWorker) void anchorWorker.kick();
+  return signed;
 }

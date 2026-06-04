@@ -4,7 +4,11 @@ import { isMembership, isSelfMembership } from '../connections/createMembership.
 import { isFamilyUnit, readFamilyUnit } from '../connections/familyUnit.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
 import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
-import { isReleaseAuthorityRequest, isAttestReleaseAuthority } from '../identity-gate/releaseAuthorityEnvelopes.ts';
+import {
+  isReleaseAuthorityRequest,
+  isAttestReleaseAuthority,
+  isRevokeReleaseAuthority,
+} from '../identity-gate/releaseAuthorityEnvelopes.ts';
 
 // Envelope routing — kind-to-action mapping used by both the Mycelium
 // inbox (InboxPanel) and the in-person scan path (ScanEnvelopeModal).
@@ -213,13 +217,14 @@ export function routeFor(
       hint: 'A peer is asking you to vouch that they control something important.',
     };
   }
-  if (isAttestReleaseAuthority(att)) {
-    // A vouch a peer signed back for one of your gates. Auto-collect it
-    // (hold + anchor) so it counts toward the gate's threshold.
+  if (isAttestReleaseAuthority(att) || isRevokeReleaseAuthority(att)) {
+    // A vouch (attest) or a withdrawal (revoke) a peer signed for one of
+    // your gates. Auto-collect it (hold + anchor) so the gate recompute
+    // applies it — a revoke drops a previously-counted voucher.
     return {
       action: 'release-authority-collect',
       label: 'Collect vouch',
-      hint: 'A peer vouched for one of your gates — collect it toward your threshold.',
+      hint: 'A peer updated their vouch for one of your gates.',
     };
   }
   return null;
