@@ -1622,3 +1622,56 @@ brief.
 Resurface: next time we scope quorum/threshold-signing or governance;
 decide trusted-dealer-first vs full-DKG, and light-lib vs reference-WASM.
 ```
+
+```
+Date: 2026-06-04
+Tag: ARCHITECTURE - fixed-peer-key + mutable-descriptor inheritance vault (cleanest synthesis)
+Summary: Operator's design. The peers hold ONE FIXED key (their secret
+never changes, distributed once, "no clue what they hold"); the owner
+reconfigures wallets freely on his own side; the ONLY mutable,
+must-propagate piece is the DESCRIPTOR. Maps cleanly to Bitcoin Taproot:
+owner KEY-PATH (spend anytime, private, sole control while alive) + a
+timelocked TAPLEAF k-of-n of the fixed peer keys (CSV relative timelock).
+Bitcoin enforces that the peers cannot touch the coin before the timelock
+matures EVEN IF fully colluding - trustless, strictly stronger than the
+pure-social gate. This is why the $1M case wants the chain and the Netflix
+case doesn't.
+CSV detail = the operator's "pointless if alive / liveness": a relative
+timelock resets every time the coin moves, so a periodic self-spend IS the
+proof-of-life; stop (die) and the last UTXO's clock matures and the peer
+branch opens. Honest cost: the dead-man's switch needs periodic on-chain
+liveness spends (a chore + footprint), or absolute timelocks pushed forward.
+DIVISION OF LABOR (the spine): peers hold the fixed KEY (high stakes,
+direct, once); TAPIT holds the DESCRIPTOR (low stakes - watch-only public
+keys + policy, no spending power - mutable, refreshed) and conditionally
+RELEASES it to the heirs on consensus/after the event; BITCOIN enforces the
+timelock + threshold. Tapit holds the MAP, not the money and not the key.
+RESOLVES last turn's frontier gap: you do NOT reshare the group (the hard
+problem). You keep the group FIXED and vary the descriptor around them.
+Mutability via policy reconfiguration, not membership change.
+GROUNDING: this is the proven Liana / Nunchuk inheritance-vault pattern
+(primary key + timelocked recovery path via descriptors) - validated,
+deployable on Bitcoin TODAY. Tapit's delta: (a) the recovery path is your
+attested SOCIAL graph - real, Sybil-resistant humans, not a backup key in a
+drawer; (b) Tapit solves the operational gap those vaults leave to the user
+- keeping the heirs' descriptor current AND releasing it; (c) the identity
+layer keeps peers recoverable as their own keys rotate.
+FROST DISTINCTION: this design does NOT need FROST. A revealed k-of-n in a
+Taproot tapleaf (multi_a / CHECKSIGADD) does it with plain Bitcoin script -
+each peer signs independently with their fixed key, no DKG, no interactive
+rounds, lighter than FROST. FROST only adds PRIVACY (peer-threshold becomes
+a single aggregate sig, invisible on-chain even at spend). Optional upgrade,
+NOT on the critical path for the inheritance vault.
+THE ONE RISK TO NEVER GET WRONG: descriptor propagation. Keys without the
+current descriptor = permanently bricked funds. System reliability = keeping
+the heirs' descriptor copy current + retrievable = exactly Tapit's job, must
+be bulletproof. Favor a stable descriptor or automatic Tapit-side refresh so
+a rotation never strands the heirs. The descriptor reveals existence/amount/
+peer-set (privacy), so hold it encrypted, release only to heirs.
+REALITY: no Bitcoin layer in the wallet today (Satoshi's biggest unbuilt
+block). Tapit-now contribution = descriptor custody + release; the Bitcoin
+enforcement is north star.
+Stage: matured architecture - cleanest synthesis of the arc so far.
+Resurface: when the Bitcoin layer is scoped; pairs with the conditional-
+release engine brief + the FROST reconsideration entry.
+```
