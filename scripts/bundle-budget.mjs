@@ -279,7 +279,11 @@ const BUDGETS = [
   // 11 -> 12.25KB.
   { pattern: /^SettingsScreen-.*\.js$/, gz: 12_544, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
-  { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_000, label: 'VerifyProofScreen' },
+  // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
+  // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer
+  // panel + the gated-release-bundle verdict from item 11 D4), measured
+  // 5.04KB gz. Bumped 5 -> 5.5KB.
+  { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_632, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
   { pattern: /^CaptureScreen-.*\.js$/, gz: 2_000, label: 'CaptureScreen' },
 

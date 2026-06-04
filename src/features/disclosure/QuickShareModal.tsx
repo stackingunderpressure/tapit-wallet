@@ -52,7 +52,14 @@ export function QuickShareModal({ preset, onClose }: Props) {
         preset.attestation,
         preset.disclosedPaths,
       );
-      const json = JSON.stringify(bundle);
+      // Carry the Bitcoin anchor so /verify can show the block (re-verified
+      // there against the proven digest). May push the bundle past the
+      // inline-URL budget, in which case the share falls back to plain
+      // /verify + paste — acceptable; the anchor still rides in the proof.
+      const shared = preset.attestation.anchor
+        ? { ...bundle, anchor: preset.attestation.anchor }
+        : bundle;
+      const json = JSON.stringify(shared);
       const encoded = base64UrlEncode(json);
       const origin =
         typeof window !== 'undefined' ? window.location.origin : '';

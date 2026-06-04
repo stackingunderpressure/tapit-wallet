@@ -9,6 +9,8 @@ export const manifest: FeatureManifest = {
     'src/features/disclosure/ShareProofModal.tsx',
     'src/features/disclosure/VerifyProofScreen.tsx',
     'src/features/disclosure/HowVerificationWorks.tsx',
+    'src/features/disclosure/verifyProofAnchor.ts',
+    'src/features/disclosure/verifyProofAnchor.test.ts',
     'src/features/disclosure/parseDisclosureProof.ts',
     'src/features/disclosure/leafIndex.ts',
     'src/features/disclosure/ShareCard.tsx',

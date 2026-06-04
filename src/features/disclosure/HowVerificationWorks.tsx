@@ -136,12 +136,14 @@ export function HowVerificationWorks({
           </p>
 
           <p className="text-xs text-muted">
-            One honest note: this check proves the fields were signed and
-            have not been altered. A separate layer — an independent Bitcoin
-            timestamp proving roughly <em>when</em> it was signed — is part
-            of the wallet but is not yet carried inside this shareable proof,
-            so it is not shown here. We would rather say that plainly than
-            imply a guarantee this proof does not yet carry.
+            There is a fourth thing some proofs carry: an independent Bitcoin
+            timestamp proving roughly <em>when</em> the entry existed. When a
+            proof includes one, you'll see a "Bitcoin timestamp" line above
+            with the block it was anchored to — and the page re-checks that
+            the timestamp genuinely belongs to <em>this</em> entry before
+            showing it, so it can't be faked by whoever shared the proof. If
+            no such line appears, this proof simply doesn't carry a timestamp —
+            the signature check above still stands on its own.
           </p>
         </div>
       )}

@@ -84,7 +84,14 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
     try {
       const paths = [...selected];
       const bundle = multiDisclosureProof(attestation, paths);
-      const json = JSON.stringify(bundle, null, 2);
+      // Carry the Bitcoin anchor alongside the proof so /verify can show
+      // "anchored in block N" (verifyProofAnchor re-verifies it against the
+      // proven digest — it's not trusted blindly). App-layer field; the
+      // chassis verifier ignores it.
+      const shared = attestation.anchor
+        ? { ...bundle, anchor: attestation.anchor }
+        : bundle;
+      const json = JSON.stringify(shared, null, 2);
       setStep({ kind: 'generated', paths, json });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'could not generate proof');

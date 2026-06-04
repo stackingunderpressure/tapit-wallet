@@ -15,6 +15,12 @@ import {
   verifyGatedReleaseBundle,
   type GatedReleaseBundle,
 } from '../identity-gate/gatedReleaseBundle.ts';
+import {
+  readBundleAnchor,
+  verifyProofAnchor,
+  type AnchorCheck,
+  type ProofAnchor,
+} from './verifyProofAnchor.ts';
 
 interface VerifiedField {
   path: string;
@@ -34,6 +40,7 @@ type Outcome =
       digest: string;
       signers: { signer: string; valid: boolean }[];
       errors: string[];
+      anchor: ProofAnchor | null;
     }
   | {
       kind: 'gate';
@@ -122,6 +129,26 @@ export function VerifyProofScreen() {
   const [raw, setRaw] = useState('');
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
   const [scanning, setScanning] = useState(false);
+  const [anchorCheck, setAnchorCheck] = useState<AnchorCheck>({ state: 'none' });
+
+  // When a VALID disclosure result carries a Bitcoin anchor, re-verify the
+  // anchor against the proven digest (async, network-free) and show the
+  // block. Only runs for valid proofs — a Bitcoin timestamp on a proof
+  // whose signature didn't check out is meaningless.
+  useEffect(() => {
+    if (outcome.kind !== 'result' || !outcome.valid || !outcome.anchor) {
+      setAnchorCheck({ state: 'none' });
+      return;
+    }
+    let cancelled = false;
+    setAnchorCheck({ state: 'checking' });
+    void verifyProofAnchor(outcome.digest, outcome.anchor).then((c) => {
+      if (!cancelled) setAnchorCheck(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [outcome]);
 
   function verifyText(text: string) {
     try {
@@ -133,6 +160,9 @@ export function VerifyProofScreen() {
         return;
       }
       const parsed = parseDisclosureProof(text);
+      const anchor = readBundleAnchor(
+        (parsed.bundle as { anchor?: unknown }).anchor,
+      );
       if (parsed.kind === 'multi') {
         const result = verifyMultiDisclosureProof(parsed.bundle);
         const fields = disclosedLeavesOf(parsed.bundle).map((d) => ({
@@ -149,6 +179,7 @@ export function VerifyProofScreen() {
           digest: result.digest,
           signers: result.signers,
           errors: result.errors,
+          anchor,
         });
       } else {
         const result = verifyDisclosureProof(parsed.bundle);
@@ -167,6 +198,7 @@ export function VerifyProofScreen() {
           digest: result.digest,
           signers: result.signers,
           errors: result.errors,
+          anchor,
         });
       }
     } catch (err) {
@@ -378,6 +410,53 @@ export function VerifyProofScreen() {
                   </li>
                 ))}
               </ul>
+            </>
+          )}
+
+          {outcome.valid && outcome.anchor && (
+            <>
+              <div className="mt-3 text-xs uppercase tracking-wide text-muted">
+                Bitcoin timestamp
+              </div>
+              {anchorCheck.state === 'checking' && (
+                <p className="mt-1 text-sm text-muted">Checking the timestamp…</p>
+              )}
+              {anchorCheck.state === 'confirmed' && (
+                <div className="mt-1 text-sm">
+                  <p>
+                    Timestamped to{' '}
+                    <a
+                      href={`https://mempool.space/block/${anchorCheck.btcHeight}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-accent underline"
+                    >
+                      Bitcoin block {anchorCheck.btcHeight}
+                    </a>
+                    .
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    The timestamp proof included here genuinely commits this
+                    exact entry to that block — so this existed, unchanged, by
+                    the time that block was mined. Tap the block to look it up
+                    on a public Bitcoin explorer and confirm it for yourself.
+                  </p>
+                </div>
+              )}
+              {anchorCheck.state === 'pending' && (
+                <p className="mt-1 text-xs text-muted">
+                  The timestamp proof is valid for this entry but has not been
+                  confirmed in a Bitcoin block yet — it was submitted to a
+                  timestamp calendar and is waiting for the next anchoring.
+                </p>
+              )}
+              {anchorCheck.state === 'mismatch' && (
+                <p className="mt-1 text-xs text-amber-700">
+                  A timestamp was attached, but it does not check out for this
+                  entry ({anchorCheck.reason}) — ignore the timestamp; the
+                  signature proof above still stands on its own.
+                </p>
+              )}
             </>
           )}
         </section>
