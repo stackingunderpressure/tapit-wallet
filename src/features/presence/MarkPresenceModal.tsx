@@ -151,7 +151,7 @@ export function MarkPresenceModal({ onClose, prefill }: Props) {
                   onClick={enroll}
                   className="mt-4 w-full rounded-md bg-ink py-3 text-paper text-sm font-medium"
                 >
-                  Enroll a passkey on this device
+                  Set up Face ID / passkey on this device
                 </button>
               </>
             ) : (

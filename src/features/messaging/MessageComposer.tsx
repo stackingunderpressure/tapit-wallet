@@ -87,8 +87,8 @@ export function MessageComposer({ onSend, isFresh, placeholder, onOpenPromote }:
           <button
             type="button"
             onClick={() => onOpenPromote(text)}
-            aria-label="Promote to envelope"
-            className={`shrink-0 h-10 w-10 rounded-full border text-lg leading-none flex items-center justify-center transition ${plusBtnClass}`}
+            aria-label="Save this message as an entry"
+            className={`shrink-0 h-11 w-11 rounded-full border text-lg leading-none flex items-center justify-center transition ${plusBtnClass}`}
           >
             +
           </button>

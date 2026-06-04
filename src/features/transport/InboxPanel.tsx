@@ -64,8 +64,8 @@ export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
         </div>
       </div>
       <p className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>
-        Encrypted to you and verified. Tap Open to handle it — the wallet
-        takes you to the right next step.
+        Sent privately to you and checked as genuine. Tap Open and the
+        wallet takes you to the right next step.
       </p>
       <ul className="mt-3 space-y-2">
         {envelopes.map((item) => (
@@ -138,7 +138,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             <button
               type="button"
               onClick={onCopy}
-              className={`rounded-md px-3 py-1 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
+              className={`rounded-md px-3 py-2 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
             >
               {copied ? 'Copied' : 'Copy'}
             </button>
@@ -146,7 +146,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
           <button
             type="button"
             onClick={() => onDismiss(item.eventId)}
-            className={`rounded-md px-3 py-1 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
+            className={`rounded-md px-3 py-2 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
             aria-label="Dismiss"
           >
             Dismiss

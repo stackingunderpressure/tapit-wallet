@@ -65,7 +65,7 @@ export function PromoteMenu({ sourceText, isFresh, onSelect, onClose }: Props) {
         <button
           type="button"
           onClick={onClose}
-          className={`mt-3 w-full rounded-lg py-2 text-sm font-medium ${
+          className={`mt-3 w-full rounded-lg py-3 text-sm font-medium ${
             isFresh ? 'text-fresh-text-tertiary' : 'text-muted'
           }`}
         >

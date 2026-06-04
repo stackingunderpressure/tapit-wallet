@@ -184,14 +184,14 @@ export function PresenceDetailModal({
               </div>
             ) : liveState === 'failed' ? (
               <div className="mt-2 text-xs text-red-700">
-                Anchoring failed — the worker will retry. The signed
-                envelope itself stays valid regardless.
+                Time-sealing is delayed — the app will keep retrying on its
+                own. Your signed record stays valid in the meantime.
               </div>
             ) : liveState === 'queued' || liveState === 'pending' || liveState === undefined ? (
               <div className="mt-2 text-xs text-muted">
-                ⏳ Time-verifying… anchors usually settle within an hour
-                but can take longer if calendar servers are slow. The
-                envelope is signed and valid in the meantime.
+                ⏳ Time-sealing… this usually settles within an hour but can
+                take longer if the timestamp servers are slow. Your record is
+                signed and valid in the meantime.
               </div>
             ) : (
               <div className="mt-2 text-xs text-muted">
@@ -202,7 +202,7 @@ export function PresenceDetailModal({
 
           <details className="rounded-md border border-ink/10 bg-white p-3">
             <summary className="cursor-pointer text-xs uppercase tracking-wide text-muted">
-              Cryptographic details
+              Technical details
             </summary>
             <div className="mt-2 space-y-2 text-xs">
               <div>
