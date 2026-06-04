@@ -1388,3 +1388,73 @@ of the circle. Resurface when scoping the gate's concrete consumer OR a
 general-purpose Shamir-shared-secret feature. Operator said don't go too
 far down it yet — this is captured, not scoped.
 ```
+
+```
+Date: 2026-06-03
+Section: ideas
+Entry: Use-case catalog for the circle primitive (low monetary value /
+high SOCIAL value) — the "my people jointly hold a secret OR jointly
+approve an action" family of features. Operator asked for the full
+breadth of where this lands. Two flavors throughout: (1) JOINTLY HOLD a
+secret = Shamir (recovery substrate); (2) JOINTLY APPROVE an action =
+release-authority gate (item 11).
+  KIDS & TEENS: school pickup safe-word (M-of-N family); friend-group
+  clubhouse password / secret society (clique jointly holds, few needed
+  to admit); "is this really my friend" anti-catfish word; group-chat
+  admin needs 2-of-3 to add/remove (no solo nuke or creep-invite);
+  teen duress "come get me" word any parent sees; scavenger-hunt/game
+  secrets that unlock only as a team; secret-santa assignments held so
+  no one peeks alone.
+  FAMILIES & PARENTS: alarm/garage/Wi-Fi code held M-of-N (survives one
+  forgetting, no single-phone leak); spare-key location, safe combo,
+  passport location; break-glass estate info (will, lawyer, insurance)
+  kids open only TOGETHER when it's time; babysitter/grandparent
+  emergency packet (doctor, allergies, ICE) released by any 2 adults;
+  family proof-of-life / "I'm okay" check-in word; shared household
+  account passwords any 2-of-4 recover; co-parenting neutral safe-word +
+  pickup auth neither parent can unilaterally change.
+  COUPLES: "this is really me, act on it" word for big requests
+  (anti-deepfake-voice / SIM-swap scam defense); joint vault recoverable
+  by either partner + one trusted third (breakup/death isn't a lockout).
+  CAREGIVING / ELDERLY / HEALTH: aging parent's accounts/directives held
+  by adult kids M-of-N (no solo action, together in emergency); trusted
+  contacts see meds/allergies/DNR released by any 2 of care circle;
+  dementia safety — caregiver circle jointly holds door code + "allowed
+  to take Mom out" approval.
+  FRIEND GROUPS & COMMUNITIES: mutual-aid shared resource list/safehouse
+  only the circle holds; neighborhood watch gate code + "let contractor
+  in" approval across neighbors; hobby clubs/bands/D&D shared lore +
+  social logins; recovery/support group private meeting location to
+  vouched members only; activists/journalists/at-risk — a contact or
+  location no single member can leak under pressure (M-of-N reveal).
+  SMALL BUSINESS & TEAMS: petty-cash code / POS admin PIN / alarm code
+  held by shift leads M-of-N; server root / registrar / master password
+  held by partners (no single or fired admin controls it); "approve
+  before this happens" — 2-of-3 partners for a big purchase / press
+  statement / granting access; founder break-glass key recovery.
+  CIVIC / FAITH: congregation benevolence-fund access / members-in-need
+  list held by deacons M-of-N; estate executor circle; co-op board /
+  community-treasury approval.
+  THE THROUGH-LINE (why low-money / high-social): every one of these is
+  something people ALREADY handle with a sticky note, a group text, "ask
+  my mom," or a shared password nobody should know — fragile, leaky,
+  single-point-of-failure. This makes it sovereign (no company holds it),
+  tamper-evident, recoverable, and COLLECTIVE BY DESIGN. The emotional
+  hook is not money — it's "my people have my back, and no one of them
+  can betray or fumble it alone." This is the adoption surface area: the
+  circle primitive isn't a crypto feature, it's social infrastructure for
+  trust people already practice informally.
+  HONEST SCOPE (keep on all): the wallet makes a secret jointly-held +
+  provably recoverable, or an action jointly-approved + provable — it
+  does NOT enforce what a third party does with the result (the school,
+  the bank). Sovereign shared-trust, not a real-world lock.
+Context: Operator 2026-06-03, brainstorming breadth after the safe-word
+example. This catalog is the adoption-thesis evidence: the circle
+primitive (Shamir shared-secret + release-authority approval, BOTH
+already substrate) has enormous low-stakes everyday surface area. Feeds
+the captivation/growth brief AND the family-shared-secret entry. Picking
+2-3 of these as shipped presets/templates is the likely path to making
+the circle legible.
+Stage: raw catalog — capture, not scoped. Resurface when scoping the
+shared-secret feature or choosing concrete presets for the circle.
+```
