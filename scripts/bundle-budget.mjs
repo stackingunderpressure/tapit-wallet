@@ -385,6 +385,13 @@ const BUDGETS = [
   // never need it; small because it's just a hex input + new-pass
   // form running restoreFromKData + exportRecoverableWithKData.
   { pattern: /^RecoveryKeyImportModal-.*\.js$/, gz: 2_500, label: 'RecoveryKeyImportModal' },
+  // 2026-06-03 SharedSecretModal — the family "safe word" create/recover
+  // UI, React.lazy from the SharedSecretSection launcher on the Identity
+  // tab. Carries the split/combine form + the encoded-share list with a
+  // lazy QrShow per piece. Measured 2.99KB gz — just past the 2.93KB
+  // generic catch-all because of the two-mode form body. Self-contained
+  // (no wallet/transport), so the size is inherent to the UI, not a leak.
+  { pattern: /^SharedSecretModal-.*\.js$/, gz: 3_500, label: 'SharedSecretModal' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from
