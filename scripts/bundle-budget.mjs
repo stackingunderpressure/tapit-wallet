@@ -405,8 +405,15 @@ const BUDGETS = [
   // the encrypted secretsLedgerStore, and the per-piece tag/assign UI in the
   // make view. Measured 7.14KB gz; this is the whole tracking surface the
   // operator asked for ("all bells and whistles"), folded into the one lazy
-  // chunk that only loads when the modal opens — classic users pay nothing.
-  { pattern: /^SharedSecretModal-.*\.js$/, gz: 8_000, label: 'SharedSecretModal' },
+  // chunk that only loads when the panel opens — classic users pay nothing.
+  // 2026-06-05 "secrets condo in People": the old SharedSecretModal body was
+  // extracted into SecretsDashboard (inline, no modal chrome) so it can live
+  // as a collapsible panel in the People tab next to List/Tree. The lazy
+  // chunk renamed SharedSecretModal -> SecretsDashboard and gained a Share
+  // button over the Web Share API (AirDrop / Messages / Mail) alongside the
+  // existing chat / Copy / QR channels. Budget held at 8.5KB for the added
+  // share wiring; only loads when the operator expands the secrets panel.
+  { pattern: /^SecretsDashboard-.*\.js$/, gz: 8_500, label: 'SecretsDashboard' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from

@@ -25,11 +25,6 @@ const MyVouchesSection = lazy(() =>
     default: m.MyVouchesSection,
   })),
 );
-const SharedSecretSection = lazy(() =>
-  import('../recovery/SharedSecretSection.tsx').then((m) => ({
-    default: m.SharedSecretSection,
-  })),
-);
 
 interface Props {
   wallet: Wallet;
@@ -86,7 +81,6 @@ export function IdentityGateSections({
         sendEnvelope={sendEnvelope}
         saveAndRefresh={saveAndRefresh}
       />
-      <SharedSecretSection />
     </Suspense>
   );
 }
