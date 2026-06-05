@@ -1770,3 +1770,51 @@ Stage: raw insight -> sprouting. Resurface: pairs with the Mycelium network
 spec and the identity-leaf model; the local-histogram version is a small,
 high-delight cut that could ship well before the network-census version.
 ```
+
+```
+Date: 2026-06-05
+Tag: AGGREGATE DEMOGRAPHICS - update: operator picked ALL THREE versions; grounding on the location leaf
+Operator picked all three scopes (local histogram + network census + provable),
+so the vision is the full stack; build order stays smallest-first.
+GROUNDING (changes the first brick): the identity attestation ALREADY carries
+an optional `location` leaf (createIdentityAttestation.ts), captured at the
+founding ceremony (IdentityCeremony.tsx:93), read in HomeScreen + nostrProfile.
+BUT it is FREE-TEXT ("Austin, TX" / "Texas" / "usa") so it will NOT bucket
+cleanly into "200 US, 15 AU". leafValue(att,'location') already reads it off
+any connection's identity, and handshakes already exchange identity
+attestations, so the DATA PATH exists — the gap is STRUCTURE.
+FIRST BRICK: a structured coarse origin code — country (ISO-ish), optionally
+region — captured as a dropdown at the ceremony + editable in settings, then a
+"Connections by region" histogram groups your handshaked connections by it.
+The granularity is the PRIVACY DIAL (country-only = strongest k-anonymity;
+country+region = finer but less anonymous). All three versions build on this
+same coarse-code leaf: local = group your own; network = gossip/merge sketches;
+provable = disclosure proof over the leaf.
+OPEN (asked operator, chip): country-only vs country+region vs reuse free-text.
+Stage: sprouting -> actionable. The local histogram is the small first cut;
+network census + provable grow from the same leaf.
+```
+
+```
+Date: 2026-06-05
+Tag: BITCHAT / OFFLINE-MESH TRANSPORT - photos & payloads travel over regular channels, not Nostr-only
+Operator (on camera-in-chat): "Can be shared over regular ways like iMessage,
+AirDrop, Bluetooth. We don't have to have Nostr specifically. And what about
+enabling BitChat for edge case and maybe adding that capability in as a medium
+to travel through?"
+TWO THINGS HERE:
+(1) NOW, no new infra: the system share sheet (shareFile / Web Share API,
+already built for the stamped photo) ALREADY routes to iMessage / AirDrop /
+Bluetooth / anything installed. So "send a photo from a chat" can just be
+capture -> share-out via the sheet; Nostr is not required. The camera modal +
+shareFile already exist; this is a thin wiring cut.
+(2) NORTH STAR, big: BitChat (Jack Dorsey's BLE offline mesh chat) as an
+ADDITIONAL TRANSPORT MEDIUM the wallet can travel through — the edge case where
+there's no internet/relays at all (disaster, off-grid, censorship). Tapit's
+transport layer is currently Nostr relays (NIP-17). A BLE-mesh transport would
+be a pluggable second medium under the same envelope abstraction. Big
+integration (BLE, mesh routing, store-and-forward), its own cut. Fits the
+sovereignty thesis hard: works when the internet doesn't.
+Stage: (1) ready-to-build thin cut; (2) raw insight / north-star transport.
+Resurface: pairs with the Mycelium network spec + the transport feature.
+```
