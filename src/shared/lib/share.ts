@@ -53,3 +53,42 @@ export async function shareText(opts: {
 export function canShare(): boolean {
   return typeof navigator.share === 'function';
 }
+
+export type FileShareOutcome = 'shared' | 'cancelled' | 'downloaded';
+
+// Share an actual file (e.g. a stamped photo) through the Web Share
+// API Level 2 file pathway — on iOS / the installed PWA this is the
+// same system sheet (AirDrop, Messages, Save to Files) but carrying
+// the image itself, not just text. Where files-sharing is not
+// supported (most desktop browsers) we fall back to a download so
+// the operator always ends up with the file in hand. A user
+// cancelling the sheet is a deliberate close, not a failure.
+export async function shareFile(
+  file: File,
+  title: string,
+): Promise<FileShareOutcome> {
+  if (
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [file] })
+  ) {
+    try {
+      await navigator.share({ files: [file], title });
+      return 'shared';
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return 'cancelled';
+      }
+      // Real failure — fall through to download.
+    }
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return 'downloaded';
+}

@@ -16,6 +16,8 @@ import { CosignRequestModal } from '../cosigning/CosignRequestModal.tsx';
 import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
 import { ShareProofModal } from '../disclosure/ShareProofModal.tsx';
+import { StampedPhotoButton } from './StampedPhotoButton.tsx';
+import { displayNameOf } from '../connections/createHandshake.ts';
 import { noteTextFromEntry } from '../transport/nostrNote.ts';
 import { sharedNotesStore } from '../storage/sharedNotesStore.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
@@ -135,6 +137,13 @@ export function JournalDetail() {
 
   const title = readString(entry.claim, 'title');
   const noteText = noteTextFromEntry({ title, text });
+
+  // Operator display name for the "captured by" line on a stamped photo.
+  // Falls back gracefully when the founding identity isn't in holdings.
+  const identityAtt = holdings.find(
+    (a) => a.kind === 'identity' && a.subject === wallet.identity,
+  );
+  const capturedBy = identityAtt ? displayNameOf(identityAtt) : 'A Tapit user';
   const anyRelayLive = (relayStatus ?? []).some((s) => s.open);
 
   async function handleShareToNostr() {
@@ -181,11 +190,20 @@ export function JournalDetail() {
         <div className="mt-1 text-xs text-muted">About: {subject}</div>
         {text && <p className="mt-3 whitespace-pre-wrap">{text}</p>}
         {attachmentUrl && attachmentIsImage && (
-          <img
-            src={attachmentUrl}
-            alt=""
-            className="mt-4 w-full rounded-lg border border-ink/10"
-          />
+          <>
+            <img
+              src={attachmentUrl}
+              alt=""
+              className="mt-4 w-full rounded-lg border border-ink/10"
+            />
+            <StampedPhotoButton
+              attestation={entry}
+              imageUrl={attachmentUrl}
+              capturedBy={capturedBy}
+              dateText={new Date(writtenAt).toLocaleDateString()}
+              btcHeight={verifiedAnchor?.btcHeight}
+            />
+          </>
         )}
         {attachmentUrl && !attachmentIsImage && (
           <a

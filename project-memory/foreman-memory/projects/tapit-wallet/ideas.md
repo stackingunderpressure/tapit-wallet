@@ -1675,3 +1675,42 @@ Stage: matured architecture - cleanest synthesis of the arc so far.
 Resurface: when the Bitcoin layer is scoped; pairs with the conditional-
 release engine brief + the FROST reconsideration entry.
 ```
+
+```
+Date: 2026-06-05
+Tag: VERIFIABLE PHOTOS - corner verify-stamp on shared photos + in-app camera follow-on
+The operator: "have the metadata lock up in the corner of the picture - if
+it's a selfie or you take it through the app it automatically stamps it or
+put it on there later after it finalize." SHIPPED (this session): the
+"stamped copy on share" path. Picking the chip-form fork, the operator chose
+to NEVER modify the signed + anchored original; instead StampedPhotoButton
+composites a verification badge onto a COPY at share time. The badge burns a
+corner panel with a Tapit mark + capture date + who captured it + the
+Bitcoin block (once confirmed) + a SCANNABLE QR that resolves to /verify with
+a multiDisclosureProof bundle disclosing the attachment_sha256 leaf - a
+scanner re-hashes the photo to confirm it's the signed-and-anchored one. Why
+this model and not bake-at-capture: (a) keeps the file-integrity digest well
+defined (the stored bytes ARE what was signed), (b) the badge can show the
+LIVE Bitcoin block because it renders at share time, not capture time (the
+block confirms minutes-to-hours later, async), (c) you can't put a verify-QR
+OF the photo INTO the photo it's computed from without it chasing its tail.
+DEFERRED ALTERNATIVE (sprouting): a light always-on cosmetic brand mark baked
+into the bytes at capture for the "it just always has the mark" feel - signed
+as part of the photo, travels permanently, but can only carry capture-date +
+handle (no block, no self-referencing QR). Offer as a toggle later if the
+operator wants the permanent look in addition to the verifiable copy.
+IN-APP CAMERA / SELFIE (sprouting, the real follow-on): the operator believes
+there is a camera on journal entries. GROUNDED: there is NOT. The composer
+"photo" button is a plain <input type=file accept=image/*> with no capture
+attribute - on a phone the OS picker offers "Take Photo" via the system
+camera, but the app never runs getUserMedia, so there's no live preview, no
+front-cam selfie toggle, no snap-in-app. A true in-app camera (getUserMedia
+preview + capture + front/back toggle, then straight into normalizeImage ->
+sign -> anchor -> optional stamp) is a clean, self-contained next cut that
+would make "take it through the app and it stamps it" literal. Pairs directly
+with the stamped-photo cut already shipped.
+Stage: sprouting (camera + bake-at-capture) on top of a shipped fruiting body
+(stamped-copy-on-share). Resurface: the in-app camera when the operator next
+touches photo capture or asks why "take through the app" isn't a live camera;
+the bake-at-capture cosmetic mark if a permanent always-visible look is wanted.
+```

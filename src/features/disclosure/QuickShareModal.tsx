@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { multiDisclosureProof } from 'tapit-attest';
 import type { QuickSharePreset } from './quickSharePresets.ts';
 import { ShareCard } from './ShareCard.tsx';
+import { buildVerifyUrl } from './buildVerifyUrl.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 
 // Tapping a preset in the Quick-share section opens this modal.
@@ -10,6 +10,9 @@ import { canShare, shareText } from '../../shared/lib/share.ts';
 // when the encoded bundle fits under a reasonable URL length cap,
 // or just /verify when it does not), and renders the Fresh share
 // card with copy + share + view-raw-JSON actions.
+//
+// The proof-mint + verify-URL logic lives in buildVerifyUrl.ts so
+// this modal and the stamped-photo corner QR build the same link.
 //
 // Cut 7 of the 2026-05-24 Fresh young-adult-friendly theme + IA
 // roadmap. Renders only under Fresh (the parent QuickShareSection
@@ -20,24 +23,6 @@ interface Props {
   onClose: () => void;
 }
 
-// Cap for the inline-proof URL pathway. Most browsers and the
-// share-sheet engines tolerate URLs well past this, but iMessage
-// preview generation and some QR-code limits prefer shorter URLs.
-// Past this size the share card just shows /verify and the operator
-// hands the proof bundle alongside the screenshot.
-const INLINE_URL_BYTE_BUDGET = 1800;
-
-function base64UrlEncode(input: string): string {
-  // btoa works on Latin-1 strings; encodeURIComponent handles
-  // UTF-8 first, then unescape collapses the percent-encoded
-  // bytes back to Latin-1 so btoa accepts them. Modern browsers
-  // could use TextEncoder + Uint8Array directly, but this idiom
-  // is widely understood and works in every PWA target.
-  const utf8 = unescape(encodeURIComponent(input));
-  const b64 = btoa(utf8);
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
 export function QuickShareModal({ preset, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const [showJson, setShowJson] = useState(false);
@@ -45,35 +30,12 @@ export function QuickShareModal({ preset, onClose }: Props) {
 
   // Mint the proof once per preset. The preset reference is stable
   // across the modal lifetime; the underlying attestation does not
-  // mutate. multiDisclosureProof is pure, so memoising is safe.
+  // mutate. buildVerifyUrl is pure, so memoising is safe.
   const minted = useMemo(() => {
     try {
-      const bundle = multiDisclosureProof(
-        preset.attestation,
-        preset.disclosedPaths,
-      );
-      // Carry the Bitcoin anchor so /verify can show the block (re-verified
-      // there against the proven digest). May push the bundle past the
-      // inline-URL budget, in which case the share falls back to plain
-      // /verify + paste — acceptable; the anchor still rides in the proof.
-      const shared = preset.attestation.anchor
-        ? { ...bundle, anchor: preset.attestation.anchor }
-        : bundle;
-      const json = JSON.stringify(shared);
-      const encoded = base64UrlEncode(json);
-      const origin =
-        typeof window !== 'undefined' ? window.location.origin : '';
-      const inlineUrl = `${origin}/verify?p=${encoded}`;
-      const useInline = inlineUrl.length <= INLINE_URL_BYTE_BUDGET;
-      return {
-        json,
-        verifyUrl: useInline ? inlineUrl : `${origin}/verify`,
-        urlIsInline: useInline,
-      };
+      return buildVerifyUrl(preset.attestation, preset.disclosedPaths);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not mint proof.',
-      );
+      setError(err instanceof Error ? err.message : 'Could not mint proof.');
       return null;
     }
     // The disclosedPaths array reference is stable per-preset

@@ -25,11 +25,13 @@ export const manifest: FeatureManifest = {
     'src/features/journal/categoryAccents.ts',
     'src/features/journal/normalizeImage.ts',
     'src/features/journal/verifyAttachmentIntegrity.ts',
+    'src/features/journal/stampPhoto.ts',
+    'src/features/journal/StampedPhotoButton.tsx',
   ],
-  depends_on: ['wallet-core', 'storage', 'anchoring', 'theme'],
+  depends_on: ['wallet-core', 'storage', 'anchoring', 'theme', 'connections', 'disclosure', 'qr'],
   pause_safe: false,
   removal_safe: false,
   monetizable: false,
   notes:
-    'Subject is a typed label so the grandchild-from-birth scenario works without a child wallet existing. A custody handoff (Phase 2.6+) is a meta-kind attestation signed by old + new custodian. Each entry is held by the wallet and persisted via the storage layer the same way the identity attestation is.',
+    'Subject is a typed label so the grandchild-from-birth scenario works without a child wallet existing. A custody handoff (Phase 2.6+) is a meta-kind attestation signed by old + new custodian. Each entry is held by the wallet and persisted via the storage layer the same way the identity attestation is. Note on "photo via camera shortcut": the composer photo button is a plain <input type=file accept=image/*> with no capture attribute and no live in-app camera — on a phone the OS picker offers "Take Photo" via the system camera, but the app never runs getUserMedia; a true in-app/selfie camera would be a separate build. Stamped-photo cut 2026-06-05 (operator: "have the metadata lock up in the corner of the picture... a selfie or you take it through the app it automatically stamps it or put it on there later"): the operator chose "stamped copy on share" in chip form — the signed + anchored original is NEVER modified (keeps file-integrity simple and the digest well-defined), and instead StampedPhotoButton composites a verification badge onto a COPY when sharing. stampPhoto.ts draws onto a canvas from the displayed image and burns a corner panel carrying a Tapit mark + capture date + who captured it + the Bitcoin block (once confirmed) + a scannable QR, then returns a fresh JPEG. The QR resolves to /verify with a multiDisclosureProof bundle disclosing the attachment_sha256 leaf (+ written_at) built via disclosure/buildVerifyUrl.ts (extracted from QuickShareModal so both build the same one-tap link); a scanner re-hashes the photo to confirm it is the signed-and-anchored one. qrcode is dynamically imported inside stampPhoto so it only loads on demand. Sharing uses shared/lib/share.ts shareFile (Web Share API Level 2 files pathway → system sheet incl. AirDrop/Save-to-Files, with a download fallback on engines without file-sharing). The badge can show the live block because it is rendered at share time, not baked at capture — the deliberate consequence of the stamped-copy model. depends_on gained connections (displayNameOf for the captured-by line), disclosure (buildVerifyUrl), and qr (the qrcode lib path).',
 };
