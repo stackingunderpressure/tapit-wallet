@@ -10,6 +10,7 @@ import { manifest as cosigning } from './features/cosigning/manifest.ts';
 import { manifest as signRequest } from './features/sign-request/manifest.ts';
 import { manifest as disclosure } from './features/disclosure/manifest.ts';
 import { manifest as qr } from './features/qr/manifest.ts';
+import { manifest as camera } from './features/camera/manifest.ts';
 import { manifest as capture } from './features/capture/manifest.ts';
 import { manifest as connections } from './features/connections/manifest.ts';
 import { manifest as governance } from './features/governance/manifest.ts';
@@ -39,6 +40,7 @@ export const features: readonly FeatureManifest[] = [
   signRequest,
   disclosure,
   qr,
+  camera,
   capture,
   connections,
   governance,

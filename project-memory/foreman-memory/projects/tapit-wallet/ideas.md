@@ -1709,8 +1709,64 @@ preview + capture + front/back toggle, then straight into normalizeImage ->
 sign -> anchor -> optional stamp) is a clean, self-contained next cut that
 would make "take it through the app and it stamps it" literal. Pairs directly
 with the stamped-photo cut already shipped.
-Stage: sprouting (camera + bake-at-capture) on top of a shipped fruiting body
-(stamped-copy-on-share). Resurface: the in-app camera when the operator next
-touches photo capture or asks why "take through the app" isn't a live camera;
-the bake-at-capture cosmetic mark if a permanent always-visible look is wanted.
+Stage: FRUITING — in-app camera SHIPPED 2026-06-05 (CameraCaptureModal, a
+reusable getUserMedia camera with iOS-PWA native-capture fallback, wired into
+the journal composer so capture -> sign -> anchor -> stamp is now literal).
+Still sprouting on top: (a) wiring the camera into messaging — blocked on the
+MESSAGING-IMAGE fork below; (b) the bake-at-capture cosmetic always-on mark.
+
+MESSAGING-IMAGE fork (open, surfaced to operator 2026-06-05): chat is
+TEXT-ONLY today (threadMessage.ts: attachments are an unbuilt "future" note)
+and raw photo bytes can't ride NIP-17 relay DMs (size). So "use the camera in
+messages" forks: (A) chat camera creates a signed+anchored journal entry and
+shares the stamped copy to the peer via the system sheet (image travels
+out-of-band; "we'll just link" = a verify link in the thread) — buildable now,
+no new infra; (B) real in-Tapit image messages = host the encrypted blob +
+reference it in the DM (NIP-94 / Blossom-style) so it renders in the peer's
+thread — bigger, its own cut. Awaiting operator's pick in chip form.
+```
+
+```
+Date: 2026-06-05
+Tag: AGGREGATE CONNECTION DEMOGRAPHICS - coarse codes exchanged at handshake, tallied into a privacy-preserving census
+The operator: "every time you have a handshake there is a certain amount of
+values that change hands and it's kind of like a code. The first two digits is
+the country code, the second two the state/province, the next few this-or-that
+- not specific data to any one person - but somehow it passes person to person
+to person and then it would show an aggregate for me of like 200 people from
+the United States and 15 from Australia. I wouldn't know who they were, but I'd
+know I was connected to that many people because of the aggregate count. I
+wonder how that would work."
+HOW IT COULD WORK (three escalating versions):
+(1) LOCAL HISTOGRAM (buildable now, exact, fully private): each identity
+carries a COARSE non-identifying origin code (country + region + maybe an
+age-decade or a couple of opt-in buckets). It's already exchanged implicitly
+when handshakes swap identity attestations. The wallet keeps a local GROUP-BY
+over your own connections: "200 US, 15 AU." No network, no server, you only
+count people you actually connected with. This is a stats view over data you
+already hold (PeopleTree already aggregates the graph).
+(2) NETWORK CENSUS (ambitious): "passes person to person to person" = the
+codes propagate/aggregate across the Mycelium mesh so you see counts beyond
+your direct connections. The hard parts: distinct-counting without a central
+server (HyperLogLog / cardinality sketches that gossip + merge), DOUBLE-COUNT
+avoidance, and SYBIL resistance (counts only mean something if the nodes are
+real humans - the handshake/vouching graph is the Sybil defense).
+(3) PROVABLE AGGREGATE (fits the chassis): with attestations + the existing
+selective-disclosure proof machinery you could PROVE "I'm connected to >=N
+people from the US" without revealing who - a verifiable aggregate claim.
+THE LOAD-BEARING PRIVACY RULE: coarseness IS the privacy. Buckets must be
+coarse enough that many people share each code (k-anonymity); pile on too many
+digits (precise age, town, rare combo) and the "code" becomes a fingerprint
+that re-identifies. Country+region is usually safe; resolution is the dial.
+GROUNDING / FIT: handshakes already exchange identity attestations; the origin
+code would be a coarse derived public leaf on identity. PeopleTree already does
+graph aggregation. Disclosure proofs could make aggregates provable. Very much
+in the grain of what exists.
+OPEN FORK (asked operator in chips): is the aggregate over (a) YOUR own direct
+connections [local histogram - easy, exact, private], (b) a network-wide
+census propagated through the mesh [needs distinct-count sketches + Sybil
+handling], or (c) something you want to PROVE to others?
+Stage: raw insight -> sprouting. Resurface: pairs with the Mycelium network
+spec and the identity-leaf model; the local-histogram version is a small,
+high-delight cut that could ship well before the network-census version.
 ```

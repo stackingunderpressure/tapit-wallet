@@ -385,6 +385,11 @@ const BUDGETS = [
   // never need it; small because it's just a hex input + new-pass
   // form running restoreFromKData + exportRecoverableWithKData.
   { pattern: /^RecoveryKeyImportModal-.*\.js$/, gz: 2_500, label: 'RecoveryKeyImportModal' },
+  // 2026-06-05 CameraCaptureModal — the reusable in-app camera, React.lazy
+  // from the journal composer (and other surfaces). Live getUserMedia preview
+  // + front/back toggle + shutter, degrading to the native capture input on
+  // iOS PWA. Small: no decode libs, just stream lifecycle + a canvas grab.
+  { pattern: /^CameraCaptureModal-.*\.js$/, gz: 3_000, label: 'CameraCaptureModal' },
   // 2026-06-03 SharedSecretModal — the family "safe word" create/recover
   // UI, React.lazy from the SharedSecretSection launcher on the Identity
   // tab. Carries the split/combine form + the encoded-share list with a

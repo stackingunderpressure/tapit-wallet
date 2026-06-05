@@ -1,9 +1,15 @@
-import { useRef, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { createJournalEntry } from './createJournalEntry.ts';
 import { SUGGESTED_CATEGORIES } from './categories.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { normalizeImage } from './normalizeImage.ts';
+
+const CameraCaptureModal = lazy(() =>
+  import('../camera/CameraCaptureModal.tsx').then((m) => ({
+    default: m.CameraCaptureModal,
+  })),
+);
 
 const DOC_ACCEPT =
   'application/pdf,text/plain,application/json,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/heic';
@@ -52,6 +58,7 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
   const docRef = useRef<HTMLInputElement>(null);
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -248,13 +255,20 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
           hidden
           onChange={(e) => onPickAttachment(e.target.files?.[0] ?? null)}
         />
-        <div className="mt-1 flex gap-2">
+        <div className="mt-1 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setCameraOpen(true)}
+            className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm hover:bg-ink/5"
+          >
+            📷 Camera
+          </button>
           <button
             type="button"
             onClick={() => photoRef.current?.click()}
             className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm hover:bg-ink/5"
           >
-            📷 Photo
+            🖼 Photo
           </button>
           <button
             type="button"
@@ -307,6 +321,17 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
         <p className="text-sm text-red-600" role="alert">
           {error}
         </p>
+      )}
+      {cameraOpen && (
+        <Suspense fallback={null}>
+          <CameraCaptureModal
+            onClose={() => setCameraOpen(false)}
+            onCapture={(file) => {
+              setCameraOpen(false);
+              void onPickAttachment(file);
+            }}
+          />
+        </Suspense>
       )}
     </form>
   );
