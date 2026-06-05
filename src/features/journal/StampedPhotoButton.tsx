@@ -27,6 +27,13 @@ interface Props {
   btcHeight?: number;
 }
 
+// True when the claim tree carries a top-level leaf by this name. Used to
+// disclose `written_at` only when it actually exists — older or foreign
+// entries may lack it, and multiDisclosureProof throws on a missing path.
+function hasLeaf(att: Attestation, name: string): boolean {
+  return att.claim.children.some((c) => c.name === name);
+}
+
 type State =
   | { kind: 'idle' }
   | { kind: 'working' }
@@ -45,12 +52,12 @@ export function StampedPhotoButton({
   async function run() {
     setState({ kind: 'working' });
     try {
-      // Disclose the attachment hash (the integrity commitment) plus the
-      // written-at date for context. Anchor rides along when present.
-      const minted = buildVerifyUrl(attestation, [
-        'attachment_sha256',
-        'written_at',
-      ]);
+      // Disclose the attachment hash (the integrity commitment), and the
+      // written-at date for context only when that leaf exists — older or
+      // foreign entries may not carry it, and a missing path would throw.
+      const paths = ['attachment_sha256'];
+      if (hasLeaf(attestation, 'written_at')) paths.push('written_at');
+      const minted = buildVerifyUrl(attestation, paths);
       const blob = await stampPhoto(imageUrl, {
         name: capturedBy,
         dateText,
@@ -60,7 +67,13 @@ export function StampedPhotoButton({
       const file = new File([blob], 'tapit-verified-photo.jpg', {
         type: 'image/jpeg',
       });
-      const outcome = await shareFile(file, 'Tapit verified photo');
+      // Pass the verify URL as share text too, so the link survives even if
+      // the recipient never scans the QR baked into the image.
+      const outcome = await shareFile(
+        file,
+        'Tapit verified photo',
+        minted.verifyUrl,
+      );
       setState({
         kind: 'done',
         detail:

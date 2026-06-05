@@ -16,6 +16,7 @@ export const manifest: FeatureManifest = {
     'src/features/disclosure/ShareCard.tsx',
     'src/features/disclosure/QuickShareModal.tsx',
     'src/features/disclosure/buildVerifyUrl.ts',
+    'src/features/disclosure/buildVerifyUrl.test.ts',
     'src/features/disclosure/quickSharePresets.ts',
   ],
   depends_on: ['wallet-core', 'connections'],

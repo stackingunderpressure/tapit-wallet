@@ -66,6 +66,7 @@ export type FileShareOutcome = 'shared' | 'cancelled' | 'downloaded';
 export async function shareFile(
   file: File,
   title: string,
+  text?: string,
 ): Promise<FileShareOutcome> {
   if (
     typeof navigator.share === 'function' &&
@@ -73,7 +74,11 @@ export async function shareFile(
     navigator.canShare({ files: [file] })
   ) {
     try {
-      await navigator.share({ files: [file], title });
+      // Carry `text` (e.g. the /verify link) alongside the file so the
+      // verification URL still travels to targets that surface text
+      // (Messages, Mail) even if the recipient never scans the in-image QR.
+      // Targets that only take the file (AirDrop, Photos) simply ignore it.
+      await navigator.share({ files: [file], title, ...(text ? { text } : {}) });
       return 'shared';
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
