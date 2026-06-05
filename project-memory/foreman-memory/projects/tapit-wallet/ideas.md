@@ -1818,3 +1818,68 @@ sovereignty thesis hard: works when the internet doesn't.
 Stage: (1) ready-to-build thin cut; (2) raw insight / north-star transport.
 Resurface: pairs with the Mycelium network spec + the transport feature.
 ```
+
+```
+Date: 2026-06-05
+Tag: CIVIC MERKLE / VERIFIABLE VOTING - town-as-ratified-leaf -> citizens-as-tree -> town/county/state nested hashes -> prove-you-voted-without-revealing-choice
+Operator (theorizing, NO cut - log for later): "the town you belong to is one
+of your leaves, ratified by people; you sign for the town if you're on the
+board (alderman, treasurer). Your identity is tied to the town because you
+chose to put it as a leaf and had it ratified. How far is that from voting? The
+citizens make up a Merkle tree, each vote counts once, the town is a hash, the
+county is a hash, the state is a hash - can each person prove they voted
+without revealing what they voted for, and how does that change government?"
+GROUNDING - WHAT ALREADY EXISTS (closer than it feels):
+- Civic membership AS A RATIFIED LEAF: createMembership.ts (org-issued + self-
+  membership); officials roster + countRatifications (officialsRoster.ts)
+  counts how many roster pubkeys co-signed an envelope = exactly "you belong to
+  the town, ratified by N people / signed by the board." Board roles via the
+  roster. THIS IS SHIPPED.
+- SECRET BALLOT PRIVACY: multiDisclosureProof prunes the Merkle claim tree so
+  you reveal some leaves and hide siblings -> "prove I cast a valid vote in
+  election X" while the choice stays a HIDDEN leaf. The prove-without-revealing
+  primitive exists.
+- IMMUTABLE PUBLIC TIMESTAMP: OpenTimestamps anchoring makes a vote/tally
+  tamper-evident in time without a central counter.
+- M-OF-N COUNTING: gatedReleaseBundle (count peer attestations against a
+  threshold) + Shamir (recovery/sharedSecret). Counting/threshold patterns
+  exist as primitives.
+WHAT'S GENUINELY NEW / HARD:
+- ONE-PERSON-ONE-VOTE (the crux): the identity model is relationship+time
+  based, not a voter roll. Anonymous no-double-vote needs a NULLIFIER (prove
+  membership in the eligible set + emit one deterministic per-election marker
+  so a 2nd vote is detectable WITHOUT linking to identity) - that's ZERO-
+  KNOWLEDGE membership proof (Semaphore/zk-SNARK tier), a heavier crypto class
+  than the wallet's Shamir + Merkle-disclosure. NOT built.
+- THRESHOLD SIGNATURES (FROST): roadmapped, not shipped - needed so an election
+  result isn't forgeable by one official.
+- HIERARCHICAL AGGREGATION town->county->state: no tree-of-trees today (each
+  attestation is its own tree). But it's a natural Merkle-of-Merkles to add;
+  conceptually the cleanest part of the operator's vision.
+- TALLY CEREMONY: encrypt votes until close, threshold-decrypt, tally - new
+  protocol design (homomorphic/mixnet for real elections).
+THE KILLER CAVEAT (must not get wrong): "prove HOW you voted" enables VOTE-
+BUYING. Real voting crypto wants RECEIPT-FREENESS / coercion-resistance: you
+can verify your vote counted but CANNOT prove to a buyer which way you voted.
+multiDisclosure alone, naively, makes vote-selling EASIER, not harder. So the
+"prove you voted" property must be carefully split: prove PARTICIPATION +
+validity publicly, keep the CHOICE unprovable-to-others. This is the line
+between a toy and a real ballot.
+HONEST VERDICT: two very different targets on a spectrum. (A) ACCOUNTABLE
+FEDERATED CIVIC GOVERNANCE - small high-trust units (towns, HOAs, co-ops,
+unions, DAOs), membership + roles ratified, decisions threshold-signed, results
+anchored, participation provable, town->county->state Merkle aggregation. This
+is ~10-30% built and the rest is in-grain (FROST + tree-of-trees + a vote
+credential). VERY on-thesis, achievable. (B) ANONYMOUS SECRET-BALLOT NATIONAL
+ELECTIONS - needs zk nullifiers + receipt-freeness + tally ceremony; a research
+tier beyond current primitives; FAR.
+HOW IT CHANGES GOVERNMENT (the payoff): trust shifts from INSTITUTIONAL ("trust
+the election authority") to MATHEMATICAL ("anyone recomputes the tally from
+anchored commitments, trusting no counter"). Fits Hearth/Heartwood federation
+doctrine (consensus/multisig governance, append-as-decided) - local Hearths
+compose upward = the town->county->state story. Start at the town/co-op scale,
+not the nation.
+Stage: matured thesis / north-star. Pairs with FROST brief, HEARTWOOD, HEARTH_
+SPEC, MYCELIUM, and the conditional-release engine. Open question to mature:
+which end of the spectrum (accountable-civic vs anonymous-ballot) is the target?
+```
