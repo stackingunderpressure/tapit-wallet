@@ -1883,3 +1883,55 @@ Stage: matured thesis / north-star. Pairs with FROST brief, HEARTWOOD, HEARTH_
 SPEC, MYCELIUM, and the conditional-release engine. Open question to mature:
 which end of the spectrum (accountable-civic vs anonymous-ballot) is the target?
 ```
+
+```
+Date: 2026-06-05
+Tag: VOTING IDEOLOGY - accountability/boldness vs the secret ballot (refines the civic-Merkle thesis)
+Operator (theorizing, NOT solving, "understanding the pavement I'm laying"):
+"If a candidate has to stand behind his promises and be held accountable, the
+person voting should also do it in boldness, not hide behind a secret ballot.
+I really don't know the answer." Articulating a VALUE leaning toward
+open/accountable voting over default secrecy.
+THE LOAD-BEARING HISTORY (the counter he'd want to know): the secret ballot
+(Australian ballot, ~1850s AU -> US 1880s-90s) was itself the REFORM. Open /
+viva-voce / colored-party-ticket voting was the PRE-reform default and was
+abandoned precisely because openness enabled vote-buying (delivery was
+verifiable), employer/landlord/creditor COERCION, and machine intimidation. So
+"open = accountable" is the OLD system; secrecy was won to protect the weak.
+THE KEY SEMANTIC DISTINCTION (resolves the apparent hypocrisy): transparency is
+a tool for constraining POWER; privacy protects PERSONS. A candidate is
+ACQUIRING power over others -> transparency flows UP the power gradient
+(legitimate, necessary). A voter is an individual -> secrecy protects DOWN the
+gradient from coercion. Same principle (constrain power, shield the
+vulnerable), two positions. Slogan: "transparency for power, privacy for
+persons."
+SECOND DISTINCTION (dissolves a false tradeoff): VERIFIABILITY != ANONYMITY.
+Modern voting crypto gives end-to-end-verifiable AND secret elections. So his
+"can't trust hidden counts" worry is fixed by verifiable TALLIES + public RULES
++ public ELIGIBILITY, NOT by abolishing ballot secrecy. What's transparent =
+the count/rules/roll; what's private = the individual choice.
+THIRD (the genuine unresolved knot): "let the bold stand up" = voluntary public
+disclosure of one's vote. But if disclosure is POSSIBLE, coercers DEMAND it
+("prove you voted my way") -> vote-buying returns. Receipt-freeness specifically
+forbids even voluntary proof. So there's a real tension between honoring
+boldness and protecting everyone from being FORCED to be bold. Not resolved;
+named honestly.
+WHERE OPENNESS ACTUALLY WORKS: small, high-trust, low-coercion units where
+standing up is the norm - town meetings, co-ops, union floors, Swiss
+Landsgemeinde (show-of-hands cantonal assemblies still exist), Quaker
+consensus. Openness is safest exactly where it's least needed (local, trusting)
+and most dangerous where stakes + power-asymmetry are highest.
+DESIGN PRINCIPLE FOR THE PAVEMENT: privacy/openness is a DIAL set per-decision
+BY THE COMMUNITY, not a system-wide dogma the tool hardcodes. Wallet's job =
+make the whole spectrum cleanly available (open ratification SHIPPED;
+pseudonymous; anonymous-zk later) and the choice LEGIBLE - not pick the
+ideology. Defaults + affordances shape behavior, so designing this IS a
+political act (what he senses).
+LINEAGES worth knowing: subsidiarity (decide at the most-local capable level),
+Ostrom's commons-governance design principles, federalism, liquid democracy,
+the Australian-ballot history. The thesis underneath = subsidiarity +
+verifiability (trust math not institutions) + sovereignty (communities set
+their own rules) = fits Hearth/Heartwood.
+Stage: ideology in formation. NOT for cutting. Resurface whenever the
+civic-voting thread is revisited; this is the values layer under it.
+```
