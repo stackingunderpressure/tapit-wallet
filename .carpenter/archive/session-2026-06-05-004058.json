@@ -1,0 +1,81 @@
+{
+  "session": {
+    "id": "session-2026-06-04-your-secrets-v1-and-conditional-release-thesis",
+    "spawn_slug": "tapit-wallet",
+    "carpenter_identity": "claude-code",
+    "started_at": "2026-06-04T14:55:00Z",
+    "ended_at": "2026-06-05T00:45:00Z",
+    "branch": "claude/stop-hooks-next-carpenter-tC6E5",
+    "outcome": "completed"
+  },
+  "gates": {
+    "typecheck": "pass",
+    "lint": "pass",
+    "test": "pass",
+    "build": "pass"
+  },
+  "narrative": {
+    "what_i_did": "This was a long session that ran in two halves: a build half and a deep theory half, and it ended by turning the theory back into a shipped cut. It started by making the family safe word seamless over Nostr — the operator picked, in chip form, the lightest of three options (DM each piece as a plain encrypted chat message, no held attestation, no ceremony), and that shipped as commit b310296 with the per-piece Send-to-circle path reusing sendChatMessage and findVouchingCircleCandidates. Then the operator opened a scoping challenge — was a safe word the only use case, who actually gets the secret, did we build lazily — and that turned into the most valuable stretch of the session, a long architectural conversation I mostly captured to ideas.md and a brief rather than to code.\n\nThe theory arc moved through several real refinements, each of which I grounded and captured honestly. First, the recognition that we hadn't built a safe word but the first cell of a general sovereign conditional-disclosure engine with four knobs — payload, custody-versus-access, the circle, and the release condition. Then the operator corrected me twice when I over-narrowed: I kept bolting a timelock onto the Tapit side, and he made clear the timelock lives only on Bitcoin while the Tapit side is consensus-release — the circle knows the event happened and a threshold decides — and that the thing is a general configurable engine plus a template library, not an inheritance feature. I rewrote the brief to match. Then came the genuinely sharp theory: peer-consensus as a covenant layer outside Bitcoin, two consensus layers in series, where the strong form threshold-signs rather than reconstructs; I grounded that the chassis does Shamir reconstruction only, no FROST, and gave the honest FROST-versus-reconstruction distinction. The operator revealed FROST had been tried and shelved for weight; I found the real 2026-05-25 FROST-first brief, confirmed it already named the lazy-load mitigation, and laid out a lighter, social-layer-first, trusted-dealer reconsideration plus the mutable-membership frontier gap. Then his fixed-peer-key plus mutable-descriptor inheritance-vault design, which I mapped to Taproot key-path plus a timelocked tapleaf and grounded as the proven Liana/Nunchuk pattern with Tapit adding the social and descriptor-custody layer. Each of these landed as a captured ideas.md entry so nothing was lost.\n\nThe session closed by the operator pulling us out of the crypto weeds with the real product insight — the splitting is commodity, anyone can do it with any wallet, and Tapit's job is the UI: where you put secrets, how you configure release for any scenario without it being confusing, and how you bring them back. He then said cut version one. So I did. Commit cb5d709 generalizes the single-purpose Family safe word into the Your secrets experience layer: a new secretTemplates.ts holds plain-language scenario presets (a family safe word, a shared password, something my circle can bring back for me, break-glass, and custom), and SharedSecretModal now leads with a scenario picker that flows pick to create to recover, with all crypto jargon kept off the screen — a test even guards that no template string contains Shamir, threshold, or descriptor. The launcher was relabeled Family safe word to Your secrets. All four gates green, 569 tests, bundle budget bumped for the template picker with an audit note.",
+    "whats_pending": "Version 1 is the experience layer over the existing co-access Shamir core. The deferred cuts are well-captured in the 2026-06-04 conditional-release brief and the ideas.md thesis entries, and they are explicitly 'more later': blind-custody (hold-it-but-can't-read-it), the consensus-release ceremony where holders agree to release to a claimant, beneficiaries, and the Bitcoin and Lightning payloads. The bigger north-star items are FROST threshold-signing (revisit lighter, social-layer-first, possibly trusted-dealer to dodge the weight that shelved it before; mutable-membership-with-stable-pubkey is the one frontier problem to go in eyes-open on) and the Bitcoin tapscript layer (owner key-path plus timelocked peer-threshold tapleaf, the fixed-key/mutable-descriptor inheritance vault), both blocked on the Bitcoin-wallet layer the Satoshi doctrine names as the largest unbuilt block.\n\nv1 has had zero device validation, like everything in this arc. The operator should open Your secrets on the phone, pick a scenario template, make a secret, hand out or DM the pieces, and bring it back by pasting a threshold subset — confirming the picker reads cleanly and the plain language holds up in the hand. The whole field-test backlog from prior sessions is still open: adopt-existing-key, cloud-backup Retry, update banner, item-11 ceremony cross-device, tree A1/A2, recovery cross-device, and now the DM'd safe word and the Your secrets v1.\n\nThe order-dependent identity-gate canonicalization test flake is still latent — it did not surface this session (suite went green) but the shared-global test-pollution is unfixed.",
+    "what_you_could_do_better": "The honest peer-review note is about altitude control. The operator had to correct me more than once for over-narrowing — drilling into one use case's mechanics, and twice bolting a timelock onto the Tapit side when the timelock belongs only on Bitcoin — and once for the opposite, being too shallow and generic early on. The lesson I'd carry forward is that in a vision conversation the operator is usually thinking at the level of the general primitive and the breadth of templates, and my instinct to converge on one concrete mechanism is exactly the 'miss the forest for the trees' failure he named. When he says a thing is one of many examples, that is a signal to widen, not to scope. I corrected in real time each time and the captures reflect the corrected understanding, but I cost him a couple of redirects I could have avoided by holding the general frame longer before reaching for specifics.\n\nThe other thing worth flagging for next time: I committed four ideas.md entries plus two brief rewrites this session. That was the right call given the density of genuinely thesis-level material and the living-ideas doctrine, and the operator did not object — but there is a real risk of documentation crowding out building, and the operator's eventual 'we just need to build the UI' was a gentle pull back toward shipping. Capture is cheap; the bias should stay toward shipping the smallest real thing once the idea is clear, which is what version one finally did.",
+    "bigger_picture": "The through-line of this whole session is the thesis itself: sovereign computing has failed for thirty years on UX, and the operator's bet is that the experience layer is the entire moat. This session lived that out. We spent hours on real cryptographic architecture — peer-consensus as a covenant outside Bitcoin, FROST versus reconstruction, the fixed-key mutable-descriptor inheritance vault, the two-layers-of-consensus-in-series insight — and the operator's closing move was to set all of it aside as commodity plumbing and say the product is the UI: where I put my secrets, how I configure them for any scenario without confusion, how I get them back. Version one is the first honest expression of that: it doesn't add a single new cryptographic capability, it makes the existing one legible by letting a person pick a plain-language scenario instead of reasoning about thresholds, and it keeps every crypto word off the screen.\n\nThat is the chassis-and-experience division the whole fleet is built on. The Shamir core, the eventual FROST, the eventual Bitcoin descriptors — those are swappable primitives underneath a durable interface, which is exactly the operator's 'anyone could do it with any wallet, we build the UI.' The secrets surface is now positioned to absorb every later cut without the user-facing shape changing: blind-custody and consensus-release and inheritance and Lightning all become new templates and new backends behind the same pick-configure-retrieve flow. The deep theory was not wasted — it is captured as the roadmap the templates will grow into — but the shipping discipline reasserted that the smallest useful legible thing beats the most sophisticated invisible thing every time. The graph is the toy, and version one is the first piece of the toy a non-technical person can actually pick up."
+  },
+  "commits": [
+    "b310296 feat(recovery): send safe-word pieces over Nostr chat (lightest cut)",
+    "de97fe3 session: 2026-06-04 safe-word nostr-DM comms checkpoint",
+    "bb89c5f docs(ideas): correct shared-secret access-model entry",
+    "5fab881 docs(brief): sovereign conditional-release / inheritance engine roadmap",
+    "9f9e7ad docs(brief): correct conditional-release brief — timelock is Bitcoin-side only",
+    "a339898 docs(ideas): capture the peer-consensus-as-covenant-outside-bitcoin thesis",
+    "8e1b699 docs(ideas): FROST reconsideration — lighter, social-layer-first",
+    "30eaa75 docs(ideas): fixed-peer-key + mutable-descriptor inheritance vault architecture",
+    "cb5d709 feat(recovery): cut version 1 of \"Your secrets\" — scenario templates over the secret-split"
+  ],
+  "files_touched": [
+    ".carpenter/session.json",
+    "scripts/bundle-budget.mjs",
+    "src/features/recovery/SharedSecretModal.tsx",
+    "src/features/recovery/SharedSecretSection.tsx",
+    "src/features/recovery/secretTemplates.ts",
+    "src/features/recovery/secretTemplates.test.ts",
+    "src/features/recovery/manifest.ts",
+    "project-memory/foreman-memory/projects/tapit-wallet/ideas.md",
+    "project-memory/foreman-memory/projects/tapit-wallet/briefs/2026-06-04-sovereign-conditional-release-inheritance-roadmap.md"
+  ],
+  "questions_asked": [
+    {
+      "question": "How seamless should the Nostr safe word be in this cut?",
+      "options_offered": ["Full round-trip", "Auto-send now, manual rebuild", "DM pieces as chat (lightest)"],
+      "operator_answered": "DM pieces as chat",
+      "carpenters_read": "Lightest integration — plain encrypted DM, no held attestation. Shipped as b310296."
+    },
+    {
+      "question": "Which world-changing shape do we point the conditional-release primitive at first?",
+      "options_offered": ["Sovereign inheritance / dead-man's switch", "Socially-gated money (Lightning)", "Commit-and-prove (hash)", "Keep riffing"],
+      "operator_answered": "Sovereign inheritance / dead-man's switch",
+      "carpenters_read": "Then refined hard: the timelock is Bitcoin-side only, the Tapit side is consensus-release, and it's a general engine + template library, not an inheritance feature."
+    },
+    {
+      "question": "Which obvious template do we build first?",
+      "options_offered": ["Inheritance", "Shared password", "Emergency", "Rule-builder first"],
+      "operator_answered": "Scope first",
+      "carpenters_read": "Operator redirected from template-choice to scoping; wanted the engine scoped before any template build."
+    },
+    {
+      "question": "Released to whom / how is 'the owner is gone' decided?",
+      "options_offered": ["Holder-judgment", "Named beneficiaries", "Both / trigger models"],
+      "operator_answered": "Free-form: timelock is Bitcoin-side only; this side is the circle knowing + deciding; general configurable engine + templates; don't miss the forest for the trees.",
+      "carpenters_read": "The key correction of the session. Drove the brief rewrite and the eventual v1 framing."
+    }
+  ],
+  "operator_directives": [
+    "Make the safe word seamless and nostr, accept the trade-offs (chose the lightest DM-as-chat).",
+    "Don't get hung up on one case or one way of seeing it — it's a general configurable engine with a template library, not an inheritance feature.",
+    "The timelock is on the Bitcoin side only; the Tapit side is the circle knowing and a threshold deciding.",
+    "The splitting is commodity — anyone can do it with any wallet. Tapit's job is the UI: where I put secrets, how I configure release for any scenario without confusion, how I bring them back.",
+    "We are ready to cut version 1 — we can always add more later.",
+    "Direct-to-main authorized; gates green; push via dispatch-branch:main refspec per PFOR-016."
+  ],
+  "next_session_starts_with": "Version 1 of the 'Your secrets' experience layer shipped on main (HEAD cb5d709): the single-purpose Family safe word is generalized into a scenario-template-fronted surface — secretTemplates.ts has plain-language presets (safe word, shared password, recover-for-me, break-glass, custom) and SharedSecretModal leads with a pick -> create -> recover flow with all crypto jargon kept off the screen (a test guards it). It rides the existing co-access Shamir core; nothing new cryptographically. The immediate next move is OPERATOR FIELD-TESTING on the phone: open Your secrets on the Identity tab, pick a scenario, make a secret, hand out or DM the pieces, and bring it back by pasting a threshold subset — check the picker reads cleanly and the plain language holds in the hand. The deferred 'more later' cuts are captured in the 2026-06-04 conditional-release brief and the ideas.md thesis chain: blind-custody, consensus-release ceremony, beneficiaries, then the two north stars — FROST threshold-signing (revisit lighter / social-layer-first / trusted-dealer, with mutable-membership-stable-pubkey as the eyes-open frontier) and the Bitcoin tapscript inheritance vault (fixed-peer-key + mutable-descriptor, the Liana/Nunchuk pattern plus Tapit's social + descriptor-custody layer), both blocked on the unbuilt Bitcoin-wallet layer. Read the ideas.md entries dated 2026-06-04 and the conditional-release brief before extending the secrets surface — they hold the corrected architecture (timelock is Bitcoin-only; this side is consensus-release; general engine + templates). Field-test backlog still open: adopt-existing-key, cloud-backup Retry, update banner, item-11 ceremony cross-device, tree A1/A2, recovery cross-device, DM'd safe word, and now Your secrets v1. Latent: the order-dependent identity-gate canonicalization test flake.",
+  "feedback_to_appcommander": "Two patterns from a long vision-plus-build session. First, the highest-value carpenter behavior in a vision conversation is holding the operator's general frame longer before converging on a specific mechanism — I was corrected twice this session for over-narrowing (bolting a timelock onto the wrong layer, treating one use case as the feature) and the operator named it directly as missing the forest for the trees. Worth adding to doctrine: when the operator offers something as 'one example,' that is a signal to widen the abstraction, not to scope the example. Second, this session is a clean case study of the experience-is-the-moat thesis: hours of genuine cryptographic architecture (peer-consensus as a covenant outside Bitcoin, FROST vs reconstruction, the fixed-key/mutable-descriptor vault) all got set aside by the operator as commodity plumbing, and version one added zero new crypto — it just made the existing primitive legible by letting a person pick a plain-language scenario. The captures (four ideas.md entries + a brief) preserve the deep theory as the roadmap the templates grow into, but the ship discipline reasserted that the smallest legible thing beats the most sophisticated invisible thing. The crypto-is-swappable-behind-a-durable-UI framing the operator articulated ('anyone could do it with any wallet, we build the UI') is worth lifting into the skeleton as a first-principle."
+}
