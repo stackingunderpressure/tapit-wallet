@@ -4,6 +4,7 @@ import {
   combineSharedSecret,
   type CombineResult,
 } from './sharedSecret.ts';
+import { SECRET_TEMPLATES, type SecretTemplate } from './secretTemplates.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import {
   findVouchingCircleCandidates,
@@ -14,29 +15,26 @@ const QrShow = lazy(() =>
   import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
 );
 
-// Family "safe word" — split a secret your people jointly hold (item:
-// shared-secret on the Shamir substrate, 2026-06-03). The operator types a
-// word, picks how many people hold a piece and how many it takes to rebuild
-// it, gets the pieces, and any threshold of holders paste their pieces back
-// to reveal it. The split + combine never leave this device; no single
-// piece reveals anything.
+// "Your secrets" — version 1 of the experience layer (2026-06-04 "cut
+// version 1"). The operator picks a plain-language scenario (a safe word, a
+// shared password, something my circle can bring back for me, break-glass,
+// or a custom setup), then splits a secret into pieces held by the people
+// they trust; any chosen number of those holders bring it back together.
+// The split + combine never leave this device; no single piece reveals
+// anything. The crypto (Shamir today, swappable later) is kept entirely off
+// the screen — the surface speaks in "pieces" and "people", never jargon.
 //
-// Nostr seam (2026-06-04, "make it more seamless and nostr"): once a piece
-// is made, the operator can send it straight to a person in their circle
-// over the existing NIP-17 chat transport — the piece lands privately in
-// that person's Tapit wallet as a chat message instead of a copy-paste.
-// This is the LIGHTEST nostr cut by deliberate choice: the piece is a plain
-// encrypted DM, not a held/anchored attestation, so there is no ceremony,
-// no inbox routing, and no permanent record on the holder's side. Rebuild
-// stays the manual paste-back flow. Copy + QR remain the fallback for
-// people who aren't on Tapit. Trade-off owned: a DM'd piece travels
-// (encrypted) through relays and only reaches people you're connected with
-// here; everyone else still uses Copy or QR.
+// Nostr seam: once pieces are made, the operator can send one straight to a
+// person in their circle over the existing NIP-17 chat transport — it lands
+// privately in that person's Tapit wallet as a chat message instead of a
+// copy-paste. Lightest cut by choice: a plain encrypted DM, no held/anchored
+// attestation. Copy + QR remain the fallback for people not on Tapit.
 //
-// Honest scope: the wallet makes the word jointly-held and recoverable by
-// the people you give pieces to; it can't make a school or a bank honor
-// the word once it's revealed. Reset = just make a new one and hand out
-// fresh pieces; the old pieces stop combining to anything useful.
+// Honest scope (v1): all templates are co-access — any threshold of holders
+// can bring the secret back AND read it. Blind-custody, timelocks,
+// beneficiaries, and Bitcoin/Lightning payloads are later cuts. The wallet
+// makes a secret jointly-held + recoverable by the people you give pieces
+// to; it can't make a school or a bank honor it once revealed.
 
 interface Props {
   onClose: () => void;
@@ -57,19 +55,20 @@ type SendState =
 
 /** The chat-message body a holder receives — carries the piece token plus
  *  plain context so a random share landing in their thread makes sense.
- *  The secret word itself is never in here; only the opaque share. */
+ *  The secret itself is never in here; only the opaque share. */
 function shareMessage(name: string, token: string): string {
-  const which = name.trim() ? ` "${name.trim()}"` : '';
+  const which = name.trim() ? ` "${name.trim()}"` : ' a shared secret';
   return (
-    `Here's your piece of our safe word${which} — keep it safe. ` +
-    `If we ever need to rebuild the word, send this piece back to whoever ` +
-    `is gathering them. Your piece:\n${token}`
+    `Here's your piece of${which} — keep it safe. ` +
+    `If we ever need to bring it back, send this piece to whoever is ` +
+    `gathering them. Your piece:\n${token}`
   );
 }
 
 export function SharedSecretModal({ onClose }: Props) {
   const { wallet, holdings, relayStatus, sendChatMessage } = useWallet();
-  const [mode, setMode] = useState<'create' | 'recover'>('create');
+  const [mode, setMode] = useState<'pick' | 'create' | 'recover'>('pick');
+  const [template, setTemplate] = useState<SecretTemplate | null>(null);
 
   // create state
   const [secret, setSecret] = useState('');
@@ -89,16 +88,31 @@ export function SharedSecretModal({ onClose }: Props) {
   const [pasted, setPasted] = useState('');
   const [recovered, setRecovered] = useState<CombineResult | null>(null);
 
-  // The people the operator could hand a piece to over chat — their
-  // existing family / cohort / handshake circle. Empty when they have no
-  // connections yet. relayStatus is null until the Mycelium network is
-  // turned on; without it there's nothing to send over, so the per-piece
-  // "Send" affordance only appears when both are available.
+  // The people the operator could hand a piece to over chat — their existing
+  // family / cohort / handshake circle. The per-piece "Send" affordance only
+  // appears when the Mycelium network is on and there's at least one peer.
   const candidates = useMemo(
     () => findVouchingCircleCandidates(holdings, wallet.identity),
     [holdings, wallet.identity],
   );
   const canSendOverChat = relayStatus !== null && candidates.length > 0;
+
+  function pickTemplate(t: SecretTemplate) {
+    setTemplate(t);
+    setTotal(t.total);
+    setThreshold(t.threshold);
+    setSecret('');
+    setName('');
+    setMade(null);
+    setCreateError(null);
+    setMode('create');
+  }
+
+  function backToPick() {
+    setMode('pick');
+    setMade(null);
+    setCreateError(null);
+  }
 
   function create() {
     setCreateError(null);
@@ -108,7 +122,7 @@ export function SharedSecretModal({ onClose }: Props) {
       setOpenSendIdx(null);
       setSendState({});
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Could not make the shares.');
+      setCreateError(err instanceof Error ? err.message : 'Could not make the pieces.');
     }
   }
 
@@ -146,48 +160,76 @@ export function SharedSecretModal({ onClose }: Props) {
     setRecovered(combineSharedSecret(lines));
   }
 
+  const title =
+    mode === 'pick'
+      ? 'Your secrets'
+      : mode === 'recover'
+        ? 'Bring a secret back'
+        : (template?.label ?? 'New secret');
+
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Family safe word</h2>
+          <h2 className="text-base font-semibold">{title}</h2>
           <button type="button" onClick={onClose} className="text-sm text-muted hover:text-ink">
             Close
           </button>
         </div>
 
-        <div className="mt-3 flex gap-1 rounded-lg bg-ink/5 p-1 text-sm">
+        {mode !== 'pick' && (
           <button
             type="button"
-            onClick={() => setMode('create')}
-            className={`flex-1 rounded-md py-1.5 font-medium ${mode === 'create' ? 'bg-paper shadow-sm' : 'text-muted'}`}
+            onClick={backToPick}
+            className="mt-2 text-xs text-muted hover:text-ink"
           >
-            Make one
+            ← Back
           </button>
-          <button
-            type="button"
-            onClick={() => setMode('recover')}
-            className={`flex-1 rounded-md py-1.5 font-medium ${mode === 'recover' ? 'bg-paper shadow-sm' : 'text-muted'}`}
-          >
-            Rebuild it
-          </button>
-        </div>
+        )}
+
+        {mode === 'pick' && (
+          <div className="mt-4 space-y-2">
+            <p className="text-xs text-muted">
+              Keep a secret safe by splitting it into pieces held by people
+              you trust — no single person can read it or change it, and it
+              takes a few of them together to bring it back. Pick what's
+              closest; you can fine-tune it next.
+            </p>
+            {SECRET_TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => pickTemplate(t)}
+                className="block w-full text-left rounded-md border border-ink/15 bg-white/60 px-3 py-2 hover:bg-ink/5"
+              >
+                <div className="text-sm font-medium">{t.label}</div>
+                <div className="text-[11px] text-muted">{t.blurb}</div>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => { setRecovered(null); setPasted(''); setMode('recover'); }}
+              className="mt-2 block w-full rounded-md border border-ink/15 py-2 text-sm font-medium hover:bg-ink/5"
+            >
+              Bring a secret back
+            </button>
+          </div>
+        )}
 
         {mode === 'create' && !made && (
           <div className="mt-4 space-y-3">
             <p className="text-xs text-muted">
-              Pick a secret word or phrase and split it into pieces for the
-              people you trust. No single piece reveals anything — it takes a
-              chosen number of them together to rebuild it. Hand a piece to
-              each person however you like.
+              No single piece reveals anything — it takes the number you choose
+              together to bring it back. You hand the pieces out; the secret
+              itself never leaves this device whole.
             </p>
             <label className="block">
-              <span className="text-xs font-medium">The secret word or phrase</span>
+              <span className="text-xs font-medium">{template?.secretLabel ?? 'The secret'}</span>
               <input
                 type="text"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value)}
-                placeholder="e.g. the school pickup word"
+                placeholder={template?.secretPlaceholder ?? 'Type the secret to protect'}
                 className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
               />
             </label>
@@ -197,7 +239,7 @@ export function SharedSecretModal({ onClose }: Props) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. School pickup 2026"
+                placeholder={template?.namePlaceholder ?? 'Name it (optional)'}
                 className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
               />
               <span className="mt-1 block text-[11px] text-muted">
@@ -207,7 +249,7 @@ export function SharedSecretModal({ onClose }: Props) {
             </label>
             <div className="flex gap-3">
               <label className="flex-1">
-                <span className="text-xs font-medium">People who get a piece</span>
+                <span className="text-xs font-medium">People who hold a piece</span>
                 <select
                   value={total}
                   onChange={(e) => {
@@ -223,7 +265,7 @@ export function SharedSecretModal({ onClose }: Props) {
                 </select>
               </label>
               <label className="flex-1">
-                <span className="text-xs font-medium">Needed to rebuild</span>
+                <span className="text-xs font-medium">Needed to bring it back</span>
                 <select
                   value={threshold}
                   onChange={(e) => setThreshold(Number(e.target.value))}
@@ -236,8 +278,8 @@ export function SharedSecretModal({ onClose }: Props) {
               </label>
             </div>
             <p className="text-xs text-muted">
-              Any {threshold} of {total} can rebuild it together; fewer reveal
-              nothing.
+              Any {threshold} of {total} can bring it back together; fewer
+              reveal nothing.
             </p>
             <button
               type="button"
@@ -257,8 +299,9 @@ export function SharedSecretModal({ onClose }: Props) {
           <div className="mt-4 space-y-3">
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               Give one piece to each person. They'll need {made.threshold} of
-              {' '}{made.total} together to rebuild the word. Keep the word
-              itself only in your head — don't store the whole thing anywhere.
+              {' '}{made.total} together to bring it back. Keep the secret itself
+              somewhere safe — the pieces only restore it when enough come
+              together.
             </div>
             {made.shares.map((token, i) => {
               const ss = sendState[i];
@@ -341,7 +384,7 @@ export function SharedSecretModal({ onClose }: Props) {
             )}
             <button
               type="button"
-              onClick={() => { setMade(null); setSecret(''); setName(''); }}
+              onClick={() => { setMade(null); setSecret(''); setName(''); setMode('pick'); }}
               className="w-full rounded-md border border-ink/15 py-2 text-sm font-medium"
             >
               Done
@@ -352,9 +395,9 @@ export function SharedSecretModal({ onClose }: Props) {
         {mode === 'recover' && (
           <div className="mt-4 space-y-3">
             <p className="text-xs text-muted">
-              Paste the pieces — one per line — from the people who have them.
-              When you have enough, the word appears. Nothing is sent anywhere;
-              this happens on your device.
+              Paste the pieces — one per line — from the people who hold them.
+              When you have enough, the secret appears. Nothing is sent
+              anywhere; this happens on your device.
             </p>
             <textarea
               value={pasted}
@@ -372,11 +415,11 @@ export function SharedSecretModal({ onClose }: Props) {
               disabled={pasted.trim().length === 0}
               className="w-full rounded-md bg-ink py-2.5 text-paper text-sm font-medium disabled:opacity-40"
             >
-              Rebuild the word
+              Bring it back
             </button>
             {recovered?.ok === true && (
               <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
-                <div className="text-xs uppercase tracking-wide opacity-70">The word is</div>
+                <div className="text-xs uppercase tracking-wide opacity-70">The secret is</div>
                 <div className="mt-1 break-words text-base font-semibold">{recovered.secret}</div>
               </div>
             )}

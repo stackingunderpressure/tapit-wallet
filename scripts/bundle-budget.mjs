@@ -395,7 +395,11 @@ const BUDGETS = [
   // useWallet + sendChatMessage wiring. Measured 4.27KB gz; the growth is
   // the circle-finder + readers, inherent to the DM-a-piece feature, not a
   // leak (those readers are also shared with the connections chunks).
-  { pattern: /^SharedSecretModal-.*\.js$/, gz: 5_000, label: 'SharedSecretModal' },
+  // 2026-06-04 "cut version 1" bump 5KB -> 5.6KB: the "your secrets" v1 adds
+  // the plain-language scenario-template picker (pick -> create -> recover
+  // flow) over the same Shamir core. Measured 4.90KB gz; the growth is the
+  // template-pick UI + generalized copy, inherent to the experience layer.
+  { pattern: /^SharedSecretModal-.*\.js$/, gz: 5_600, label: 'SharedSecretModal' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from
