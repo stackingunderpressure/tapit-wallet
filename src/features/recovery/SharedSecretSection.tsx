@@ -18,6 +18,9 @@ export function SharedSecretSection() {
   return (
     <div className="mt-4 rounded-2xl border border-ink/10 bg-paper p-4">
       <h3 className="text-sm font-semibold">Your secrets</h3>
+      <p className="mt-0.5 text-xs font-medium text-ink/70">
+        Your circle holds a secret for you — pieces they keep, not approvals.
+      </p>
       <p className="mt-1 text-xs text-muted">
         Split a secret — a password, a safe word, a note — into pieces held by
         the people you trust. No single person can read it or change it; it

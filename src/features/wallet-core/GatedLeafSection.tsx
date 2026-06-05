@@ -177,6 +177,9 @@ export function GatedLeafSection({
           {existing.length} set up
         </span>
       </div>
+      <p className="mt-0.5 text-xs font-medium text-ink/70">
+        Your circle approves an action — they sign off, they don't hold a secret.
+      </p>
       <p className="mt-1 text-xs text-muted">
         For something important — a big Bitcoin transaction, getting back
         into this wallet — you can require a few people you trust to
