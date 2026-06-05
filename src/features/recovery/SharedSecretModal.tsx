@@ -6,6 +6,7 @@ import {
 } from './sharedSecret.ts';
 import { SECRET_TEMPLATES, type SecretTemplate } from './secretTemplates.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
+import { useBodyScrollLock } from '../../shared/lib/useBodyScrollLock.ts';
 import {
   findVouchingCircleCandidates,
   type VouchingCandidate,
@@ -66,6 +67,9 @@ function shareMessage(name: string, token: string): string {
 }
 
 export function SharedSecretModal({ onClose }: Props) {
+  // The modal is the dominant layer — lock the page behind it so touch
+  // scrolls the modal, not the page underneath.
+  useBodyScrollLock();
   const { wallet, holdings, relayStatus, sendChatMessage } = useWallet();
   const [mode, setMode] = useState<'pick' | 'create' | 'recover'>('pick');
   const [template, setTemplate] = useState<SecretTemplate | null>(null);
