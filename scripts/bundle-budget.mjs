@@ -399,7 +399,14 @@ const BUDGETS = [
   // the plain-language scenario-template picker (pick -> create -> recover
   // flow) over the same Shamir core. Measured 4.90KB gz; the growth is the
   // template-pick UI + generalized copy, inherent to the experience layer.
-  { pattern: /^SharedSecretModal-.*\.js$/, gz: 5_600, label: 'SharedSecretModal' },
+  // 2026-06-05 "track where/why you sent secrets" bump 5.6KB -> 8KB: the
+  // distribution ledger adds a managed list landing (SecretsLedgerList), a
+  // per-secret detail view (SecretDetail), the secretLedger record helpers,
+  // the encrypted secretsLedgerStore, and the per-piece tag/assign UI in the
+  // make view. Measured 7.14KB gz; this is the whole tracking surface the
+  // operator asked for ("all bells and whistles"), folded into the one lazy
+  // chunk that only loads when the modal opens — classic users pay nothing.
+  { pattern: /^SharedSecretModal-.*\.js$/, gz: 8_000, label: 'SharedSecretModal' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from

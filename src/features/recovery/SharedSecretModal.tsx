@@ -1,10 +1,22 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   splitSharedSecret,
   combineSharedSecret,
   type CombineResult,
 } from './sharedSecret.ts';
 import { SECRET_TEMPLATES, type SecretTemplate } from './secretTemplates.ts';
+import {
+  newSecretRecord,
+  assignPiece,
+  setWhy,
+  upsertRecord,
+  removeRecord,
+  type SecretRecord,
+  type PieceMethod,
+} from './secretLedger.ts';
+import { SecretsLedgerList } from './SecretsLedgerList.tsx';
+import { SecretDetail } from './SecretDetail.tsx';
+import { secretsLedgerStore } from '../storage/secretsLedgerStore.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useBodyScrollLock } from '../../shared/lib/useBodyScrollLock.ts';
 import {
@@ -16,26 +28,19 @@ const QrShow = lazy(() =>
   import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
 );
 
-// "Your secrets" — version 1 of the experience layer (2026-06-04 "cut
-// version 1"). The operator picks a plain-language scenario (a safe word, a
-// shared password, something my circle can bring back for me, break-glass,
-// or a custom setup), then splits a secret into pieces held by the people
-// they trust; any chosen number of those holders bring it back together.
-// The split + combine never leave this device; no single piece reveals
-// anything. The crypto (Shamir today, swappable later) is kept entirely off
-// the screen — the surface speaks in "pieces" and "people", never jargon.
+// "Your secrets" — the experience layer over the Shamir split/combine. The
+// operator manages a list of secrets they've set up, picks a plain-language
+// scenario to make a new one, hands the pieces out, and brings secrets back.
 //
-// Nostr seam: once pieces are made, the operator can send one straight to a
-// person in their circle over the existing NIP-17 chat transport — it lands
-// privately in that person's Tapit wallet as a chat message instead of a
-// copy-paste. Lightest cut by choice: a plain encrypted DM, no held/anchored
-// attestation. Copy + QR remain the fallback for people not on Tapit.
+// Ledger (2026-06-05, "no way to track where or why you sent secrets"): each
+// secret is recorded — name, why-note, M-of-N, and who holds which piece by
+// what method and when — and persisted encrypted at rest. METADATA ONLY: the
+// secret value and the share tokens are NEVER stored (see secretLedger.ts).
+// Chat sends auto-record the holder; copy/QR get a "mark given to" control.
 //
-// Honest scope (v1): all templates are co-access — any threshold of holders
-// can bring the secret back AND read it. Blind-custody, timelocks,
-// beneficiaries, and Bitcoin/Lightning payloads are later cuts. The wallet
-// makes a secret jointly-held + recoverable by the people you give pieces
-// to; it can't make a school or a bank honor it once revealed.
+// Honest scope: all templates are co-access — any threshold of holders can
+// bring the secret back and read it. The crypto (Shamir today, swappable)
+// stays off the screen; the surface speaks in "pieces" and "people".
 
 interface Props {
   onClose: () => void;
@@ -46,6 +51,7 @@ interface Made {
   threshold: number;
   shares: string[];
   name: string;
+  recordId: string;
 }
 
 type SendState =
@@ -54,9 +60,6 @@ type SendState =
   | { state: 'warn'; detail: string }
   | { state: 'failed'; detail: string };
 
-/** The chat-message body a holder receives — carries the piece token plus
- *  plain context so a random share landing in their thread makes sense.
- *  The secret itself is never in here; only the opaque share. */
 function shareMessage(name: string, token: string): string {
   const which = name.trim() ? ` "${name.trim()}"` : ' a shared secret';
   return (
@@ -66,17 +69,29 @@ function shareMessage(name: string, token: string): string {
   );
 }
 
+function methodLabel(m: PieceMethod | undefined): string {
+  switch (m) {
+    case 'chat': return 'sent over chat';
+    case 'copy': return 'copied';
+    case 'qr': return 'shown as QR';
+    case 'other': return 'handed over';
+    default: return '';
+  }
+}
+
 export function SharedSecretModal({ onClose }: Props) {
-  // The modal is the dominant layer — lock the page behind it so touch
-  // scrolls the modal, not the page underneath.
   useBodyScrollLock();
-  const { wallet, holdings, relayStatus, sendChatMessage } = useWallet();
-  const [mode, setMode] = useState<'pick' | 'create' | 'recover'>('pick');
+  const { wallet, holdings, relayStatus, sendChatMessage, ownerId, passphrase } = useWallet();
+
+  const [mode, setMode] = useState<'list' | 'pick' | 'create' | 'recover' | 'detail'>('list');
+  const [records, setRecords] = useState<SecretRecord[]>([]);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [template, setTemplate] = useState<SecretTemplate | null>(null);
 
   // create state
   const [secret, setSecret] = useState('');
   const [name, setName] = useState('');
+  const [why, setWhyField] = useState('');
   const [threshold, setThreshold] = useState(2);
   const [total, setTotal] = useState(3);
   const [made, setMade] = useState<Made | null>(null);
@@ -84,22 +99,37 @@ export function SharedSecretModal({ onClose }: Props) {
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [qrIdx, setQrIdx] = useState<number | null>(null);
 
-  // chat-send state
+  // distribution state
   const [openSendIdx, setOpenSendIdx] = useState<number | null>(null);
+  const [openAssignIdx, setOpenAssignIdx] = useState<number | null>(null);
+  const [assignName, setAssignName] = useState('');
   const [sendState, setSendState] = useState<Record<number, SendState>>({});
 
   // recover state
   const [pasted, setPasted] = useState('');
   const [recovered, setRecovered] = useState<CombineResult | null>(null);
 
-  // The people the operator could hand a piece to over chat — their existing
-  // family / cohort / handshake circle. The per-piece "Send" affordance only
-  // appears when the Mycelium network is on and there's at least one peer.
+  // Load the saved ledger once. Decrypt failure resolves to [] in the store.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const recs = await secretsLedgerStore.load(ownerId, passphrase);
+      if (!cancelled) setRecords(recs);
+    })();
+    return () => { cancelled = true; };
+  }, [ownerId, passphrase]);
+
+  function persist(next: SecretRecord[]) {
+    setRecords(next);
+    void secretsLedgerStore.save(ownerId, passphrase, next);
+  }
+
   const candidates = useMemo(
     () => findVouchingCircleCandidates(holdings, wallet.identity),
     [holdings, wallet.identity],
   );
   const canSendOverChat = relayStatus !== null && candidates.length > 0;
+  const madeRecord = made ? records.find((r) => r.id === made.recordId) ?? null : null;
 
   function pickTemplate(t: SecretTemplate) {
     setTemplate(t);
@@ -107,27 +137,45 @@ export function SharedSecretModal({ onClose }: Props) {
     setThreshold(t.threshold);
     setSecret('');
     setName('');
+    setWhyField('');
     setMade(null);
     setCreateError(null);
     setMode('create');
   }
 
-  function backToPick() {
-    setMode('pick');
-    setMade(null);
-    setCreateError(null);
+  function goBack() {
+    if (mode === 'create') { setMade(null); setMode('pick'); }
+    else setMode('list');
   }
 
   function create() {
     setCreateError(null);
     try {
       const shares = splitSharedSecret(secret.trim(), threshold, total);
-      setMade({ total, threshold, shares, name: name.trim() });
+      const rec = newSecretRecord({ name: name.trim(), why: why.trim(), total, threshold });
+      persist(upsertRecord(records, rec));
+      setMade({ total, threshold, shares, name: name.trim(), recordId: rec.id });
       setOpenSendIdx(null);
+      setOpenAssignIdx(null);
       setSendState({});
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Could not make the pieces.');
     }
+  }
+
+  function assignMadePiece(i: number, patch: { holderName?: string; holderPubkey?: string; method?: PieceMethod }) {
+    if (!made) return;
+    const rec = records.find((r) => r.id === made.recordId);
+    if (!rec) return;
+    persist(upsertRecord(records, assignPiece(rec, i + 1, patch)));
+  }
+
+  function markGiven(i: number, who: string) {
+    const trimmed = who.trim();
+    if (!trimmed) return;
+    assignMadePiece(i, { holderName: trimmed, method: 'other' });
+    setOpenAssignIdx(null);
+    setAssignName('');
   }
 
   async function copyShare(i: number, token: string) {
@@ -151,6 +199,7 @@ export function SharedSecretModal({ onClose }: Props) {
           ? { state: 'warn', detail: `Sent to ${peer.name} — still confirming` }
           : { state: 'sent', detail: `Sent to ${peer.name}` },
       }));
+      assignMadePiece(i, { holderName: peer.name, holderPubkey: peer.pubkey, method: 'chat' });
     } catch (err) {
       setSendState((s) => ({
         ...s,
@@ -164,12 +213,18 @@ export function SharedSecretModal({ onClose }: Props) {
     setRecovered(combineSharedSecret(lines));
   }
 
+  const detailRecord = detailId ? records.find((r) => r.id === detailId) ?? null : null;
+
   const title =
-    mode === 'pick'
+    mode === 'list'
       ? 'Your secrets'
       : mode === 'recover'
         ? 'Bring a secret back'
-        : (template?.label ?? 'New secret');
+        : mode === 'pick'
+          ? 'New secret'
+          : mode === 'detail'
+            ? (detailRecord?.name || 'Secret')
+            : (template?.label ?? 'New secret');
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
@@ -181,23 +236,39 @@ export function SharedSecretModal({ onClose }: Props) {
           </button>
         </div>
 
-        {mode !== 'pick' && (
+        {(mode === 'pick' || mode === 'create' || mode === 'recover') && (
           <button
             type="button"
-            onClick={backToPick}
+            onClick={goBack}
             className="mt-2 text-xs text-muted hover:text-ink"
           >
             ← Back
           </button>
         )}
 
+        {mode === 'list' && (
+          <SecretsLedgerList
+            records={records}
+            onOpen={(id) => { setDetailId(id); setMode('detail'); }}
+            onNew={() => setMode('pick')}
+            onRecover={() => { setRecovered(null); setPasted(''); setMode('recover'); }}
+          />
+        )}
+
+        {mode === 'detail' && detailRecord && (
+          <SecretDetail
+            record={detailRecord}
+            onBack={() => setMode('list')}
+            onSaveWhy={(w) => persist(upsertRecord(records, setWhy(detailRecord, w)))}
+            onDelete={() => { persist(removeRecord(records, detailRecord.id)); setMode('list'); }}
+          />
+        )}
+
         {mode === 'pick' && (
           <div className="mt-4 space-y-2">
             <p className="text-xs text-muted">
-              Keep a secret safe by splitting it into pieces held by people
-              you trust — no single person can read it or change it, and it
-              takes a few of them together to bring it back. Pick what's
-              closest; you can fine-tune it next.
+              What do you want to protect? Pick what's closest; you can
+              fine-tune it next.
             </p>
             {SECRET_TEMPLATES.map((t) => (
               <button
@@ -210,13 +281,6 @@ export function SharedSecretModal({ onClose }: Props) {
                 <div className="text-[11px] text-muted">{t.blurb}</div>
               </button>
             ))}
-            <button
-              type="button"
-              onClick={() => { setRecovered(null); setPasted(''); setMode('recover'); }}
-              className="mt-2 block w-full rounded-md border border-ink/15 py-2 text-sm font-medium hover:bg-ink/5"
-            >
-              Bring a secret back
-            </button>
           </div>
         )}
 
@@ -246,9 +310,19 @@ export function SharedSecretModal({ onClose }: Props) {
                 placeholder={template?.namePlaceholder ?? 'Name it (optional)'}
                 className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
               />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium">What's it for <span className="font-normal text-muted">(optional)</span></span>
+              <input
+                type="text"
+                value={why}
+                onChange={(e) => setWhyField(e.target.value)}
+                placeholder="e.g. so the grandparents can pick up the kids"
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none"
+              />
               <span className="mt-1 block text-[11px] text-muted">
-                Just a label so a piece makes sense to whoever holds it. Not part
-                of the secret.
+                Just for your own record — it's saved with this secret so you
+                remember why you set it up. Not part of the secret.
               </span>
             </label>
             <div className="flex gap-3">
@@ -302,13 +376,13 @@ export function SharedSecretModal({ onClose }: Props) {
         {mode === 'create' && made && (
           <div className="mt-4 space-y-3">
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Give one piece to each person. They'll need {made.threshold} of
-              {' '}{made.total} together to bring it back. Keep the secret itself
-              somewhere safe — the pieces only restore it when enough come
-              together.
+              Give one piece to each person, and tag who got it so you can keep
+              track. Hand them all out now — once you close this you can't get
+              the pieces back (only your record of where they went is kept).
             </div>
             {made.shares.map((token, i) => {
               const ss = sendState[i];
+              const pieceRec = madeRecord?.pieces.find((p) => p.index === i + 1);
               return (
               <div key={i} className="rounded-md border border-ink/10 bg-white/60 px-3 py-2">
                 <div className="flex items-center justify-between">
@@ -317,7 +391,7 @@ export function SharedSecretModal({ onClose }: Props) {
                     {canSendOverChat && (
                       <button
                         type="button"
-                        onClick={() => setOpenSendIdx(openSendIdx === i ? null : i)}
+                        onClick={() => { setOpenAssignIdx(null); setOpenSendIdx(openSendIdx === i ? null : i); }}
                         className="rounded border border-ink/15 px-2 py-1 text-xs font-medium hover:bg-ink/5"
                       >
                         {openSendIdx === i ? 'Cancel' : 'Send'}
@@ -336,6 +410,13 @@ export function SharedSecretModal({ onClose }: Props) {
                       className="rounded border border-ink/15 px-2 py-1 text-xs font-medium hover:bg-ink/5"
                     >
                       {qrIdx === i ? 'Hide QR' : 'QR'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setOpenSendIdx(null); setAssignName(''); setOpenAssignIdx(openAssignIdx === i ? null : i); }}
+                      className="rounded border border-ink/15 px-2 py-1 text-xs font-medium hover:bg-ink/5"
+                    >
+                      {openAssignIdx === i ? 'Cancel' : 'Tag'}
                     </button>
                   </div>
                 </div>
@@ -357,12 +438,53 @@ export function SharedSecretModal({ onClose }: Props) {
                     </div>
                   </div>
                 )}
+                {openAssignIdx === i && (
+                  <div className="mt-2 rounded-md border border-ink/10 bg-paper/60 p-2">
+                    <div className="text-[11px] text-muted">Who did you give this piece to?</div>
+                    {candidates.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {candidates.map((c) => (
+                          <button
+                            key={c.pubkey}
+                            type="button"
+                            onClick={() => markGiven(i, c.name)}
+                            className="rounded-full border border-ink/15 px-2.5 py-1 text-xs font-medium hover:bg-ink/5"
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        type="text"
+                        value={assignName}
+                        onChange={(e) => setAssignName(e.target.value)}
+                        placeholder="or type a name"
+                        className="flex-1 rounded-md border border-ink/15 bg-white px-2 py-1 text-xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => markGiven(i, assignName)}
+                        disabled={assignName.trim().length === 0}
+                        className="rounded-md bg-ink px-3 py-1 text-xs font-medium text-paper disabled:opacity-40"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {ss && (
                   <div
                     className={`mt-1 text-[11px] ${ss.state === 'failed' ? 'text-red-600' : ss.state === 'sent' ? 'text-emerald-700' : 'text-muted'}`}
                     role={ss.state === 'failed' ? 'alert' : undefined}
                   >
                     {ss.detail}
+                  </div>
+                )}
+                {!ss && pieceRec?.method && (
+                  <div className="mt-1 text-[11px] text-emerald-700">
+                    Held by {pieceRec.holderName ?? 'someone'} · {methodLabel(pieceRec.method)}
                   </div>
                 )}
                 {qrIdx === i && (
@@ -376,19 +498,19 @@ export function SharedSecretModal({ onClose }: Props) {
             {canSendOverChat ? (
               <p className="text-[11px] text-muted">
                 Send delivers the piece privately to that person's Tapit wallet
-                over chat. It works only for people you're connected with here;
-                for anyone else, use Copy or QR.
+                over chat and tags them automatically. For Copy or QR, use Tag
+                to record who got it.
               </p>
             ) : (
               <p className="text-[11px] text-muted">
-                {relayStatus === null
-                  ? "Turn on the Mycelium network in Settings to send pieces straight to a person's wallet over chat. For now, hand them out with Copy or QR."
-                  : 'Connect with people first (People → add a connection) to send pieces over chat. For now, hand them out with Copy or QR.'}
+                Hand the pieces out with Copy or QR, and use Tag to record who
+                got each one. (Turn on the Mycelium network in Settings to send
+                pieces straight to a person's wallet over chat.)
               </p>
             )}
             <button
               type="button"
-              onClick={() => { setMade(null); setSecret(''); setName(''); setMode('pick'); }}
+              onClick={() => { setMade(null); setSecret(''); setName(''); setWhyField(''); setMode('list'); }}
               className="w-full rounded-md border border-ink/15 py-2 text-sm font-medium"
             >
               Done
