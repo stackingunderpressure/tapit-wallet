@@ -9,6 +9,36 @@ agreements. It is the one place a person's private keys ever
 live, and the hub every other app connects *to* in order to get
 something signed. Built on the `tapit-attest` primitive.
 
+## Mission — the WHY behind every cut (read this)
+Everything Tapit does already exists in the world — Shamir secret
+sharing, Schnorr signatures, OpenTimestamps anchoring, web-of-trust,
+threshold schemes. We invented none of it. Our job is to **package
+these existing tools so an ordinary person can do something they never
+could have done before** — hold their own keys, split a secret among
+the people they trust, prove a moment happened and can't be tampered
+with, recover what they'd otherwise lose forever — *without having to
+understand the cryptography first*. All of it already exists; we are
+the bridge across the gap.
+
+But the product is the bridge **and the education**. A person should be
+able to tap it and, through the act of using it, learn what they're
+doing and why it is good for their own sovereignty. That discovery
+process — **sovereignty literacy delivered through use**, in plain,
+non-biased language, assembled for the individual's benefit above any
+group's, company's, or our own — IS the app, its usability, and its
+honest addictiveness. We are not mesmerizing users or farming their
+attention; we hand them a tool and teach them to be free with it, the
+way the calculator handed people math they could never have done by
+hand. The operator lived the long road to sovereignty himself and
+wishes the knowledge had been in one easy, unbiased place built for
+*his* benefit — that place is what we are building.
+
+Built for the operator and his family first: **if it only ever works
+for one family, it already succeeded.** Offered as a gift to anyone who
+hits the same walls. So every cut has two jobs — make the capability
+*reachable*, and leave the person a little more able to have chosen it
+themselves. A cut that does the first without the second is half done.
+
 ## Prime Directive
 Build the smallest useful version correctly. Clarity beats
 cleverness. Useful beats flashy. Safe beats fast. The user's keys
