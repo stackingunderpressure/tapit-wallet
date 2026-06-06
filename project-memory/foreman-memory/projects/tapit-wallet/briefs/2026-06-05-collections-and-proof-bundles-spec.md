@@ -78,27 +78,49 @@ Share the bundle via the system sheet, a verify URL to the whole collection,
 or (opt-in) public kind-1 notes. Private by default; publishing is always an
 explicit act, never automatic.
 
-## 5. Streak reminders — HANDLE WITH CARE (the one honesty constraint)
+## 5. Engagement + streak reminders (operator correction 2026-06-05)
 
-Streaks already compute/display. The operator wants reminders "thrown back
-up at me." This is the ONE place this feature can drift across the line the
-operator himself drew and the Mission block in CLAUDE.md states: **we do not
-mesmerize users or farm attention.** A streak has an honest form and a
-manipulative form, and they look similar:
+The carpenter's first draft of this section over-cautioned. The operator
+corrected it, and he's right: **engagement here is GOOD, because it keeps the
+data fresh and the circle warm — it is operational readiness, not vanity.**
+In a circle-based sovereign wallet the failure mode is real: if your
+recovery holders, secret-keepers, and vouchers haven't opened the app in a
+year, then at the moment you actually need them they're cold — forgotten
+passphrase, lost device, app deleted, can't find their login — and your
+safety net is decorative instead of functional. An untested backup is not a
+backup; a circle that never exercises can't catch you when you fall. So
+regular light touch is a SAFETY FEATURE, like checking the smoke-detector
+battery.
 
-- **Honest (build this):** the streak is a mirror of the operator's OWN
-  chosen practice, like a runner's logbook. Reminders are opt-in, user-set
-  time-of-day, encouraging, and gentle. The frame is "here's your practice,
-  you're on day 14." It serves the user's commitment.
-- **Manipulative (do NOT build):** manufactured loss-aversion — "Don't break
-  your streak!" guilt, red-alert badges, off-hours nags, escalating
-  notifications engineered to pull the user back for an engagement metric.
-  This is the exact dopamine/attention-farm the whole product is built
-  against. There is no ad model and no engagement KPI here to justify it.
+The honest line is therefore NOT "streak yes/no" — it's **purpose**: does
+the open serve the USER's own functioning, or a platform metric? We have no
+ads and no engagement KPI, so we have only the first kind to serve, which is
+exactly what makes driving engagement honest here.
 
-Implementation: opt-in reminder with a user-chosen time, calm copy, easy off
-switch, no guilt framing, no off-hours pings. If in doubt, lean gentler. The
-streak celebrates the practice; it never weaponizes the fear of losing it.
+- **Build (honest, user-serving):** streaks as a mirror of your own
+  practice; opt-in reminders at a user-chosen time; and — higher value —
+  reminders tied to real readiness ("it's been 8 months since Mom opened her
+  recovery piece; a quick hello keeps your recovery working", "your backup
+  hasn't been tested in a year — run a drill?"). The payoff accrues to the
+  user's own safety.
+- **Don't build (dishonest):** content-less manufactured anxiety that drives
+  opens for opens' sake with NO readiness payoff — guilt badges and
+  escalating off-hours nags engineered for a metric the user doesn't benefit
+  from. Only this narrow case is off-limits.
+
+### 5b. Circle liveness — the engagement that matters most
+
+The operator is already engaged (posting daily); the real risk is the
+CIRCLE going cold. So the highest-value engagement feature isn't keeping the
+owner posting, it's keeping the people who hold his keys/secrets/shares warm
+enough to help when it counts. Worth spec/ing as a sibling: a "your safety
+net's readiness" view (who in your circle has gone quiet, whose share may be
+at risk), gentle nudges to ping cold holders, and a periodic recovery DRILL
+that exercises the scheme so you find out it's broken in a calm moment
+instead of an emergency. This is engagement as honest safety-monitoring, and
+it's directly load-bearing for whether the whole sovereignty model works at
+the moment of need (it's the maintenance discipline — "protected through all
+time is a discipline you maintain" — turned into a feature).
 
 ---
 
@@ -108,10 +130,13 @@ streak celebrates the practice; it never weaponizes the fear of losing it.
   add to collection; collections list/detail). No new crypto. Smallest.
 - **Cut 2:** Multi-entry share-proof bundle (select collection → one verify
   page) + the sealed `collection` attestation minted on share/publish.
-- **Cut 3:** Publish surfaces + opt-in gentle streak reminders (per the
-  honesty constraint above).
+- **Cut 3:** Publish surfaces + streak reminders + circle-liveness readiness
+  (per section 5/5b — engagement framed as readiness, not vanity).
 
 ## Non-goals
-No engagement-farming streak mechanics, no guilt notifications, no off-hours
-nags; collections private by default; publishing always a deliberate act.
-The feature serves the operator's own joy and his record, not a metric.
+The ONE off-limit (narrow): content-less manufactured-anxiety mechanics that
+drive opens for a metric with no readiness payoff to the user. Everything
+that keeps the user's data fresh and circle warm is in-scope and good.
+Collections private by default; publishing always a deliberate act. The
+feature serves the user's own functioning and record — and engagement that
+serves THAT is honest, per the operator's correction.
