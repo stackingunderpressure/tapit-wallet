@@ -270,6 +270,44 @@ both a holder and a depositor, keeping your connections live is a shared good �
 people open the wallet to keep the network secure for their OWN secrets too.
 Retention from real mutual stake, not a dopamine loop.
 
+### E-Bitcoin — the social sig AS a timelocked tapscript recovery key (operator 2026-06-06)
+
+The operator's answer to "Shamir-splitting a seed is bad custody": don't split
+the PRIMARY key — make the social-reconstructed key the LAST-RESORT, TIMELOCKED
+leaf of a Taproot vault. Owner key-path spends anytime (alive = preempts
+everything); a script leaf lets the social quorum's key spend ONLY AFTER a long
+timelock. This **defangs Shamir's main weakness**: an early leak of the
+reconstructed key can't move coins until the timelock matures, and if the owner
+ever moved the coins the social path never fires. It's the Liana/Nunchuk
+inheritance-vault pattern (owner key-path + timelocked recovery path), with the
+recovery key held across the SOCIAL NETWORK instead of one backup device.
+
+Honest refinements:
+- **SMARTEST crypto for the social leaf is FROST threshold-SIGNING** (never
+  reconstruct the key — each holder signs a partial, combine into one Taproot
+  sig), NOT Shamir-reconstruct. Shamir re-exposes the full key on ONE device at
+  SPEND time (post-timelock, when they assemble to actually spend) — its
+  weakness returns exactly when it's used. FROST closes that, and it's the use
+  case that justifies revisiting the shelved-for-weight FROST work.
+- **Auto-distribute to the people after reassembly needs COVENANTS (CTV)** to
+  constrain where the spend goes; without them the assemblers control the output
+  (trust again). CTV is still a soft-fork proposal — so "then it distributes to
+  those people" is weaker than "they can spend it."
+- **Dead-man's reset has a cost:** keeping the timelock from maturing while alive
+  needs periodic owner action (move / re-anchor the coins) — a recurring on-chain
+  chore + footprint.
+- **BLOCKED on the unbuilt Bitcoin layer:** the wallet can hold the shares / be a
+  FROST participant (buildable), but constructing / broadcasting / signing the
+  Taproot vault does NOT exist (Satoshi's biggest unbuilt block).
+- Does NOT escape the human-reliability + assemble-N-people-years-later
+  coordination truth (Parts A–E); the readiness machinery helps, not eliminates.
+
+Net: the RIGHT shape, and it correctly answers the "don't split a seed"
+critique — the social sig is genuinely good for Bitcoin AS the timelocked
+recovery quorum (ideally FROST), complementing a multisig vault, not replacing
+the primary signing key. Ties to the conditional-release / fixed-key+mutable-
+descriptor vault brief (2026-06-04) and the FROST-reconsideration idea.
+
 ## Cut order
 - **Cut 1 (Part A):** opt-in encrypted piece storage + re-send. Default off,
   taught. Small, no transport change.
