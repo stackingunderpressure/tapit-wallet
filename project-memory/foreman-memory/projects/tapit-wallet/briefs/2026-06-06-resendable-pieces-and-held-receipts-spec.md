@@ -227,6 +227,49 @@ this extends that signed relationship with a holding-consent clause + a
 pre-authorized per-peer slot the inbox accepts without re-prompting. Best built
 WITH or BEFORE Part B-1, since it reframes how distribution gets consent.
 
+## PART E — the social-sig network: scale + the security argument (operator 2026-06-06)
+
+The whole arc culminates here: a large, growing, RECIPROCAL network of trusted
+ACTIVE people, each renting you a blind slot (Part D), across which you split any
+secret at scale (30 → 100 → 1000) with a tunable threshold. The operator's name:
+**"social sig"** — a multisig whose quorum is your real web of trust, enforced
+socially (Shamir custody) instead of on-chain script. Connects to the
+peer-consensus-as-a-covenant-outside-Bitcoin thesis (ideas.md 2026-06-04).
+
+**The security argument (precise + honest):**
+- An attacker faces TWO stacked hard problems: (1) DISCOVER who holds the pieces,
+  and (2) COMPROMISE a threshold of them. Both hard; stacked, very hard.
+- Blind slots (Part D) hide WHAT each holder has — they don't even know
+  themselves — so a compromised holder doesn't obviously out themselves as one.
+- **DECOYS make discovery far harder, nearly for free** (worth building): because
+  the slots are blind, fill COVER slots on peers you're NOT really using (and/or
+  dummy pieces), so an attacker who maps your handshakes still can't tell the
+  real M holders from cover. An anonymity-set defense that falls straight out of
+  blind storage — directly the operator's "they wouldn't even know who has it."
+- Robustness AND security both improve with N at a % threshold (50% of 30 = 15):
+  you can lose many before recovery fails, and an attacker needs many.
+
+**HONEST LIMITS (load-bearing, never oversell):**
+- Security scales with INDEPENDENT, REAL people — not raw count. 1000 real
+  attested humans is strong; 1000 sockpuppets is one attacker. The web of trust
+  (handshakes/vouches) is what makes the count mean anything (Sybil resistance).
+- Discovery-hardness is threat-model-dependent: hidden from the holders and
+  casual attackers, but relay/traffic metadata can leak the WHO to a
+  sophisticated network observer unless you add metadata hygiene (Tor / decoys /
+  timing). "Hard," not "impossible" — nosy relative vs nation-state differ.
+- Availability at scale cuts both ways: bigger N = more robust to loss, but more
+  coordination to assemble M LIVE holders in an emergency. The heartbeat/
+  readiness (Part B) is what keeps assembling-at-scale tractable.
+- "Complex legs / different combinations" = a POLICY TREE (AND/OR/weighted/
+  timelocked access structures — like a Bitcoin miniscript policy, but social).
+  Beyond flat M-of-N Shamir; reachable via nested/weighted sharing — an advanced
+  cut, not the v1 flat threshold.
+
+The reciprocal slots are ALSO the honest engagement engine: because everyone is
+both a holder and a depositor, keeping your connections live is a shared good —
+people open the wallet to keep the network secure for their OWN secrets too.
+Retention from real mutual stake, not a dopamine loop.
+
 ## Cut order
 - **Cut 1 (Part A):** opt-in encrypted piece storage + re-send. Default off,
   taught. Small, no transport change.
