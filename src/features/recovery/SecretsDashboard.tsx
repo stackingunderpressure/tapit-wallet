@@ -11,6 +11,7 @@ import {
   assignPiece,
   setWhy,
   setTokens,
+  tokenHashes,
   upsertRecord,
   removeRecord,
   type SecretRecord,
@@ -166,7 +167,13 @@ export function SecretsDashboard() {
     setCreateError(null);
     try {
       const shares = splitSharedSecret(secret.trim(), threshold, total);
-      const rec = newSecretRecord({ name: name.trim(), why: why.trim(), total, threshold });
+      // Per-piece hashes are SAFE metadata (a hash of a share reveals nothing),
+      // so keep them regardless of the keep-a-copy choice — they let the owner
+      // verify a returned piece later without rebuilding the secret.
+      const rec = {
+        ...newSecretRecord({ name: name.trim(), why: why.trim(), total, threshold }),
+        hashes: tokenHashes(shares),
+      };
       persist(upsertRecord(records, rec));
       setMade({ total, threshold, shares, name: name.trim(), recordId: rec.id });
       setOpenSendIdx(null);

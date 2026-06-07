@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { handedOutCount, type SecretRecord, type PieceMethod } from './secretLedger.ts';
+import { handedOutCount, pieceIndexForToken, type SecretRecord, type PieceMethod } from './secretLedger.ts';
 
 // One secret's distribution detail — the "where and why you sent it" record.
 // Shows the why-note (editable), the split, and who holds each piece by what
@@ -46,6 +46,9 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
   const out = handedOutCount(record);
   const dirty = why.trim() !== record.why;
   const tokens = record.tokens ?? [];
+  const canVerify = (record.hashes?.length ?? 0) > 0;
+  const [checkInput, setCheckInput] = useState('');
+  const [checkResult, setCheckResult] = useState<{ index: number | null } | null>(null);
 
   async function copyToken(i: number, token: string) {
     try {
@@ -163,6 +166,44 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
           >
             Stop keeping a copy
           </button>
+        </div>
+      )}
+
+      {canVerify && (
+        <div className="rounded-md border border-ink/10 bg-paper/60 p-3">
+          <div className="text-xs font-medium">Check a returned piece</div>
+          <p className="mt-0.5 text-[11px] text-muted">
+            Paste a piece someone hands back to confirm it's the genuine,
+            untampered one — without rebuilding the secret.
+          </p>
+          <textarea
+            value={checkInput}
+            onChange={(e) => { setCheckInput(e.target.value); setCheckResult(null); }}
+            rows={2}
+            placeholder="tapit-secret.v1.…"
+            spellCheck={false}
+            autoCapitalize="none"
+            autoCorrect="off"
+            className="mt-2 w-full rounded-md border border-ink/15 bg-white px-2 py-1 text-xs font-mono"
+          />
+          <button
+            type="button"
+            onClick={() => setCheckResult({ index: pieceIndexForToken(record, checkInput) })}
+            disabled={checkInput.trim().length === 0}
+            className="mt-1 rounded-md border border-ink/15 px-2.5 py-1 text-xs font-medium hover:bg-ink/5 disabled:opacity-40"
+          >
+            Check
+          </button>
+          {checkResult && (checkResult.index !== null ? (
+            <p className="mt-1 text-[11px] text-emerald-700">
+              ✓ Genuine — this is piece {checkResult.index} of this secret.
+            </p>
+          ) : (
+            <p className="mt-1 text-[11px] text-red-600" role="alert">
+              ✗ Doesn't match any piece of this secret — wrong piece, a typo, or
+              tampered.
+            </p>
+          ))}
         </div>
       )}
 

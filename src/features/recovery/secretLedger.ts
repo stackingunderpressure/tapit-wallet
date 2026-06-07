@@ -18,6 +18,8 @@
 // it alone. Tokens (when kept) ride the same passphrase-encrypted store as the
 // rest of the ledger.
 
+import { sha256 } from '@noble/hashes/sha256';
+
 export type PieceMethod = 'chat' | 'copy' | 'qr' | 'other';
 
 export interface PieceRecord {
@@ -50,6 +52,39 @@ export interface SecretRecord {
    * secret (the user chose this knowingly). See the prime-directive note above.
    */
   tokens?: string[];
+  /**
+   * Per-piece SHA-256 hashes (index-aligned to the pieces), stored at make
+   * time. SAFE metadata — a hash of a share reveals nothing about the share or
+   * the secret — so unlike `tokens` this carries no security cost and is kept
+   * regardless. Lets the owner VERIFY a returned piece (it's the exact,
+   * untampered one) without rebuilding the secret.
+   */
+  hashes?: string[];
+}
+
+function toHexBytes(bytes: Uint8Array): string {
+  let s = '';
+  for (const b of bytes) s += b.toString(16).padStart(2, '0');
+  return s;
+}
+
+/** SHA-256 hex of one piece token. Safe to store + share — reveals nothing. */
+export function hashToken(token: string): string {
+  return toHexBytes(sha256(new TextEncoder().encode(token.trim())));
+}
+
+/** Per-piece hashes for a set of tokens (index-aligned). */
+export function tokenHashes(tokens: readonly string[]): string[] {
+  return tokens.map(hashToken);
+}
+
+/** Which piece (1-based) a returned token is, by matching its hash to the
+ *  record's stored per-piece hashes. null = no match (wrong secret / tampered /
+ *  no hashes stored for this older record). */
+export function pieceIndexForToken(rec: SecretRecord, token: string): number | null {
+  if (!rec.hashes || rec.hashes.length === 0) return null;
+  const i = rec.hashes.indexOf(hashToken(token));
+  return i >= 0 ? i + 1 : null;
 }
 
 function makeId(): string {

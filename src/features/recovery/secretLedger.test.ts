@@ -5,6 +5,9 @@ import {
   assignPiece,
   setWhy,
   setTokens,
+  hashToken,
+  tokenHashes,
+  pieceIndexForToken,
   upsertRecord,
   removeRecord,
 } from './secretLedger.ts';
@@ -59,6 +62,24 @@ describe('secret ledger', () => {
     // empty / undefined clears it back to absent
     expect(setTokens(kept, undefined).tokens).toBeUndefined();
     expect(setTokens(kept, []).tokens).toBeUndefined();
+  });
+
+  it('hashToken is deterministic, trimmed, and 64-hex', () => {
+    const h = hashToken('tapit-secret.v1.2.1.abcd');
+    expect(h).toMatch(/^[0-9a-f]{64}$/);
+    expect(hashToken('  tapit-secret.v1.2.1.abcd  ')).toBe(h); // trims
+    expect(hashToken('other')).not.toBe(h);
+  });
+
+  it('pieceIndexForToken verifies a returned piece by hash', () => {
+    const tokens = ['piece-1', 'piece-2', 'piece-3'];
+    const rec = { ...newSecretRecord({ name: '', why: '', total: 3, threshold: 2 }), hashes: tokenHashes(tokens) };
+    expect(pieceIndexForToken(rec, 'piece-2')).toBe(2);
+    expect(pieceIndexForToken(rec, 'piece-1')).toBe(1);
+    expect(pieceIndexForToken(rec, 'not-a-real-piece')).toBeNull();
+    // older record with no hashes → null
+    const old = newSecretRecord({ name: '', why: '', total: 2, threshold: 2 });
+    expect(pieceIndexForToken(old, 'piece-1')).toBeNull();
   });
 
   it('setWhy / upsert / remove work immutably', () => {
