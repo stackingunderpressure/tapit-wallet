@@ -13,15 +13,15 @@ journal/capture/camera/anchoring/messaging/single-key orgs.
 
 ## ATTACK ORDER
 
-1. **Teaching layer — education cut 1** [SMALL · no new crypto · the moat].
-   leak-vs-loss gut-check + a live in-the-moment threshold explainer in the
-   secrets create flow. The one differentiator nobody else builds; makes the
-   already-built feature clearer instantly. ← CUTTING NOW.
-2. **Per-piece hash commitments** [SMALL · safe metadata, zero security cost].
-   Store hash(token) per piece in the ledger; enables verify-a-returned-piece
-   and hardens recovery diagnostics ("Dad's piece 3 doesn't match"). Cheap
-   enabler for the whole retrieval/swap arc (Part C).
-3. **Part B-1 — held/recognized pieces** [MEDIUM]. A sent piece becomes a
+1. ✅ DONE (febb280) **Teaching layer — education cut 1**. leak-vs-loss
+   gut-check + live in-the-moment threshold explainer in the secrets create
+   flow (secretLiteracy.ts, jargon-guarded). The loss-only no-split PATH is the
+   deferred cut 2.
+2. ✅ DONE (7b9ecd4) **Per-piece hash commitments**. SecretRecord.hashes
+   (SHA-256 per piece, stored regardless — safe metadata); pieceIndexForToken +
+   a "Check a returned piece" tool in SecretDetail verify a returned piece
+   without rebuilding. Cheap enabler for the retrieval/swap arc.
+3. **Part B-1 — held/recognized pieces** [MEDIUM] ← NEXT. A sent piece becomes a
    recognized held object on the receiver side (keep/decline), reusing the
    recovery held-share + inbox routing. First real step toward the
    social-custody network + heartbeat liveness.
