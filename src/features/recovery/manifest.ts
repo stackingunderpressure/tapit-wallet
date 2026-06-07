@@ -32,6 +32,8 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/secretTemplates.test.ts',
     'src/features/recovery/secretLedger.ts',
     'src/features/recovery/secretLedger.test.ts',
+    'src/features/recovery/secretLiteracy.ts',
+    'src/features/recovery/secretLiteracy.test.ts',
     'src/features/recovery/SecretsLedgerList.tsx',
     'src/features/recovery/SecretDetail.tsx',
     'src/features/recovery/SecretsDashboard.tsx',

@@ -5,6 +5,7 @@ import {
   type CombineResult,
 } from './sharedSecret.ts';
 import { SECRET_TEMPLATES, type SecretTemplate } from './secretTemplates.ts';
+import { explainThreshold, LEAK_VS_LOSS } from './secretLiteracy.ts';
 import {
   newSecretRecord,
   assignPiece,
@@ -332,6 +333,9 @@ export function SecretsDashboard() {
             together to bring it back. You hand the pieces out; the secret
             itself never leaves this device whole.
           </p>
+          <p className="rounded-md border border-ink/10 bg-paper/60 px-3 py-2 text-[11px] text-muted">
+            {LEAK_VS_LOSS}
+          </p>
           <label className="block">
             <span className="text-xs font-medium">{template?.secretLabel ?? 'The secret'}</span>
             <input
@@ -399,6 +403,9 @@ export function SecretsDashboard() {
           <p className="text-xs text-muted">
             Any {threshold} of {total} can bring it back together; fewer
             reveal nothing.
+          </p>
+          <p className="text-[11px] text-accent">
+            {explainThreshold(total, threshold)}
           </p>
           <button
             type="button"
