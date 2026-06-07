@@ -1935,3 +1935,34 @@ their own rules) = fits Hearth/Heartwood.
 Stage: ideology in formation. NOT for cutting. Resurface whenever the
 civic-voting thread is revisited; this is the values layer under it.
 ```
+
+```
+Date: 2026-06-06
+Tag: FINANCIAL LEAF - Wealth Strategy <-> Tapit (tamper-evident finance proof)
+Summary: Operator: make Wealth Strategy a LEAF you uncover/certify your
+financial info from - selectively reveal a financial fact as tamper-evident,
+signed, anchored proof. Fits perfectly: finance is just another payload for
+Tapit's existing signed/anchored/selectively-disclosed Merkle-leaf primitive
+(the disclosure feature already does this for claims). Clean fleet integration:
+Wealth Strategy = the finance/onramp surface (SATOSHI.md), Tapit = the proof
+surface, the leaf is the bridge.
+LOAD-BEARING HONEST CAVEAT: tamper-evident != TRUE. A self-signed financial leaf
+proves YOU claimed a fact, at a date, un-altered - NOT that it's true. "I have
+$10M" anchored = proof you claimed it, not that you have it. To MEAN "I really
+have it" it needs either (a) a real issuer's corroboration (bank/exchange/auditor
+signs - the verifiable-credential model + web-of-trust, like a doctor corroborates
+a medical record), or (b) cryptographic proof-of-funds (sign a challenge with the
+key controlling the coins - Bitcoin-native, genuinely strong, but needs the unbuilt
+Bitcoin layer).
+Strongest honest versions: (1) "this is MY financial record, certified un-altered
+as of a date" - provenance of your own books, honest + buildable NOW (it's the
+journal/diary pointed at finance; no truth-claim beyond "mine, unchanged"); (2)
+Bitcoin proof-of-funds via signing - north-star.
+Other honest limits: financial leaves are high-stakes to reveal (proving a fact =
+telling someone that fact) and inherently point-in-time (anchor = "as of", not
+"currently" - a balance is stale next week); for regulated gatekeepers
+(mortgage/court) a sovereign leaf COMPLEMENTS but won't replace an official bank
+letter - strongest in informal/peer/sovereign/Bitcoin-native contexts.
+Stage: sprouting. Resurface when scoping any finance/proof surface or the Wealth
+Strategy <-> Tapit bridge.
+```
