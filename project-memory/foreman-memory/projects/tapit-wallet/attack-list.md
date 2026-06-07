@@ -1,0 +1,50 @@
+# Tapit — Attack List (build backlog, ranked) — 2026-06-06
+
+*Operator: "make an attack list and let's cut some things." Ranked by
+value-to-size and dependency order, grounded in what's actually BUILT vs
+SPECCED. The operator is field-testing the human/splitting loop in parallel.
+Cut top-down; re-rank as field results come in.*
+
+## Built foundation (shipped — the floor we cut on top of)
+"Your secrets" dashboard (Shamir split/combine + magic marker, templates,
+ledger, chat/share-sheet/copy/QR distribution + tagging, opt-in keep-a-copy
+re-send) · recovery cohort (splits K_data not the seed; full ceremony) ·
+journal/capture/camera/anchoring/messaging/single-key orgs.
+
+## ATTACK ORDER
+
+1. **Teaching layer — education cut 1** [SMALL · no new crypto · the moat].
+   leak-vs-loss gut-check + a live in-the-moment threshold explainer in the
+   secrets create flow. The one differentiator nobody else builds; makes the
+   already-built feature clearer instantly. ← CUTTING NOW.
+2. **Per-piece hash commitments** [SMALL · safe metadata, zero security cost].
+   Store hash(token) per piece in the ledger; enables verify-a-returned-piece
+   and hardens recovery diagnostics ("Dad's piece 3 doesn't match"). Cheap
+   enabler for the whole retrieval/swap arc (Part C).
+3. **Part B-1 — held/recognized pieces** [MEDIUM]. A sent piece becomes a
+   recognized held object on the receiver side (keep/decline), reusing the
+   recovery held-share + inbox routing. First real step toward the
+   social-custody network + heartbeat liveness.
+4. **Conditional-release v1** [MEDIUM-BIG]. Consensus-release flow (circle
+   agrees to release a secret to a claimant) from the 2026-06-04 brief.
+5. **Collections + proof bundles cut 1** [MEDIUM]. Curated collections of
+   journal moments + multi-entry verifiable share. From the 2026-06-05 brief.
+6. **Capture cut 2** [MEDIUM · SW infra]. POST share-target so photos shared
+   IN from other apps reach Capture (Tier 1b).
+7. **Fix the latent identity-gate canonicalization test flake** [SMALL · hygiene].
+   Order-dependent test pollution; passes in isolation, intermittent in the
+   full suite. Root out the shared global so green is honest.
+
+## Blocked / north-star (do NOT attack yet — no foundation)
+Everything Bitcoin: tapscript vaults, timelocks, FROST threshold-signing,
+covenants, on-chain anything (no Bitcoin layer exists — Satoshi's biggest
+unbuilt block). Depends-on chains: Part B-2 heartbeat → needs B-1; Part D
+handshake holding-slot → needs B; Part E social-sig + decoys → needs B/D;
+E-Bitcoin timelocked-tapscript-leaf → needs the Bitcoin layer + ideally FROST.
+
+## Honest standing note
+Design has run ahead of build this arc (8 briefs, 1 shipped cut today). The
+load-bearing UNVALIDATED assumption is human reliability — real people holding
+a real piece and returning it over time. The operator is field-testing that;
+the build should stay small and real until those results come back. Mission:
+smallest useful version correctly.
