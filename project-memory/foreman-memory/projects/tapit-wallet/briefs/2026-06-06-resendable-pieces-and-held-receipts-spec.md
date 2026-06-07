@@ -92,6 +92,33 @@ This IS the circle-liveness / readiness feature (from the 2026-06-05
 engagement correction) made concrete — and it directly serves the user's own
 safety, the honest kind of engagement.
 
+### 5c. The alarm is the OWNER's, keyed to threshold-margin (operator 2026-06-06)
+
+The readiness signal is FOR THE OWNER — not a nag on the holders. The metric
+that matters is the **MARGIN: (holders with a fresh heartbeat) − threshold.**
+In a 5-of-10 you can lose up to 5 before recovery is impossible, so the alarm
+escalates as the margin shrinks — comfortable while there's slack, amber when
+you're one or two cold holders from the edge, **red when you're AT the
+threshold (one more loss = unrecoverable).** The owner then acts:
+- **Nudge** a cold holder person-to-person ("checked your wallet lately?") — a
+  nudge that works refreshes their heartbeat and re-proves the path through them
+  is live: a lightweight, continuous recovery drill.
+- **Swap** a holder who's gone or opts out ("nah, forget it") for a fresh one —
+  enabled by the opt-in kept copy (Part A): re-hand that slot's piece to a
+  replacement, or re-split + redistribute for a clean roster.
+- At minimum, **know the damage and reassess.**
+
+**ETHICAL KEYSTONE (hard rule):** the SYSTEM never nags or shames the holders —
+no "you're letting Tom down" notifications. The holders just live their lives
+and their wallet quietly pings. The system's whole job is to inform the OWNER
+about the OWNER's own resilience — a private safety dashboard, not surveillance
+or obligation on the circle. (Honest note: the owner does see which holders went
+cold; that metadata is theirs, about their own circle, by the holders' agreement
+to hold — reasonable, but name it.) This is also the honest "engagement =
+readiness" payoff: the owner opens the app and gets a true read on their safety
+net, the nudges keep the circle warm, all serving the owner's actual safety, not
+a vanity metric.
+
 ### HONEST LIMITS (must design around AND surface to the user)
 
 1. **Silence is ambiguous.** A holder who deletes the app, loses/wipes the
