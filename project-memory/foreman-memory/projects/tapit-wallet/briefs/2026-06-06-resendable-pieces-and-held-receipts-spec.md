@@ -184,6 +184,49 @@ can reconstruct) vs retrieval (Part C — sovereign, but needs holder
 cooperation). Per-piece hashes are worth storing regardless (free + safe) since
 they also harden recovery.
 
+## PART D — the handshake-reserved holding slot (standing consent, operator 2026-06-06)
+
+The unifying primitive under all of Part B/C: move the holder's consent from
+PER-PIECE to HANDSHAKE-TIME. When two peers handshake, the agreement carries a
+clause — "you may reserve one small, bounded corner of my wallet to stash a
+piece and retrieve it later." A standing possibility, maybe never used.
+
+- **Consent once, frictionless after.** The holder agrees at handshake that you
+  MAY use a corner. After that, filling the slot needs no new approval (it's
+  pre-authorized), so distributing a piece is just "fill my reserved slot,"
+  automatic. This REPLACES Part B-1's per-piece receive/hold/decline prompt with
+  a one-time agreement — better UX, consent moved to relationship-time.
+- **Bounded — "one little corner."** A SINGLE small fixed-size slot per peer, so
+  a pre-authorized write can't flood the holder's storage. The handshake grants
+  a drawer, not the house.
+- **Blind storage.** The stashed piece is encrypted TO THE OWNER, so the holder
+  holds opaque ciphertext they can't read and never interact with — exactly "you
+  don't even know what it is, it's just my corner." (Caveat: encrypt-to-owner
+  fits the owner-retrieves-their-own-secret case; the inheritance / dead-man's
+  variant needs the piece readable by the eventual recoverer — a different
+  encryption target, decide per use case.)
+- **Reciprocal.** A handshake is mutual, so both peers can grant each other a
+  corner — the relationship graph becomes a consented, reciprocal, distributed
+  storage fabric: every friendship comes with a tiny drawer you let each other
+  borrow. (Mycelium shape: your people are your infrastructure, at the storage
+  layer.)
+- **Observable + retrievable.** Each holder login refreshes the slot's heartbeat
+  (Part B); "give me my corner back" is the retrieval (Part C). Login frequency =
+  how reliably you can get it back → swap rare-loggers out.
+
+**HONEST LIMIT (unchanged, load-bearing):** the agreement is consent, NOT a
+hardware guarantee — a holder can still wipe their slot or go dark; you cannot
+physically force retention. That is precisely why the heartbeat / retrieval /
+swap machinery still exists. The handshake removes the FRICTION and establishes
+CONSENT; it does not remove liveness uncertainty.
+
+This is the storage-layer primitive the whole secrets / recovery / inheritance
+arc sits on: a bounded, blind, reciprocal, consented holding slot rooted in the
+handshake. Grounding note: handshakes already exist (connections/createHandshake);
+this extends that signed relationship with a holding-consent clause + a
+pre-authorized per-peer slot the inbox accepts without re-prompting. Best built
+WITH or BEFORE Part B-1, since it reframes how distribution gets consent.
+
 ## Cut order
 - **Cut 1 (Part A):** opt-in encrypted piece storage + re-send. Default off,
   taught. Small, no transport change.
