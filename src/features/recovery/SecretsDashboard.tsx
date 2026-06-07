@@ -9,6 +9,7 @@ import {
   newSecretRecord,
   assignPiece,
   setWhy,
+  setTokens,
   upsertRecord,
   removeRecord,
   type SecretRecord,
@@ -111,6 +112,10 @@ export function SecretsDashboard() {
   const [openAssignIdx, setOpenAssignIdx] = useState<number | null>(null);
   const [assignName, setAssignName] = useState('');
   const [sendState, setSendState] = useState<Record<number, SendState>>({});
+  // Opt-in: keep a copy of the pieces on this device so they can be re-sent.
+  // Off by default — keeping them means this device + passphrase can rebuild
+  // the secret (surfaced to the user at the toggle, never set silently).
+  const [keepCopy, setKeepCopy] = useState(false);
 
   // recover state
   const [pasted, setPasted] = useState('');
@@ -166,6 +171,7 @@ export function SecretsDashboard() {
       setOpenSendIdx(null);
       setOpenAssignIdx(null);
       setSendState({});
+      setKeepCopy(false);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Could not make the pieces.');
     }
@@ -184,6 +190,15 @@ export function SecretsDashboard() {
     assignMadePiece(i, { holderName: trimmed, method: 'other' });
     setOpenAssignIdx(null);
     setAssignName('');
+  }
+
+  // Keep / forget the opt-in copy of the pieces for the just-made secret.
+  function setKeepCopyToggle(on: boolean) {
+    setKeepCopy(on);
+    if (!made) return;
+    const rec = records.find((r) => r.id === made.recordId);
+    if (!rec) return;
+    persist(upsertRecord(records, setTokens(rec, on ? made.shares : undefined)));
   }
 
   async function copyShare(i: number, token: string) {
@@ -285,6 +300,7 @@ export function SecretsDashboard() {
           record={detailRecord}
           onBack={() => setMode('list')}
           onSaveWhy={(w) => persist(upsertRecord(records, setWhy(detailRecord, w)))}
+          onForgetTokens={() => persist(upsertRecord(records, setTokens(detailRecord, undefined)))}
           onDelete={() => { persist(removeRecord(records, detailRecord.id)); setMode('list'); }}
         />
       )}
@@ -402,8 +418,8 @@ export function SecretsDashboard() {
         <div className="mt-4 space-y-3">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
             Give one piece to each person, and tag who got it so you can keep
-            track. Hand them all out now — once you leave this you can't get
-            the pieces back (only your record of where they went is kept).
+            track. Unless you keep a copy below, once you leave this you can't
+            get the pieces back — only your record of where they went is kept.
           </div>
           {made.shares.map((token, i) => {
             const ss = sendState[i];
@@ -541,6 +557,22 @@ export function SecretsDashboard() {
               ' (Turn on the Mycelium network in Settings to send pieces straight to a person’s wallet over chat.)'
             )}
           </p>
+          <label className="flex items-start gap-2 rounded-md border border-ink/10 bg-paper/60 px-3 py-2">
+            <input
+              type="checkbox"
+              checked={keepCopy}
+              onChange={(e) => setKeepCopyToggle(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="text-xs font-medium">Keep a copy on this device so I can re-send these</span>
+              <span className="mt-0.5 block text-[11px] text-muted">
+                Saved encrypted with your passphrase. It means you can always
+                rebuild this secret yourself — leave it off for the strongest
+                setup, where not even you can rebuild it alone.
+              </span>
+            </span>
+          </label>
           <button
             type="button"
             onClick={() => { setMade(null); setSecret(''); setName(''); setWhyField(''); setMode('list'); }}

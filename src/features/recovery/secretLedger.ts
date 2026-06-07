@@ -3,12 +3,20 @@
 // and what it was for. Field-test gap 2026-06-05: the modal forgot
 // everything on close.
 //
-// PRIME-DIRECTIVE LINE (load-bearing): this records METADATA ONLY. The
-// secret value and the share tokens are NEVER stored — not here, not in the
-// encrypted store that persists these records. "Track where you sent it",
-// never "keep the secret on the device". The consequence is honest and
-// intentional: you can't re-send a piece later from a record, because the
-// pieces aren't kept; resending means making a new secret.
+// PRIME-DIRECTIVE LINE (load-bearing): by default this records METADATA ONLY
+// — the secret value and the share tokens are NOT stored. "Track where you
+// sent it", not "keep the secret on the device".
+//
+// OPT-IN exception (2026-06-06, "rethink one-time generation"): the owner may
+// CHOOSE to keep a copy of the share tokens on this device so they can re-send
+// a piece later (Shamir re-splitting produces incompatible pieces, so the
+// originals must be kept to re-send a CONSISTENT one). This is `tokens?`,
+// default ABSENT, set only when the owner ticks "keep a copy". The honest
+// consequence, surfaced to the user and never hidden: with all the tokens
+// kept, this device + the passphrase can reconstruct the whole secret — so
+// the strongest setup is to leave it off, where not even the owner can rebuild
+// it alone. Tokens (when kept) ride the same passphrase-encrypted store as the
+// rest of the ledger.
 
 export type PieceMethod = 'chat' | 'copy' | 'qr' | 'other';
 
@@ -36,6 +44,12 @@ export interface SecretRecord {
   /** ISO created timestamp. */
   createdAt: string;
   pieces: PieceRecord[];
+  /**
+   * OPT-IN kept copy of the share tokens, so the owner can re-send a piece.
+   * ABSENT by default. Present ⇒ this device + passphrase can reconstruct the
+   * secret (the user chose this knowingly). See the prime-directive note above.
+   */
+  tokens?: string[];
 }
 
 function makeId(): string {
@@ -98,6 +112,22 @@ export function assignPiece(
 /** Replace the free-text "why" on a record, immutably. */
 export function setWhy(rec: SecretRecord, why: string): SecretRecord {
   return { ...rec, why: why.trim() };
+}
+
+/**
+ * Keep (or clear) the opt-in copy of the share tokens, immutably. Pass the
+ * tokens to keep a copy for re-sending; pass undefined/empty to forget them.
+ * Keeping them means this device + passphrase can reconstruct the secret —
+ * the caller must surface that to the user (it is never set silently).
+ */
+export function setTokens(
+  rec: SecretRecord,
+  tokens: readonly string[] | undefined,
+): SecretRecord {
+  return {
+    ...rec,
+    tokens: tokens && tokens.length > 0 ? [...tokens] : undefined,
+  };
 }
 
 /** Upsert a record into a list (newest first), immutably. */

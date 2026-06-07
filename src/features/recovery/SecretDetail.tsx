@@ -1,15 +1,24 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { handedOutCount, type SecretRecord, type PieceMethod } from './secretLedger.ts';
 
 // One secret's distribution detail — the "where and why you sent it" record.
 // Shows the why-note (editable), the split, and who holds each piece by what
-// method and when. Metadata only; the secret value was never stored, so
-// there's nothing to reveal here, only the trail of where the pieces went.
+// method and when. By default the secret value was never stored, so there's
+// nothing to reveal here, only the trail. If the owner opted to KEEP a copy of
+// the pieces (record.tokens, opt-in), a "Re-send a piece" section appears so
+// they can hand a consistent piece out again — and a control to forget the
+// copy for the strongest setup.
+
+const QrShow = lazy(() =>
+  import('../qr/QrShow.tsx').then((m) => ({ default: m.QrShow })),
+);
 
 interface Props {
   record: SecretRecord;
   onBack: () => void;
   onSaveWhy: (why: string) => void;
+  /** Drop the opt-in kept copy of the share tokens (back to "nothing stored"). */
+  onForgetTokens: () => void;
   onDelete: () => void;
 }
 
@@ -29,11 +38,24 @@ function whenLabel(iso: string | undefined): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
 
-export function SecretDetail({ record, onBack, onSaveWhy, onDelete }: Props) {
+export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDelete }: Props) {
   const [why, setWhy] = useState(record.why);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [qrIdx, setQrIdx] = useState<number | null>(null);
   const out = handedOutCount(record);
   const dirty = why.trim() !== record.why;
+  const tokens = record.tokens ?? [];
+
+  async function copyToken(i: number, token: string) {
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopiedIdx(i);
+      setTimeout(() => setCopiedIdx(null), 1500);
+    } catch {
+      window.prompt('Copy this piece:', token);
+    }
+  }
 
   return (
     <div className="mt-4 space-y-3">
@@ -95,6 +117,55 @@ export function SecretDetail({ record, onBack, onSaveWhy, onDelete }: Props) {
         </ul>
       </div>
 
+      {tokens.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50/60 p-3">
+          <div className="text-xs font-medium text-amber-900">Re-send a piece</div>
+          <p className="mt-0.5 text-[11px] text-amber-900/80">
+            A copy of the pieces is kept on this device (encrypted with your
+            passphrase) so you can hand one out again. That also means you can
+            rebuild this secret yourself — turn it off below for the strongest
+            setup.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {tokens.map((token, i) => (
+              <li key={i} className="rounded-md border border-ink/10 bg-white/70 px-3 py-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">Piece {i + 1}</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void copyToken(i, token)}
+                      className="rounded border border-ink/15 px-2 py-1 font-medium hover:bg-ink/5"
+                    >
+                      {copiedIdx === i ? 'Copied' : 'Copy'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQrIdx(qrIdx === i ? null : i)}
+                      className="rounded border border-ink/15 px-2 py-1 font-medium hover:bg-ink/5"
+                    >
+                      {qrIdx === i ? 'Hide QR' : 'QR'}
+                    </button>
+                  </div>
+                </div>
+                {qrIdx === i && (
+                  <Suspense fallback={<div className="mt-2 text-muted">Rendering QR…</div>}>
+                    <QrShow text={token} label={`Piece ${i + 1}`} />
+                  </Suspense>
+                )}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={onForgetTokens}
+            className="mt-2 rounded-md border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+          >
+            Stop keeping a copy
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between pt-1">
         <button
           type="button"
@@ -131,9 +202,9 @@ export function SecretDetail({ record, onBack, onSaveWhy, onDelete }: Props) {
         )}
       </div>
       <p className="text-[11px] text-muted">
-        This is only your record of where the pieces went — the secret itself
-        was never stored. Deleting it doesn't affect the pieces people already
-        hold.
+        {tokens.length > 0
+          ? "Deleting this removes the kept copy of the pieces and your trail — it doesn't affect the pieces people already hold."
+          : "This is only your record of where the pieces went — the secret itself was never stored. Deleting it doesn't affect the pieces people already hold."}
       </p>
     </div>
   );

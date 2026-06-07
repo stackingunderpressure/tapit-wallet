@@ -4,6 +4,7 @@ import {
   handedOutCount,
   assignPiece,
   setWhy,
+  setTokens,
   upsertRecord,
   removeRecord,
 } from './secretLedger.ts';
@@ -47,6 +48,17 @@ describe('secret ledger', () => {
   it('ignores an out-of-range index', () => {
     const rec = newSecretRecord({ name: '', why: '', total: 2, threshold: 2 });
     expect(assignPiece(rec, 9, { holderName: 'x' })).toBe(rec);
+  });
+
+  it('setTokens keeps a copy and clears it (opt-in), immutably', () => {
+    const rec = newSecretRecord({ name: 'k', why: '', total: 3, threshold: 2 });
+    expect(rec.tokens).toBeUndefined(); // default: nothing stored
+    const kept = setTokens(rec, ['a', 'b', 'c']);
+    expect(kept.tokens).toEqual(['a', 'b', 'c']);
+    expect(rec.tokens).toBeUndefined(); // original untouched
+    // empty / undefined clears it back to absent
+    expect(setTokens(kept, undefined).tokens).toBeUndefined();
+    expect(setTokens(kept, []).tokens).toBeUndefined();
   });
 
   it('setWhy / upsert / remove work immutably', () => {
