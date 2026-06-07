@@ -141,6 +141,49 @@ ledger — all standard signed credential envelopes.
 
 ---
 
+## PART C — per-piece hash commitments + retrieval + the escalation ladder (operator 2026-06-06)
+
+When you hand out a piece, ALSO store the **hash of that exact piece** in the
+ledger. This is cheap, SAFE metadata — a hash of a share reveals nothing about
+the share or the secret — so unlike the Part-A token copy it carries NO security
+cost. It unlocks three things:
+
+1. **Verify a returned piece without rebuilding anything.** Ask a wobbly or
+   departing holder to send their piece BACK; hash it, compare to the stored
+   hash. Match ⇒ it's the exact, untampered piece, and you KNOW it's right
+   without reconstructing the secret (one piece is below threshold, so nothing
+   is revealed by getting it back).
+2. **A lightweight, graceful swap (the LIGHT tier).** With the verified piece in
+   hand you re-hand that slot to a NEW holder. Elegant property: because the
+   bytes come from the departing holder, this swap needs **NO kept copy on your
+   device** — you can stay metadata-only (just hashes) and still re-arm a slot,
+   which is MORE sovereign than the Part-A keep-a-copy path (no reconstruction
+   point), at the cost of needing the holder's cooperation. That one last login
+   is also their dignified exit: "I gave it back, I'm done" — which may be the
+   very reason a laggard finally logs on.
+3. **Better recovery diagnostics.** At real recovery time, verify each incoming
+   piece against its stored hash, so a wrong/tampered piece is caught
+   specifically ("Dad's piece 3 doesn't match — ask him to resend") instead of
+   only the whole combine failing.
+
+**The escalation ladder (operator's two tiers):**
+- **Tier 1 — retrieve + re-hand** (this Part C): cheap, single-piece, verified,
+  no full ceremony; re-arms the slot with a live holder.
+- **Tier 2 — re-split the whole secret** and redistribute to a clean roster:
+  heavy (everyone gets a new piece) but the ONLY thing that truly invalidates
+  old pieces.
+
+**HONEST LIMIT (load-bearing):** retrieval does NOT revoke the old copy — once
+someone holds a piece you cannot force them to forget it, so handing it back
+re-arms the slot but the old holder may still have those bytes (one
+sub-threshold piece, low risk). Only the Tier-2 re-split actually revokes. Name
+this so nobody believes "got it back" = "they can't have it anymore."
+
+**Two swap paths, user's choice:** keep-a-copy (Part A — convenient, but device
+can reconstruct) vs retrieval (Part C — sovereign, but needs holder
+cooperation). Per-piece hashes are worth storing regardless (free + safe) since
+they also harden recovery.
+
 ## Cut order
 - **Cut 1 (Part A):** opt-in encrypted piece storage + re-send. Default off,
   taught. Small, no transport change.
@@ -150,6 +193,8 @@ ledger — all standard signed credential envelopes.
 - **Cut 3 (Part B-2):** the `ack`/`released` back-channel + owner ledger live
   status (confirmed / released / stale) + the periodic heartbeat. The
   readiness payoff.
+- **Cut 4 (Part C):** per-piece hash commitments (free, safe — store regardless)
+  + the retrieval-and-re-hand light swap + the two-tier escalation ladder.
 
 ## Non-goals / honest scope
 No false "deleted" certainty (silence = stale/unknown, three honest states);
