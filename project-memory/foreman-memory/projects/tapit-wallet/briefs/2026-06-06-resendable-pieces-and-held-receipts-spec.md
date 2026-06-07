@@ -55,12 +55,38 @@ Upgrade a piece from a plain chat DM into a **held, acknowledged object**:
    keep, the holder HOLDS the piece (stored, encrypted on their side) and their
    wallet sends an **ACK envelope** back: signed, "holding piece X of secret Y,
    as of <date>."
-3. **Owner ledger consumes acks → live status per piece:** **confirmed-holding**
-   (fresh ack), **released** (holder deleted in-app → sends a `released`
-   envelope), or **stale / unknown** (no fresh ack in N days).
-4. **Heartbeat (optional):** the holder's wallet re-publishes a fresh "still
-   holding" ack periodically (e.g. on unlock), so *freshness* is the liveness
-   signal and the owner sees a cold holder before an emergency.
+3. **The heartbeat (operator refinement 2026-06-06) — cessation is the
+   signal.** The holder's wallet re-signs a fresh "still holding piece X of
+   secret Y, as of <date>" **opportunistically on unlock, throttled to ~once a
+   month** (zero holder effort — just opening the app re-signs it). The wallet
+   only signs it WHILE it actually still holds the piece. So **deletion, a lost
+   or wiped phone, and going dark all collapse into one honest signal: the
+   heartbeats stop.** This makes an explicit "released" message *optional* — you
+   don't need the holder to announce a delete, because a deleted piece simply
+   stops producing heartbeats. Trade-off (state it): it is not instant — you
+   learn over the staleness window, not the second they delete — which is
+   exactly the operator's framing (fire ~monthly, don't worry until a couple
+   months).
+4. **Owner ledger = "last heard" freshness per piece**, with a **configurable
+   worry threshold (default ~2–3 months)**: recent = green; 1–2 months = soft
+   "hasn't checked in lately"; past threshold = "may be at risk — nudge them"
+   (one-tap nudge). Never a false "deleted ✗"; it's always "last confirmed
+   <date>."
+5. **Optional hardening — the hash chain ("new block proof").** Each heartbeat
+   can reference the hash of the holder's previous heartbeat (`prev`), forming
+   a tamper-evident, ordered chain — a little personal ledger of "still here"
+   check-ins the holder can't backdate or fake gaps in. This is the STRONGER
+   mode, not required for v1: among trusted family a fresh signed timestamp is
+   enough; the chain matters when you want provable continuity against someone
+   who might game it.
+6. **Do NOT anchor heartbeats to Bitcoin.** Per SATOSHI.md anchor-don't-bloat:
+   anchor only what needs a public clock, and a private family "still holding"
+   ping does not — the signature + relay receipt is plenty, and anchoring every
+   monthly ping from every holder would bloat the chain for nothing. If the
+   chain ever needs timestamp-hardening, batch an occasional roll-up; never
+   per-ping. (Note: Nostr relays prune, so treat relays as best-effort
+   transport for the latest heartbeat; the holder keeps their own chain, the
+   owner keeps the heartbeats they've received.)
 
 This IS the circle-liveness / readiness feature (from the 2026-06-05
 engagement correction) made concrete — and it directly serves the user's own
