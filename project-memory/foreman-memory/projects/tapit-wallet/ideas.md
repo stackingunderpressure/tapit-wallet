@@ -3427,3 +3427,38 @@ reconciliation, CUT 5 civic rollup. Resurface with: ultimate-cut-list (tree is
 the cut after the keystone), Pam-node mockup, witness-family-tree, agreement-to-
 enter-the-tree. The parked dedupe question is now ANSWERED in the spec: yes, a
 canonical family-co-signed person-anchor per node.
+
+```
+Date: 2026-06-09
+Tag: COOKING APP <-> TAPIT - first external Bench-app integration over Layer 2
+Summary: Operator wants his daughter's cooking app to "hook into" Tapit: bring in
+recipes, stamp them (sign + Bitcoin-anchor) as an "I can eat this / verified"
+feature, with a recipe-card toggle that reveals "Bitcoin block N + verified" and
+the hash minted to the chain. KEY GROUNDING (verified against code, not memory):
+this needs ZERO new wallet code - the Layer 2 inter-app signing pathway is ALREADY
+BUILT (src/features/sign-request, born 2026-05-21). External apps deep-link to
+<origin>/sign?req=<base64url SignRequest>, the user approves inside the wallet,
+the wallet signs+holds+queues-anchor and redirects to the app's callback with
+?grant=<base64 SignGrant{envelope}> (or ?decline). The returned signed envelope IS
+the stamp; <origin>/verify?p=<base64url proof> is a stateless public re-verifier
+showing signature + Bitcoin block.
+This is the FIRST real third-party Bench app to consume the wallet as the
+key-holding hub - the thesis ("the hub every other app connects TO to get something
+signed") made concrete. Recipes map to kind:'journal' (dated personal record) or
+'credential' (certified). 
+LOAD-BEARING HONEST CAVEATS surfaced in the hand-off prompt: (1) block number is
+EVENTUALLY-consistent - the grant at approve-time is signed but anchor is pending;
+Bitcoin confirmation (OTS) takes hours, so the card needs a two-state design
+(Stamped->awaiting, then Verified->block N). (2) fields are FLAT string|number|
+boolean only - flatten ingredient/step arrays to strings. (3) origin is an
+untrusted display string; trust = user approval + verifiable sig + anchor. (4) v1
+transport is deep-link only (NIP-46 specced, not built).
+Deliverable: a ready-to-paste hand-off prompt at
+project-memory/.../tapit-wallet/integration/cooking-app-tapit-integration-prompt.md
+(<WALLET_ORIGIN> placeholder to fill with the deployed PWA origin).
+Stage: sprouting -> ready to build on the cooking-app side; nothing to build on ours.
+Resurface: when the daughter's app field-tests the round-trip (watch the async
+block-number UX + the flat-fields flattening as the two likeliest snags), and as
+the proof that Layer 2 is real - candidate to generalize into a tiny published
+"connect to Tapit" snippet/SDK if a second Bench app wants in.
+```
