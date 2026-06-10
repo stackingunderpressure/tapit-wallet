@@ -252,7 +252,7 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onNudg
       )}
 
       {canVerify && (
-        <div className="rounded-md border border-ink/10 bg-paper/60 p-3">
+        <div className="border-l-2 border-accent/60 pl-3 py-1">
           <div className="text-xs font-medium">Check a returned piece</div>
           <p className="mt-0.5 text-[11px] text-muted">
             Paste a piece someone hands back to confirm it's the genuine,
