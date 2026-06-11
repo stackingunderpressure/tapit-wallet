@@ -3518,3 +3518,62 @@ Stage: sprouting. Resurface when scoping the first external Bench-app pilot or a
 reputation/weighting work; pairs with the cooking-app integration as proof Layer 2
 is a real GTM surface, not a demo.
 ```
+
+```
+Date: 2026-06-11 (refinement of the mom-and-pop lodging wedge, same day)
+Tag: PRE-SIGNED CONTENT-BLIND WITNESS TOKEN - the issuance trick that protects
+negative reviews
+Maturation: sprouting -> sprouting+ (mechanism sharpened). Operator's refinement of
+the issuer-corroboration keystone.
+Summary: At BOOKING, the guest's key receives ONE pre-signed "chance" from the
+establishment - a single-use, key-bound, CONTENT-BLIND entitlement to post exactly
+one witness about this stay. The guest can then say ANYTHING (praise OR complaint);
+it stays tamper-evident, anchored, and provably from a key the establishment itself
+authorized before it knew what would be said. Clean verifiable chain:
+establishment-key -> entitlement(guest-key, stay-id) -> guest-key -> witness(content),
+all anchored.
+WHAT THE TRICK ACTUALLY FIXES (real upgrade): separates the RIGHT TO SPEAK from the
+CONTENT. Because the establishment commits (signs) at booking BEFORE knowing the
+review, it cannot censor or withhold a negative one - it already vouched the guest
+is real. And one-token-per-real-booking rate-limits Sybil at the cost of an actual
+booking. So it upgrades the ISSUANCE/CENSORSHIP axis decisively.
+WHAT IT DOESN'T FIX (bounce, honest - operator: "I'm sure it's gameable too"):
+1. Denominator/selection: a dishonest operator routes bad stays AROUND the system -
+   handles complaints off-book, refunds-for-silence, "never issued a token" for
+   walk-ins/phone bookings. You only see witnesses from tokens that were issued; the
+   suppressed bad experiences are invisible. Defense: issuance must be
+   NON-DISCRETIONARY - the token rides the booking confirmation itself (withholding
+   it = not confirming the booking). But the operator runs their own booking system,
+   so it reduces to "trust the establishment to run honest auto-issuance" - weaker
+   than trustless. Honest ceiling.
+2. Costly-but-possible fake positives: operator self-books phantom stays, gets real
+   tokens, posts verified praise. Rate-limited + COSTS a real booking (the Sybil tax,
+   good) but not eliminated. WEIGHTING still required: a gushing brand-new single-use
+   key << a real cross-property traveler's history.
+3. Token resale / off-protocol collusion: bind the token NON-TRANSFERABLY to the
+   issued key (redeemable only by it). Stops resale of the posting right; can't stop
+   a guest being paid to post dictated content (unstoppable in any review system).
+4. Extortion flip-side: an un-censorable, portable, un-deletable verified 1-star is
+   real leverage ("pay me or it posts"). Mitigate with signed right-of-reply +
+   dispute attestations; can't fully remove the leverage.
+5. Provenance != truth: proves WHO + THAT-THEY-STAYED + UNTAMPERED, never that the
+   words are accurate. A real guest can still lie. Trust emerges from corroboration
+   density + reviewer-history weighting + right-of-reply, not from any single witness.
+6. Privacy/linkability: a persistent key carrying weighty history also leaks travel
+   patterns. Selective disclosure helps; pseudonymous-but-persistent key is the
+   compromise. The more weight, the more linkable - honest tension.
+7. Pre-sign-at-booking timing hole: token exists before check-in, so it could be
+   redeemed to "review" a stay that hasn't happened. Gate redemption/validity to
+   after the stay window or mark posted-during-vs-after.
+BUILDABILITY: issuance + signed witness + verify chain all sit on existing primitives
+(credential attestation, issuer signing, sign-request Layer 2, selective disclosure,
+OTS anchor). TWO parts need real design: (a) the "one chance" uniqueness - a
+nullifier / anchored spent-set so a token can't be redeemed twice (per-establishment
+tracking is easy; global double-spend prevention needs an anchored registry); (b) the
+weighting/accreditation math (computeWeight exists; advancedWeighting stubbed).
+NET: the pre-signed content-blind token decisively wins the censorship/Sybil-rate
+axis; the truth/reputation axis still rests on weighting + aggregation (the unbuilt
+hard part). The token makes each witness CREDIBLY SOURCED; it does not make any one
+witness TRUE. Sat-staked skin-in-the-game (SATOSHI) is the later costly-signal lever.
+Resurface: when scoping the lodging pilot or any issuer-credential + reputation cut.
+```
