@@ -3462,3 +3462,59 @@ block-number UX + the flat-fields flattening as the two likeliest snags), and as
 the proof that Layer 2 is real - candidate to generalize into a tiny published
 "connect to Tapit" snippet/SDK if a second Bench app wants in.
 ```
+
+```
+Date: 2026-06-11
+Tag: MOM-AND-POP LODGING WEDGE - verified-stay attestations as a Bench-app GTM
+Summary: Operator: small lake resorts / cabins / mom-and-pops (5-20 units) with a
+simple booking page are a distribution vector. Tie the wallet to the sign-in or
+guest book (simplest version), guest is directed to Tapit to "do a test" (make an
+attestation), attestations accumulate into a verifiable track record. Bundle an AI
+chatbot (the wallet-bot pattern) as a Trojan horse that delivers real value so the
+property + guests adopt our methods. Reputation thesis: verified attestations give
+a track record for validity (was the trail good, was the experience real);
+accredited users with history carry more weight, a historyless one-off carries
+little; people can post what they want but it gets no weight without a track
+record; more independent verifiers = more legitimate.
+WHY IT'S STRATEGICALLY REAL: exercises the EXACT stack already shipped - the Layer 2
+sign-request pathway (same template as the cooking-app integration) emits a
+SignRequest from the booking page; the check-in/review becomes a signed +
+OTS-anchored attestation; web-of-trust weighting scores it. Underserved market with
+a real, unsolved trust problem (fake reviews) the incumbents (Google/TripAdvisor)
+can't fix because their reviews are siloed + platform-owned. A property is a Hearth;
+the weighting is HEARTWOOD judge-weight doctrine; computeWeight exists in
+tapit-attest (advancedWeighting throws not-implemented - the hard part is stubbed).
+LOAD-BEARING HONEST CRITIQUE (don't flatter):
+1. Same caveat as the financial leaf: a signed review proves WHO claimed it + WHEN,
+   un-altered - NOT that the stay was real or good. Value lives almost entirely in
+   the WEIGHTING + CORROBORATION layer, which is the hardest + least-built part, not
+   the signing (commodity, done).
+2. SYBIL is the central threat and brutal in lodging (incentive to fake glowing
+   reviews of your own property, trash competitors). Naive "more verifiers = more
+   legit" is gameable - spin up 50 identities to verify your own review. Defense
+   requires verifiers with independent, costly-to-fake history = the SAME unsolved
+   realness/independence problem as the social sig.
+3. KEYSTONE FIX = issuer corroboration: the RESORT signs "this guest actually
+   stayed here" with the resort's key (like a bank co-signing the financial leaf).
+   That check-in attestation is hard to fake (needs the resort key) and is what
+   gives a guest's later review weight. Lead with issuer-corroborated STAYS, not
+   self-signed reviews + verifier-counting (Sybil bait).
+4. Adoption friction: "go install a separate wallet and do a test" mid-booking will
+   crush conversion. Simplest version must be near-zero-friction - attestation
+   minted FOR the guest (claim later), or purely opt-in post-stay. Trojan horse
+   must deliver value BEFORE asking for the wallet step or it dies at install.
+5. Two-sided cold start: reputation track record only compounds across MANY
+   properties; first 100 users get little reputation value. Per-property value
+   (real guestbook + genuinely useful concierge bot: checkout time, dock open,
+   local tips) must stand alone, independent of network size.
+SMALLEST USEFUL CUT (the honest lead): resort issues a SIGNED verified-stay
+attestation to the guest at checkout (issuer-corroborated, portable, self-owned,
+hard to fake); guest holds it + can attach an optional review leaf; /verify shows
+"stay attested by <resort key>". That alone is novel vs siloed platform reviews -
+a portable verified-stay credential the traveler OWNS and carries across properties.
+Weighting / accreditation / cross-property reputation + sat-staked skin-in-the-game
+(SATOSHI costly-signal vs Sybil) is the north-star that follows volume.
+Stage: sprouting. Resurface when scoping the first external Bench-app pilot or any
+reputation/weighting work; pairs with the cooking-app integration as proof Layer 2
+is a real GTM surface, not a demo.
+```
