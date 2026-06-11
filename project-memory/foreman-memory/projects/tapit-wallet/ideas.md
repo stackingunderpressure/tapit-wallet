@@ -3577,3 +3577,47 @@ hard part). The token makes each witness CREDIBLY SOURCED; it does not make any 
 witness TRUE. Sat-staked skin-in-the-game (SATOSHI) is the later costly-signal lever.
 Resurface: when scoping the lodging pilot or any issuer-credential + reputation cut.
 ```
+
+```
+Date: 2026-06-11 (maturation note on the witness-token idea, same day)
+Tag: AGGREGATE-TRUTH crystallization - outliers wash, integrity reduces to ONE knob
+Maturation: sprouting+ -> maturing. Operator's robust-statistics argument is correct
+and resolves the "provenance != truth" caveat AT THE AGGREGATE LEVEL.
+Operator's point (accepted): the system is read in AGGREGATE, not per-witness. With
+enough verified-honest independent samples, robust statistics converge on truth and
+both extremes lose - 50 "trail 2 astonishing" vs 1 "it's rocky" correctly degrades
+the complaint to a footnote (wear good shoes), and an over-the-top rave with no
+corroboration from a no-history key reads as an outlier. A key corroborated by 100
+shops earns measured faith calibrated to that history. The SIGNING LAYER's real job
+is exactly to make the samples trustworthy inputs: real guest, untampered,
+one-per-real-stay, history-tagged - so the aggregate computes over clean
+independent-ish data instead of platform sludge. Correct, coherent, on-mission
+(present weighted/corroborated signal, let each reader apply their own measured
+faith - don't hand down one central 4.3-star verdict; that's a teaching surface).
+WHAT SURVIVES THE AGGREGATE ARGUMENT (the precise residual, NOT a rebuttal):
+1. THE knob: robust stats converge on truth ONLY IF samples are INDEPENDENT. Lone
+   liars + cheap fakes wash out for free (operator is right). What survives is
+   CORRELATED manipulation - a broker controlling many keys each with manufactured
+   cross-shop history all nudging one way; if the fakes look independent and numerous
+   they BECOME the mass, not an outlier. So system integrity reduces ENTIRELY to the
+   COST of fabricating a key that looks like genuine independent history. That single
+   number is the whole game. Levers: per-real-booking cost (already in), cross-shop
+   corroboration depth, sat-stakes (SATOSHI costly-signal).
+2. DENOMINATOR is orthogonal + unsolved by aggregation: stats run on reviews that
+   EXIST. Suppressed bad stays (refund-for-silence, token never issued) bias the
+   surviving median high no matter how good the outlier math. Needs non-discretionary
+   issuance (token rides the booking confirmation); ceiling = trust the operator's
+   gate where reality enters.
+3. ASYMPTOTIC: wisdom-of-crowd is a large-N property. New property (3 reviews), new
+   traveler (no history), obscure cabin = the weak regime, exactly where 3 fakes ARE
+   the consensus. Confidence must SCALE WITH N and be SHOWN ("based on 3 stays"), not
+   hidden behind a shaky median.
+4. "TRUTH" is precise for OBJECTIVE physical claims (is trail 2 rocky) but for
+   SUBJECTIVE ones it's robust consensus-of-those-who-showed-up - a humbler, honester
+   label than "truth."
+ENGINEERING REDUCTION: the design is sound and is literally HEARTWOOD judge-weight.
+It reduces to (a) computeWeight/advancedWeighting (stubbed) = history+corroboration
+weighting, (b) a Sybil-COST anchor on fabricating independent history, (c)
+non-discretionary issuance, (d) honest confidence-vs-N display. (a)+(d) are the
+buildable near-term; (b) is the deep one.
+```
