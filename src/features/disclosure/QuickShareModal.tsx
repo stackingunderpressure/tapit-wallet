@@ -141,13 +141,20 @@ export function QuickShareModal({ preset, onClose }: Props) {
             </div>
 
             {anchor?.proof && (
-              <button
-                type="button"
-                onClick={() => downloadOtsFile(anchor.proof)}
-                className="mt-3 w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass py-2.5 text-xs font-medium text-fresh-text-primary backdrop-blur-xl"
-              >
-                Download Bitcoin timestamp (.ots)
-              </button>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => downloadOtsFile(anchor.proof)}
+                  className="w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass py-2.5 text-xs font-medium text-fresh-text-primary backdrop-blur-xl"
+                >
+                  Download Bitcoin timestamp (.ots)
+                </button>
+                <p className="mt-1.5 text-center text-[0.7rem] text-fresh-text-secondary">
+                  Lets whoever you send it to confirm the Bitcoin timestamp
+                  themselves with the standard OpenTimestamps tools — no app, and
+                  no taking our word for it.
+                </p>
+              </div>
             )}
 
             <button

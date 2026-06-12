@@ -252,6 +252,13 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
                 </button>
               )}
             </div>
+            {step.otsProofHex && (
+              <p className="mt-1.5 text-[11px] text-muted">
+                The .ots file lets whoever you send it to confirm the Bitcoin
+                timestamp themselves with the standard OpenTimestamps tools —
+                no app, and no taking our word for it.
+              </p>
+            )}
             {showQr && <QrShow text={step.json} label="Disclosure proof" />}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (

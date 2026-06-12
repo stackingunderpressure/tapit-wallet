@@ -31,9 +31,12 @@ journal/capture/camera/anchoring/messaging/single-key orgs.
    journal moments + multi-entry verifiable share. From the 2026-06-05 brief.
 6. **Capture cut 2** [MEDIUM · SW infra]. POST share-target so photos shared
    IN from other apps reach Capture (Tier 1b).
-7. **Fix the latent identity-gate canonicalization test flake** [SMALL · hygiene].
-   Order-dependent test pollution; passes in isolation, intermittent in the
-   full suite. Root out the shared global so green is honest.
+7. **Fix the latent test flakes** [SMALL · hygiene]. TWO distinct intermittents,
+   both pass in isolation, both surface only in the full suite: (a) the
+   identity-gate canonicalization one (order-dependent shared-global pollution);
+   (b) transport.test.ts "chat-message round-trip … Alice to Bob" (NIP-17
+   gift-wrap — likely randomness-flavored: ephemeral keys / randomized
+   timestamps, a different root cause than (a)). Root both out so green is honest.
 
 ## Blocked / north-star (do NOT attack yet — no foundation)
 Everything Bitcoin: tapscript vaults, timelocks, FROST threshold-signing,
