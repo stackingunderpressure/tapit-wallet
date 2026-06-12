@@ -1,11 +1,13 @@
-import type { Wallet } from 'tapit-attest';
+import type { Attestation, Wallet } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import type { SignRequest, SignGrant } from './types.ts';
+import { coSignEnvelope } from './coSignEnvelope.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
-// Build the attestation the request describes, sign it, hold it,
-// queue anchoring, save the wallet, then redirect to the callback
+// Honor the request — for 'attest' build and sign a new attestation; for
+// 'cosign-existing' add this wallet's signature to the supplied envelope —
+// then hold it, queue anchoring, save the wallet, and redirect to the callback
 // URL with a SignGrant in the query string.
 //
 // The callback URL is operator-provided in the request and is
@@ -21,15 +23,22 @@ export async function approveSignRequest(
   saveWallet: () => Promise<void>,
   worker: WorkerHandle | null,
 ): Promise<void> {
-  // wallet.attest wraps createDraft + signEnvelope using the
-  // active key. The wallet validates kind/tier internally and
-  // throws if anything is off.
-  const signed = wallet.attest({
-    kind: request.kind,
-    tier: request.tier,
-    subject: request.subject,
-    fields: request.fields,
-  });
+  let signed: Attestation;
+  if (request.intent === 'cosign-existing') {
+    // Add our signature to the existing envelope; the claim (and so the
+    // canonical envelopeId) is unchanged — only a signature is appended.
+    signed = coSignEnvelope(wallet, request.envelope);
+  } else {
+    // wallet.attest wraps createDraft + signEnvelope using the
+    // active key. The wallet validates kind/tier internally and
+    // throws if anything is off.
+    signed = wallet.attest({
+      kind: request.kind,
+      tier: request.tier,
+      subject: request.subject,
+      fields: request.fields,
+    });
+  }
   await wallet.hold(signed);
   await saveWallet();
 

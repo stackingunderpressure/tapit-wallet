@@ -138,7 +138,9 @@ export function SignApprovalScreen() {
           onClick={approve}
           className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium"
         >
-          Approve — sign this
+          {state.request.intent === 'cosign-existing'
+            ? 'Approve — co-sign this'
+            : 'Approve — sign this'}
         </button>
         <button
           type="button"

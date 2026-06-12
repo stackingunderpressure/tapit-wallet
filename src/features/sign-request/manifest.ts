@@ -8,15 +8,18 @@ export const manifest: FeatureManifest = {
   touches: [
     'src/features/sign-request/types.ts',
     'src/features/sign-request/parseSignRequest.ts',
+    'src/features/sign-request/parseSignRequest.test.ts',
     'src/features/sign-request/renderRequest.tsx',
     'src/features/sign-request/approveRequest.ts',
+    'src/features/sign-request/coSignEnvelope.ts',
+    'src/features/sign-request/coSignEnvelope.test.ts',
     'src/features/sign-request/declineRequest.ts',
     'src/features/sign-request/SignApprovalScreen.tsx',
   ],
-  depends_on: ['wallet-core', 'storage', 'anchoring'],
+  depends_on: ['wallet-core', 'storage', 'anchoring', 'cosigning'],
   pause_safe: false,
   removal_safe: false,
   monetizable: false,
   notes:
-    "Phase 3 intent is 'attest' only — wallet creates a NEW signed envelope from the request's fields. Future intents (cosign-existing, disclosure-proof) come in later phases. Nostr NIP-46 transport stays explicitly OUT of v1 per DESIGN.md; that's a different transport layer that would replace the deeplink, sharing the same SignRequest/SignGrant message shapes. The shapes live in this feature for v1; hoisting them into tapit-attest is a future move if a fleet ever needs them shared across multiple wallets.",
+    "SignRequest is now a discriminated union on `intent`. 'attest' (original) — wallet creates a NEW signed envelope from kind/tier/subject/fields. 'cosign-existing' (added 2026-06-12, the Trailhead mutual-proof-of-presence atom) — the requester hands over an already-signed envelope and the wallet ADDS its signature, returning the merged multi-signature envelope; the claim is untouched so the canonical envelopeId is identical before and after. parseSignRequest validates the incoming envelope with parseEnvelope + verifyEnvelope and declines `invalid_envelope` if it doesn't parse or carries no valid signature (never co-sign garbage). The sign+merge logic is the pure coSignEnvelope() helper (wallet.sign then mergeSignatures dedupe+verify) so it's unit-tested directly; approveRequest branches on intent and reuses it. renderRequest shows a co-sign view (what it is + how many already signed) for the cosign branch; the approval button reads 'co-sign this'. depends_on gained cosigning (mergeSignatures). Still deeplink-only; Nostr NIP-46 transport stays OUT of v1 (a different transport sharing the same message shapes). SSO needs NO new intent — an app gets a wallet-signed session assertion today by requesting a `meta` attestation (nonce + issued_at + expires_at) via 'attest' and verifying the returned envelope against the user's pubkey. The shapes live in this feature for v1; hoist into tapit-attest when a fleet needs them shared. Remaining deferred intent: disclosure-proof.",
 };

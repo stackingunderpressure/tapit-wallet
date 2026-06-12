@@ -31,6 +31,31 @@ function asString(v: unknown): string | undefined {
 }
 
 export function RenderRequest({ request }: Props) {
+  // cosign-existing — the wallet is adding its signature to an envelope
+  // someone else already signed. Show what it is and who already signed it;
+  // the record itself does not change, only a signature is added.
+  if (request.intent === 'cosign-existing') {
+    const env = request.envelope;
+    const signers = env.signatures.length;
+    return (
+      <div className="rounded-md border border-ink/15 bg-paper p-4">
+        <p className="text-sm">
+          <span className="font-medium">{request.origin}</span> is asking you to{' '}
+          co-sign a <span className="font-medium">{env.kind}</span>{' '}
+          {signers === 1 ? 'already signed by 1 person' : `already signed by ${signers} people`}.
+        </p>
+        <div className="mt-3 text-xs uppercase tracking-wide text-muted">
+          Subject
+        </div>
+        <div className="mt-1 text-sm font-medium break-words">{env.subject}</div>
+        <div className="mt-3 text-xs text-muted">
+          Adding your signature confirms you agree to this exact record. The
+          record itself doesn't change — only your name is added to it.
+        </div>
+      </div>
+    );
+  }
+
   const prominent = FIELD_KEYS_PROMINENT[request.kind] ?? [];
   const prominentEntries = prominent
     .map((k) => [k, request.fields[k]] as const)
