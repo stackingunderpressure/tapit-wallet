@@ -3621,3 +3621,44 @@ weighting, (b) a Sybil-COST anchor on fabricating independent history, (c)
 non-discretionary issuance, (d) honest confidence-vs-N display. (a)+(d) are the
 buildable near-term; (b) is the deep one.
 ```
+
+```
+Date: 2026-06-11 (threat-model close on the witness-token arc, same day)
+Tag: WALLET-AS-CAPTCHA - proof-of-personhood via non-parallelizable physical cost
+Maturation: maturing -> maturing (threat model resolved to its real boundary).
+Operator closes the cost-knob question I left open: the wallet+real-stay is the
+CAPTCHA / proof-of-personhood gate. A bot downloads a wallet and signs an identity
+for free (worthless), but CANNOT get a night's stay and convince a human owner a
+real person stayed - the gate's cost is PHYSICAL and NON-PARALLELIZABLE (a click
+farm can't physically stay at 100 cabins and charm 100 owners). This annihilates the
+Twitter-bot mass-spam failure mode that makes open review systems worthless.
+ELEGANT PROPERTY operator named: influence and stake are COUPLED. A no-crowd voice
+is just an opinion, easily discarded; only a key with real cross-shop reputation can
+move the needle, and such a key risks that earned reputation to post a dishonest
+review - "who would risk being the first, with no crowd to stand with." The only
+voice loud enough to harm a business is the voice with the most to lose. Honest
+DEFAULT when data is thin: fall back to first-hand / trusted-referral (web-of-trust),
+the hardest-to-fake mechanism - and making that the explicit default (not a
+fake-confident score) is on-mission sovereignty literacy.
+THE REAL RESIDUAL BOUNDARY (what survives BECAUSE the cheap attacks are dead - a sign
+the design works, attackers forced up the cost curve):
+1. TARGETED low-volume on SMALL-N: the gate kills industrial spam but not a funded
+   competitor buying a FEW real-stay negatives against a NEW property that has no
+   protective mass yet. The cost-gate and the aggregate-gate cover for each other
+   EXCEPT in the small-N x targeted-attack cell. Defense: corroboration density +
+   show-your-N + right-of-reply; honest weakness early.
+2. DISHONEST OWNER: the captcha-checker is an interested party. Solves BOTS cleanly,
+   solves insider gaming NOT AT ALL (selective issuance, self-booked praise). Bot
+   problem != dishonest-insider problem; the gate is the former only.
+3. CAPTURED/BRIBED HIGH-REP KEY: the gate concentrates trust into reputable keys,
+   which raises the VALUE of subverting one (bribe a 100-shop traveler to trash a
+   rival - measured-faith makes it land hard). Mitigated by anomaly-detection on
+   out-of-character reviews (the key that loves everyone then savages one place looks
+   off), not eliminated.
+4. REFERRAL-FALLBACK depth: the web-of-trust default is only as good as its roots; a
+   freshly bootstrapped region has shallow roots. Honest start = one real
+   family/community (mission: "if it only works for one family it succeeded").
+META: wallet-as-captcha doesn't make it unattackable; it raises the cost FLOOR so
+only motivated, skilled, targeted, VISIBLE, self-limiting attacks remain - which is
+the most any real trust system achieves. Goal isn't perfect; it's "expensive enough
+that honest is the dominant strategy for almost everyone." That is achieved here.
