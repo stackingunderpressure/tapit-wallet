@@ -297,8 +297,11 @@ const BUDGETS = [
   // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
   // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer
   // panel + the gated-release-bundle verdict from item 11 D4), measured
-  // 5.04KB gz. Bumped 5 -> 5.5KB.
-  { pattern: /^VerifyProofScreen-.*\.js$/, gz: 5_632, label: 'VerifyProofScreen' },
+  // 5.04KB gz. Bumped 5 -> 5.5KB. Portable-verify cut 2026-06-11 added the
+  // "verify this without this page" export block (copy proof + download a
+  // standard .ots + show the digest) so a proof can be re-checked off our
+  // domain — measured 5.69KB gz. Bumped 5.5 -> 5.9KB.
+  { pattern: /^VerifyProofScreen-.*\.js$/, gz: 6_042, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
   { pattern: /^CaptureScreen-.*\.js$/, gz: 2_000, label: 'CaptureScreen' },
 
