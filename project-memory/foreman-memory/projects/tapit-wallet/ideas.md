@@ -3698,3 +3698,55 @@ NET CORRECTION: system is robust against PURCHASED outside influence (operator r
 The real boundary is (a) INSIDER honesty at the issuance gate and (b) cold-start
 thinness - and BOTH are handled by the same honest posture already named: show-your-N
 + referral-default. The design already contains the answer to the attacks I'd named.
+
+```
+Date: 2026-06-11 (SYNTHESIS / resting point of the witness-token arc, same day)
+Tag: CHECK-IN ISSUANCE + INCENTIVE-COMPATIBILITY - honesty as the dominant strategy
+Maturation: maturing -> fruiting body (the arc reached a coherent resting synthesis).
+THE DENOMINATOR FIX (operator): issue the irrevocable review-key at CHECK-IN (start
+of stay), before the outcome is known, as a VISIBLE BLANKET POLICY ("everyone who
+stays gets one"). This converts suppression from invisible to SELF-INCRIMINATING: a
+guest given no key has grounds to be loud, and an owner who publicly runs
+"I cryptographically prove everyone who stayed" can't quietly withhold without
+breaking his own stated policy and burning HIS OWN credibility. The owner is a keyed
+participant too - influence-stake coupling now applies to the ISSUER, not just
+reviewers. So the gatekeeper has skin in the game.
+THE RUNNING-YOU-DOWN REFRAME (operator, correct): the system never stops detractors -
+people always badmouth off-system, that's the pre-existing default and always will be.
+What CHANGED is truth now has a VERIFIABLE COUNTERWEIGHT it never had: 98/100
+cryptographically-proven great stays means one bad voice correctly reads as "a bad day,
+world on tilt," not a verdict. You don't silence the critic; you give reality a louder,
+provable signal.
+THE UNIFYING THESIS (operator, = SATOSHI.md): design so that COOPERATING with the
+system beats ATTACKING it - everyone does better for themselves by going along, so
+honesty is the dominant strategy and gaming it just "gets you handed your ass." This is
+Bitcoin's incentive compatibility, and it's the through-line under EVERYTHING in this
+arc: the personhood gate, influence-stake coupling, check-in issuance, aggregate-truth
+all serve making honesty the cheapest winning move. This is the correct north star.
+HONEST RESIDUAL (precise, few, not manufactured):
+1. THE TOOTH: the suppression VICTIM can't PROVE suppression - the un-keyed guest has
+   no token precisely BECAUSE it was withheld, so "I stayed and got nothing" is
+   unverifiable and falls back to word-of-mouth. Presence is provable only through the
+   owner-controlled token => the owner keeps structural denominator power. MITIGATION
+   (real build, not free): a PUBLIC SIGNED issuance-POLICY commitment + a grievance
+   channel; BETTER - root the entitlement in the BOOKING/payment confirmation the GUEST
+   independently holds, moving issuance upstream of the owner's discretionary check-in
+   handout. Each step up reduces owner discretion; never fully zero (turtles).
+2. Soft denominator-shaping: owner comps/fixes unhappy guests off-system before review
+   so they don't post. Mild, often genuinely benign (fixing problems IS good), but
+   skews the distribution positive for non-quality reasons.
+3. Bootstrap to escape velocity: incentive-compatibility is the right END-STATE but not
+   automatic at small-N - early on, going-along confers little benefit yet (like early
+   Bitcoin mining near-worthless). Has to reach the point where cooperation pays.
+4. Bitcoin-analogy precision: right in SPIRIT (incentive compatibility) but enforced
+   SOCIALLY/economically (probabilistic, reputational) not by deterministic consensus
+   (cryptographic finality). Bitcoin REJECTS an invalid block by math, every node, no
+   judgment; this makes cheating reputationally UNPROFITABLE-in-expectation. Real and
+   powerful (how reputation markets work) but softer than consensus finality - build
+   the social-incentive layer DELIBERATELY, don't assume math enforces it.
+ARC STATUS: resting synthesis reached. The lodging wedge is a coherent
+incentive-compatible design on shipped primitives (Layer 2 sign-request + credential
+issuance + selective disclosure + OTS anchor); the two unbuilt deep parts remain
+weighting (computeWeight/advancedWeighting stubbed) and a Sybil/discretion-cost anchor.
+Next: if piloted, build smallest = booking-rooted verified-stay credential + public
+issuance-policy commitment + honest show-your-N; defer weighting math to volume.
