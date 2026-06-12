@@ -21,7 +21,7 @@ import {
   type AnchorCheck,
   type ProofAnchor,
 } from './verifyProofAnchor.ts';
-import { otsBytesFromHex, OTS_DOWNLOAD_NAME } from './exportProof.ts';
+import { downloadOtsFile } from './exportProof.ts';
 
 interface VerifiedField {
   path: string;
@@ -142,32 +142,6 @@ export function VerifyProofScreen() {
       setTimeout(() => setCopied(false), 1500);
     } catch {
       window.prompt('Copy the proof:', raw);
-    }
-  }
-
-  // Portable verify: hand out the Bitcoin timestamp as a STANDARD .ots file so
-  // a verifier can check it with the canonical `ots` client / opentimestamps.org
-  // against the digest — no app, no server, no trusting this page. Only wired
-  // up once the anchor has already parsed + verified here, so the bytes are a
-  // known-good standard proof.
-  function downloadOts(proofHex: string) {
-    try {
-      const bytes = otsBytesFromHex(proofHex);
-      // Copy into a plain ArrayBuffer — a Uint8Array<ArrayBufferLike> is not a
-      // BlobPart under the strict typed-array lib, an ArrayBuffer always is.
-      const buf = new ArrayBuffer(bytes.byteLength);
-      new Uint8Array(buf).set(bytes);
-      const blob = new Blob([buf], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = OTS_DOWNLOAD_NAME;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      /* button only renders for already-parsed proofs; nothing to do */
     }
   }
 
@@ -526,7 +500,7 @@ export function VerifyProofScreen() {
                   <button
                     type="button"
                     onClick={() =>
-                      outcome.anchor && downloadOts(outcome.anchor.proof)
+                      outcome.anchor && downloadOtsFile(outcome.anchor.proof)
                     }
                     className="rounded-md border border-ink/15 px-3 py-1.5 text-xs font-medium hover:bg-ink/5"
                   >

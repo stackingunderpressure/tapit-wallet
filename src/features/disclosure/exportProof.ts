@@ -13,8 +13,10 @@
 //      that verifies with the canonical `ots` client or opentimestamps.org
 //      against the envelope digest, against the public Bitcoin chain.
 //
-// The DOM download/clipboard side lives in the screen; the only logic worth
-// isolating and testing is the hex → bytes decode, kept pure here.
+// The clipboard side lives in the screens; the hex → bytes decode is kept
+// pure and tested here, and downloadOtsFile (the small DOM wrapper that turns
+// it into a .ots download) is shared by the verify and share surfaces so they
+// can never drift.
 
 /** Filename offered for the downloaded standard OpenTimestamps proof. */
 export const OTS_DOWNLOAD_NAME = 'tapit-timestamp.ots';
@@ -36,3 +38,33 @@ export function otsBytesFromHex(hex: string): Uint8Array {
   }
   return bytes;
 }
+
+/**
+ * Trigger a browser download of the standard `.ots` file for a hex proof
+ * blob. No-throw by design: it is only ever wired up for an anchor that has
+ * already parsed + verified, so a malformed blob just does nothing rather
+ * than interrupting a share. The ArrayBuffer copy is because a
+ * Uint8Array<ArrayBufferLike> is not a BlobPart under the strict typed-array
+ * lib, while a plain ArrayBuffer always is.
+ */
+export function downloadOtsFile(proofHex: string): void {
+  let bytes: Uint8Array;
+  try {
+    bytes = otsBytesFromHex(proofHex);
+  } catch {
+    return;
+  }
+  const buf = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buf).set(bytes);
+  const url = URL.createObjectURL(
+    new Blob([buf], { type: 'application/octet-stream' }),
+  );
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = OTS_DOWNLOAD_NAME;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
