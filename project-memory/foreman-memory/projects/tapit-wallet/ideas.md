@@ -3796,3 +3796,46 @@ NET: reciprocal signing is a near-term-buildable dual-sided reputation primitive
 existing cosigning code IF countersignature = clean-completion not content-endorsement.
 Quality-uplift is the owner-side half of the same incentive-compatibility thesis, real
 but Goodhart-bounded and teeth-dependent.
+
+```
+Date: 2026-06-11 (LENS CORRECTION - operator pulled me back to the Prime Directive)
+Tag: ADDITIVE VALUE, NOT SOLVE-EVERYTHING - the framing that re-reads the whole arc
+Maturation: fruiting body -> the load-bearing reframe of the entire witness-token arc.
+OPERATOR'S CORRECTION (accepted, and it's right): I kept escalating threat models as
+if the bar were "solve trust / be attack-proof." WRONG BAR. Nobody has solved trust
+(not Google, not TripAdvisor, not anyone). The goal is to ADD A VERIFIABLE LAYER OF
+VALUE on top of an already-flawed system, not replace or perfect it. This is literally
+the Prime Directive ("build the smallest useful version correctly") - the operator is
+MORE doctrine-aligned than my escalating critique was. I drifted into boiling the ocean.
+THE CHICKEN-AND-EGG DISSOLVES: I kept raising cold-start as a blocker. But you're not
+hatching trust from zero - the world ALREADY runs on flawed trust (the chicken AND egg
+already exist). We add a provable overlay on top. So "an attacker could still do X" is
+not a refutation; it just means the new layer doesn't fix that pre-existing flaw - it
+was never supposed to. The only question that matters: does it add a provable thing
+that didn't exist before? YES - portable, math-verifiable, mutually-attested
+interaction history, which degrades GRACEFULLY back to ordinary human judgment when
+data is thin ("was it a good day? I tried it, liked it / didn't" - and no review or
+thin history is NOT the end of the world, just no data).
+ADOPTION PATH (operator): start with a few who love the novelty ("I can prove it - our
+new guestbook"); it becomes the new norm fast; then NOT having the cryptographic chain
+feels behind. Novelty -> norm -> expected-default. Legitimate and how real adoption
+works.
+THE ARTIFACT (concrete + buildable): a STAGED HASH-CHAIN of a relationship - booking
+start -> check-in -> service stages ("bed turning was perfect") -> checkout, EACH stage
+attested along the way as mutual, accreting into hundreds of positive linked proofs
+over time. Maps to shipped primitives: each stage = an attestation; the chain = linked/
+succession attestations (successionLink in tapit-attest); mutual = cosigning. "Cream
+rises" = the visible HEAVINESS (weight) of each review; light ones default back to human
+judgment. The operator already integrated the show-your-N humility I kept harping on.
+RE-READS THE PRIOR ENTRIES: the "residuals" logged earlier (insider self-dealing,
+captured keys, targeted small-N, Goodhart) are NOT blockers under this lens - they are
+pre-existing flaws of the trust world that the additive layer simply doesn't claim to
+fix. Keep them as known-limits notes, NOT as gates on shipping.
+THE ONE THING THAT STAYS LOAD-BEARING (because it IS the added value, not an attack):
+"verifiable by anyone OUTSIDE the system using math" must be literally TRUE - the proof
+has to verify independently, off-our-domain, with standard tooling, not only inside our
+own /verify page. If the proof only checks inside our app, we didn't add the
+provable-to-anyone layer we're claiming - we built another walled garden with a verify
+button. So independent off-domain math-verifiability is THE value prop and the cheapest
+highest-leverage thing to nail. (This was prior "gap #1"; under the additive lens it's
+not a residual - it's the product.)
