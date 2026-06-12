@@ -3750,3 +3750,49 @@ issuance + selective disclosure + OTS anchor); the two unbuilt deep parts remain
 weighting (computeWeight/advancedWeighting stubbed) and a Sybil/discretion-cost anchor.
 Next: if piloted, build smallest = booking-rooted verified-stay credential + public
 issuance-policy commitment + honest show-your-N; defer weighting math to volume.
+
+```
+Date: 2026-06-11 (extension: reciprocal signing + quality-uplift, same day)
+Tag: RECIPROCAL STAY SIGNING + REVIEW-AS-MARKET-DISCIPLINE
+Maturation: fruiting body (extends the resting synthesis with two new mechanisms).
+RECIPROCAL SIGNING (operator): guest checks in with their cryptographic key, signs
+their review, owner signs BACK; the mutual signature shows an ongoing happy
+relationship start-to-finish, and many cleanly reciprocated check-in/out cycles build
+a track record for BOTH parties. BUILDABLE NOW: this is literally the shipped cosigning
+primitive (mergeSignatures - two sigs on one envelope by envelopeId; the handshake
+co-sign pattern). A stay = a co-signed attestation.
+THE DESIGN-CRITICAL FORK (don't get this wrong): the owner's countersignature can mean
+two very different things - (i) "I confirm this person stayed / the stay closed
+cleanly" (presence, CONTENT-BLIND, always signable), or (ii) "I endorse the CONTENT of
+this review." If reciprocity means (ii), the owner only countersigns reviews he LIKES,
+so negative reviews go unreciprocated and look second-class => suppression rebuilt at
+the countersignature stage, undoing the check-in-issuance fix. CORRECT DESIGN: split
+them. Co-sign the STAY/COMPLETION (neutral, both can always sign - "this happened, loop
+closed"); keep the REVIEW as the guest's UNILATERAL signed leaf. Then "reciprocally
+closed" = clean mutual completion (a real, honest dual-sided reputation signal - 50
+cleanly-closed stays proves a good guest; 200 proves a clean operator) WITHOUT giving
+the owner a veto over opinion. A soured stay shows as ABSENCE of countersignature -
+real but low-fidelity (could be dispute, or just offline/forgot; needs a reason).
+COLLUSION caveat: mutual signing proves AGREEMENT, not TRUTH - a colluding pair can
+reciprocally praise each other. Provenance!=truth at the pair level; defended the same
+way - aggregate across many INDEPENDENT counterparties + history weighting (a pair that
+only ever praises each other with no other independent history is an anomaly).
+QUALITY-UPLIFT (operator: "doesn't the threat of a review system raise quality
+expectations?"): YES, directionally right and it's the symmetric incentive to the
+personhood gate - the gate makes HONESTY the reviewer's dominant strategy; a verifiable
+PORTABLE hard-to-game reputation makes QUALITY the owner's dominant strategy, because
+reputation becomes durable CAPITAL you build and carry, not a platform score you can
+flee by rebranding. Escaping your history gets expensive => longer-horizon incentive to
+be good. Same Bitcoin incentive-compatibility theme; both sides pushed toward the
+cooperative high-quality equilibrium. HONEST CAVEATS: (1) GOODHART - it raises MEASURED
+quality on review-salient dimensions, which can be gamed or pull effort from unmeasured
+things ("when a measure becomes a target it stops being a good measure"); can also
+breed defensiveness/homogenization/appeasement. (2) Only bites once the system has
+TEETH (reputation materially moves bookings) - "eventually" = post escape-velocity;
+below that the threat is empty. (3) Sorting effect: good operators opt in to signal,
+bad ones stay out to dodge accountability - opting out becomes a signal ONCE being-in
+is the expected default.
+NET: reciprocal signing is a near-term-buildable dual-sided reputation primitive on the
+existing cosigning code IF countersignature = clean-completion not content-endorsement.
+Quality-uplift is the owner-side half of the same incentive-compatibility thesis, real
+but Goodhart-bounded and teeth-dependent.
