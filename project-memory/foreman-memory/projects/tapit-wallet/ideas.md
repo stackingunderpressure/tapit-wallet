@@ -3662,3 +3662,39 @@ META: wallet-as-captcha doesn't make it unattackable; it raises the cost FLOOR s
 only motivated, skilled, targeted, VISIBLE, self-limiting attacks remain - which is
 the most any real trust system achieves. Goal isn't perfect; it's "expensive enough
 that honest is the dominant strategy for almost everyone." That is achieved here.
+
+```
+Date: 2026-06-11 (CORRECTION to the threat-model close, same day)
+Tag: PURCHASED-INFLUENCE ATTACK COLLAPSES - the residual is INSIDER, not outsider
+Maturation: correction of an overstatement in the prior two entries (the "targeted
+small-N" and "captured high-rep key" residuals were weaker than stated). Operator's
+dichotomy is correct and I concede it.
+Operator's fork (accepted): the competitor-down-the-street who wants to buy a hit
+either uses LOW-rep keys (discarded - "bought nothing") or needs HIGH-rep keys (real
+people who must be willing to BURN hard-earned reputation - scarce, expensive,
+one-shot, self-limiting). To actually SHIFT an aggregate verdict you need a CROWD of
+independent reputable voices, and THAT crowd is exactly what the personhood gate
+makes unmanufacturable: low-rep keys don't count, and you can't cheaply mass-produce
+high-rep keys because reputation requires real non-parallelizable stays. So a single
+captured key can't fake a mass, and one high-rep negative against a real mass is just
+an anomaly flagged against that key's own pattern. THIS ALSO RESOLVES the earlier
+"correlated fakes become the mass" worry (2026-06-11 aggregate-truth entry):
+correlated fakes can't acquire the credibility that would let them count as the mass.
+The purchased-influence / outsider attack genuinely collapses under the operator's
+own logic. I overstated it.
+WHAT ACTUALLY SURVIVES (a DIFFERENT attacker, not the one being questioned):
+1. THE INSIDER (owner), not the outsider (competitor): the owner uses REAL cooperating
+   people - self / friends / family who really stay - to mint GENUINE positive tokens,
+   and suppresses negatives by not issuing tokens (denominator). This doesn't need
+   "bought reputation" because the reviewers and stays are real; it's insider
+   self-dealing at the issuance gate, which is an interested party. Bounded: a few
+   friends can't out-mass real volume, and it faces the same show-N / referral default.
+2. COLD-START THINNESS (universal, not an attack): at N=0->few, ANY source honest or
+   not is thin, and "discard the lone opinion" needs a crowd to discard AGAINST. The
+   discount mechanism requires a denominator. Handled by the operator's own fix: show
+   the N honestly + default to first-hand/referral when thin, never launder a thin
+   sample as a verdict.
+NET CORRECTION: system is robust against PURCHASED outside influence (operator right).
+The real boundary is (a) INSIDER honesty at the issuance gate and (b) cold-start
+thinness - and BOTH are handled by the same honest posture already named: show-your-N
++ referral-default. The design already contains the answer to the attacks I'd named.
