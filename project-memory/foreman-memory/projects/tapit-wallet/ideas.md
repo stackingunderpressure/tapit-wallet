@@ -1966,3 +1966,71 @@ letter - strongest in informal/peer/sovereign/Bitcoin-native contexts.
 Stage: sprouting. Resurface when scoping any finance/proof surface or the Wealth
 Strategy <-> Tapit bridge.
 ```
+
+```
+Date: 2026-06-12
+Tag: PROOF-OF-VERIFIED-KNOWLEDGE - a human-attested answer commons that caches reality and corrects AI (the layer under the concierge)
+Operator (theorizing, "bounce it," NOT a cut): everybody asks the same AI the
+same question over and over ("where do I kayak in the Ozarks of Arkansas") and
+we burn compute re-deriving an answer we already know. The QUESTION is the same
+for everyone; the VARIATIONS in answers are the difference. Attestations that
+build up over time are the PROOF - people went out, tested what the AI said,
+verified it, and signed it. "Signed by 3000 people that the first month's
+answer was right" means we don't need 3000 bots re-looking-up the same info.
+THE CORE INSIGHT (naming it): PROOF-OF-VERIFIED-KNOWLEDGE = a cache for REALITY
+with a trust score. It inverts AI economics: today every query costs compute
+and yields an UNVERIFIABLE, possibly-stale answer; here the millionth asker of
+a settled question pays ~nothing and gets a HUMAN-PROVEN answer. Compute is
+spent ONCE to canonicalize the question + draft answer; humans do the verifying
+thereafter. It is a VERIFICATION/CURATION layer over AI, not a generation
+replacement - it makes AI answers ACCOUNTABLE and fixes the oracle/staleness/
+hallucination gap pure LLMs have (no ground-truth feedback loop today).
+MAPS ONTO THE EXISTING CHASSIS (why this is in-grain, not sci-fi):
+- canonical QUESTION = a stable subject/key (hash of the normalized question;
+  curated entry). All phrasings of "where to kayak near Branson" map to ONE id.
+- ANSWER = an attestation (a claim).
+- VERIFICATION = a proof-of-presence-style signed attestation: "I went, it's
+  right" / "wrong, it's actually Y now." Same primitive as the Trailhead
+  guest+business co-sign.
+- "3000 signed it" = the PROVABLE-AGGREGATE idea (prove N verified without
+  naming them) + the aggregate-count idea, applied to answers.
+- Bitcoin ANCHORING = freshness is provable ("last verified 3 days ago").
+- LOCAL/EXPERT credential = weight: a local's verification outweighs a tourist's
+  (Heartwood judge-weight). Ties to vetting credentials.
+- PROOF-OF-PRESENCE as the Sybil defense: you can only verify a kayak spot if
+  you have an anchored proof you were actually THERE (GPS/time/stamped-photo) -
+  this is exactly the stamped-photo + proof-of-presence work, repurposed.
+THIS UNIFIES MANY PRIOR THREADS: proof-of-presence (Trailhead), aggregate
+counts (demographics), provable aggregates (civic voting), vetting credentials,
+verifiable photos. The operator is converging on ONE thesis: a human-verified,
+cryptographically-proven, energy-efficient knowledge layer that sits on top of
+and CORRECTS AI.
+HONEST HARD PARTS (do not gloss):
+1. QUESTION CANONICALIZATION is make-or-break and ironically still needs AI -
+   but ONCE (cluster phrasings -> one id), which SUPPORTS the energy argument
+   (normalize+draft once, humans verify, then it's lookup).
+2. ANSWER SUBJECTIVITY + DECAY: "best" depends on skill/season/water-level;
+   answers are conditional and go stale (dam release changes). Verifications
+   need CONTEXT (when/who/conditions) + EXPIRY + re-verification, not binary
+   true/false.
+3. SYBIL / ASTROTURF: if 3000 sigs = authority, businesses fake them. Defense =
+   web-of-trust + local/expert weight + skin-in-the-game (sign wrong, lose
+   verification weight) + proof-of-presence gating (must prove you were there).
+4. COLD-START + LONG TAIL: first answer still needs a source (AI draft or local
+   expert); popular Qs accrue verifications, obscure ones don't - value
+   concentrates where traffic is, which is WHY tourist-towns/concierge is the
+   right wedge.
+ARCHITECTURE: this is its OWN fleet app on the tapit-attest + wallet substrate
+(like Trailhead), NOT wallet code. Wallet = key custody + signing hub; this =
+the answer-commons application layer. Possible product surfaces ("parks"/
+value-parts): (a) local concierge wedge; (b) a "verified-answer cache" any AI
+queries BEFORE recomputing (proof-backed RAG / anti-hallucination oracle);
+(c) un-fakeable reviews (every "I used this" is proof-of-presence anchored);
+(d) local-expertise reputation/earn (sats for verified answers); (e) time-
+sensitive civic truth ("trail open?", "bridge out?", "clinic walk-ins?") that
+decays + re-verifies; (f) disaster/off-grid verified info (pairs with BitChat).
+Stage: matured thesis / candidate north-star product. Open question to mature:
+is the wedge the consumer concierge (asker-facing) or the AI-facing verified-
+answer cache (the energy/anti-hallucination API)? Those are different first
+customers. Resurface with the Trailhead proof-of-presence work - same primitive.
+```
