@@ -2034,3 +2034,59 @@ is the wedge the consumer concierge (asker-facing) or the AI-facing verified-
 answer cache (the energy/anti-hallucination API)? Those are different first
 customers. Resurface with the Trailhead proof-of-presence work - same primitive.
 ```
+
+```
+Date: 2026-06-12
+Tag: VERIFIED-KNOWLEDGE refinement — temporal append-only truth + REPORTER reputation bootstraps NEW info (the hall-monitor / tree-down model)
+Operator (continuing the proof-of-verified-knowledge thread, river-hazard
+example): on a river page, when a new tree falls there's always a "hall
+monitor" ready to report it. KEY MOVES:
+1) TEMPORAL / APPEND-ONLY TRUTH (a hash chain, not a mutable cell): a new
+   hazard being real NOW does NOT mean the old info was wrong - the old info
+   was TRUE FOR ITS WINDOW. New information is its own time-stamped, witnessed
+   EVENT. The subject (a given rapid / spot) is a WITNESSED TIMELINE of state
+   changes: appeared (confirmed by N) -> still there (re-confirmed) -> cleared
+   (confirmed by M). You never overwrite truth; you APPEND a new witnessed link
+   to the chain. The history is the value: "deep & dangerous from date X (N
+   witnesses) until cleared date Y (M witnesses)."
+2) REPORTER REPUTATION BOOTSTRAPS NEW INFO (resolves the cold-start/freshness
+   trust gap): brand-new info CANNOT have 3000 confirmations yet - it just
+   happened. So how do you trust it before the crowd verifies? You trust it IN
+   PROPORTION TO THE REPORTER'S CRYPTOGRAPHICALLY-PROVEN TRACK RECORD - every
+   prior time this hall-monitor said "tree down," N people later signed "yes,
+   same tree, confirmed." A reporter with a perfect history gets believed
+   immediately; "if a shithead brings the info, treat it like a shithead
+   brought it." Confirmation is still presence-gated and accrues over hours/
+   days; in that gap you act on REPUTATION. This is the missing piece that lets
+   the system act on FRESH danger info without waiting for mass verification.
+3) THE FLYWHEEL: AI lays the groundwork ONCE - drafts the Merkle tree of
+   questions/paths; humans then "light up" the branches they care about, and
+   the act of lighting-up REVEALS who is credible (the credible are repeatedly
+   right about "the water's high," others aren't). Over time the track record
+   proves itself and the system creates value for itself "because a few people
+   are nerdy enough to do it" (the Wikipedia / OpenStreetMap dedicated-minority
+   bootstrap).
+MAPS ON: append-only witnessed chain = the attestation/anchor history already
+is this. Reporter reputation = a DERIVED score over a person's history of
+later-confirmed attestations (Heartwood judge-weight, and the provable-
+aggregate "N confirmed" applied to the reporter, not just the answer).
+HONEST NEW RISKS (specific to this refinement):
+- REPUTATION FARM-THEN-RUG: build a clean record on easy true reports, then
+  cash it in on one high-stakes lie. Mitigations: stake/skin-in-the-game,
+  weight by recency + by how costly each past call was, decay, and the fact
+  that a rug is itself a permanent signed black mark.
+- ASYMMETRY OF DANGER INFO: a false-negative (missing a real hazard) can kill;
+  a false-positive (crying wolf) wastes a portage. Reputation must weight these
+  differently - over-reporting hazards is cheap-safe, under-reporting is
+  catastrophic; the scoring should NOT punish a cautious over-reporter the way
+  it punishes a missed hazard.
+- SUBJECTIVITY THRESHOLDS: "water's high" is a judgment call with a band;
+  domains differ - a navigation hazard is near-binary + presence-verifiable;
+  "best restaurant" is taste. The model is strongest on objective, presence-
+  checkable, decaying facts (hazards, hours, closures, access) - lead there.
+Operator framing: "not trying to solve every problem - make OUR problems easier
+and frictionless, provide value through AI and by making AI more efficient so
+we don't recompute every time." Stage: matured thesis; this refinement
+RESOLVES the cold-start objection. Resurface with Trailhead proof-of-presence
+(same verification primitive) + Heartwood (reputation weight).
+```
