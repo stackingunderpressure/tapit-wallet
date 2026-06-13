@@ -3,6 +3,7 @@ import { Wallet, identityAttestation } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 
 import { routeFor } from './envelopeRoute.ts';
+import { PEER_COPY } from './peerCopy.ts';
 import {
   buildHandshakeDraft,
   buildRemoteHandshakeDraft,
@@ -42,7 +43,7 @@ describe('routeFor — Phase E2 self-membership routing', () => {
     const route = routeFor(signed);
     expect(route).not.toBeNull();
     expect(route!.action).toBe('self-membership-receive');
-    expect(route!.label).toBe('Accept join request');
+    expect(route!.label).toBe(PEER_COPY.joinRequestForOrg.label);
   });
 
   it('keeps org-issued memberships on the membership-receive route', () => {
@@ -113,7 +114,7 @@ describe('routeFor — Phase E2 self-membership routing', () => {
 
     const route = routeFor(cosigned, joiner.identity);
     expect(route!.action).toBe('absorb-cosign');
-    expect(route!.label).toBe('Absorb vouch');
+    expect(route!.label).toBe(PEER_COPY.vouchCollected.label);
   });
 
   // Same envelope, no receiver context — falls back to the org-side
@@ -165,7 +166,7 @@ describe('routeFor — Phase E2 self-membership routing', () => {
 
     const route = routeFor(joinerSigned, peer.identity);
     expect(route!.action).toBe('vouch-witness');
-    expect(route!.label).toBe('Vouch');
+    expect(route!.label).toBe(PEER_COPY.vouchRequest.label);
   });
 
   // 1-sig self-membership arriving at the org directly (no vouches
@@ -208,7 +209,7 @@ describe('routeFor — family-unit ratification routing', () => {
     const route = routeFor(founderSigned, member.identity);
     expect(route).not.toBeNull();
     expect(route!.action).toBe('family-ratify');
-    expect(route!.label).toBe('Ratify family');
+    expect(route!.label).toBe(PEER_COPY.familyConfirmRequest.label);
   });
 
   // After the member ratifies and ships the cosigned envelope back,
@@ -232,7 +233,7 @@ describe('routeFor — family-unit ratification routing', () => {
     const route = routeFor(cosigned, founder.identity);
     expect(route).not.toBeNull();
     expect(route!.action).toBe('absorb-cosign');
-    expect(route!.label).toBe('Absorb signature');
+    expect(route!.label).toBe(PEER_COPY.familyConfirmed.label);
   });
 
   // A member who has already ratified can receive a re-broadcast of

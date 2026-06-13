@@ -9,6 +9,7 @@ import {
   isAttestReleaseAuthority,
   isRevokeReleaseAuthority,
 } from '../identity-gate/releaseAuthorityEnvelopes.ts';
+import { PEER_COPY } from './peerCopy.ts';
 
 // Envelope routing — kind-to-action mapping used by both the Mycelium
 // inbox (InboxPanel) and the in-person scan path (ScanEnvelopeModal).
@@ -72,21 +73,18 @@ export function routeFor(
     if (att.signatures.length <= 1) {
       return {
         action: 'cosign-witness',
-        label: 'Review & sign',
-        hint: 'A handshake waiting for your signature.',
+        ...PEER_COPY.handshakeIncoming,
       };
     }
     return {
       action: 'absorb-cosign',
-      label: 'Absorb signature',
-      hint: 'A counter-signed handshake — merge it into your copy.',
+      ...PEER_COPY.handshakeApproved,
     };
   }
   if (isMembership(att)) {
     return {
       action: 'membership-receive',
-      label: 'Accept membership',
-      hint: 'A membership credential issued to you.',
+      ...PEER_COPY.membershipIncoming,
     };
   }
   if (isSelfMembership(att)) {
@@ -100,8 +98,7 @@ export function routeFor(
     if (receiver && att.signatures.length > 1 && subject === receiver) {
       return {
         action: 'absorb-cosign',
-        label: 'Absorb vouch',
-        hint: 'A vouch you collected — merge it into your join envelope.',
+        ...PEER_COPY.vouchCollected,
       };
     }
     // Vouch-witness: a vouching peer received the joiner's 1-sig
@@ -119,14 +116,12 @@ export function routeFor(
     ) {
       return {
         action: 'vouch-witness',
-        label: 'Vouch',
-        hint: 'A peer is asking you to vouch for their join request.',
+        ...PEER_COPY.vouchRequest,
       };
     }
     return {
       action: 'self-membership-receive',
-      label: 'Accept join request',
-      hint: 'A self-membership claim addressed to your organization.',
+      ...PEER_COPY.joinRequestForOrg,
     };
   }
   if (isFamilyUnit(att)) {
@@ -173,8 +168,7 @@ export function routeFor(
     if (receiver === subject) {
       return {
         action: 'absorb-cosign',
-        label: 'Absorb signature',
-        hint: 'A family ratification — merge it into your copy.',
+        ...PEER_COPY.familyConfirmed,
       };
     }
     const view = readFamilyUnit(att);
@@ -186,35 +180,30 @@ export function routeFor(
     if (signers.has(receiver)) {
       return {
         action: 'absorb-cosign',
-        label: 'Absorb signatures',
-        hint: 'A family you already ratified — merge any new signatures into your copy.',
+        ...PEER_COPY.familyCaughtUp,
       };
     }
     return {
       action: 'family-ratify',
-      label: 'Ratify family',
-      hint: 'Someone named you in their family. Review and sign to confirm.',
+      ...PEER_COPY.familyConfirmRequest,
     };
   }
   if (isRecoveryShare(att)) {
     return {
       action: 'recovery-share-receive',
-      label: 'Hold share',
-      hint: 'A recovery share — a peer is asking you to hold one piece of their backup.',
+      ...PEER_COPY.recoveryShareHold,
     };
   }
   if (isRecoveryRequest(att)) {
     return {
       action: 'recovery-request-respond',
-      label: 'Help recover',
-      hint: 'A peer is recovering their wallet on a new device and asking for your share.',
+      ...PEER_COPY.recoveryHelp,
     };
   }
   if (isReleaseAuthorityRequest(att)) {
     return {
       action: 'release-authority-respond',
-      label: 'Vouch',
-      hint: 'A peer is asking you to vouch that they control something important.',
+      ...PEER_COPY.releaseVouchRequest,
     };
   }
   if (isAttestReleaseAuthority(att) || isRevokeReleaseAuthority(att)) {
@@ -223,8 +212,7 @@ export function routeFor(
     // applies it — a revoke drops a previously-counted voucher.
     return {
       action: 'release-authority-collect',
-      label: 'Collect vouch',
-      hint: 'A peer updated their vouch for one of your gates.',
+      ...PEER_COPY.releaseVouchUpdate,
     };
   }
   return null;

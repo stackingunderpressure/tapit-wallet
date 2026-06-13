@@ -45,11 +45,6 @@ function formatTime(unixSeconds: number): string {
   return d.toLocaleString();
 }
 
-function attKindLabel(att: Attestation): string {
-  return att.kind.charAt(0).toUpperCase() + att.kind.slice(1);
-}
-
-
 export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
   const { resolvedTheme } = useWallet();
   const isFresh = resolvedTheme === 'fresh';
@@ -59,13 +54,12 @@ export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
       <div className="flex items-center justify-between">
         <div className={`text-sm font-medium ${isFresh ? 'text-fresh-accent-secondary' : 'text-accent'}`}>
           {envelopes.length === 1
-            ? '1 item waiting'
-            : `${envelopes.length} items waiting`}
+            ? '1 thing waiting for you'
+            : `${envelopes.length} things waiting for you`}
         </div>
       </div>
       <p className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>
-        Sent privately to you and checked as genuine. Tap Open and the
-        wallet takes you to the right next step.
+        Sent just to you and checked as the real thing. Tap to take the next step.
       </p>
       <ul className="mt-3 space-y-2">
         {envelopes.map((item) => (
@@ -117,13 +111,13 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
     <li className={`rounded-md p-3 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10'}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className={`text-sm font-medium ${isFresh ? 'text-fresh-text-primary' : ''}`}>{attKindLabel(item.envelope)}</div>
-          <div className={`mt-0.5 text-xs truncate ${isFresh ? 'text-fresh-text-tertiary' : 'text-muted'}`}>
-            From {senderLabel} · {formatTime(item.receivedAt)}
+          <div className={`text-sm font-medium truncate ${isFresh ? 'text-fresh-text-primary' : ''}`}>{senderLabel}</div>
+          <div className={`mt-0.5 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>
+            {route ? route.hint : 'Something arrived for you.'}
           </div>
-          {route && (
-            <div className={`mt-1 text-xs ${isFresh ? 'text-fresh-text-secondary' : 'text-muted'}`}>{route.hint}</div>
-          )}
+          <div className={`mt-0.5 text-[11px] ${isFresh ? 'text-fresh-text-tertiary' : 'text-muted'}`}>
+            {formatTime(item.receivedAt)}
+          </div>
         </div>
         <div className="shrink-0 flex gap-2">
           {route ? (
