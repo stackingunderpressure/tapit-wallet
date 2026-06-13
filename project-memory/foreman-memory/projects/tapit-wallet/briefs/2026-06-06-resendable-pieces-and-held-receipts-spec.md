@@ -379,6 +379,13 @@ HONEST LIMITS (must surface):
   (Part B): margin watches the LOSS side, the recall brake guards the GATHER
   side. Same threshold, both edges protected.
 
+DECIDED (operator, chip, 2026-06-13): the DEFAULT is DELAY + VETO — the
+threshold-crossing waiting period with broadcast-to-other-devices-and-holders +
+any-party cancel, holder action NOT required, and holder live-confirm as the
+optional fast path that skips the wait. NOT "holders must confirm" (kills
+availability) and NOT "both stacked" (too much friction); those remain available
+as per-secret options but are not the default. Build to this default.
+
 STATUS: spec refinement to the not-yet-built Part D. Folds into the Part D /
 Part C build whenever it lands; it changes the retrieval flow (add request ->
 delay/broadcast/veto -> release state machine), not the storage primitive.
