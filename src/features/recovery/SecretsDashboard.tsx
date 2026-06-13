@@ -12,16 +12,20 @@ import {
   setWhy,
   setTokens,
   tokenHashes,
+  hashToken,
   upsertRecord,
   removeRecord,
   type SecretRecord,
   type PieceMethod,
 } from './secretLedger.ts';
+import { buildSecretPieceEnvelope } from './secretPiece.ts';
 import { SecretsLedgerList } from './SecretsLedgerList.tsx';
 import { SecretDetail } from './SecretDetail.tsx';
 import { secretsLedgerStore } from '../storage/secretsLedgerStore.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { shareText, canShare } from '../../shared/lib/share.ts';
+import { summarizePublish } from '../transport/publishStatus.ts';
+import { displayNameOf } from '../connections/createHandshake.ts';
 import {
   findVouchingCircleCandidates,
   type VouchingCandidate,
@@ -91,7 +95,7 @@ function methodLabel(m: PieceMethod | undefined): string {
 }
 
 export function SecretsDashboard() {
-  const { wallet, holdings, relayStatus, sendChatMessage, ownerId, passphrase } = useWallet();
+  const { wallet, holdings, relayStatus, sendEnvelope, ownerId, passphrase } = useWallet();
 
   const [mode, setMode] = useState<'list' | 'pick' | 'create' | 'recover' | 'detail'>('list');
   const [records, setRecords] = useState<SecretRecord[]>([]);
@@ -144,6 +148,13 @@ export function SecretsDashboard() {
   );
   const canSendOverChat = relayStatus !== null && candidates.length > 0;
   const shareSheetAvailable = canShare();
+  // Owner's display name, for the "a piece of <name>'s secret" the holder sees.
+  const myName = useMemo(() => {
+    const id = holdings.find(
+      (a) => a.kind === 'identity' && a.subject === wallet.identity,
+    );
+    return id ? displayNameOf(id) : '';
+  }, [holdings, wallet.identity]);
   const madeRecord = made ? records.find((r) => r.id === made.recordId) ?? null : null;
 
   function pickTemplate(t: SecretTemplate) {
@@ -246,13 +257,34 @@ export function SecretsDashboard() {
   async function sendPiece(i: number, token: string, peer: VouchingCandidate) {
     setOpenSendIdx(null);
     setSendState((s) => ({ ...s, [i]: { state: 'sending', detail: `Sending to ${peer.name}…` } }));
+    if (!made) return;
     try {
-      const res = await sendChatMessage(peer.pubkey, shareMessage(made?.name ?? '', token));
+      // B-1: send the piece as a recognized secret-piece envelope (the token
+      // is NIP-44 encrypted to the holder), so their wallet can hold it and
+      // acknowledge back — not a loose chat blob. The per-piece hash rides
+      // along (safe metadata) so a returned piece can be verified later.
+      const hashHex = madeRecord?.hashes?.[i] ?? hashToken(token);
+      const envelope = buildSecretPieceEnvelope(wallet, {
+        secretId: made.recordId,
+        secretName: made.name,
+        pieceIndex: i + 1,
+        total: made.total,
+        threshold: made.threshold,
+        token,
+        holderPubkey: peer.pubkey,
+        hashHex,
+        ownerName: myName,
+      });
+      const summary = summarizePublish(await sendEnvelope(peer.pubkey, envelope));
+      if (summary.tone === 'fail') {
+        setSendState((s) => ({ ...s, [i]: { state: 'failed', detail: summary.detail } }));
+        return;
+      }
       setSendState((s) => ({
         ...s,
-        [i]: res.warning
-          ? { state: 'warn', detail: `Sent to ${peer.name} — still confirming` }
-          : { state: 'sent', detail: `Sent to ${peer.name}` },
+        [i]: summary.tone === 'ok'
+          ? { state: 'sent', detail: `Sent to ${peer.name}` }
+          : { state: 'warn', detail: `Sent to ${peer.name} — still confirming` },
       }));
       assignMadePiece(i, { holderName: peer.name, holderPubkey: peer.pubkey, method: 'chat' });
     } catch (err) {

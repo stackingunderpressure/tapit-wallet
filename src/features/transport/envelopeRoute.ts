@@ -3,6 +3,7 @@ import { isHandshake, leafValue } from '../connections/createHandshake.ts';
 import { isMembership, isSelfMembership } from '../connections/createMembership.ts';
 import { isFamilyUnit, readFamilyUnit } from '../connections/familyUnit.ts';
 import { isRecoveryShare } from '../recovery/createShares.ts';
+import { isSecretPiece } from '../recovery/secretPiece.ts';
 import { isRecoveryRequest } from '../recovery/createRecoveryRequest.ts';
 import {
   isReleaseAuthorityRequest,
@@ -53,6 +54,7 @@ export type InboxRouteAction =
   | 'vouch-witness'
   | 'family-ratify'
   | 'recovery-share-receive'
+  | 'secret-piece-receive'
   | 'recovery-request-respond'
   | 'release-authority-respond'
   | 'release-authority-collect';
@@ -192,6 +194,12 @@ export function routeFor(
     return {
       action: 'recovery-share-receive',
       ...PEER_COPY.recoveryShareHold,
+    };
+  }
+  if (isSecretPiece(att)) {
+    return {
+      action: 'secret-piece-receive',
+      ...PEER_COPY.secretPieceIncoming,
     };
   }
   if (isRecoveryRequest(att)) {

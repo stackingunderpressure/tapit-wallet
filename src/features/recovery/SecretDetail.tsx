@@ -103,10 +103,16 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
                 <span className="font-medium">Piece {p.index}</span>
                 <span
                   className={`shrink-0 text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${
-                    p.method ? 'bg-emerald-100 text-emerald-900' : 'bg-ink/10 text-muted'
+                    p.held
+                      ? 'bg-emerald-100 text-emerald-900'
+                      : p.declined
+                        ? 'bg-amber-100 text-amber-900'
+                        : p.method
+                          ? 'bg-ink/10 text-ink/70'
+                          : 'bg-ink/10 text-muted'
                   }`}
                 >
-                  {p.method ? 'out' : 'pending'}
+                  {p.held ? 'confirmed' : p.declined ? 'let go' : p.method ? 'out' : 'pending'}
                 </span>
               </div>
               <div className="mt-0.5 text-muted">
@@ -115,6 +121,17 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
                 {methodLabel(p.method)}
                 {whenLabel(p.handedAt) ? ` · ${whenLabel(p.handedAt)}` : ''}
               </div>
+              {p.held && (
+                <div className="mt-0.5 text-emerald-700">
+                  ✓ Confirmed holding it
+                  {whenLabel(p.confirmedAt) ? ` · ${whenLabel(p.confirmedAt)}` : ''}
+                </div>
+              )}
+              {p.declined && (
+                <div className="mt-0.5 text-amber-700">
+                  ✗ Let it go — hand this piece to someone else
+                </div>
+              )}
             </li>
           ))}
         </ul>

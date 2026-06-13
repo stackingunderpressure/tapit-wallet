@@ -33,6 +33,12 @@ export interface PieceRecord {
   method?: PieceMethod;
   /** ISO timestamp it was handed out. */
   handedAt?: string;
+  /** B-1: the holder's wallet acknowledged it's holding this piece. */
+  held?: boolean;
+  /** B-1: the holder let the piece go / declined to keep it. */
+  declined?: boolean;
+  /** B-1: ISO timestamp of the holder's most recent held/declined receipt. */
+  confirmedAt?: string;
 }
 
 export interface SecretRecord {
@@ -139,6 +145,36 @@ export function assignPiece(
       holderPubkey: patch.holderPubkey,
       method: patch.method ?? 'other',
       handedAt: new Date().toISOString(),
+    };
+  });
+  return { ...rec, pieces };
+}
+
+/** B-1: record a holder's receipt (held / declined) for a piece, immutably.
+ *  Matches by 1-based piece index; out-of-range is a no-op. A 'held' receipt
+ *  marks the piece confirmed; 'declined' marks it let-go so the owner knows to
+ *  re-hand it. Never stores any token — receipts carry only id/index/date. */
+export function recordPieceReceipt(
+  rec: SecretRecord,
+  index: number,
+  patch: {
+    status: 'held' | 'declined';
+    holderName?: string;
+    holderPubkey?: string;
+    at?: string;
+  },
+): SecretRecord {
+  if (!rec.pieces.some((p) => p.index === index)) return rec;
+  const at = patch.at ?? new Date().toISOString();
+  const pieces = rec.pieces.map((p) => {
+    if (p.index !== index) return p;
+    return {
+      ...p,
+      held: patch.status === 'held',
+      declined: patch.status === 'declined',
+      confirmedAt: at,
+      holderName: patch.holderName?.trim() || p.holderName,
+      holderPubkey: patch.holderPubkey ?? p.holderPubkey,
     };
   });
   return { ...rec, pieces };

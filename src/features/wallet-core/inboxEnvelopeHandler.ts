@@ -7,6 +7,12 @@ import {
   findCompletedHandshakeWith,
   isHandshake,
 } from '../connections/createHandshake.ts';
+import {
+  isSecretPieceReceipt,
+  readSecretPieceReceipt,
+} from '../recovery/secretPiece.ts';
+import { recordPieceReceipt, upsertRecord } from '../recovery/secretLedger.ts';
+import { secretsLedgerStore } from '../storage/secretsLedgerStore.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 // Inbox-arrival handler factory — extracted from WalletProvider so
@@ -70,6 +76,33 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
           setHoldings(await wallet.holdings());
         } catch (err) {
           console.warn('self-CC auto-hold failed', err);
+        }
+      })();
+      return;
+    }
+    // B-1: a holder's receipt ("I'm holding piece X of secret Y" / "I let it
+    // go") arrives FROM a peer. Record it into the owner's secret ledger
+    // silently — zero owner chore, the secret's detail just shows the piece as
+    // confirmed next time it's opened — and never surface it as an inbox row.
+    // Tightly guarded + fire-and-forget so it can never disrupt other arrivals.
+    if (isSecretPieceReceipt(item.envelope)) {
+      void (async () => {
+        try {
+          const pass = passphraseRef.current;
+          if (!pass || !ownerId) return;
+          const view = readSecretPieceReceipt(item.envelope);
+          if (view.receiptFor !== wallet.identity) return;
+          const records = await secretsLedgerStore.load(ownerId, pass);
+          const rec = records.find((r) => r.id === view.secretId);
+          if (!rec) return;
+          const updated = recordPieceReceipt(rec, view.pieceIndex, {
+            status: view.status,
+            holderPubkey: view.holderId,
+            at: view.confirmedAt,
+          });
+          await secretsLedgerStore.save(ownerId, pass, upsertRecord(records, updated));
+        } catch (err) {
+          console.warn('secret-piece receipt collect failed', err);
         }
       })();
       return;

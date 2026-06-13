@@ -71,6 +71,11 @@ export const PEER_COPY = {
     label: 'Keep it safe',
     hint: 'A friend asked you to safekeep a piece of their backup.',
   },
+  // A friend wants you to hold one piece of a secret of theirs (B-1).
+  secretPieceIncoming: {
+    label: 'Keep it',
+    hint: 'Wants you to hold a piece of their secret — keep it safe, or let it go.',
+  },
   // A friend is setting up a new phone and needs your piece back.
   recoveryHelp: {
     label: 'Help out',

@@ -22,6 +22,11 @@ const FamilyRatifyModal = lazy(() =>
     default: m.FamilyRatifyModal,
   })),
 );
+const SecretPieceReceiveModal = lazy(() =>
+  import('../recovery/SecretPieceReceiveModal.tsx').then((m) => ({
+    default: m.SecretPieceReceiveModal,
+  })),
+);
 const ReleaseAuthorityResponderModal = lazy(() =>
   import('../identity-gate/ReleaseAuthorityResponderModal.tsx').then((m) => ({
     default: m.ReleaseAuthorityResponderModal,
@@ -129,6 +134,10 @@ export function useInboxRouting(
   // an attest-release-authority back to the requesting operator.
   const [incomingForReleaseAuth, setIncomingForReleaseAuth] = useState<Attestation | null>(null);
   const [incomingEventIdForReleaseAuth, setIncomingEventIdForReleaseAuth] = useState<string | null>(null);
+  // B-1 — a friend asked this wallet to hold a piece of their secret. The
+  // modal offers keep / let-go and sends a receipt back to the owner.
+  const [incomingForSecretPiece, setIncomingForSecretPiece] = useState<Attestation | null>(null);
+  const [incomingEventIdForSecretPiece, setIncomingEventIdForSecretPiece] = useState<string | null>(null);
 
   function routeInbox(
     envelope: Attestation,
@@ -155,6 +164,9 @@ export function useInboxRouting(
       setIncomingEventIdForFamilyRatify(eventId);
     } else if (action === 'recovery-share-receive') {
       void acceptRecoveryShare(envelope);
+    } else if (action === 'secret-piece-receive') {
+      setIncomingForSecretPiece(envelope);
+      setIncomingEventIdForSecretPiece(eventId);
     } else if (action === 'recovery-request-respond') {
       setIncomingForRecovery(envelope);
       setIncomingEventIdForRecovery(eventId);
@@ -269,6 +281,24 @@ export function useInboxRouting(
             onClose={() => {
               setIncomingForFamilyRatify(null);
               setIncomingEventIdForFamilyRatify(null);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {incomingForSecretPiece && (
+        <Suspense fallback={null}>
+          <SecretPieceReceiveModal
+            incoming={incomingForSecretPiece}
+            onSuccess={() => {
+              if (incomingEventIdForSecretPiece)
+                dismissInboxEnvelope(incomingEventIdForSecretPiece);
+              setIncomingForSecretPiece(null);
+              setIncomingEventIdForSecretPiece(null);
+            }}
+            onClose={() => {
+              setIncomingForSecretPiece(null);
+              setIncomingEventIdForSecretPiece(null);
             }}
           />
         </Suspense>
