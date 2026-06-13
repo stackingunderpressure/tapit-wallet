@@ -150,7 +150,7 @@ export function VouchWitnessModal({
           >
             ← Back
           </button>
-          <h2 className="text-base font-semibold">Vouch for a peer</h2>
+          <h2 className="text-base font-semibold">Vouch for a friend</h2>
           <div className="w-12" aria-hidden />
         </div>
 
@@ -162,20 +162,18 @@ export function VouchWitnessModal({
               </div>
               <p className="mt-2 text-sm">
                 <span className="font-semibold">{joinerLabel}</span> is asking
-                you to vouch for their join request to{' '}
+                you to vouch for them joining{' '}
                 <span className="font-semibold">
                   {view.orgName || 'an organization'}
                 </span>
                 .
               </p>
               <p className="mt-2 text-xs text-muted">
-                Vouching means attaching your signature as a personal
-                warrant — you know this person and you stand by their
-                joining. The organization counts your signature against
-                its vouch threshold when the joiner submits the
-                envelope. Only sign if you genuinely know and trust
-                them; your signature is a public statement that you
-                vouch for them.
+                Vouching means putting your name behind them — you know
+                this person and you stand by their joining. The group counts
+                your vouch toward what it needs to let them in. Only do this
+                if you genuinely know and trust them; it's a public statement
+                that you vouch for them.
               </p>
             </div>
             {!hasJoinerRelationship && (
@@ -184,11 +182,10 @@ export function VouchWitnessModal({
                 role="alert"
               >
                 <span className="font-semibold">
-                  You have no handshake with this person yet.
+                  You're not connected with this person yet.
                 </span>{' '}
-                Vouching means warranting their identity to the
-                organization, so make sure you actually know who you
-                are signing for before you sign.
+                Vouching means putting your name behind who they are, so
+                make sure you really know them before you do.
               </div>
             )}
             <div className="mt-3">
@@ -200,7 +197,7 @@ export function VouchWitnessModal({
                 onClick={vouch}
                 className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
               >
-                I vouch — sign
+                Vouch for them
               </button>
               <button
                 type="button"

@@ -153,15 +153,15 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
           >
             ← Back
           </button>
-          <h2 className="text-base font-semibold">Sign someone else's entry</h2>
+          <h2 className="text-base font-semibold">Review what they sent</h2>
           <div className="w-12" aria-hidden />
         </div>
 
         {step.kind === 'paste' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              Paste the entry your friend or family member sent you. You will
-              see what it says before you decide to sign.
+              Paste what your friend or family member sent you. You'll see
+              exactly what it says before you decide.
             </p>
             <textarea
               value={raw}
@@ -194,8 +194,8 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
         {step.kind === 'preview' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              This is what you would be signing. If anything is wrong, close
-              this and ask them to send the right entry.
+              This is what you'd be approving. If anything looks wrong, close
+              this and ask them to send it again.
             </p>
             <div className="mt-3">
               <EnvelopePreview attestation={step.attestation} />
@@ -206,7 +206,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
                 onClick={sign}
                 className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
               >
-                I confirm — sign this entry
+                Looks good — approve
               </button>
               <button
                 type="button"
@@ -222,8 +222,8 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
         {step.kind === 'signed' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              Signed. Send this back to the person who asked you to co-sign;
-              they will paste it into <span className="font-medium">Add a co-signer's signature</span> on
+              Approved. Send this back to the person who asked you;
+              they'll paste it into <span className="font-medium">Add their approval</span> on
               their wallet.
             </p>
             <div className="mt-3 flex gap-3 text-xs">

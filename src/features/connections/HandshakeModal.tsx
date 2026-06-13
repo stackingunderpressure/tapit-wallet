@@ -321,7 +321,7 @@ export function HandshakeModal({ onClose }: Props) {
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">In-person handshake</h2>
+          <h2 className="text-base font-semibold">Connect with someone</h2>
           <button
             type="button"
             onClick={onClose}
@@ -334,10 +334,10 @@ export function HandshakeModal({ onClose }: Props) {
         {step === 'role' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              A handshake connects two wallets. Start one if you're
-              the one inviting them — works whether they're with you
-              in person or across the world. Join one if they've
-              already started by handing you their wallet.
+              Connecting links you and another person. Start one if you're
+              the one inviting them — works whether they're with you in
+              person or across the world. Join one if they've already
+              started by showing you their code.
             </p>
             <div className="mt-4 space-y-2">
               <button
@@ -396,7 +396,7 @@ export function HandshakeModal({ onClose }: Props) {
                 }}
                 className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
               >
-                📋 Paste their identity instead
+                📋 Paste their code instead
               </button>
             </AccordionPanel>
 
@@ -405,7 +405,7 @@ export function HandshakeModal({ onClose }: Props) {
               hint={
                 prefs.nostrTransportEnabled
                   ? 'Pick or paste their public key'
-                  : 'Needs Mycelium on'
+                  : 'Needs you online'
               }
               open={openPanel === 'not-here'}
               onToggle={() =>
@@ -438,7 +438,7 @@ export function HandshakeModal({ onClose }: Props) {
                 disabled={busy || remotePubkey.trim().length === 0}
                 className={`mt-3 ${primaryBtn}`}
               >
-                {busy ? 'Sending…' : 'Send remote handshake'}
+                {busy ? 'Sending…' : 'Send connection'}
               </button>
             </AccordionPanel>
           </div>
@@ -448,12 +448,11 @@ export function HandshakeModal({ onClose }: Props) {
           <div className="mt-3 text-center">
             <div className={eyebrow}>Sent · Online connection</div>
             <h3 className="mt-1 text-lg font-semibold">
-              Handshake sent to {peerName || 'them'}
+              Connection sent to {peerName || 'them'}
             </h3>
             <p className="mt-1 text-sm text-muted">
-              Your signed copy is held and anchored. Once they accept
-              and counter-sign, your wallet will absorb their signature
-              from your inbox.
+              Your copy is saved. Once they say yes, your wallet picks up
+              their yes from your inbox on its own — nothing else to do.
             </p>
             {remoteSendStatus && (
               <p
@@ -486,9 +485,8 @@ export function HandshakeModal({ onClose }: Props) {
               Connect with {peerName || 'this person'}?
             </h3>
             <p className="mt-1 text-sm text-muted">
-              Confirming records an in-person connection that both of
-              you have signed. It's anchored to Bitcoin like every
-              other entry.
+              This records that you two connected in person, and you both
+              keep a copy. It's locked to Bitcoin's clock like everything else.
             </p>
             {handshake && readHandshake(handshake).relationship && (
               <div className="mt-3 rounded-md border border-ink/15 bg-ink/[0.02] px-3 py-2 text-sm">
@@ -537,15 +535,14 @@ export function HandshakeModal({ onClose }: Props) {
           <>
             <div className={`mt-2 ${eyebrow}`}>Step 1 of 3</div>
             <p className="mt-1 text-sm text-muted">
-              Scan the identity code the other person is showing you on
-              their wallet.
+              Scan the code the other person is showing you on their wallet.
             </p>
             <button
               type="button"
               onClick={() => setScanning(true)}
               className={`mt-4 ${primaryBtn}`}
             >
-              Scan their identity code
+              Scan their code
             </button>
           </>
         )}
@@ -557,8 +554,8 @@ export function HandshakeModal({ onClose }: Props) {
               {peerName || 'This person'} wants to connect
             </h3>
             <p className="mt-1 text-sm text-muted">
-              This builds one in-person handshake record. You sign it
-              now; they co-sign it next, and you both keep a copy.
+              This makes one in-person connection. You say yes now, they
+              say yes next, and you both keep a copy.
             </p>
             <RelationshipChips
               value={relationship}
@@ -570,7 +567,7 @@ export function HandshakeModal({ onClose }: Props) {
               disabled={busy}
               className={`mt-4 ${primaryBtn}`}
             >
-              {busy ? 'Signing…' : 'Build & sign the handshake'}
+              {busy ? 'Saving…' : 'Connect'}
             </button>
           </>
         )}
@@ -579,13 +576,13 @@ export function HandshakeModal({ onClose }: Props) {
           <>
             <div className={`mt-2 ${eyebrow}`}>Step 3 of 3</div>
             <p className="mt-1 text-sm text-muted">
-              Show this to {peerName || 'them'}. They scan it and
-              co-sign, then show you their final code.
+              Show this to {peerName || 'them'}. They scan it and say yes,
+              then show you their final code.
             </p>
             {handshake && (
               <QrShow
                 text={canonicalEnvelope(handshake)}
-                label="Your signed handshake"
+                label="Your connection"
               />
             )}
             <button
@@ -606,8 +603,8 @@ export function HandshakeModal({ onClose }: Props) {
               You're connected with {peerName || 'them'}
             </h3>
             <p className="mt-1 text-sm text-muted">
-              The handshake is signed by both of you, marked in person,
-              and anchored. You'll find it under People.
+              You both said yes, in person, and it's locked to Bitcoin's
+              clock. You'll find it under People.
             </p>
             <button
               type="button"

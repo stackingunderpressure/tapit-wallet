@@ -50,7 +50,7 @@ export function EnvelopePreview({ attestation }: Props) {
     return (
       <div className="rounded-md border border-ink/15 bg-paper p-4">
         <div className="text-xs uppercase tracking-wide text-muted">
-          Handshake · {verificationLabel}
+          Connection · {verificationLabel}
         </div>
         <div className="mt-2 text-sm">
           <span className="font-medium">{initiator}</span>
@@ -60,8 +60,8 @@ export function EnvelopePreview({ attestation }: Props) {
         <div className="mt-1 text-xs text-muted">Recorded {when}</div>
         <div className="mt-3 text-xs text-muted">
           {cosigned
-            ? 'Both parties have signed.'
-            : 'Signed by one party — your co-signature would complete it.'}
+            ? "You've both said yes."
+            : 'One of you has said yes — your yes finishes it.'}
         </div>
       </div>
     );
@@ -94,17 +94,17 @@ export function EnvelopePreview({ attestation }: Props) {
         <p className="mt-3 text-xs text-muted">
           Includes a{' '}
           {attachmentMime?.startsWith('image/') ? 'photo' : 'document'}{' '}
-          (not shown — only the signer who created the entry has the bytes).
-          The signature commits to the attachment's hash.
+          (not shown — only the person who made it has it). Approving
+          locks in its fingerprint so it can't be swapped later.
         </p>
       )}
       <div className="mt-3 text-xs text-muted">
-        Already signed by{' '}
+        Approved by{' '}
         {attestation.signatures.length === 0
           ? 'no one yet'
           : attestation.signatures.length === 1
-            ? `1 signer (${shortKey(attestation.signatures[0]?.signer ?? '')})`
-            : `${attestation.signatures.length} signers`}
+            ? '1 person so far'
+            : `${attestation.signatures.length} people so far`}
       </div>
     </div>
   );

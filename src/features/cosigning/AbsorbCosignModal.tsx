@@ -74,7 +74,7 @@ export function AbsorbCosignModal({ onClose, incoming, onSuccess }: Props) {
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Add a co-signer's signature</h2>
+          <h2 className="text-base font-semibold">Add their approval</h2>
           <button
             type="button"
             onClick={onClose}
@@ -88,10 +88,10 @@ export function AbsorbCosignModal({ onClose, incoming, onSuccess }: Props) {
           <>
             <p className="mt-2 text-sm">
               {done.added === 0
-                ? 'No new signatures — that envelope was already absorbed.'
+                ? 'Nothing new — you already have their approval.'
                 : done.added === 1
-                  ? '1 new signature absorbed and saved to your wallet.'
-                  : `${done.added} new signatures absorbed and saved to your wallet.`}
+                  ? 'Added and saved to your wallet.'
+                  : `${done.added} approvals added and saved to your wallet.`}
             </p>
             <button
               type="button"
@@ -104,16 +104,15 @@ export function AbsorbCosignModal({ onClose, incoming, onSuccess }: Props) {
         ) : (
           <>
             <p className="mt-2 text-sm text-muted">
-              Paste the signed entry your co-signer sent back to you. The
-              wallet will check that it matches an entry you already hold and
-              add their signature to your copy.
+              Paste what they sent back. The wallet checks it matches
+              something you already have and adds their approval to your copy.
             </p>
             <textarea
               value={raw}
               onChange={(e) => setRaw(e.target.value)}
               rows={8}
               autoFocus
-              placeholder="Paste the signed entry here…"
+              placeholder="Paste what they sent back…"
               className="mt-3 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-xs font-mono"
             />
             {raw.trim().length > 0 && !error && (
@@ -126,7 +125,7 @@ export function AbsorbCosignModal({ onClose, incoming, onSuccess }: Props) {
                 onClick={absorb}
                 className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
               >
-                {busy ? 'Absorbing…' : 'Absorb signature'}
+                {busy ? 'Adding…' : 'Add approval'}
               </button>
               <button
                 type="button"
