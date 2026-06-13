@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { handedOutCount, pieceIndexForToken, type SecretRecord, type PieceMethod } from './secretLedger.ts';
+import { handedOutCount, pieceIndexForToken, confirmedSummary, type SecretRecord, type PieceMethod } from './secretLedger.ts';
 
 // One secret's distribution detail — the "where and why you sent it" record.
 // Shows the why-note (editable), the split, and who holds each piece by what
@@ -45,6 +45,12 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
   const [qrIdx, setQrIdx] = useState<number | null>(null);
   const out = handedOutCount(record);
   const dirty = why.trim() !== record.why;
+  // B-2 readiness — only meaningful once a Tapit holder has confirmed (copy/QR
+  // secrets have no liveness signal). margin = fresh holders − threshold.
+  const summary = confirmedSummary(record);
+  const showReadiness = summary.confirmed > 0;
+  const readinessTone =
+    summary.margin >= 2 ? 'ok' : summary.margin >= 1 ? 'watch' : 'edge';
   const tokens = record.tokens ?? [];
   const canVerify = (record.hashes?.length ?? 0) > 0;
   const [checkInput, setCheckInput] = useState('');
@@ -70,6 +76,24 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
           {whenLabel(record.createdAt) ? ` · set up ${whenLabel(record.createdAt)}` : ''}
         </div>
       </div>
+
+      {showReadiness && (
+        <div
+          className={`rounded-md border px-3 py-2 text-xs ${
+            readinessTone === 'ok'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : readinessTone === 'watch'
+                ? 'border-amber-200 bg-amber-50 text-amber-900'
+                : 'border-red-200 bg-red-50 text-red-900'
+          }`}
+        >
+          {readinessTone === 'ok'
+            ? `Safety net looks good — ${summary.fresh} of your holders checked in recently, ${summary.margin} more than you need.`
+            : readinessTone === 'watch'
+              ? `Getting tight — ${summary.fresh} checked in recently, just ${summary.margin} above what you need. A nudge keeps one warm.`
+              : `At risk — only ${summary.fresh} checked in recently and you need ${summary.threshold}. Reach out, or hand a piece to someone new.`}
+        </div>
+      )}
 
       <label className="block">
         <span className="text-xs font-medium">What it's for</span>

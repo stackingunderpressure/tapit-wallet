@@ -98,6 +98,7 @@ import type { PromotePayload } from '../messaging/promoteTarget.ts';
 import { backupBanner } from './backupBanner.ts';
 import { BackupNudgeBanner } from './BackupNudgeBanner.tsx';
 import { findLatestCohort } from '../recovery/createCohort.ts';
+import { useSecretPieceHeartbeat } from '../recovery/useSecretPieceHeartbeat.ts';
 
 // Top-level tabs separate the kinds of things the wallet holds.
 // Journal is the diary, Identity the founding card plus memberships,
@@ -245,6 +246,9 @@ export function HomeScreen() {
   // and renders inboxModals next to the other modal mounts at the
   // bottom of the JSX tree.
   const { routeInbox, modals: inboxModals } = useInboxRouting(orgDeclaration);
+  // B-2: quietly re-confirm any secret-pieces this wallet holds for others
+  // (~monthly, when Mycelium is live) so owners' freshness stays current.
+  useSecretPieceHeartbeat();
   const issuedMemberships = useMemo(
     () =>
       orgDeclaration

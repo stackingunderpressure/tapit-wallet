@@ -185,6 +185,45 @@ export function setWhy(rec: SecretRecord, why: string): SecretRecord {
   return { ...rec, why: why.trim() };
 }
 
+// B-2 freshness — how recently a holder last confirmed they're holding a piece.
+// 'none' = no Tapit holder confirmation (handed via copy/QR, or not yet acked).
+export type PieceFreshness = 'fresh' | 'watch' | 'cold' | 'none';
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** A held piece is fresh ≤5 weeks since last confirm, watch ≤10 weeks, cold
+ *  beyond. Pieces with no held confirmation read 'none'. */
+export function pieceFreshness(p: PieceRecord, now: number = Date.now()): PieceFreshness {
+  if (!p.held || !p.confirmedAt) return 'none';
+  const ms = Date.parse(p.confirmedAt);
+  if (Number.isNaN(ms)) return 'none';
+  const age = now - ms;
+  if (age <= 5 * WEEK_MS) return 'fresh';
+  if (age <= 10 * WEEK_MS) return 'watch';
+  return 'cold';
+}
+
+export interface ConfirmedSummary {
+  /** Pieces a Tapit holder has ever acknowledged holding. */
+  confirmed: number;
+  /** Of those, how many are still FRESH (recent heartbeat). */
+  fresh: number;
+  threshold: number;
+  total: number;
+  /** fresh − threshold: how many fresh holders you can lose before recovery is
+   *  impossible. ≥2 comfortable, 1 tight, ≤0 at/over the edge. */
+  margin: number;
+}
+
+/** The owner's readiness read for one secret: how many holders are confirmed +
+ *  still fresh, against the threshold. Only meaningful when confirmed > 0 (i.e.
+ *  at least one Tapit holder is in play); copy/QR-only secrets read confirmed 0. */
+export function confirmedSummary(rec: SecretRecord, now: number = Date.now()): ConfirmedSummary {
+  const confirmed = rec.pieces.filter((p) => p.held).length;
+  const fresh = rec.pieces.filter((p) => pieceFreshness(p, now) === 'fresh').length;
+  return { confirmed, fresh, threshold: rec.threshold, total: rec.total, margin: fresh - rec.threshold };
+}
+
 /**
  * Keep (or clear) the opt-in copy of the share tokens, immutably. Pass the
  * tokens to keep a copy for re-sending; pass undefined/empty to forget them.
