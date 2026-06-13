@@ -115,6 +115,8 @@ export function HandshakeModal({ onClose }: Props) {
   // already present (e.g. the operator was pivoted here from the
   // raw-pubkey-paste sniffer), else default to 'with-you'.
   const [openPanel, setOpenPanel] = useState<'with-you' | 'not-here'>('with-you');
+  // Transient "Copied" feedback for the copy-my-code button under the QR.
+  const [identityCopied, setIdentityCopied] = useState(false);
 
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
@@ -369,10 +371,29 @@ export function HandshakeModal({ onClose }: Props) {
               }
             >
               {identity ? (
-                <QrShow
-                  text={canonicalEnvelope(identity)}
-                  label="Show them this code"
-                />
+                <>
+                  <QrShow
+                    text={canonicalEnvelope(identity)}
+                    label="Show them this code"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!identity) return;
+                      const code = canonicalEnvelope(identity);
+                      try {
+                        await navigator.clipboard.writeText(code);
+                        setIdentityCopied(true);
+                        setTimeout(() => setIdentityCopied(false), 1500);
+                      } catch {
+                        window.prompt('Copy your code:', code);
+                      }
+                    }}
+                    className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+                  >
+                    {identityCopied ? '✓ Copied' : '📋 Copy my code'}
+                  </button>
+                </>
               ) : (
                 <p className="mt-2 text-sm text-red-600">
                   Your identity isn't ready yet.
