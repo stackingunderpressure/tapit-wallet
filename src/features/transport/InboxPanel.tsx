@@ -50,7 +50,7 @@ export function InboxPanel({ envelopes, peerNames, onDismiss, onOpen }: Props) {
   const isFresh = resolvedTheme === 'fresh';
   if (envelopes.length === 0) return null;
   return (
-    <section className={`mb-4 rounded-2xl p-4 border ${isFresh ? 'bg-fresh-accent-secondary/[0.08] border-fresh-accent-secondary/30' : 'bg-accent/5 border-accent/30'}`}>
+    <section className={`mb-4 rounded-2xl p-4 border animate-fresh-rise motion-reduce:animate-none ${isFresh ? 'bg-fresh-accent-secondary/[0.08] border-fresh-accent-secondary/30' : 'bg-accent/5 border-accent/30'}`}>
       <div className="flex items-center justify-between">
         <div className={`text-sm font-medium ${isFresh ? 'text-fresh-accent-secondary' : 'text-accent'}`}>
           {envelopes.length === 1
@@ -108,7 +108,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
   }
 
   return (
-    <li className={`rounded-md p-3 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10'}`}>
+    <li className={`rounded-md p-3 border animate-fresh-rise motion-reduce:animate-none ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10'}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className={`text-sm font-medium truncate ${isFresh ? 'text-fresh-text-primary' : ''}`}>{senderLabel}</div>
@@ -124,7 +124,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             <button
               type="button"
               onClick={() => onOpen(item.envelope, route.action, item.senderPubkey)}
-              className={`rounded-md px-3 py-1 text-xs font-medium ${isFresh ? 'bg-fresh-accent-primary text-fresh-text-inverse' : 'bg-ink text-paper hover:bg-ink/90'}`}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${isFresh ? 'bg-fresh-accent-primary text-fresh-text-inverse' : 'bg-ink text-paper hover:bg-ink/90'}`}
             >
               {route.label}
             </button>

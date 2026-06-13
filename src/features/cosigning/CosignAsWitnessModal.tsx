@@ -204,7 +204,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
               <button
                 type="button"
                 onClick={sign}
-                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
+                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium transition active:animate-fresh-press motion-reduce:active:animate-none"
               >
                 Looks good — approve
               </button>

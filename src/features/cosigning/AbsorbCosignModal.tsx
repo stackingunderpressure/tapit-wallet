@@ -123,7 +123,7 @@ export function AbsorbCosignModal({ onClose, incoming, onSuccess }: Props) {
                 type="button"
                 disabled={busy || raw.trim().length === 0}
                 onClick={absorb}
-                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40 transition active:animate-fresh-press motion-reduce:active:animate-none"
               >
                 {busy ? 'Adding…' : 'Add approval'}
               </button>

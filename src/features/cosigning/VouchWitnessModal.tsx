@@ -195,7 +195,7 @@ export function VouchWitnessModal({
               <button
                 type="button"
                 onClick={vouch}
-                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium"
+                className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium transition active:animate-fresh-press motion-reduce:active:animate-none"
               >
                 Vouch for them
               </button>

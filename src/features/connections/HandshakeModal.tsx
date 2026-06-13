@@ -50,7 +50,7 @@ type Step =
 
 const eyebrow = 'text-xs uppercase tracking-wide text-accent';
 const primaryBtn =
-  'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40';
+  'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40 transition active:animate-fresh-press motion-reduce:active:animate-none';
 
 // Relationship-leaf options the chip picker offers. Wire values are
 // lowercase so they stay stable across builds; display labels are
@@ -597,7 +597,7 @@ export function HandshakeModal({ onClose }: Props) {
         )}
 
         {step === 'done' && (
-          <div className="mt-3 text-center">
+          <div className="mt-3 text-center animate-fresh-stamp motion-reduce:animate-none">
             <div className={eyebrow}>Connected</div>
             <h3 className="mt-1 text-lg font-semibold">
               You're connected with {peerName || 'them'}
