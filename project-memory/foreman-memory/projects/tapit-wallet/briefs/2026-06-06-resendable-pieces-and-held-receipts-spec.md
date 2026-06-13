@@ -324,3 +324,61 @@ descriptor vault brief (2026-06-04) and the FROST-reconsideration idea.
 No false "deleted" certainty (silence = stale/unknown, three honest states);
 the ack is coordination, not adversarial proof; piece-storage is opt-in,
 default off, with the device-can-reconstruct tradeoff taught, not hidden.
+
+---
+
+## PART D-SECURITY — the recall brake (anti-compromise, operator 2026-06-13)
+
+THREAT the operator caught: frictionless, no-permission recall (Part D) RE-
+COLLAPSES the threshold's protection. The whole point of splitting is that
+compromising ONE party isn't enough — but if the owner can silently, instantly
+recall every piece, then compromising the OWNER (stolen unlocked phone,
+coercion, malware with the passphrase) lets the attacker vacuum all pieces and
+rebuild the secret in seconds. The split stopped protecting against owner-
+compromise. Operator: "that's too easy ... put a check and balance in there."
+
+DESIGN PRINCIPLE: make recall EASY for the real owner and SLOW + NOISY for an
+attacker — don't remove the owner's right, add a time-buffer with notification
+and veto. This is the proven social-recovery / guardian-delay pattern (Argent-
+style): the legitimate owner has time and visibility and is barely
+inconvenienced; the attacker needs speed and silence and is denied both.
+
+THE BRAKE (engages at THRESHOLD-CROSSING, not per piece):
+- SINGLE-PIECE retrieval stays frictionless (one piece reveals nothing) — keep
+  routine maintenance/swap cheap.
+- Crossing enough pieces to RECONSTRUCT trips the brake: a configurable WAITING
+  PERIOD (default ~1 week) from request to release.
+- During the wait the request is BROADCAST: to the owner's OTHER devices AND to
+  the holders ("someone is gathering your pieces — was this you?"). ANY of them
+  can VETO/CANCEL, and the owner can rotate keys. A silent instant theft becomes
+  a loud, slow, vetoable event.
+- OPTIONAL FAST PATH: if enough holders actively LIVE-CONFIRM ("yes, it's really
+  him, he's good") the release can go immediately — the operator's "liveliness
+  check" instinct. So: instant IF the circle vouches in the moment; delayed-with-
+  veto if not. Emergency-friendly without losing the brake.
+
+WHY DELAY-WITH-VETO IS THE DEFAULT (not mandatory holder-approval):
+- Availability: mandatory holder-approval reintroduces the offline-holder
+  problem (can't recover if holders are dark) — the delay path needs NO holder
+  action, preserving availability while adding safety. Holder live-confirm is the
+  OPTIONAL accelerator, not a hard requirement.
+- Distinguishing attacker from owner: a holder seeing "owner wants their piece"
+  can't easily tell a real from a compromised owner — so holder-approval alone is
+  weak for THIS threat; the time+broadcast+veto is what actually catches it.
+
+HONEST LIMITS (must surface):
+- The veto needs a notification channel the attacker does NOT fully control. If
+  the attacker owns the owner's ONLY device and all channels, no client scheme
+  fully saves them — but the broadcast to OTHER devices + the holders covers the
+  common cases (stolen unlocked phone, coercion, partial compromise) and raises
+  the bar enormously. The holders themselves are the second channel.
+- Delay vs urgency: a real emergency wants the secret NOW; the holder-live-
+  confirm fast path is the escape hatch, and the delay length is configurable
+  per secret (a safe-word may want minutes; a recovery seed may want a week).
+- This is the symmetric partner to the heartbeat's threshold-MARGIN alarm
+  (Part B): margin watches the LOSS side, the recall brake guards the GATHER
+  side. Same threshold, both edges protected.
+
+STATUS: spec refinement to the not-yet-built Part D. Folds into the Part D /
+Part C build whenever it lands; it changes the retrieval flow (add request ->
+delay/broadcast/veto -> release state machine), not the storage primitive.
