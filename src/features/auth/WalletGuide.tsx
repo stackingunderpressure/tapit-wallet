@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../shared/lib/supabase.ts';
+import { OAuthButtons } from './OAuthButtons.tsx';
 import { useSession } from './useSession.ts';
 
 // Bitcoin's-role tab content lives in its own lazy-loaded module so
@@ -722,9 +723,17 @@ function SignInForm() {
     <section>
       <SectionTitle>Sign in.</SectionTitle>
       <Lede>
-        We email you a 6-digit code to sign in. Your keypair is generated
-        and held only on this device — never on the host.
+        One tap with Google or Apple, or an emailed code. Your keypair is
+        generated and held only on this device — never on the host.
       </Lede>
+      <div className="mt-5">
+        <OAuthButtons />
+      </div>
+      <div className="my-5 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-ink/10" />
+        or use email
+        <span className="h-px flex-1 bg-ink/10" />
+      </div>
       <form onSubmit={submitEmail} className="mt-5">
         <label className="block">
           <span className="text-sm font-medium text-ink">Email</span>

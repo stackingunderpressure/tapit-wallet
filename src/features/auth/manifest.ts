@@ -4,7 +4,7 @@ export const manifest: FeatureManifest = {
   slug: 'auth',
   born: '2026-05-21',
   purpose:
-    'Supabase email magic-link login. No password forms. Establishes an authenticated session that scopes wallet storage access via RLS. The wallet key itself is independent — auth is just the host gate, not the identity.',
+    'Supabase login. One-tap Google/Apple OAuth (OAuthButtons.tsx, 2026-06-13) OR email magic-link/code. No password forms. Establishes an authenticated session that scopes wallet storage access via RLS. The wallet key itself is independent — auth is just the host gate, not the identity. OAuth was added because the built-in email mailer rate-limits repeated sends; signInWithOAuth has no such limit, sends no email, and returns through the same /auth/callback as magic-link (detectSessionInUrl). Provider credentials are configured in the Supabase dashboard (operator step); the buttons are wired into both the Classic WalletGuide SignInForm and the Fresh EmailStep. New OAuth users with no stored blob land in WalletProvider first-login (PassphrasePrompt) → wallet creation, same as any new user.',
   touches: [
     'src/features/auth/LoginPage.tsx',
     'src/features/auth/AuthCallback.tsx',
@@ -12,6 +12,7 @@ export const manifest: FeatureManifest = {
     'src/features/auth/useSession.ts',
     'src/features/auth/WalletGuide.tsx',
     'src/features/auth/WalletGuideBitcoinTab.tsx',
+    'src/features/auth/OAuthButtons.tsx',
   ],
   depends_on: [],
   pause_safe: false,

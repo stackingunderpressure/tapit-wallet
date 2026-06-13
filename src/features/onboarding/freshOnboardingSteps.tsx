@@ -6,6 +6,8 @@
 // supabase auth handshake, and the volatile-bundle handoff to
 // WalletProvider.
 
+import { OAuthButtons } from '../auth/OAuthButtons.tsx';
+
 function SplashStep() {
   return (
     <div className="pt-12 text-center">
@@ -289,7 +291,15 @@ function EmailStep(props: {
           ? 'Enter the email you signed up with. We mail you a code — then your wallet asks for your passphrase to unlock.'
           : 'Your email keeps the wallet linked to you across devices. We mail you a code — no password, nothing to remember besides your passphrase.'}
       </p>
-      <label className="mt-8 block">
+      <div className="mt-8">
+        <OAuthButtons fresh />
+      </div>
+      <div className="my-5 flex items-center gap-3 text-xs text-fresh-text-tertiary">
+        <span className="h-px flex-1 bg-fresh-surface-edge" />
+        or use email
+        <span className="h-px flex-1 bg-fresh-surface-edge" />
+      </div>
+      <label className="block">
         <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">
           Email
         </span>
