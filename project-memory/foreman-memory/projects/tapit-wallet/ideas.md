@@ -2345,3 +2345,82 @@ Open question to teach back: does the double-pass run client-side only (max
 privacy, the provider never sees family data), or is there a trusted family
 relay that does the fusion? (Client-side is the sovereign default; surface the
 tradeoff when this becomes a cut.)
+
+---
+
+## 2026-06-14 — Multiple paths down the Merkle forest: typed memory trees + a router (the "double-pass" mechanics)
+Tag: architecture / family-AI-context / merkle / selective-disclosure / retrieval
+Stage: sprouting (recovering a previously-lost idea + grounding it in real code)
+One-line: Don't keep one Merkle tree — keep a FOREST of typed trees (memories,
+facts, heritage, places-been, preferences), and a router that decides which
+tree(s) and which leaves to walk per query, tying selected leaves down to a
+verifiable root while revealing nothing else; the model never traverses
+anything — the family-side router selects and hands it only what it chose.
+
+Operator's framing in his own voice (stitched from the riff):
+"Explain the mechanisms when Claude decides which tiers of memory and which ones
+to tie together down the Merkle root. I've had the idea before that down the
+Merkle tree of ideas there could be multiple paths — one might lead down
+memories, another down factual or something — where it starts to surface more
+than one routine pattern like most models do, multiple paths down for a reason
+you'd feed the idea into the model to get a better result. I dumped these ideas
+somewhere and have no idea where they got lost. It reinforces my whole thesis
+that you need someplace to put all your ideas and dump your things and the
+places you've been, all of that is better context later — 'hey don't you
+remember you drove right past that on Tuesday March 15.' My specific private AI
+knows everything about me and nothing about me when it doesn't need to know
+anything about me — privacy lies in the most sovereign way to hold your
+information, only yours, only giving away what you have to, when you have to,
+when it's most beneficial to yourself, in a way that does not give too much
+away."
+
+THE TWO MACHINES (the distinction that makes it buildable):
+1. The Merkle tree is the PROOF + PRIVACY machine, and it is DETERMINISTIC — it
+   decides nothing. In tapit-attest/src/core/field-tree.ts an attestation's
+   claim is a tree of branches+leaves, hashed bottom-up (leafHash/branchHash) to
+   one root; every signer signs a digest committing to that root, so changing any
+   field at any depth breaks every signature. That's the tamper-evidence.
+2. Selective disclosure is the "knows nothing about me when it doesn't need to"
+   machine, and it ALSO already ships: disclosureProof reveals ONE leaf plus the
+   sibling hashes up the path so a verifier reconstructs the root and checks the
+   signature WITHOUT seeing any other leaf; multiDisclosureProof is the pruned
+   multi-proof — reveal N chosen leaves, every non-disclosed sibling collapses to
+   a single hash no matter how big its subtree. That IS "only give away what you
+   have to, in a way that does not give too much away," in working code today.
+3. The thing the operator calls "Claude deciding which tiers to tie together" is
+   a THIRD machine that does NOT exist yet and is NOT the Merkle tree: a RETRIEVAL
+   ROUTER. The model never reaches into memory and never walks the tree — the
+   family-side code selects context and hands the model only what it chose (the
+   Eyes-Payload pattern, already doctrine in this repo). This keeps the model
+   swappable AND deliberately dumb about everything it isn't given — which is the
+   sovereignty property, not a limitation.
+
+THE SYNTHESIS (the recovered idea, made concrete): keep a FOREST of typed Merkle
+trees instead of one — a memories tree, a facts tree, a heritage/story tree, a
+places-been/route-log tree, a preferences tree. The "multiple paths down" are
+these typed roots. A router (the double-pass) classifies the query — "this is a
+travel question about THIS place" — picks the relevant tree(s), walks to the
+relevant leaves, and uses multiDisclosureProof to tie exactly those leaves down
+to a verifiable root, feeding the model that pruned bundle and nothing else. So
+"you're 35 miles from Aunt Martha's ranch" comes from walking the family/places
+trees, disclosing only the ranch leaf + its proof, while the birthday, the SSN,
+and every other leaf stay collapsed to hashes the model never sees. Same model,
+two passes (generic + family-context), fusion on the family's side, provable
+provenance on every fact it surfaced.
+
+WHY IT REINFORCES THE THESIS: the value of "don't you remember you drove past
+that on March 15" only exists if there's a sovereign place to have dumped March
+15 in the first place — the lost-idea problem is the product problem. And the
+proof layer is what lets a future AI-fakes-everything world still trust the
+recall: every surfaced memory carries a disclosure proof, so the family AI's
+context is not just private, it's VERIFIABLE — facts the model states about your
+life can be checked against signed, anchored leaves rather than hallucinated.
+
+Open questions to teach back: does the router run fully client-side (max
+sovereignty, provider never sees family data)? how are trees typed/namespaced —
+by credential_type, by tier, by a new "memory kind"? does every dumped idea/
+place become an attestation (signed+anchored) or a lighter local note that can
+be PROMOTED to an attestation when it matters? what's the UX for "dump anything
+here" that's frictionless enough to actually capture March 15? Resurface with
+the living-family-nest thesis + double-pass overlay + story-attestation — same
+body; this entry is its retrieval-and-proof nervous system.
