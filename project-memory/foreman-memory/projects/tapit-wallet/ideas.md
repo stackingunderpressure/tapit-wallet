@@ -2424,3 +2424,91 @@ be PROMOTED to an attestation when it matters? what's the UX for "dump anything
 here" that's frictionless enough to actually capture March 15? Resurface with
 the living-family-nest thesis + double-pass overlay + story-attestation — same
 body; this entry is its retrieval-and-proof nervous system.
+
+---
+
+## 2026-06-14 — Ownership vs custody of AI memory + the compromise-gated sovereign AI + the cloud-API boundary
+Tag: sovereignty / family-AI-context / threat-model / data-ownership / integrity-gate
+Stage: sprouting (clarifying the threat model + a sharp new feature: if-hacked-it-stops)
+One-line: Commercial AI gives you a COPY of your memory on request but keeps
+CUSTODY on its servers forever; the sovereign model inverts it — you hold the
+living memory, the provider gets only a minimized disclosed snippet per query,
+nothing is retained provider-side as YOUR identity graph, the model is swappable,
+and the wallet can GATE disclosure so a detected compromise makes the AI refuse
+to answer until the family restores the rightful state — by design, not a bug.
+
+Operator's framing in his own voice (stitched from the riff):
+"My wife's ChatGPT knows everything about her — medical history, everything she's
+ever asked, in a file under that device and that account. The moment she leaves,
+does she get to take all of that with her, or is it owned only by them? I don't
+think they'd be kind about handing it over. She could ask for a dump, but she'd
+have to constantly do that. Imagine having your own place where all your queries
+show up for the next 20 years and you're not double-retrieving and double-
+thinking — 'we've talked about this before, we're gonna do this structure,' not
+asking a new chat the same thing every time. There's memory but there's not
+PERSONAL memory. And verification right up front: if the math is off, reject
+answering — tied into the Tapit social wallet, so if you've been hacked it quits
+answering questions and quits extracting information and won't work until you get
+everything back online the way it should be — that's by design, not a bug. How
+does it get breached when you send pieces to a cloud API to process? Is it
+keeping a log of those people and memories and API addresses, or is it just
+answering the simple question and logging it down, and the person keeps the file
+that's been rewritten over? I feel like there's nothing being built for the
+sovereign family and sovereign people who want to carry all their information
+forward in their own shape and form."
+
+THE ANGLES, ANSWERED HONESTLY:
+1. Ownership vs custody (the core distinction). Consumer ChatGPT/Claude memory +
+   chat history live on the PROVIDER'S servers, bound to the account. You can
+   EXPORT a copy (data dump), but that's a snapshot you take, not custody you
+   hold — the provider keeps the canonical copy, controls the account, sets the
+   terms, and can change them. "Take it with her" = she gets a zip, not the
+   living thing; they keep theirs. Sovereign inverts it: the canonical living
+   memory is hers, on her device/wallet; any provider only ever borrows a slice.
+2. Where it lives. Today: provider cloud. Sovereign: the family vault (local-
+   first, encrypted to each member's wallet, synced as ciphertext only — the
+   host stores only ciphertext, the existing Tapit model).
+3. Personal vs "memory feature." Provider memory is a summarized, provider-shaped,
+   provider-owned convenience that can be wiped/changed and isn't portable as a
+   structure. Personal memory = the typed Merkle forest the family owns, append-
+   only, verifiable, 20-year, no re-asking ("we've talked about this before").
+4. Compromise-gated disclosure (NEW FEATURE, sharp). Tie the AI-context router to
+   the social-wallet integrity state: if the wallet's heartbeat/recall machinery
+   (B-2 + recall brake) signals a compromise, the disclosure layer REFUSES — the
+   AI stops surfacing memory and stops extracting until the family restores the
+   rightful state via social recovery. Failure mode is "clam up," not "leak." By
+   design. This is the threat-model answer to "what if she/I get hacked" and it
+   reuses machinery we already speced.
+5. THE HONEST BOUNDARY (don't oversell). When you send plaintext to a cloud model
+   to reason over it, that provider SEES that plaintext while processing — there's
+   no way to have a remote model reason over text it can't read short of exotic
+   confidential-compute/FHE. So sovereignty here is NOT "the cloud never sees
+   anything." It is: (a) MINIMIZE — send only the one disclosed leaf the query
+   needs (selective disclosure already minimizes the crossing), never the whole
+   tree/identity graph; (b) DE-IDENTIFY — the snippet carries the fact, not who
+   it's about, where possible; (c) TERMS — use API tiers (not consumer) where
+   inputs aren't trained on and retention is short/zero (Anthropic/OpenAI API
+   default to no-training + limited retention, vs consumer which may train unless
+   opted out; and note the 2025 court-ordered retention of OpenAI logs proved
+   "deleted" isn't always deleted when litigation intervenes — a real sovereignty
+   argument); (d) SWAPPABLE — no single provider accumulates a picture; (e)
+   LOCAL-WHERE-POSSIBLE — run small models locally for the sensitive passes,
+   cloud only for the heavy generic pass. The provider answers the narrow
+   question and the canonical rewritten file stays with the family.
+6. "Does it keep a log of people/memories/API addresses?" Consumer: effectively
+   yes (that's the product). Properly-configured API: inputs/outputs aren't added
+   to YOUR persistent profile and aren't trained on by default, but the provider
+   still processes (and may briefly retain for abuse monitoring) the snippet you
+   sent — so the defense is sending as little as possible, de-identified, under
+   no-train/short-retention terms. The family's canonical log lives ONLY in the
+   family vault.
+
+WHY IT REINFORCES THE THESIS: the gap is real — nothing is built for the
+sovereign family that wants to carry ALL its information forward in its own shape,
+owning custody (not just export rights), with verifiable personal memory, a
+compromise-gated AI that fails safe, and a minimized swappable boundary to any
+cloud brain. Resurface with: living-family-nest thesis, double-pass overlay,
+typed-Merkle-forest router, story-attestation. This entry is the threat-model +
+data-ownership spine. Open question to teach back: how much of the sensitive pass
+can run on a local small model so the cloud only ever sees the de-identified
+generic pass?
