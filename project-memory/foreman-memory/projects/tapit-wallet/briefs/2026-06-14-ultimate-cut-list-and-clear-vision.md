@@ -51,6 +51,33 @@ instead of asking anyone to abandon it. It scales, much later, to civic proof.
 The north-star test for every cut: does it make the family want to come home AND
 leave them more sovereign? Half-credit if only one.
 
+## 1.5 THE WALLET OF ALL THINGS (substrate first) + the handshake network IS the moat
+OPERATOR DIRECTIVE (2026-06-14): no single idea is the centerpiece. The memorial,
+genealogy, events, memories, secrets, secure channel, AI context, certifications,
+civic proof are CO-EQUAL EXPRESSIONS of ONE substrate — keys + the handshake /
+web-of-trust network + attestations + selective disclosure + social recovery. The
+product is a multi-purpose place you SCULPT DAILY across many areas, not "a memory
+app." The event/memory keystone is the FIRST CUT for sequencing reasons only; it
+is never the whole.
+
+THE MOAT IS THE HANDSHAKE NETWORK, NOT THE FEATURES. The web-of-trust handshake
+graph is what no AI agent and no outsider can counterfeit — you can't fake your
+way into a family's network because no one handshakes you in. That single fact is
+simultaneously (a) the adoption engine (you fill the graph with people you
+actually know), (b) the unforgettable defensibility against AI-generated fakery,
+and (c) the thing no $199 service sells (they sell database access, not a
+sovereign connection-agreement layer). Already shipped as connections + cosigning
+— treat it as the SPINE under every facet and surface its moat value in framing.
+
+Corollaries to hold: AUTHORITY-BY-MEMBERSHIP (your family is the authority on your
+family — a certified-key-holder's claim about their own circle carries weight an
+outsider's never will); ASYNC SUBSTRATE NOT A FEED (a handshake gives a trusted
+person a place to leave things you'll find WHEN YOU WANT — no feed, no engagement
+timer); SELFISH-REASONS → UNBREAKABLE TRACK RECORD (build for the single-player
+reason; the compounding cross-life network value is the byproduct); and THE
+FOUNDATION SCALES TO VOTING (the same connection-agreement substrate is the
+missing non-rent-seeking layer future civic systems can build on).
+
 ## 2. KEEP — already built, directly serves the nest (no new work to "keep")
 These shipped features ARE the family-nest substrate. Keep, lean on, don't touch
 except to wire:
