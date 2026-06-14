@@ -2694,3 +2694,86 @@ floor rationale under Phase 1/2 sequencing), living-family-nest thesis, co-signe
 memories. Open question to teach back: what's the very first single-player thing a
 person captures on day one that makes them feel the "that's mine, whole, and it'll
 outlive me" feeling immediately?
+
+---
+
+## 2026-06-14 — "Sign the ball" (the wall-in-time) + cross-generational calendar/close-the-loop + own-first-syndicate-optionally (anti-Facebook-lock-in)
+Tag: product-metaphor / family-coordination / co-signed-memory / strategy / interop
+Stage: sprouting (a naming metaphor + a coordination loop + a strategic principle)
+One-line: A shared calendar across generations closes the loop into co-signed
+memories — you see the grandkid's ball game, you go, you snap the picture and
+attest "he hit two home runs, here's how proud I am," it lands on your timeline
+AND his, and others add "I saw the three home runs, so proud" — everyone signs
+the ball, and you get to read the ball for 30-50 years; you OWN it first and can
+still optionally syndicate the non-sensitive parts to Facebook, instead of being
+locked in BECAUSE your memories are trapped there.
+
+Operator's framing in his own voice (stitched from the riff):
+"Anybody in the family can sync their calendars or other things. As my kids get
+older and have their own kids and birthday parties, they're still my family — I'm
+going to every one of their kids' birthday parties — so they sync their calendars
+to mine and let me know when the ball games are. That exists today but not in a
+family interface, and not where we close the loop later with a picture and an
+attestation that I went to my grandson's ball game and he hit two home runs, and
+I said how proud I was, and it goes on mine and it goes on his — just another
+layer of memory that comes around later in life, instead of Facebook owning it.
+I've seen so many people stay on Facebook because their memories are there —
+Facebook literally owns what they say and how they say it. You could still choose
+to share some of your Tapit attestations on Facebook that don't violate their
+terms, because they have sharing down and that's great — but it doesn't stop us
+having it for our own personal memories and records and proofs, where other
+people can go inside those same proofs and say 'I saw the three home runs, I'm
+super proud of you.' It's like a wall in time where everyone got to sign the ball
+and you get to read the ball for the next 30-50 years of all those endearing
+messages you don't want to lose because the ball got lost."
+
+THE MECHANISMS / PRINCIPLES (new):
+1. "SIGN THE BALL" — the emotional, plain-language name for the co-signed memory
+   attestation. A memory is a ball everyone who was there gets to sign; the
+   signatures are warm messages ("so proud, saw the three home runs"), not crypto
+   jargon; you re-read the ball for decades; the digital ball can NEVER get lost
+   (the physical one always does). Use this as the USER-FACING metaphor for
+   co-signing — it removes all the cryptographic framing and makes signing feel
+   like signing a keepsake. Strong candidate product name/metaphor for the
+   co-sign UX.
+2. CROSS-GENERATIONAL CALENDAR / COORDINATION. Family members sync calendars
+   (and more) across households and generations — grandparent sees the grandkid's
+   ball games and birthday parties. Coordination exists elsewhere (Cozi/Google)
+   but NOT in a sovereign family interface AND not wired to close the loop into
+   memory. This is the everyday-utility hook (the dentist-appointment-in-sync
+   thread from the host-bot idea) with a memory payoff.
+3. CLOSE-THE-LOOP (event -> memory). The calendar event is the front of the loop;
+   attending + capturing + attesting + felt-note is the back. A scheduled game
+   becomes, afterward, a co-signed memory that lands on MULTIPLE timelines (mine
+   AND his) and accretes signers over time. The loop turns coordination into
+   legacy automatically — the bot can even prompt the close ("you went to the
+   game yesterday — want to sign the ball?").
+4. OWN-FIRST, SYNDICATE-OPTIONALLY (strategy — don't fight the incumbent head-on).
+   The lock-in that keeps people on Facebook IS that their memories are trapped
+   there and Facebook owns the words. Tapit's answer is NOT "leave Facebook" — it
+   is "OWN your memory in your sovereign store first, then optionally push the
+   non-sensitive parts out to Facebook (or anywhere) as a syndication target."
+   Facebook becomes an output channel, not the vault. This is the
+   interoperate-don't-compete wedge: we win on ownership, they keep distribution,
+   and the user stops being hostage. Lowers adoption resistance (no "abandon your
+   network" ask) and reframes the moat as custody, not reach.
+
+PRODUCT CONSEQUENCES:
+- The co-sign UX should literally feel like signing a ball / a yearbook / a
+  guestbook — warm messages, faces, no crypto words (extends the warm-and-plain
+  peerCopy voice already shipped).
+- A memory attestation must be able to land on MULTIPLE owners' timelines and
+  accrete co-signs over time (multi-owner reference + append-only co-signature
+  set; builds on cosigning).
+- A share/syndication-out adapter (to Facebook/etc.) is a real roadmap item, but
+  AFTER the sovereign store exists — own first, then syndicate. Honesty: only
+  non-sensitive, user-chosen leaves go out (ties to the safety-first disclosure
+  guardrail).
+- Calendar sync is a candidate everyday-utility feature for the host-bot phase
+  (Phase 5) but its real value is the close-the-loop into memory, so design them
+  together.
+
+Resurface with: master-synthesis-and-build-plan, co-signed memories, useful-for-
+me-first principle, living-family-nest thesis. Open question to teach back: is
+"sign the ball" the name for the whole co-sign feature, and what does the ball
+look like on screen so a kid AND a grandparent both instantly get it?
