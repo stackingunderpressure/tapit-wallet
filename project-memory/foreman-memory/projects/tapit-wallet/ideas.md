@@ -3221,3 +3221,60 @@ the spine, surface its moat value in the framing). Do NOT let the build narrow t
 Resurface with: ultimate-cut-list (this amends its framing), living-family-nest
 thesis, useful-for-me-first, Worldcoin-comparison (the moat contrast). This is an
 operator framing directive — apply it to ALL future framing of the project.
+
+---
+
+## 2026-06-14 — The agreement to ENTER the tree (joining transmits the family handshake graph) + cross-handshake hyphal densification
+Tag: onboarding / network-effect / web-of-trust / moat / mycelial / consent-boundary
+Stage: sprouting (the bootstrap mechanic for the handshake-network moat)
+One-line: The single best moment is the AGREEMENT TO ENTER the family tree —
+joining doesn't drop you into an empty graph, it transmits the family's existing
+handshake history to you, and then you can go directly handshake those people,
+turning inherited/transitive trust into direct cross-handshakes that densify the
+mycelial web. The join IS where the moat propagates and grows.
+
+Operator's framing in his own voice:
+"The agreement to enter the tree is the best part. You join the Merkle family
+tree, then you get all the handshakes history of the family tree, and can go and
+handshake those and have cross-handshake hyphal connections then."
+
+THE MECHANISM:
+1. JOIN = AGREEMENT TO ENTER (the consent moment). Entering the family tree is a
+   mutual-agreement act (echoes tree-merge-by-mutual-agreement: two siblings
+   tagging the same parent SET the node). The join is the highest-value moment
+   because it's where membership — and the moat — is conferred.
+2. JOINING TRANSMITS THE FAMILY HANDSHAKE GRAPH. A new member doesn't start cold:
+   on entering, they inherit visibility into the family's existing handshake
+   history (who's connected to whom). This solves the new-member cold-start — you
+   arrive with the family's map, not a blank slate.
+3. CROSS-HANDSHAKE DENSIFICATION (hyphal). With the inherited map, you go directly
+   handshake the people in it, converting transitive/inherited trust into DIRECT
+   cross-handshakes. Each direct handshake thickens the web (more redundant trust
+   paths = a stronger, harder-to-fake mycelial network). This is the network-
+   effect flywheel: every join makes the graph denser and the moat deeper.
+4. WHY IT'S THE MOAT, COMPOUNDING. Ties to the handshake-network-as-moat
+   directive: no AI/outsider can be transmitted into the graph because no one
+   agrees to enter them. The join-transmits-graph + cross-handshake loop is how
+   the uncounterfeitable web grows organically from real human agreement.
+
+EXISTING SUBSTRATE / ROADMAP: connections feature already does in-person/remote
+handshakes (Tier P/R). The 2026-06-03 captivation-and-growth-ux roadmap already
+names "Phases B+ unlock transitive hops" — exactly this. So the join-transmits-
+graph + cross-handshake mechanic is the concrete shape of that already-planned
+transitive-hops phase. Build on connections; this is its growth surface.
+
+HONEST CONSENT BOUNDARY (do not skip): transmitting "all the handshake history"
+to a new joiner must be CONSENTED + SCOPED, not an automatic full-graph dump.
+Exposing everyone's complete connection map to any new member is a privacy leak
+and could re-create the surveillance shape we're fighting. Design: the family (or
+each member) chooses what's shared with a newcomer — introductions are offered,
+not auto-broadcast; you might inherit "here are the people willing to be
+introduced to you," not "here is everyone's entire web." Same family-filtered,
+permissioned-by-ownership principle as the memorial curation boundary. Get this
+right or the best part becomes the worst part.
+
+Resurface with: handshake-network-as-moat directive, tree-merge-by-mutual-
+agreement, co-signed-memories, captivation-and-growth-ux roadmap (transitive
+hops), Worldcoin-comparison. Open question to teach back: at join, what's the
+minimum the newcomer inherits that bootstraps them WITHOUT dumping the family's
+full private graph — a curated "introductions available to you" set?
