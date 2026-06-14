@@ -3278,3 +3278,64 @@ agreement, co-signed-memories, captivation-and-growth-ux roadmap (transitive
 hops), Worldcoin-comparison. Open question to teach back: at join, what's the
 minimum the newcomer inherits that bootstraps them WITHOUT dumping the family's
 full private graph — a curated "introductions available to you" set?
+
+---
+
+## 2026-06-14 — CLARIFICATION: the WITNESS family tree holds deceased (witnessed) + living (connectable); seeing the tree lets you connect with the living
+Tag: family-tree / memorial / witness / web-of-trust / onboarding / correction
+Stage: maturing (operator clarified the prior "agreement to enter" entry — that's
+substrate; this corrects the emphasis)
+One-line: Two living members agree on who Grandma was and both sign stories to
+her node on the WITNESS family tree — so the deceased live in the tree by being
+WITNESSED (co-signed by the living, since they hold no key), and everyone signed
+into the family sees the whole tree (the passed AND the living) and can CONNECT
+with the living ones.
+
+Operator's framing in his own voice (a correction of my prior over-emphasis):
+"What I meant was: we both agree on who Grandma was, and both have stories to sign
+to the witness family tree for Grandma, so others signed into the family see the
+tree — the deceased and the living — and can connect with the live ones."
+
+THE CORRECTION (vs the prior 'agreement to enter' entry):
+- My prior capture leaned on 'inherit handshake history -> go handshake
+  strangers.' The operator's actual point is narrower and warmer: the tree itself
+  shows BOTH the deceased and the living; you connect with the LIVING ones. The
+  deceased aren't handshake-able (they're gone) — they're WITNESSED in.
+
+THE MECHANISM:
+1. DECEASED = WITNESSED NODES (no key required). Grandma holds no wallet/key, so
+   she can't sign herself. The living establish her node by MUTUAL AGREEMENT
+   (two+ members agree 'this was our Grandma') and populate it by CO-SIGNING
+   stories/memories ABOUT her. She lives in the tree by witness, not by
+   self-attestation. Weight = how many living members agree + co-sign.
+2. LIVING = CONNECTABLE NODES. Living members hold keys and are handshake-able.
+   Seeing them in the tree, you can connect/handshake them directly.
+3. SEEING THE TREE = THE FAMILY VIEW. Anyone signed into the family sees the whole
+   shape — passed and living — which is both the memorial (read the deceased's
+   witnessed stories) AND the directory (reach the living). One surface, two
+   payoffs.
+
+GROUNDING (already-supported substrate — important): the journal feature ALREADY
+models 'subject as a typed label so the grandchild-from-birth scenario works
+without a child wallet existing' (journal manifest). That SAME pattern is exactly
+how a DECEASED person gets a witnessed node with no key — subject = 'Grandma Pam',
+multiple family members sign journal/story attestations with that subject, and
+co-signing (cosigning feature) lets them corroborate each other's. Custody handoff
+is already a meta-kind. So 'witness a keyless person (deceased OR not-yet-born)
+into the tree' is NOT new crypto — it's the subject-label + co-sign substrate,
+plus a tree VIEW that groups attestations by subject-person and links living
+subjects to their handshake/connection.
+
+CONSEQUENCE FOR THE TREE CUT: the family tree view = group attestations by
+person-node (subject), show deceased nodes (witnessed, story-clustered) distinctly
+from living nodes (connectable, with a 'connect' affordance via connections). The
+keyless-witnessed-node is the unlock that lets the tree include people who never
+had a wallet — which is most ancestors. Slots after the event/memory keystone
+(memorial = keystone attached to a person; tree = those person-nodes linked).
+
+Resurface with: the prior 'agreement to enter the tree' entry (its parent),
+community-memorial-attestations, co-signed-memories, sovereign-genealogy, journal
+subject-as-label. Open question to teach back: does a deceased node need a single
+canonical 'this is Grandma' anchor attestation (co-signed by N family) to dedupe
+everyone's stories onto one person, or do stories just cluster by matching
+subject label + family agreement?
