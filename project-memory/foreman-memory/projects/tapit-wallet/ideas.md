@@ -2611,3 +2611,86 @@ double-pass overlay, typed-Merkle-forest router. Open question to teach back: fo
 co-signed memories, what's the minimum corroboration that gives a memory
 "weight," and how is that weight shown to a non-technical family member without
 turning remembering into paperwork?
+
+---
+
+## 2026-06-14 — The "useful for me first" principle (single-player floor, community ceiling) + the 37-point-game legacy frame
+Tag: product-principle / mission-sharpening / family-memory / legacy / adoption
+Stage: matured (this is a refinement of the core value prop, not just a feature)
+One-line: The value floor is SINGLE-PLAYER and self-sovereign — kept whole,
+unchanged, mine, useful to me even if no one else ever verifies it; verification,
+community co-signature, and civic scale are the CEILING that adds weight on top,
+never the precondition. Same everyday life, different storage: the family snaps
+the pictures they always snapped — what changes is WHERE and HOW it's kept.
+
+Operator's framing in his own voice (stitched from the riff):
+"Five years ago — 25 years ago — I played basketball in a very small town,
+scored 37 points against good opponents, the whole town was there cheering, it
+was a milestone in my life. That's very hard to go back and read now — newspaper
+articles somewhere, my grandma kept a bunch — but short of collecting all that
+into one place, there's no place where the family interacted with the community
+in a way that also corroborates your story, where the whole town signs that you
+had a 37-point game, thanks you for playing hard, congratulates you on a good
+season, and you can go back 25 years later and read all of it in your OWN storage
+— never logging back into Google or a player portal or any weird place. The
+family did their normal everyday life, snapped the pictures they always snapped —
+but WHERE and HOW they stored it is what changes. I've taken pictures at kids'
+ball games my whole life; I can maybe find them, but they're not tied to any
+event, not tied to the moment the bot asked 'say a few words about how proud you
+are of your son.' It'd be so nice to go back and say yep, that's the file, it's
+there, it's not changed, and I read it and I cry all over again because it's
+preserved and I can share it later — and whether it's verifiable or not, it's
+still mine, I kept it whole and unchanged, useful to me at the very least. I
+don't have to prove it to anyone. But it guarantees I was the one who put it
+there, because no one else has my key and why else would I have put it there. And
+to rehash and re-remember it, and maybe share with my great-great-great-
+grandchildren someday after I'm gone — stories told and stored in such a way they
+can be verified that he did that on that day, all hashed together. Make it useful
+for ME first, because I'm an old fart who'll die someday and I'd love to leave a
+legacy if nothing else — and everybody would, whether it's their barbecue
+recipes or proprietary carpentry information or financial principles to pass
+down, and the powwow, sitting with the elder of the tribe and learning through
+osmosis."
+
+THE PRINCIPLE (mission-level, lock it in):
+- SINGLE-PLAYER FLOOR. The product must be fully worth it for ONE person with
+  ZERO other participants and ZERO external verification. Kept-whole-and-unchanged
+  + mine + re-readable is the floor. This de-risks the cold-start problem
+  completely: there is no empty-network dead zone, because day-one solo use
+  already delivers. (Directly echoes CLAUDE.md: "if it only ever works for one
+  family it already succeeded" — this is the single-person version of that.)
+- SELF-ATTESTATION IS SUFFICIENT at the floor. "No one else has my key and why
+  else would I have put it there" — your own signature + your own anchored
+  timestamp already guarantees authorship and integrity to YOU. External
+  verification is not required for the memory to be trustworthy to its owner.
+- COMMUNITY CEILING adds WEIGHT, not validity-from-zero. The town co-signing the
+  37-point game, the family co-signing the Disney trip — these stack corroboration
+  on top of an already-valuable self-kept record. Weight grows with intertwining;
+  it never gates the base value.
+- SAME LIFE, DIFFERENT STORAGE (the wedge, restated cleanest). Don't ask families
+  to change behavior — they already snap the photos, already tell the stories.
+  Change only the substrate: where/how it's stored (sovereign, whole, unchanged,
+  tied to event+feeling, no third-party portal to log back into). This is the
+  lowest-friction adoption path there is.
+- LEGACY AS THE UNIVERSAL DRIVER. Everyone has something to pass down — recipes,
+  trade knowledge, financial principles, the powwow/osmosis transfer. "Leave a
+  legacy if nothing else" is a near-universal motive; it's the emotional engine
+  under the whole nest, and it's strongest precisely for the elders whose
+  knowledge is most at risk of dying unrecorded.
+
+PRODUCT CONSEQUENCES:
+- Phase 1/2 (dump surface + story/memory attestation) deliver the single-player
+  floor with NO network and NO cloud AI — confirming the build-plan sequencing.
+- Photos must be tie-able to an EVENT + a FELT NOTE (bot-prompted "say a few
+  words"), not loose in a roll — the difference between a camera roll and a
+  legacy is the context+feeling bound to the moment, signed and anchored.
+- "Read it and cry all over again" = replay/re-surface UX is a first-class
+  feature, not an afterthought; the resurfacing IS part of the value.
+- Verification is presented as a BONUS layer ("and it's even provable"), never as
+  the reason to participate — keeps the honesty and lowers the bar.
+
+Resurface with: master-synthesis-and-build-plan (this locks the single-player-
+floor rationale under Phase 1/2 sequencing), living-family-nest thesis, co-signed
+memories. Open question to teach back: what's the very first single-player thing a
+person captures on day one that makes them feel the "that's mine, whole, and it'll
+outlive me" feeling immediately?
