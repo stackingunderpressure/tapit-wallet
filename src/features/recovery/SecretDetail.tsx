@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { handedOutCount, pieceIndexForToken, confirmedSummary, type SecretRecord, type PieceMethod } from './secretLedger.ts';
+import { handedOutCount, pieceIndexForToken, confirmedSummary, pieceFreshness, type SecretRecord, type PieceRecord, type PieceMethod } from './secretLedger.ts';
 
 // One secret's distribution detail — the "where and why you sent it" record.
 // Shows the why-note (editable), the split, and who holds each piece by what
@@ -19,6 +19,9 @@ interface Props {
   onSaveWhy: (why: string) => void;
   /** Drop the opt-in kept copy of the share tokens (back to "nothing stored"). */
   onForgetTokens: () => void;
+  /** Owner-initiated nudge to a holder who's gone quiet (a friendly chat ping).
+   *  Only the owner ever reaches out — the system never auto-nags holders. */
+  onNudge?: (holderPubkey: string, holderName: string) => Promise<{ warning?: string }>;
   onDelete: () => void;
 }
 
@@ -38,7 +41,8 @@ function whenLabel(iso: string | undefined): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
 
-export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDelete }: Props) {
+export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onNudge, onDelete }: Props) {
+  const [nudged, setNudged] = useState<Record<number, 'sending' | 'sent' | 'fail'>>({});
   const [why, setWhy] = useState(record.why);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
@@ -51,6 +55,17 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
   const showReadiness = summary.confirmed > 0;
   const readinessTone =
     summary.margin >= 2 ? 'ok' : summary.margin >= 1 ? 'watch' : 'edge';
+
+  async function doNudge(p: PieceRecord) {
+    if (!onNudge || !p.holderPubkey) return;
+    setNudged((s) => ({ ...s, [p.index]: 'sending' }));
+    try {
+      await onNudge(p.holderPubkey, p.holderName ?? '');
+      setNudged((s) => ({ ...s, [p.index]: 'sent' }));
+    } catch {
+      setNudged((s) => ({ ...s, [p.index]: 'fail' }));
+    }
+  }
   const tokens = record.tokens ?? [];
   const canVerify = (record.hashes?.length ?? 0) > 0;
   const [checkInput, setCheckInput] = useState('');
@@ -145,10 +160,36 @@ export function SecretDetail({ record, onBack, onSaveWhy, onForgetTokens, onDele
                 {methodLabel(p.method)}
                 {whenLabel(p.handedAt) ? ` · ${whenLabel(p.handedAt)}` : ''}
               </div>
-              {p.held && (
+              {p.held && pieceFreshness(p) === 'fresh' && (
                 <div className="mt-0.5 text-emerald-700">
                   ✓ Confirmed holding it
                   {whenLabel(p.confirmedAt) ? ` · ${whenLabel(p.confirmedAt)}` : ''}
+                </div>
+              )}
+              {p.held && (pieceFreshness(p) === 'watch' || pieceFreshness(p) === 'cold') && (
+                <div className="mt-1 flex items-center gap-2 text-amber-700">
+                  <span>
+                    {pieceFreshness(p) === 'cold'
+                      ? "Hasn't checked in in a while"
+                      : "Hasn't checked in lately"}
+                    {whenLabel(p.confirmedAt) ? ` · last ${whenLabel(p.confirmedAt)}` : ''}
+                  </span>
+                  {p.holderPubkey && onNudge && (
+                    <button
+                      type="button"
+                      onClick={() => void doNudge(p)}
+                      disabled={nudged[p.index] === 'sending'}
+                      className="shrink-0 rounded-md border border-ink/15 px-2 py-0.5 text-[11px] font-medium text-ink hover:bg-ink/5 disabled:opacity-50"
+                    >
+                      {nudged[p.index] === 'sending'
+                        ? 'Nudging…'
+                        : nudged[p.index] === 'sent'
+                          ? 'Nudged ✓'
+                          : nudged[p.index] === 'fail'
+                            ? 'Try again'
+                            : 'Nudge them'}
+                    </button>
+                  )}
                 </div>
               )}
               {p.declined && (

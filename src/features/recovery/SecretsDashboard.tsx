@@ -95,7 +95,7 @@ function methodLabel(m: PieceMethod | undefined): string {
 }
 
 export function SecretsDashboard() {
-  const { wallet, holdings, relayStatus, sendEnvelope, ownerId, passphrase } = useWallet();
+  const { wallet, holdings, relayStatus, sendEnvelope, sendChatMessage, ownerId, passphrase } = useWallet();
 
   const [mode, setMode] = useState<'list' | 'pick' | 'create' | 'recover' | 'detail'>('list');
   const [records, setRecords] = useState<SecretRecord[]>([]);
@@ -341,6 +341,12 @@ export function SecretsDashboard() {
           onBack={() => setMode('list')}
           onSaveWhy={(w) => persist(upsertRecord(records, setWhy(detailRecord, w)))}
           onForgetTokens={() => persist(upsertRecord(records, setTokens(detailRecord, undefined)))}
+          onNudge={(holderPubkey, holderName) =>
+            sendChatMessage(
+              holderPubkey,
+              `Hey${holderName ? ` ${holderName}` : ''} — could you open your Tapit wallet sometime soon? Just keeping the piece you're holding for me healthy. Thank you!`,
+            )
+          }
           onDelete={() => { persist(removeRecord(records, detailRecord.id)); setMode('list'); }}
         />
       )}
