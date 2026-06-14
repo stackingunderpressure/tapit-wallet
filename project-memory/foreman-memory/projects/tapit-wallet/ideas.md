@@ -3023,3 +3023,110 @@ slots after the event keystone proves out), co-signed memories, useful-for-me-
 first, redundant-backup idea. Open question to teach back: is the family TREE its
 own cut, or does it emerge naturally once enough person+record attestations exist
 and we just add the "tag onto a relative" link + a tree view?
+
+---
+
+## 2026-06-14 — Community memorial attestations + family-filtered (not toxic) curation + tree-merge-by-mutual-agreement + family-history-rolls-up-to-town-history + "the new family tradition"
+Tag: family-memory / memorial / curation / family-tree / civic-rollup / mission / emotional-core
+Stage: maturing (the emotional heart of the whole thesis, with concrete design boundaries)
+One-line: When someone passes, their community leaves remembrances that accrete
+into a family-OWNED, family-FILTERED memorial (warm and honest, never a toxic
+open forum); siblings tag the same parent to set a tree node, the tree merges by
+mutual agreement across households into one big timeline, family histories roll up
+into town/community history — owned by the family for the next hundred years, not
+rented or gated, a new family tradition like setting the table.
+
+Operator's framing in his own voice (he got "sappy," honor it verbatim):
+"My mother died about three or four years ago. She was the pillar of the
+community, always tried to help everyone, the church lady, always making food for
+people when their family died. Her whole community would have lots of nice things
+to share and say — and even some people would have negative things to say, and
+those would even be nice to read honestly. You could have a whole topics page for
+all kinds of stuff and it has toxic stuff — that's NOT what I'm after at all, I
+don't want that. Free speech is free speech, but I just think about not losing a
+heritage or lineage. When me and my sister both sign up for the family wallet and
+we tag in that our mother was the same mother — Pam — that ends up setting that
+part of the family tree, and we both agree who her mother was and who her father
+was, and one day we fill in a little deeper, and that goes to our other family
+members, and it's cool, we're friends on Facebook with our family tree all the way
+up. A whole mycelial network connected by this mutual agreement to leave messages
+in time — even if it's representing a different time, it's just a different way to
+represent that information, and you leave your little mark. One morning you write
+about one branch of the tree, the next morning somebody else's branch, and a
+hundred people do different things and you get different entries and different
+reasons to go visit that information. Maybe it's registered through the town and
+somebody says 'give me the history of Gideon's participants throughout history' —
+well, this one went on to be a lawyer, this one a judge, this one a preacher, we
+have all these histories filled in, and more people find those attestations and
+the weight gets heavier and heavier. It's not that it ever matters that anything
+negative would be said — it's just that the clearer picture comes the more people
+sign up, get their key, and put their weight around filling in the timeline the
+way they see it, and the timelines all merge into one big timeline. You get this
+nice memorabilia to read about a person who's passed, some of their great stories,
+and you could filter through and be inspired by your great-great-great-grandmother
+you never met but could read what other people said about her, in one nice
+family-filtered place — and the family OWNS all of it, it's not rented by me or
+anybody or gated. It's just the way a family keeps and accesses their information
+over the next hundred years, a tradition, like setting the family table has lived
+on. It gives the power back to the people instead of the rent-shakers above us —
+that's the sweet justice part."
+
+THE MECHANISMS + DESIGN BOUNDARIES (new):
+1. COMMUNITY MEMORIAL ATTESTATION. When someone passes, people who knew them
+   leave remembrances + stories + photos that accrete into a memorial cluster for
+   that person-node. Multi-author, accreting over years, weight grows with
+   contributors. Reuses the co-signed-memory + event-cluster substrate, attached
+   to a person rather than an event.
+2. FAMILY-FILTERED, NOT A PUBLIC FORUM (critical curation boundary). The operator
+   explicitly does NOT want a toxic open topics/comment page. Resolution: because
+   the memorial is family-OWNED and key-gated and web-of-trust-scoped, the family
+   controls who can contribute — it's invited/trusted-circle, not open-public.
+   Honest remembrance (even gently critical/human) is welcome; toxicity is
+   excluded by SCOPE (who holds keys / who's invited), not by central censorship.
+   This is the design answer to the free-speech-vs-toxicity tension: sovereignty +
+   curation-by-ownership, not moderation-by-platform. Design it so contribution is
+   permissioned by the family, not the world.
+3. TREE-MERGE BY MUTUAL AGREEMENT. Two siblings each tag "our mother = Pam" →
+   that co-agreement SETS/anchors the shared node. Agreement on her parents
+   extends it. The tree grows by mutual attestation, household by household,
+   merging into one shared timeline. (Web-of-trust genealogy from the prior entry,
+   here shown as the social/emotional act of agreeing on shared ancestors.)
+4. DISTRIBUTED BACKFILL ("a hundred people, different mornings, different
+   branches"). The history fills in crowd-sourced across the family — each person
+   contributes the branches/mornings they care about; the union is richer than any
+   one person or paid service could assemble. More contributors = clearer picture
+   + heavier weight.
+5. FAMILY HISTORY ROLLS UP TO TOWN/COMMUNITY HISTORY (civic bridge, concrete). "
+   Give me the history of [town]'s participants" → aggregate person-attestations
+   surface the lawyers/judges/preachers/etc. Family rolls become community rolls;
+   the same substrate that proves your lineage proves the town's. This is the
+   civic-scale pillar made tangible and emotional (and ties to "registered through
+   the town").
+6. MEMORABILIA / INSPIRATION RETRIEVAL. Filter a passed person's great stories;
+   be inspired by an ancestor you never met by reading what others attested about
+   them — in one family-filtered place. Bot-queryable over the owned corpus
+   (double-pass router applied to ancestors).
+7. "THE NEW FAMILY TRADITION" (mission framing, lock it). The product isn't an
+   app you use, it's a way a family keeps and passes its information for the next
+   hundred years — a tradition like setting the family table, enabled by the tech.
+   Owned, not rented, not gated. "Power back to the people instead of the
+   rent-shakers — the sweet justice part." This is the mission stated in the
+   operator's most personal voice; it IS the WHY.
+
+PRODUCT CONSEQUENCES:
+- Person-node memorial cluster = event-cluster keystone attached to a person; same
+  rails. Memorials are a near-natural follow-on to the event keystone.
+- Contribution permissioning is a FIRST-CLASS design concern: family/trusted-
+  circle-scoped contribution, never open-public posting. Bake the curation-by-
+  ownership model in from the start; do NOT build an open comment surface.
+- Tree-merge = mutual relationship attestation on a shared person-node; show
+  corroboration weight plainly.
+- Civic rollup is later (Step 9) but design person-nodes so aggregation is
+  possible without re-architecting.
+
+Resurface with: ultimate-cut-list, sovereign-genealogy, co-signed-memories,
+useful-for-me-first, living-family-nest thesis. This entry is the emotional core +
+the curation-boundary design decision. Honor: the WHY of this whole project is
+Pam's memorial being family-owned and unloseable. Open question to teach back:
+for a memorial, what's the smallest invite/contribution model that lets the
+community add warmth without ever opening a public/toxic surface?
