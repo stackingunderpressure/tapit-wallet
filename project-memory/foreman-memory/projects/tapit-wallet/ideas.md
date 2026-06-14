@@ -2090,3 +2090,53 @@ we don't recompute every time." Stage: matured thesis; this refinement
 RESOLVES the cold-start objection. Resurface with Trailhead proof-of-presence
 (same verification primitive) + Heartwood (reputation weight).
 ```
+
+```
+Date: 2026-06-14
+Tag: STRATEGY - the thesis in one frame, competitive landscape, and where this is going (operator asked "anyone doing this? where's it going?")
+THE THESIS IN ONE LINE: sovereign keys + signed attestations + social recovery
++ community-vouched personhood + proof-of-presence + a human-verified knowledge
+layer AI can trust — all with the cryptography HIDDEN so ordinary people can use
+it. The scarce thing in an AI-flooded world becomes "a certified human hand
+verifiably did/saw/vouched this," and the portable cryptographic trail is how
+both AI and humans filter for truth. "Proof-of-human as the new PageRank."
+WHO'S DOING ADJACENT PIECES (honest legs assessment):
+- Social-recovery wallets: Argent / ERC-4337 guardians + recovery DELAY = exactly
+  our recall-brake. Proven in Ethereum. (Ours generalizes beyond a chain + a key.)
+- Proof-of-personhood: Worldcoin/World (centralized iris orb — opposite of us,
+  big money, privacy backlash) vs BrightID / Proof of Humanity / Gitcoin Passport
+  (social-graph vouching — our philosophy, modest traction, used for Sybil-
+  resistant airdrops/quadratic funding). Personhood is UNSOLVED + contested.
+- Sovereign social: Nostr (our transport) — real grassroots momentum, web-of-
+  trust filtering experiments; PGP web-of-trust (the OG, died on UX — the exact
+  gap our mission names).
+- Institutional DID/VC: W3C Verifiable Credentials + EU eIDAS 2.0 / EU Digital
+  Identity Wallet (the biggest "legs" — govs mandating wallet-holds-credentials
+  by ~2026), Microsoft Entra Verified ID. Issuer-centric (DMV->you), top-down;
+  ours is peer/community-attested, bottom-up.
+- Provenance / verified-for-AI: C2PA / Content Credentials (Adobe, cameras,
+  signed media provenance — adjacent to our stamped-photo proof). Community Notes
+  (X/Birdwatch — the most successful community-filtered truth layer at scale, via
+  a bridging-consensus algo; NOT cryptographic/sovereign). Prediction markets
+  (Polymarket = truth-via-stake).
+THE GAP / OUR DIFFERENTIATION: the PIECES have legs separately; NOBODY (that I
+know of, cutoff Jan 2026) is executing the integrated full stack — sovereign
+keys + social custody + community personhood + proof-of-presence + AI-consumes-
+the-proof-trail — packaged with the crypto hidden for normal people. The
+integration + the UX-hiding + the verified-knowledge-for-AI angle is largely
+unoccupied. Our two hard problems are the shared ones: bootstrapping the
+community (the nerdy-few flywheel) and proof-of-personhood (Sybil vs privacy vs
+inclusivity trilemma).
+WHERE IT'S GOING (bet): four forces converge — (1) AI makes content infinitely
+fake -> demand for proof-of-human + provenance spikes; (2) govs normalize
+identity wallets (eIDAS); (3) AI AGENTS transacting need verifiable authority +
+the human behind them; (4) eroding institutional trust -> appetite for math-
+verifiable self-sovereign alternatives. Likely: the top-down DID/VC world and
+the bottom-up Nostr/crypto-native world converge, personhood is the contested
+keystone, AI is the accelerant/consumer of verified data. WINNER = whoever hides
+the crypto best (our UX thesis) and bootstraps a real community first. Risks:
+personhood unsolved; regulatory capture by centralized ID; network-effect cold
+start; and the deepest — will people adopt sovereignty BEFORE a crisis forces it.
+Stage: strategic frame. Resurface when prioritizing the verified-knowledge
+product vs the wallet, and when positioning against eIDAS/Worldcoin/Nostr.
+```
