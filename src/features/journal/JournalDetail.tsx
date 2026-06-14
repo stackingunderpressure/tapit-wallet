@@ -17,6 +17,7 @@ import { AbsorbCosignModal } from '../cosigning/AbsorbCosignModal.tsx';
 import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
 import { ShareProofModal } from '../disclosure/ShareProofModal.tsx';
 import { StampedPhotoButton } from './StampedPhotoButton.tsx';
+import { readEventDate, isBackfilled, formatEventDate } from './momentDate.ts';
 import { displayNameOf } from '../connections/createHandshake.ts';
 import { noteTextFromEntry } from '../transport/nostrNote.ts';
 import { sharedNotesStore } from '../storage/sharedNotesStore.ts';
@@ -118,6 +119,9 @@ export function JournalDetail() {
   const category = readString(entry.claim, 'category') ?? 'Diary';
   const subject = entry.subject;
   const writtenAt = readString(entry.claim, 'written_at') ?? entry.issuedAt;
+  // The honestly-marked day the moment happened, when the author set one.
+  const eventDate = readEventDate(entry);
+  const backfilled = isBackfilled(entry);
   // about-me entries use wallet.identity as subject; about-other
   // entries use a typed label. Hand-off only makes sense for the
   // latter.
@@ -184,9 +188,21 @@ export function JournalDetail() {
       </header>
 
       <article className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-        <div className="text-xs text-muted">
-          {new Date(writtenAt).toLocaleString()}
-        </div>
+        {eventDate ? (
+          <>
+            <div className="text-sm font-medium text-ink">
+              Happened on {formatEventDate(eventDate)}
+            </div>
+            <div className="mt-0.5 text-xs text-muted">
+              {backfilled ? 'Recorded ' : 'Logged '}
+              {new Date(writtenAt).toLocaleString()}
+            </div>
+          </>
+        ) : (
+          <div className="text-xs text-muted">
+            {new Date(writtenAt).toLocaleString()}
+          </div>
+        )}
         <div className="mt-1 text-xs text-muted">About: {subject}</div>
         {text && <p className="mt-3 whitespace-pre-wrap">{text}</p>}
         {attachmentUrl && attachmentIsImage && (

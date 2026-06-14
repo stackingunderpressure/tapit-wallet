@@ -51,7 +51,12 @@ const BUDGETS = [
   // 2026-06-01: the global UpdateBanner (new-version checker + banner,
   // mounted in App so it floats above every route) added ~0.1KB gz to
   // the main entry. Bumped 11.72 -> 12.2KB (measured 11.81KB).
-  { pattern: /^index-.*\.js$/, gz: 12_500, label: 'login bundle (main)' },
+  // 2026-06-14: the auth additions earlier this arc (OAuthButtons +
+  // PasswordSignIn wired into both the Classic and Fresh sign-in
+  // surfaces) grew the cold-start login bundle and had landed without a
+  // budget bump. Audited as intentional. Bumped 12.21 -> 13.0KiB
+  // (measured 12.83KB gz).
+  { pattern: /^index-.*\.js$/, gz: 13_312, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
   // variable blocks plus the aurora-drift keyframes + background.
@@ -247,7 +252,12 @@ const BUDGETS = [
   // identity-gate request typeguard, measured 24.92KB gz. The responder
   // MODAL itself is React.lazy so only its routing edge rides here.
   // Bumped 24.5 -> 25.5KB.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 26_112, label: 'HomeScreen' },
+  // 2026-06-14 Moments cut (family-nest first visible cut): JournalComposer
+  // (static in HomeScreen's graph) gained the optional "When did this
+  // happen?" event_date input + the momentDate helper import, ~0.2KB gz.
+  // HEAD was already a touch over 25.5 from prior arc growth; audited as
+  // intentional. Bumped 25.5 -> 26.25KiB (measured 25.93KB gz).
+  { pattern: /^HomeScreen-.*\.js$/, gz: 26_880, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
@@ -418,7 +428,12 @@ const BUDGETS = [
   // button over the Web Share API (AirDrop / Messages / Mail) alongside the
   // existing chat / Copy / QR channels. Budget held at 8.5KB for the added
   // share wiring; only loads when the operator expands the secrets panel.
-  { pattern: /^SecretsDashboard-.*\.js$/, gz: 8_500, label: 'SecretsDashboard' },
+  // 2026-06-14: the secrets opt-in work earlier this arc (keepCopy +
+  // secretLiteracy imports + token-hash tracking) grew this lazy chunk
+  // past 8.5KB without a budget bump. Audited as intentional; still
+  // loads only when the secrets panel is expanded. Bumped 8.30 ->
+  // 8.75KiB (measured 8.56KB gz).
+  { pattern: /^SecretsDashboard-.*\.js$/, gz: 8_960, label: 'SecretsDashboard' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from

@@ -33,6 +33,14 @@ export interface JournalInput {
    * leaf so the home can surface captures apart from the diary.
    */
   source?: string;
+  /**
+   * Optional honestly-marked day the moment HAPPENED (YYYY-MM-DD or
+   * any Date-parseable string). Written as an `event_date` leaf,
+   * kept deliberately separate from `written_at` (which is ALWAYS
+   * now). Lets an older memory be backfilled without ever forging
+   * when it was recorded. See momentDate.ts for the honesty boundary.
+   */
+  eventDate?: string;
 }
 
 export interface JournalEntryResult {
@@ -56,6 +64,13 @@ export async function createJournalEntry(
 
   if (input.title && input.title.trim().length > 0) {
     fields.title = input.title.trim();
+  }
+
+  // The honestly-marked day the moment happened. written_at above is
+  // always now; this is a separate signed claim about an earlier day so
+  // backfilled memories never forge their recording time.
+  if (input.eventDate && input.eventDate.trim().length > 0) {
+    fields.event_date = input.eventDate.trim();
   }
 
   if (input.attachment) {

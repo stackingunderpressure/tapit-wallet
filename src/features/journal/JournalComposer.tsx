@@ -4,6 +4,7 @@ import { createJournalEntry } from './createJournalEntry.ts';
 import { SUGGESTED_CATEGORIES } from './categories.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { normalizeImage } from './normalizeImage.ts';
+import { normalizeEventDateInput } from './momentDate.ts';
 
 const CameraCaptureModal = lazy(() =>
   import('../camera/CameraCaptureModal.tsx').then((m) => ({
@@ -40,6 +41,9 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
   const worker = useAnchorWorker();
   const [title, setTitle] = useState('');
   const [text, setText] = useState(prefill?.text ?? '');
+  // Optional "when did this happen?" — empty means today. A past date
+  // records an older memory (backfill); written_at stays honest (now).
+  const [eventDate, setEventDate] = useState('');
   const initialCategory =
     prefill?.category && SUGGESTED_CATEGORIES.includes(prefill.category as never)
       ? prefill.category
@@ -126,6 +130,7 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
               ? wallet.identity
               : subjectLabel.trim(),
           attachment: attachment ?? undefined,
+          eventDate: normalizeEventDateInput(eventDate),
         },
         prefs.cloudSync,
       );
@@ -178,6 +183,25 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
           className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           placeholder="What did you do today? Who was there? What do you want to remember?"
         />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium" htmlFor="entry-event-date">
+          When did this happen?{' '}
+          <span className="text-muted font-normal">(optional)</span>
+        </label>
+        <input
+          id="entry-event-date"
+          type="date"
+          max={new Date().toISOString().slice(0, 10)}
+          value={eventDate}
+          onChange={(e) => setEventDate(e.target.value)}
+          className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        />
+        <p className="mt-1 text-xs text-muted">
+          Leave empty if it happened today. Set a past date to record an
+          older memory — we still log honestly that you added it today.
+        </p>
       </div>
 
       <div>
