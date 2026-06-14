@@ -3380,3 +3380,50 @@ person-nodes linked). Resurface with: witness-family-tree clarification,
 community-memorial, sovereign-genealogy, ultimate-cut-list. Open question still
 parked: does a deceased node need a single canonical co-signed anchor, or do
 stories just cluster by subject + family agreement?
+
+---
+
+## 2026-06-14 — The editable WHOLE family tree + handshake-merge-by-overlap + memory reconciliation (spec'd)
+Tag: family-tree / web-of-trust / merge / entity-resolution / reconciliation / spec
+Stage: matured into a spec (see briefs/2026-06-14-editable-family-tree-and-handshake-merge-spec.md)
+One-line: Fill in the whole tree as you know it (parents, siblings, grandparents,
+great-grandparents, aunts, uncles, cousins — living AND deceased); handshake a
+relative and your tree INHERITS theirs through the shared overlapping node ("this
+connects through Pam"); memory discrepancies surface to both to reconcile or
+agree-to-disagree. Not just the dead, not just the living — all of it, connected.
+
+Operator's framing (his own voice): "I want it where I can edit the family tree
+the way I see it — mom, dad, siblings, grandmas, grandpas, great-grandparents,
+cousins, aunts, uncles. The handshake says 'this one connects through Pam, let's
+fill in the rest.' I shook hands with someone in my family who already filled out
+more of theirs, so mine inherits theirs. If there's a difference in memory the
+wallet surfaces to both: there's a discrepancy in how you remember it — agree to
+disagree, or yeah you're right, it was raining that day. Small details, not
+national security. It checks both levels of my tree for overlap, fills in the
+obvious ones, maybe fills in some great-great-great-grandpa I can now read about —
+he was a WWII vet — and I get to meet new people in my family I never knew. The
+whole graph, past people not left out, how the graph connects together."
+
+Grounded substrate: peopleTreeLayout.ts (radial tree), familyUnit.ts (co-signed
+family envelope w/ roles + backdated as_of; its own comment says "PeopleTree v2
+will branch a family node into its members"), createHandshake.ts (relationship
+edges + kin labels), journal subject-as-label (keyless people), cosigning
+(merge). The spec turns the operator's vision into a 5-cut plan.
+
+Three honest hard parts (in the spec): (H-A) keyless person-nodes for ancestors
+with no wallet — the foundational unlock, a family-co-signed "this is <person>"
+anchor; (H-B) extended/recursive kin via ONE primitive edge parent_of with
+grandparent/aunt/cousin DERIVED by graph-walk (tiny vocabulary, composable);
+(H-C) cross-tree merge by overlap = the entity-resolution problem, solved by
+anchoring on the shared KEYED relative + HUMAN-confirmed merges (never silent
+auto-merge on name) + family-co-signed canonical nodes. Plus consent/scope on
+inheritance (no full-graph auto-absorb) and memory reconciliation that ALLOWS
+divergence (web-of-trust on memory; no central arbiter).
+
+Cut order: CUT 1 keyless nodes + editable single-player tree (start here — no
+network, delivers "edit the tree the way I see it" alone), CUT 2 derived
+relationships, CUT 3 handshake overlap-merge + scoped inheritance, CUT 4 memory
+reconciliation, CUT 5 civic rollup. Resurface with: ultimate-cut-list (tree is
+the cut after the keystone), Pam-node mockup, witness-family-tree, agreement-to-
+enter-the-tree. The parked dedupe question is now ANSWERED in the spec: yes, a
+canonical family-co-signed person-anchor per node.
