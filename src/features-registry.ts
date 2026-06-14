@@ -21,6 +21,7 @@ import { manifest as theme } from './features/theme/manifest.ts';
 import { manifest as onboarding } from './features/onboarding/manifest.ts';
 import { manifest as messaging } from './features/messaging/manifest.ts';
 import { manifest as identityGate } from './features/identity-gate/manifest.ts';
+import { manifest as familyTree } from './features/family-tree/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online.
@@ -51,6 +52,7 @@ export const features: readonly FeatureManifest[] = [
   onboarding,
   messaging,
   identityGate,
+  familyTree,
   persona,
   snapshotBuilder,
   suggestedQuestions,

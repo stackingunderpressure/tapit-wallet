@@ -128,3 +128,53 @@ visible, no central arbiter.
 Edit-the-tree (CUT 1) makes the family want to come home (you build your people)
 AND leaves you more sovereign (you own the graph, keyless ancestors included).
 The merge (CUT 3) is the warmth+moat flywheel. Passes the two-jobs test.
+
+---
+
+## OPERATOR REFINEMENTS (confirmed at cut-start, 2026-06-14)
+- LOCAL-NEIGHBORHOOD EDITING; the tree SELF-ASSEMBLES. You only ever edit your
+  OWN adjacent layer — your parents, your siblings, your kids ("only my next
+  stage above me," easily liable to get right). The deep multi-generation tree is
+  NOT authored by one person; it EMERGES by merging many people's local
+  neighborhoods through handshakes. CUT 1 is therefore explicitly the
+  edit-your-adjacent-layer editor, nothing grander.
+- CORRECTION-ON-HANDSHAKE is the everyday face of merge: "you spelled Mom's name
+  wrong" → you fix yours, she fixes hers, you both sign you're siblings with the
+  same mother → the shared parent node binds and the two graphs share from there.
+  Reconciliation isn't a heavy ceremony; it's two relatives agreeing on Mom.
+- AFFINITY EDGES + RELATIONSHIP NAMING (not just blood). Sister marries husband;
+  their kids are descendants connected to you ONLY THROUGH your sister — the graph
+  shows the path and NAMES it. Someone who marries in three generations down is
+  "third cousins" by the walk even though it's not by blood. So the namer must
+  handle consanguinity (blood, via common ancestor — cousin Nth, M-removed) AND
+  affinity (in-law / by-marriage). The relationshipLabel engine is the centerpiece
+  of CUT 1's foundation.
+- NEW MEMBERS ONBOARD INTO THE GRAPH. People born later get added and start
+  accruing their own attestations + a permanent record held by the family AND by
+  the individual they represent — never by a company. The keyless-child node
+  becomes a keyed node when they get their own wallet (the journal subject-label
+  → wallet handoff pattern already anticipated by custody handoff).
+- THE MOAT, STARK (operator's words): "unforgettable, you cannot fake that — that
+  family would not let you in. If you belong to no family you belong nowhere;
+  either someone adopts you or you start your own family." Belonging is conferred
+  by family acceptance (handshake + co-sign), which is exactly why it can't be
+  faked. Implication: ADOPT (be witnessed/handshaken into a family) and START YOUR
+  OWN (found a family unit) are both first-class entry paths — already partly
+  present as familyUnit + StartFamilyModal; the tree makes them legible.
+
+## FIRST CODE CUT (CUT 1 foundation — what's being built now)
+The pure, testable graph core (no UI, no signing-pipeline, no network — same
+draft-builder discipline as buildHandshakeDraft / buildSelfMembershipDraft):
+- personNode.ts — buildPersonNodeDraft({displayName, born?, died?, keyedPubkey?})
+  → unsigned credential-kind draft (credential_type 'person_node'); a WITNESSED
+  person, keyless unless keyedPubkey present. + isPersonNode + readPersonNode.
+- kinEdge.ts — buildParentEdgeDraft(parentNodeId, childNodeId) +
+  buildSpouseEdgeDraft(aNodeId, bNodeId) → unsigned relationship-kind drafts
+  (relation 'parent_of' / 'spouse'). + isKinEdge + readKinEdge.
+- kinGraph.ts — buildKinGraph(holdings) reads person-nodes + kin-edges into a pure
+  graph; relationshipLabel(graph, fromId, toId) names the tie via common-ancestor
+  consanguinity (parent/grandparent/great^N, sibling, aunt/uncle, cousin Nth
+  M-removed) + affinity (spouse / in-law). The centerpiece.
+- Full unit tests for each. manifest.ts + registry entry. Gates green.
+Follow-on slices (later turns): the editor UI, PeopleTree ancestor-ring render,
+the sign/hold/anchor wiring, then CUT 3 handshake-merge.
