@@ -2935,3 +2935,91 @@ marketplace), event-as-unit refinement, useful-for-me-first, co-signed memories.
 Open question to teach back: is the card marketplace an early monetization hook
 (drives the creative-event use case) or a later add-on after the free
 sovereign-memory floor proves itself?
+
+---
+
+## 2026-06-14 — Sovereign genealogy: own your family-history proofs (anti-rent-seeking) + a mergeable hash-file family tree + fire/flood/theft resilience
+Tag: domain-extension / family-tree / genealogy / web-of-trust / anti-rent-seeking / resilience
+Stage: sprouting (a new domain the nest extends into, on existing rails)
+One-line: Families OWN their own genealogy — snap the courthouse records and the
+research someone already paid for, anchor the hashes so they're tamper-evident,
+and build a mergeable family tree where you can "tag onto" a relative's branch and
+inherit the value they captured — believed-by-our-family is the floor,
+corroboration adds weight, and nothing is lost to fire/flood/theft or to a
+$199/yr subscription you stop paying.
+
+Operator's framing in his own voice (stitched from the riff):
+"How does this tie back into genealogy — going back and snapping photos of the
+research you've done, or the work. A lot of companies you pay money to do the
+research or access their databases; the family could start to adopt their OWN
+sovereign idea of their family instead of trusting it to genealogy.com for $199 a
+year or you lose your family 'certification.' The rent-seeking idea — families
+would own their own proofs and the work people paid for independently. It doesn't
+need to be provable to everyone else, but it's passed down and believed by our
+family good enough that we want to pass it to our kids and grandkids. Records will
+be better for the newer digital-age people, but going back to fill in anyone's
+history — 'oh, he's my uncle, I can tag onto that genealogy' — ends up being free
+because you tag onto the value someone else captured by paying a service, and you
+hitch that ride; either it's true and you believe it or it's not and you don't,
+that's not for anyone else to decide, but if it's enough for you it's enough for
+you, and the more weight it has the better. You believe Uncle Joe did the work,
+you see the pictures and files didn't change, they were from some courthouse 300-
+400 miles away, and they're hash-filed on the blockchain — hard to refute, not
+that you can say it's 100% accurate. I wonder how genealogy ties into the whole
+hash-file family-tree attestations and backfilling data to the best of our
+ability and not losing data to fires and theft and water."
+
+THE MECHANISMS (how it ties to existing rails):
+1. OWN-YOUR-PROOFS (anti-rent-seeking, the strategic core). Genealogy services
+   ($199/yr Ancestry/genealogy.com-style) capture research you pay for but you
+   don't OWN — stop paying and you lose access to your own family's records. The
+   sovereign inversion: snap the courthouse record / the paid research / the
+   physical document, sign + anchor it, and it's YOURS forever, custody not rental.
+   Same own-first principle as memories, applied to lineage. Strong wedge: people
+   already pay for genealogy, so the buying habit exists; we change ownership, not
+   behavior.
+2. ANCHORED = HARD-TO-REFUTE (honest framing). We do NOT store the photo on a
+   blockchain — we anchor its HASH via OpenTimestamps to Bitcoin (already shipped:
+   anchoring feature), proving the file existed UNCHANGED by a given date. So the
+   courthouse-record-from-300-miles-away is tamper-evident and time-proven —
+   "hard to refute," NOT "certified 100% accurate." Get this honest distinction
+   right: anchoring proves integrity + existence-by-date, not truth of contents.
+3. BELIEF FLOOR, WEIGHT CEILING (same as co-signed memories). A genealogy claim
+   doesn't need universal proof — "believed by our family good enough to pass
+   down" is the floor; corroboration (Uncle Joe's courthouse photo, a second
+   relative's record, a co-sign) adds weight. Not for anyone else to adjudicate;
+   if it's enough for you, it's enough. This is the useful-for-me-first principle
+   in the lineage domain.
+4. MERGEABLE / TAG-ONTO FAMILY TREE (web-of-trust genealogy). "He's my uncle, I
+   can tag onto that genealogy" — branches connect; you inherit (hitch a ride on)
+   the value a relative already captured, for free. The tree is a shared graph of
+   attestations where verified branches link and corroboration accretes across
+   households and generations. Builds on the connections/web-of-trust + co-sign
+   substrate. Each link is believe-or-don't, per person.
+5. BACKFILL TO THE BEST OF OUR ABILITY (honestly-marked). Photograph old records,
+   research, certificates — created-now-about-then, marked as recollection/record-
+   capture, never forged dates. Same backfill mechanic as photographed cards.
+6. RESILIENCE (fire / flood / theft). Physical genealogy dies in house fires,
+   floods, and theft (the shoebox of grandma's clippings). Redundant family-key-
+   gated encrypted backup (the multi-cloud blob idea) preserves it — the
+   sovereignty AND the durability argument fused: you can't lose it AND no one
+   else can open it.
+
+PRODUCT CONSEQUENCES:
+- The family tree is a first-class structure later (a graph of person-nodes +
+  relationship attestations + attached record/memory clusters), but the FIRST
+  step is the same as the keystone: capture + anchor a record with honest
+  backdating. Genealogy is the keystone applied to ancestors instead of events.
+- "Tag onto" = a relationship attestation linking your node to a relative's
+  existing node/branch; corroboration weight shown plainly (who else attests this
+  link). Reuses cosigning + connections.
+- Anchoring copy must be honest: "proven unchanged since [date]," never "verified
+  true."
+- Resilience/backup is a selling point to surface in the genealogy framing
+  specifically (fire/flood/theft is visceral for family records).
+
+Resurface with: ultimate-cut-list (genealogy = a domain on the keystone rails,
+slots after the event keystone proves out), co-signed memories, useful-for-me-
+first, redundant-backup idea. Open question to teach back: is the family TREE its
+own cut, or does it emerge naturally once enough person+record attestations exist
+and we just add the "tag onto a relative" link + a tree view?
