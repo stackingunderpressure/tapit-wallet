@@ -2272,3 +2272,76 @@ entry (probably a typed attestation with teller + prompt + heritage-tag); how
 replay + "verify it's still the same Grandma file" surfaces to a non-technical
 family member; whether story prompts are scheduled/ambient ("Grandma, tell us
 about...") or pulled on demand.
+
+---
+
+## 2026-06-14 — The family-context AI overlay ("double-pass") + the swappable sovereign substrate
+Tag: product-mechanism / family-AI-context / sovereignty-stack / anti-deepfake
+Stage: sprouting (concrete behavior + a sharp strategic stake)
+One-line: The family bot is the SAME generic AI, but run through the family's
+own private filter/memory/tree, so it does a "double pass" — answering the
+generic question AND folding in what only your family knows — surfacing help no
+corporate AI could ever give, on a substrate where the provider, the database,
+and the network are all swappable and everything is verifiable from the bottom
+up.
+
+Operator's framing in his own voice (stitched from the riff):
+"Imagine you're traveling through the US asking a regular ChatGPT or Claude for
+directions — it has no context of your family, your history, your heritage. But
+ask the family chatbot — same chatbot, with our family filters — and it can say
+'hey, you're 35 miles from Aunt Martha's sister's cousin's ranch, you could stay
+there tonight.' It's not a generic chat; it's information you'd never ever get
+from a chatbot because it never got fed that — but in the moment, with your own
+filtered kind, it knows your life, it knows to do the double pass, and the moment
+it detects you're traveling and knows where you're asking about, it ties it all
+together — layers of your memory and history and family tree — in a place it
+would never ever have been on a private company's servers. The regular corporate
+market can't solve this without providing these input places. I like it being
+bottom-up: I can swap out any AI provider to help me with my body, or any
+database to store my stuff, I can do it locally, run my own network, verify
+everything, build new software as an independent person and say yeah that's all
+true or it's not and show the holes in it — because that's what you'd want, you
+want it transparent and people to build on top of the math and the protocol. In
+a future where Grandma's story could get converted/faked by AI, you would not
+have a trusted leg of verified history to stand on — you'd be stuck out in the
+open with your pants down and no underwear on."
+
+The mechanism (double-pass): the bot runs the generic query against whatever AI
+provider, AND runs a second pass against the family's own private context (the
+vault: memory, history, family tree, story-attestations, preferences). It fuses
+the two only on the family's side, never on the provider's servers. Triggering
+is contextual — "you're traveling + asking about this place" auto-pulls the
+relevant family layers. The provider sees a generic question; the family sees a
+family answer. This is the Eyes-Payload pattern at family scale: the family
+assembles its own context and hands the model only what it chooses, per query.
+
+Why corporate can't do it (the moat): a centralized AI cannot ethically or
+legally hold every family's private heritage graph, and families won't (and
+shouldn't) upload it. The only way this exists is bottom-up, family-held,
+selectively-exposed — which is precisely Tapit's shape. The value is created by
+the input place the corporate market structurally cannot provide.
+
+The swappable sovereign substrate (the deeper sovereignty claim): provider-
+agnostic (swap Claude/any model), storage-agnostic (swap DB, or local), network-
+agnostic (run your own relay/Mycelium node), and fully verifiable (open math +
+open protocol, build on top, prove or disprove it, show the holes). Sovereignty
+means no single vendor is load-bearing — the family can replace any layer and
+keep its nest. This is the "build on the math, not the company" thesis.
+
+The sharp stake (anti-deepfake history): in a near future where AI can
+fabricate Grandma's story convincingly, the ONLY defense is a trusted leg of
+cryptographically verified history — signed-as-her, time-anchored, tamper-
+evident, the same file forever. Without it you're "out in the open with your
+pants down." This reframes the story-attestation keystone as not just sentimental
+preservation but as load-bearing INFRASTRUCTURE for truth in an AI-saturated
+world — the verified-knowledge-for-AI angle, applied to family memory. Ties
+directly to the existing temporal-truth / provenance / verified-knowledge ideas
+and the C2PA/Content-Credentials adjacency noted in the landscape research.
+
+Resurface alongside: the living-family-nest thesis, the family-hearth host-bot,
+and the story-attestation keystone — same body. This entry is the AI-context
+organ + the sovereignty-substrate spine + the why-it-can't-be-faked nerve.
+Open question to teach back: does the double-pass run client-side only (max
+privacy, the provider never sees family data), or is there a trusted family
+relay that does the fusion? (Client-side is the sovereign default; surface the
+tradeoff when this becomes a cut.)
