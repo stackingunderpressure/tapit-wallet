@@ -2214,3 +2214,61 @@ Maturation note: this is the same whitespace the deep research named, viewed
 from the demand side instead of the security side. Two facets of one body —
 keep them growing from the same soil. Resurface when prioritizing the next
 big arc (everyday-hub surface vs. continued secrets/recovery hardening).
+
+---
+
+## 2026-06-14 — The Story-Attestation (bot-prompted family oral history as a certified vault entry)
+Tag: product-mechanism / family-hub / family-memory / attestation / keystone
+Stage: sprouting (a concrete mechanism, not just a vibe)
+One-line: The host-bot, reading the family's own teaching/heritage settings,
+asks an elder to tell a personal story; the telling is captured, signed as that
+person, time-anchored, and locked into the family vault — turning fragile oral
+history into sovereign, replayable, verifiable, permanent family memory.
+
+Operator's framing in his own voice (stitched from the riff):
+"Say Grandma tells a story because the bot asked her to tell a story about
+finances in 1945 — and because I have settings in the family wallet that I want
+to teach finance, the stories it asks are personal and help get the family
+history out in the open as a teaching mechanism that is being lost today, the
+powwow from family member to family member, generation to generation. You come
+home after a long hard day, open your phone, and go 'oh look, Grandma told the
+story about 1945 and finance, back when it was really hard.' Everyone can draw
+from it, and it's also a personal attestation that gets locked into the family
+vault memory — it would maybe have died without a story had we not done that. We
+can all certify that was Grandma; when we go back and play it again it's the
+same file 300 years from now. It's early but there's nothing like it."
+
+Why it's a keystone (not just a feature): this single act fuses every vein of
+the family-nest thesis at once — an emotional family moment, a preserved piece
+of irreplaceable oral history, a verifiable personal attestation (certified as
+the teller, OpenTimestamps-anchored, tamper-evident), a permanent family-vault
+entry, and a contribution to the family-owned AI context (the story becomes part
+of the family's own selectively-exposed knowledge, teaching the next
+generation). Warmth and sovereignty are the SAME act here, not a trade-off —
+which is exactly the thesis. See 2026-06-14-the-living-family-nest-thesis.md.
+
+Reuses infrastructure that already exists: the in-app camera + capture pipeline
+(capture → normalizeImage → sign → anchor → stamp), the attestation/vault
+substrate, and the wallet-bot brain (Anthropic edge fn) for the prompting. The
+new piece is the bot-prompts-from-family-settings loop + a story credential_type
++ replay surface. Settings are sovereign and per-family ("I want to teach
+finance" drives which stories get asked for).
+
+Generalization: the "powwow" — elder-to-member, generation-to-generation
+knowledge transfer eroded by modern life — becomes a first-class, bot-prompted,
+attestation-producing ritual. The bot is the patient grandchild who always
+remembers to ask; the wallet is the hearth that never forgets the answer.
+
+Prioritization note: strong candidate for an EARLY cut — it's the sharpest point
+of the everyday-surface wedge (the research's named whitespace), it viscerally
+demonstrates "warmth and sovereignty are one thing," it reuses existing infra,
+and it produces something a family does not want to lose. Resurface when the
+next big arc is chosen, alongside the family-hearth host-bot idea (same body,
+this is its most concrete organ).
+
+Open questions to teach back: voice vs video vs text capture for a story (likely
+all three, voice/video richest); how a story credential differs from a journal
+entry (probably a typed attestation with teller + prompt + heritage-tag); how
+replay + "verify it's still the same Grandma file" surfaces to a non-technical
+family member; whether story prompts are scheduled/ambient ("Grandma, tell us
+about...") or pulled on demand.
