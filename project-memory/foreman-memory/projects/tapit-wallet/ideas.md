@@ -2777,3 +2777,90 @@ Resurface with: master-synthesis-and-build-plan, co-signed memories, useful-for-
 me-first principle, living-family-nest thesis. Open question to teach back: is
 "sign the ball" the name for the whole co-sign feature, and what does the ball
 look like on screen so a kid AND a grandparent both instantly get it?
+
+---
+
+## 2026-06-14 — REFINEMENT: the EVENT is the unit (adaptive signable surface) + the verify-badge growth engine + aggregate-your-own-history
+Tag: product-metaphor / naming / growth / retrieval / strategy
+Stage: maturing (refines the 2026-06-14 "sign the ball" entry — that's substrate;
+this generalizes it)
+One-line: "Sign the ball" is too narrow — the real unit is the EVENT (a million
+kinds: game, 16th birthday, prom, recital), and the signable surface adapts to
+each (ball / birthday card / etc.); syndicated posts carry a tap-to-verify Tapit
+badge that propagates ownership contagiously ("that guy OWNS his prom pictures,
+not just on his camera roll"); and later your bot can aggregate your own history
+("give me all my 37-point games and above") and filter the sappy comments.
+
+Operator's framing in his own voice (stitched from the riff):
+"'Sign the ball' might be too specific — one event is a sports game, another is a
+16th birthday party that has nothing to do with a ball, that'd be signing the
+birthday card. It's more about the event being different, and there are a million
+events and I've been to all of them because I have four kids — birthday parties,
+proms, every single thing, and Facebook owns them all. Doesn't mean you can't
+post to Facebook — right out of the wallet we've got it formatted to give to
+Facebook on a silver platter, and all we ask is it has a little Tapit sign at the
+top that shows it could be verified if you tap on it and go to the verification.
+It propagates out, and everybody who sees it is like 'you went to the prom, no
+big deal — oh, that guy OWNS his prom pictures, that's cool, not just on his
+camera roll, wow,' and then grandma and grandpa sign and tag the kid, the kid
+says quit it, you get the idea. It becomes an event, life moves to the next
+event, the old one dials out, no one's signing it new, it becomes history you can
+go back and see. And maybe later your bot — 'give me all my 37-point games and
+above' — goes and finds all your attestations where you scored a bunch, and you
+aggregate your best comments, the sappy ones, a filtration of comments from that
+day. Sure there are files, but are we using them in a manner best for the USER,
+or is it corporate rent-seeking at every level just trying to make money? Let's
+make stuff humans really want and want to empower themselves with and use every
+day ALONGSIDE the corporate ones — we're not trying to replace, but we are trying
+to find that wedge."
+
+THE REFINEMENTS (supersede/extend "sign the ball"):
+1. THE EVENT IS THE UNIT. The core object is an EVENT (game, birthday, prom,
+   recital, trip, graduation...). "Sign the ball" is ONE event-type's skin. The
+   signable surface is ADAPTIVE per event type — ball for a game, birthday card
+   for a birthday, etc. Naming: lead with the event; let the signable-keepsake
+   metaphor shape-shift to the occasion. Don't lock the whole feature to a sports
+   word.
+2. THE VERIFY-BADGE GROWTH ENGINE (key new mechanism). The wallet exports a
+   post-ready, silver-platter-formatted version for Facebook/etc. carrying a small
+   Tapit badge at top: "verifiable — tap to check." On the incumbent platform the
+   badge is a curiosity + status signal ("he OWNS these, not just a camera roll")
+   that propagates organically and pulls viewers back toward Tapit. This turns the
+   syndication channel into an ACQUISITION channel — the moat (ownership) becomes
+   visible and enviable exactly where the crowd already is. Honest constraint: the
+   badge links to a verification view; only user-chosen, non-sensitive content is
+   ever exported (safety-first guardrail).
+3. EVENT LIFECYCLE (hot -> cools -> history). An event is hot while people sign it,
+   then naturally dials out as life moves on, then becomes searchable history.
+   Design for the cool-down: no pressure to keep engagement up (no shame, no
+   re-ping), the value is the permanent record, not sustained attention. This is
+   the ANTI-engagement-farming stance restated — opposite of Facebook's infinite
+   re-surfacing for ad time.
+4. AGGREGATE-YOUR-OWN-HISTORY (bot as personal query engine). "Give me all my
+   37-point games and above," "aggregate my best/sappiest comments from that day."
+   The bot queries YOUR OWN attestation corpus (the typed Merkle forest) and
+   filters/aggregates — retrieval over a life, not a feed someone else ranks. Ties
+   directly to the double-pass router + typed-forest; this is the single-player
+   payoff of having dumped it all in one sovereign place.
+5. USE-ALONGSIDE, NOT REPLACE (wedge restated). Not a Facebook killer. A tool
+   humans use EVERY DAY alongside the corporate ones, that empowers them and isn't
+   rent-seeking. The wedge is "best for the user" vs "corporate rent-seeking at
+   every level." Interop (silver-platter export + badge) is the bridge, ownership
+   is the wedge.
+
+PRODUCT CONSEQUENCES:
+- Model the core object as EVENT with a type; the co-sign UI picks the signable-
+  surface skin from the type. Extensible event-type registry.
+- Build a syndication-export that produces a clean post + a verify badge/link;
+  verification view is public-readable for a single shared attestation.
+- Bot retrieval/aggregation over the owner's own corpus is a first-class
+  single-player feature (Phase 3 router, but the query-your-own-life angle can
+  precede full double-pass).
+- Keep the no-engagement-farming stance explicit in the event lifecycle (cool-down
+  is fine, no re-ping pressure).
+
+Resurface with: "sign the ball" entry (its parent), master-synthesis-and-build-
+plan, useful-for-me-first, double-pass/typed-forest. Open question to teach back:
+what's the small set of launch event-types (game/birthday/trip/graduation?) and
+does each need its own signable-surface skin on day one or does one generic
+"sign the moment" surface ship first?
