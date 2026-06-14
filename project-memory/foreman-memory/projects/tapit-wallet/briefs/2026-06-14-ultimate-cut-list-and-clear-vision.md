@@ -194,3 +194,20 @@ freedom-tech-community-first (Strategy A, the existing PLAN.md Tier-1 + Matt Ode
 demo), or a deliberate blend (Step 0 hardening, then one visible cut from EACH).
 Everything else in this doc holds regardless of the answer; this only sets the
 order of the next few cuts.
+
+### DECISION — LOCKED 2026-06-14 (operator, via chips)
+- LEAD WEDGE: **Family-nest first** (Strategy B). The next stretch builds for the
+  operator's family first; the freedom-tech-community work (Strategy A) becomes a
+  later/parallel credibility lane, preserved not deleted.
+- FIRST VISIBLE CUT: **The event/story/memory keystone** (Step 2) — capture a
+  moment with a felt note, sign + anchor it, replay it. Reuses camera + capture +
+  anchoring + the collections-and-proof-bundles spec; delivers the "that's mine,
+  whole, and it'll outlive me" feeling on day one, single-player, no network, no
+  cloud AI.
+- STEP 0 (cross-device social-recovery end-to-end test) still happens regardless,
+  as shared hardening / the one genuine demo blocker.
+- Build order from here: Step 0 hardening (as able) → Step 1 dump surface (the
+  soil) folded into / preceding → Step 2 keystone (first visible) → Step 3
+  sign-the-moment + verify-badge → Step 4 bot + router → onward per §6.
+- Implication for the org-governance tangle: stays DEFERRED as a block (§4);
+  decide nothing there until Step 9 civic scale.
