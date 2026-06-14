@@ -7,6 +7,7 @@
 // WalletProvider.
 
 import { OAuthButtons } from '../auth/OAuthButtons.tsx';
+import { PasswordSignIn } from '../auth/PasswordSignIn.tsx';
 
 function SplashStep() {
   return (
@@ -336,6 +337,12 @@ function EmailStep(props: {
           {props.error}
         </p>
       )}
+      <div className="my-5 flex items-center gap-3 text-xs text-fresh-text-tertiary">
+        <span className="h-px flex-1 bg-fresh-surface-edge" />
+        or with a password
+        <span className="h-px flex-1 bg-fresh-surface-edge" />
+      </div>
+      <PasswordSignIn fresh />
     </form>
   );
 }

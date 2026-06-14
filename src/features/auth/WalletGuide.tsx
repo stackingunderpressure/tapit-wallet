@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { OAuthButtons } from './OAuthButtons.tsx';
+import { PasswordSignIn } from './PasswordSignIn.tsx';
 import { useSession } from './useSession.ts';
 
 // Bitcoin's-role tab content lives in its own lazy-loaded module so
@@ -761,6 +762,12 @@ function SignInForm() {
           </p>
         )}
       </form>
+      <div className="my-5 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-ink/10" />
+        or with a password
+        <span className="h-px flex-1 bg-ink/10" />
+      </div>
+      <PasswordSignIn />
     </section>
   );
 }
