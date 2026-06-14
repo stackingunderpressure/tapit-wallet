@@ -2140,3 +2140,77 @@ start; and the deepest — will people adopt sovereignty BEFORE a crisis forces 
 Stage: strategic frame. Resurface when prioritizing the verified-knowledge
 product vs the wallet, and when positioning against eIDAS/Worldcoin/Nostr.
 ```
+
+---
+
+## 2026-06-14 — The Family Hearth / Host-Bot / everyday-engagement layer
+Tag: product-direction / family-hub / engagement
+Stage: raw insight (sprouting at the edges)
+One-line: A warm "jokester / host of the night" layer inside the family wallet
+that runs games, asks "how was your day," coordinates the household, and
+celebrates milestones — the fluffy, intimate, private everyday gravity that
+later carries the serious sovereign payload (secrets, recovery, civic proof).
+
+Operator's framing in his own voice (lightly stitched from the riff):
+"I'm having an idea about a family game night taken to a software level — the
+family wallet kind of has that interface. It's like the jokester of the night,
+plays games and asks people questions and coordinates and keeps the fun alive
+inside the chat. If someone doesn't respond we're not gonna shame them — games
+and interactions and 'how was your day?' I see that you flagged you had
+something great — everybody claps and kisses and hugs. A nice fluffy
+interaction for the family wallet that's private and intimate. And then it's
+also the beaten-down path later on — the family hub of apps for every single
+thing: someone has a dentist appointment, it's all in sync. Everybody has their
+personal preferences and their personal bot that interfaces with the family
+chat. I'm just coming up with ideas and smudging the ink on the edges of the
+leather."
+
+Why it matters (the strategic fit): the 2026-06-14 sovereign-family-nest
+landscape research found the single biggest gap is exactly the BEATEN-PATH
+fusion — no secure channel / recoverable-secrets store / family-AI-context
+rides an app the family already opens every day. Insecure habits win because
+iMessage is already open. This host-bot idea is the answer to "why would a
+family open Tapit daily?" It is the everyday gravity that makes the rare
+high-stakes moment (sign this, hold my secret, prove my membership) land on a
+rail the family already trusts and already lives in. The fluffy layer is not a
+distraction from the sovereign mission — it is the delivery vehicle for it. It
+is also the most natural home for the family-owned AI-context layer (the
+per-person bot interfacing with the family chat = family-owned RAG, de-duped,
+selectively exposed), which the research flagged as the most open pillar of all.
+
+Concrete sub-pieces worth keeping distinct as this matures:
+- Host-bot persona: a warm, non-shaming "host of the night" voice (same
+  warm-and-plain register already chosen for the Mycelium copy). Runs prompts,
+  games, "how was your day," reacts to milestones.
+- No-shame non-response handling: silence is never punished or even surfaced as
+  a miss — cessation-as-signal is reserved for the heartbeat/liveness safety
+  layer, NOT for everyday engagement. Keep those two uses of "did they respond"
+  firewalled so the fun layer never feels like surveillance.
+- Milestone showcase: a person flags a good thing; the family claps/hugs/kisses
+  (reactions). This is the emotional opposite of the secrets layer and the
+  reason people come back.
+- Per-person bot ↔ family chat: each member has a personal preferences profile
+  + personal bot that interfaces their preferences into the shared family chat
+  and into the family-owned AI context. This is the family-AI-context pillar
+  wearing a friendly face.
+- Family-hub-of-apps sync: dentist appointment, schedules, everything in sync —
+  the Cozi/Skylight everyday-coordination surface, but sovereign and
+  self-custodied (the research's whole point: that category is crowded but ALL
+  cloud-SaaS-the-vendor-can-read, NONE sovereign).
+
+Open questions to resurface (teach-back next session):
+- Is the host-bot one shared family persona, or does it speak AS each person's
+  personal bot? (Probably both: a shared host + per-person bots, like a game
+  show host plus each player's earpiece.)
+- Where does the AI brain run for the fluffy layer — same Anthropic edge-fn
+  path as the wallet bot, or does the family-owned-context constraint push some
+  of it local-first? The research says family-AI-context is the most open and
+  most defensible pillar, so getting the ownership boundary right here matters.
+- Does the everyday engagement layer ship BEFORE or alongside the secure-channel
+  hardening? (The research argues the everyday surface is the wedge, so there's
+  a real case for the fluffy layer being an early cut, not a late one.)
+
+Maturation note: this is the same whitespace the deep research named, viewed
+from the demand side instead of the security side. Two facets of one body —
+keep them growing from the same soil. Resurface when prioritizing the next
+big arc (everyday-hub surface vs. continued secrets/recovery hardening).
