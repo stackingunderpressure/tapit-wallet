@@ -434,6 +434,14 @@ const BUDGETS = [
   // loads only when the secrets panel is expanded. Bumped 8.30 ->
   // 8.75KiB (measured 8.56KB gz).
   { pattern: /^SecretsDashboard-.*\.js$/, gz: 8_960, label: 'SecretsDashboard' },
+  // 2026-06-14 family-tree CUT 1 editor — FamilyTreeEditor is the
+  // edit-your-adjacent-layer modal (add parent/child/spouse/sibling as
+  // witnessed person-nodes + kin edges, list your people with their
+  // derived relationship). React.lazy from PeopleTabBody's Tree view, so
+  // its chunk only loads when the operator opens the editor; the pure
+  // graph core (personNode/kinEdge/kinGraph/createFamilyTree) rides in
+  // here too. Measured 3.59KB gz.
+  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 4_096, label: 'FamilyTreeEditor' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from
