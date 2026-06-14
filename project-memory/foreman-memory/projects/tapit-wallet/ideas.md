@@ -3339,3 +3339,44 @@ subject-as-label. Open question to teach back: does a deceased node need a singl
 canonical 'this is Grandma' anchor attestation (co-signed by N family) to dedupe
 everyone's stories onto one person, or do stories just cluster by matching
 subject label + family agreement?
+
+---
+
+## 2026-06-14 — Pam's node screen (grounded wireframe, LIVE vs TO-BUILD)
+Tag: design / family-tree / person-node / mockup / honest-grounding
+Stage: sprouting (a grounded wireframe — operator asked "help me see it, don't pretend, provide proof")
+One-line: A person-node screen for a deceased family member: hero (name/dates,
+"witnessed by family"), how-she-connects-to-you (relationship path), how-she-
+impacted-you (the moments you signed about her, with event_date + anchor +
+co-sign count), and family-who-remember-her (the living, connectable). Built as
+project-memory/.../mockups/2026-06-14-pam-node-screen.html with every panel
+tagged LIVE (real repo data today) or TO BUILD (honest gap).
+
+WHAT'S LIVE TODAY (real attestation data, cited):
+- Pam's name/dates + her stories ← journal/story attestations with subject="Pam"
+  (subject-as-typed-label already supports keyless people; createJournalEntry).
+- event_date + "recorded later" honesty line ← the Moments cut shipped today
+  (momentDate.ts).
+- photo integrity, "Bitcoin block N" verified badge ← anchoring +
+  deriveVerificationStatus.
+- "N family signed this" ← entry.signatures.length (cosigning).
+- the living family as connectable people ← connections handshakes +
+  displayNameOf; relationship kin labels (parent/child/sibling) already exist.
+
+THE HONEST GAPS (TO BUILD):
+1. A real keyless PERSON-NODE — today Pam is only a subject string scattered
+   across entries; a node needs a canonical "this is Pam" record (likely a
+   family-co-signed anchor) that dedupes everyone's stories onto one person.
+2. A WITNESSED relationship EDGE to the deceased — handshakes require the other
+   party to co-sign, which Pam can't; need an asserted-by-living + family-co-signed
+   edge variant (no Pam signature) so "Pam → mother of → Dad" can exist.
+3. Tree path-walk to her node + "who-also-signed-Pam" grouping — both are queries
+   over existing data (shared subject + relationship edges); PeopleTree +
+   peopleTreeLayout are the starting substrate.
+
+This is the spec sketch for the person-node / family-tree cut, which slots after
+the event/memory keystone (memorial = keystone attached to a person; tree =
+person-nodes linked). Resurface with: witness-family-tree clarification,
+community-memorial, sovereign-genealogy, ultimate-cut-list. Open question still
+parked: does a deceased node need a single canonical co-signed anchor, or do
+stories just cluster by subject + family agreement?

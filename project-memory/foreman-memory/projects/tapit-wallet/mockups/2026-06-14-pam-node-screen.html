@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pam's node — grounded wireframe</title>
+<style>
+  :root{
+    --ink:#1c1a17; --muted:#7c756c; --paper:#f7f4ef; --card:#fff;
+    --line:rgba(28,26,23,.12); --accent:#b4532a; --warm:#e8dccd;
+    --live:#1f7a4d; --livebg:#e7f4ec; --build:#9a6a00; --buildbg:#fbf1d8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#d9d2c7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);padding:18px;}
+  .phone{max-width:392px;margin:0 auto;background:var(--paper);border-radius:30px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25);border:1px solid var(--line);}
+  .screen{padding:16px 16px 26px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted);padding:4px 2px 12px;}
+  .prov{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;line-height:1.35;color:var(--muted);margin:7px 2px 0;}
+  .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:9.5px;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:5px;vertical-align:middle;}
+  .live{color:var(--live);background:var(--livebg);}
+  .build{color:var(--build);background:var(--buildbg);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .hero{background:linear-gradient(160deg,#fff,var(--warm));text-align:center;padding:20px 14px;}
+  .avatar{width:78px;height:78px;border-radius:50%;margin:0 auto 10px;background:radial-gradient(circle at 35% 30%,#cdbfa8,#8a7a60);display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;font-weight:600;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  .name{font-size:22px;font-weight:700;}
+  .sub{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+  .pill{font-size:11px;padding:4px 9px;border-radius:999px;background:var(--warm);color:#5a4a35;}
+  .pill.witness{background:#efe3ff;color:#5b3c8a;}
+  h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 2px;font-weight:700;}
+  .relrow{display:flex;align-items:center;gap:9px;margin-top:10px;}
+  .reldot{width:30px;height:30px;border-radius:50%;background:var(--warm);display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 auto;}
+  .relname{font-size:14px;font-weight:600;}
+  .reltype{font-size:11.5px;color:var(--muted);}
+  .arrow{color:var(--muted);font-size:12px;margin:0 1px;}
+  .story{border-top:1px solid var(--line);padding-top:11px;margin-top:11px;}
+  .story:first-of-type{border-top:0;padding-top:0;margin-top:8px;}
+  .story .when{font-size:13px;font-weight:700;}
+  .story .rec{font-size:10.5px;color:var(--muted);margin-top:1px;}
+  .story .body{font-size:13px;line-height:1.45;margin-top:6px;}
+  .photo{width:100%;height:96px;border-radius:10px;margin-top:8px;background:linear-gradient(135deg,#b9c6cf,#8aa0ac);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);font-size:12px;}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:10.5px;color:var(--muted);}
+  .verified{color:var(--live);font-weight:600;}
+  .signers{color:var(--accent);font-weight:600;}
+  .face{width:26px;height:26px;border-radius:50%;background:#cdbfa8;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;border:2px solid #fff;margin-left:-7px;}
+  .face:first-child{margin-left:0;}
+  .connectrow{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+  .who{display:flex;align-items:center;}
+  .cbtn{font-size:11.5px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:5px 12px;background:transparent;}
+  .impact{display:flex;align-items:baseline;gap:8px;margin-top:6px;}
+  .impact .n{font-size:26px;font-weight:800;color:var(--accent);}
+  .impact .l{font-size:12px;color:var(--muted);}
+  .addbtn{width:100%;margin-top:14px;background:var(--ink);color:var(--paper);border:0;border-radius:12px;padding:13px;font-size:14px;font-weight:600;}
+  .legend{max-width:392px;margin:14px auto 0;font-family:ui-monospace,monospace;font-size:11px;color:#4a443c;background:#fff;border-radius:12px;padding:12px 14px;border:1px solid var(--line);}
+  .legend b{color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="screen">
+    <div class="topbar"><span>‹ Family tree</span><span>Pam Winchester</span><span>•••</span></div>
+
+    <!-- HERO -->
+    <div class="card hero">
+      <div class="avatar">P</div>
+      <div class="name">Pam Winchester</div>
+      <div class="sub">1949 – 2022 · the church lady</div>
+      <div class="pills">
+        <span class="pill witness">🕊 Witnessed by family</span>
+        <span class="pill">your grandmother</span>
+      </div>
+    </div>
+    <div class="prov">
+      name/dates ← journal <code>subject="Pam Winchester"</code> + story leaves
+      <span class="tag live">LIVE</span> &nbsp; · &nbsp;
+      a real keyless person-NODE (no wallet) + "witnessed" status
+      <span class="tag build">TO BUILD</span>
+    </div>
+
+    <!-- HOW SHE CONNECTS TO YOU -->
+    <div class="card">
+      <h3>How she connects to you</h3>
+      <div class="relrow">
+        <div class="reldot">P</div><span class="reltype">Pam</span>
+        <span class="arrow">→ mother of →</span>
+        <div class="reldot">D</div><span class="relname">Dad</span>
+        <span class="arrow">→ father of →</span>
+        <div class="reldot">★</div><span class="reltype">you</span>
+      </div>
+    </div>
+    <div class="prov">
+      living edge Dad→you ← <code>relationship</code> attestation (handshake,
+      kin label "parent") <span class="tag live">LIVE</span> &nbsp; · &nbsp;
+      witnessed edge Pam→Dad (she can't co-sign — deceased)
+      <span class="tag build">TO BUILD</span> &nbsp; · &nbsp; path-walk to her node
+      <span class="tag build">TO BUILD</span>
+    </div>
+
+    <!-- HOW SHE IMPACTED YOU -->
+    <div class="card">
+      <h3>How she impacted you</h3>
+      <div class="impact"><span class="n">7</span><span class="l">moments you signed about Pam</span></div>
+
+      <div class="story">
+        <div class="when">Happened on Easter, April 12, 2009</div>
+        <div class="rec">Recorded by you · Jun 14, 2026</div>
+        <div class="body">She made 200 homemade rolls out of her own pocket and fed the whole town after the Hendersons lost their boy. I was 9. I still make them her way.</div>
+        <div class="photo">📷 the rolls on her counter</div>
+        <div class="meta">
+          <span class="verified">✓ Time-verified · Bitcoin block 841,233</span>
+          <span class="signers">✍ 3 family signed this</span>
+        </div>
+      </div>
+
+      <div class="story">
+        <div class="when">Happened in the winter of 1978</div>
+        <div class="rec">Recorded by you · Jun 14, 2026</div>
+        <div class="body">Dad's story: she drove 40 miles in an ice storm to bring insulin to a stranger. Mom signed that she remembers it the same.</div>
+        <div class="meta">
+          <span class="verified">✓ Time-verified · Bitcoin block 840,991</span>
+          <span class="signers">✍ 2 family signed this</span>
+        </div>
+      </div>
+    </div>
+    <div class="prov">
+      each moment ← journal/story attestation, <code>subject="Pam"</code>,
+      <code>event_date</code> + "recorded" honesty line + photo hash + OTS anchor
+      + co-sign count <span class="tag live">LIVE</span>
+      <span style="color:var(--live)">(this is the Moments + co-sign substrate already in the repo)</span>
+    </div>
+
+    <!-- FAMILY WHO REMEMBER HER -->
+    <div class="card">
+      <h3>Family who remember her — reach the living</h3>
+      <div class="connectrow">
+        <div class="who"><span class="face">D</span><span style="margin-left:10px;font-size:13px;font-weight:600">Dad · signed 4 stories</span></div>
+        <button class="cbtn">Connected ✓</button>
+      </div>
+      <div class="connectrow">
+        <div class="who"><span class="face">S</span><span style="margin-left:10px;font-size:13px;font-weight:600">Aunt Carol · signed 3</span></div>
+        <button class="cbtn">Connect</button>
+      </div>
+      <div class="connectrow">
+        <div class="who"><span class="face">J</span><span style="margin-left:10px;font-size:13px;font-weight:600">Cousin Jess · signed 1</span></div>
+        <button class="cbtn">Connect</button>
+      </div>
+    </div>
+    <div class="prov">
+      the living are real connectable people ← <code>connections</code> handshakes +
+      <code>displayNameOf</code> <span class="tag live">LIVE</span> &nbsp; · &nbsp;
+      grouping them by "who also signed Pam" <span class="tag build">TO BUILD</span>
+      (it's a query over shared subject)
+    </div>
+
+    <button class="addbtn">+ Add your story about Pam</button>
+    <div class="prov">
+      opens the composer with <code>subject = "Pam Winchester"</code>, your felt note,
+      an event date, sign + anchor <span class="tag live">LIVE</span>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <b>How to read this:</b> &nbsp;<span class="tag live">LIVE</span> = backed by data the wallet already
+  signs &amp; stores today (journal/story attestations, relationship handshakes, OTS anchors, co-signatures).
+  &nbsp;<span class="tag build">TO BUILD</span> = the honest gap: a keyless person-node, a witnessed
+  relationship edge to the deceased, and the tree path-walk + "who-also-signed" grouping.
+  Nothing here is faked — every LIVE panel maps to a real file/field in the repo; every gap is labeled.
+</div>
+
+</body>
+</html>
