@@ -2512,3 +2512,102 @@ typed-Merkle-forest router, story-attestation. This entry is the threat-model +
 data-ownership spine. Open question to teach back: how much of the sensitive pass
 can run on a local small model so the cloud only ever sees the de-identified
 generic pass?
+
+---
+
+## 2026-06-14 — Multi-perspective co-signed memory attestations + safety-first disclosure guardrail + redundant family-key-gated backup
+Tag: product-mechanism / family-memory / web-of-trust / selective-disclosure / backup / personhood-comparison
+Stage: sprouting (several concrete mechanisms + a strategic comparison)
+One-line: "Fill-in-the-book" but live and sovereign — the bot interviews each
+member, extracts their version of a shared memory, and the family CO-SIGNS it
+(Mom surfaces the Disney 2009 trip, Dad signs, kids sign), so corroboration
+across perspectives gives the memory WEIGHT; honestly marked as recalled-now-
+about-then (not forged-as-then); disclosed selectively to medical/trip/music AIs
+with a safety-first guardrail that clearly warns before anything sensitive
+crosses; redundantly backed up as family-key-gated encrypted blobs to any number
+of clouds nobody but the family can unlock.
+
+Operator's framing in his own voice (stitched from the riff):
+"Everybody has their own wallet and their own bot is the interface of the wallet.
+We're playing a game — the family bot — and Mom fills in a whole questionnaire of
+Mom questions, the deeper scientific ones, and it extracts the stories of when
+they were younger and makes actual attestations of the way SHE remembers it and
+the way I remember it — like the fill-out book where someone reads the stories
+later, but the wallet's involved and an AI bot converses and pulls out the
+stories and choreographs the family to tell stories about the children, and the
+children tell how they remembered things, and those memories get backfilled. Mom
+surfaces something, Dad signs it, the kids sign it, and it ends up a memory
+attestation of the Walt Disney trip in 2009. Anyone signing up for the future
+has a permanent record that wouldn't have to be backdated, but we'd have a
+backdated version able to do — resurfaced slowly over time, the history fills in.
+Later someone can't retell your history if you went through the trouble to put it
+into personal attestations; if someone tried to disagree you'd have a leg to
+stand on, and the more it intertwines the more weight it has. It's still your own
+sovereign store you can disclose to medical places or AI bots for better trip
+instructions with all your prerequisites, or music that already knows your tops —
+you wouldn't have time to tell ChatGPT that, and do you even want it knowing
+everything about you? When it's something super sensitive, you're warned clearly
+by your protection guardrails — we always feel safe with being safe, not
+explorer in that moment. And ways to put it to your personal server or plug in
+any AWS backup, two AWS backups, data encrypted to blobs, a secret only the
+family can unlock — redundant backup you can always come back to but no one else
+can unlock because it's privy only to your family and your family keys being
+green."
+
+THE MECHANISMS (new, concrete):
+1. Multi-perspective co-signed memory attestation. One shared event → multiple
+   first-person tellings, each a leaf/attestation, optionally co-signed by other
+   members who corroborate. This is web-of-trust applied to MEMORY: weight =
+   number + closeness of corroborating signers. Reuses cosigning/mergeSignatures
+   (already built). The Disney-2009 entry is a claim with per-member sub-claims
+   + a co-signature set.
+2. Honestly-marked backdating (anti-fraud, critical). The attestation is created
+   NOW about a PAST event. NEVER forge the timestamp. The honest shape: issuedAt
+   = now (OpenTimestamps anchors that it existed by now), plus a claimed
+   event-date field ("about 2009") that is explicitly a recollection, not a
+   contemporaneous proof. So the leg-to-stand-on is "as of today the family
+   agrees this is how it happened," which strengthens over time as more sign — it
+   is NOT a false claim that the record existed in 2009. Get this boundary right
+   or the whole trust model rots.
+3. The fill-the-book interview loop. Bot-choreographed questionnaire (the
+   "deeper scientific Mom questions"), drip-resurfaced slowly over time so
+   history backfills gradually rather than as a chore. Extends host-bot +
+   story-attestation. suggested-questions feature (dormant) is the seed.
+4. Safety-first disclosure guardrail. Before anything sensitive crosses the
+   boundary to a medical/trip/music AI, the user is clearly warned by their own
+   side's guardrail — default to SAFE, not exploratory, in that moment. UX layer
+   on top of the selective-disclosure router. "We always feel safe with being
+   safe."
+5. Redundant family-key-gated backup (IS possible, grounded in our model). Data
+   is encrypted client-side to a family secret; ciphertext blobs can be written
+   to ANY number of destinations (personal server, two+ S3 buckets, etc.) — the
+   host never holds plaintext (already our ciphertext-only model). Unlock requires
+   family cooperation / quorum (Shamir among family keys — "family keys being
+   green"). Redundant + sovereign + nobody-else-can-open. This is an extension of
+   the existing snapshot/backup model to multi-destination + family-quorum unlock.
+
+THE COMPARISON (operator's actual question — Worldcoin et al. vs this):
+They are NOT close, and they're solving a DIFFERENT layer with the OPPOSITE
+adoption vector. Worldcoin/World (centralized iris biometric), BrightID / Proof
+of Humanity / Gitcoin Passport (social-graph personhood), eIDAS / W3C VC
+(institution-issued credentials) are all PROOF-OF-PERSONHOOD / identity-RAIL
+infrastructure — they answer "is this a unique real human / is this credential
+valid," top-down or token-incentivized, with NO everyday use case pulling
+adoption (Worldcoin literally pays people to scan eyes because there's no organic
+reason to). This nest is the OPPOSITE vector: use-case-first, adoption-through-
+warmth — the calculator-handed-people-math thesis. The family memory/disclosure
+use case is the DAILY reason to show up that personhood projects structurally
+lack. They could be COMPLEMENTARY (a personhood primitive the nest optionally
+consumes for Sybil-resistance at civic scale) but they are philosophically
+adverse (centralized biometric vs bottom-up sovereign social) and they do not
+touch the family-everyday-hub use case at all. Adoption probability favors the
+use-case-driven approach: people adopt a thing they want to open, not an identity
+rail they're told to join. This is the strongest argument that the nest's wedge
+is the warmth/use case, and personhood is a far-future optional input, not the
+product.
+
+Resurface with: master-synthesis-and-build-plan, living-family-nest thesis,
+double-pass overlay, typed-Merkle-forest router. Open question to teach back: for
+co-signed memories, what's the minimum corroboration that gives a memory
+"weight," and how is that weight shown to a non-technical family member without
+turning remembering into paperwork?
