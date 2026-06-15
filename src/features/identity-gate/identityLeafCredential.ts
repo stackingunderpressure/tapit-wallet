@@ -125,6 +125,14 @@ export interface BuildVouchingCircleLeafInput {
   pubkeys: readonly string[];
   /** envelopeId of the prior vouching_circle leaf, when superseding. */
   supersedes?: string;
+  /**
+   * Optional ISO timestamp for the designated_at leaf. Defaults to now.
+   * Pinnable so that two leaves with identical logical content produce
+   * an identical envelopeId — designated_at is otherwise the one
+   * non-content, wall-clock field that would otherwise make two builds
+   * a millisecond apart diverge.
+   */
+  designatedAt?: string;
 }
 
 export function buildVouchingCircleLeafDraft(
@@ -150,7 +158,7 @@ export function buildVouchingCircleLeafDraft(
       credential_type: IDENTITY_LEAF_TYPE,
       leaf_type: 'vouching_circle' as IdentityLeafType,
       payload: JSON.stringify(payload),
-      designated_at: new Date().toISOString(),
+      designated_at: input.designatedAt ?? new Date().toISOString(),
       supersedes: input.supersedes?.trim() ?? '',
     },
   });
@@ -323,6 +331,9 @@ export interface BuildReleaseGatePolicyLeafInput {
   freshnessHorizonHours?: number;
   pingHorizonHours?: number;
   supersedes?: string;
+  /** Optional ISO timestamp for designated_at. Defaults to now;
+   *  pinnable for deterministic content (see vouching-circle note). */
+  designatedAt?: string;
 }
 
 const DEFAULT_FRESHNESS_HORIZON_HOURS = 365 * 24;
@@ -383,7 +394,7 @@ export function buildReleaseGatePolicyLeafDraft(
       credential_type: IDENTITY_LEAF_TYPE,
       leaf_type: 'release_gate_policy' as IdentityLeafType,
       payload: JSON.stringify(payload),
-      designated_at: new Date().toISOString(),
+      designated_at: input.designatedAt ?? new Date().toISOString(),
       supersedes: input.supersedes?.trim() ?? '',
       // for_leaf is also lifted to a top-level field so
       // findLatestReleaseGatePolicyLeaf can filter without

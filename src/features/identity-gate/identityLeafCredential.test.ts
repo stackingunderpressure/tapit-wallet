@@ -76,12 +76,17 @@ describe('vouching_circle leaf', () => {
     const peerA = HEX_64('aa');
     const peerB = HEX_64('bb');
     const peerC = HEX_64('cc');
-    // Identical issuedAt so the only variable is pubkey input order.
+    // Identical issuedAt AND designatedAt so the only variable is the
+    // pubkey input order. designated_at is a wall-clock leaf inside the
+    // claim; pinning it is what makes this assert canonicalization
+    // rather than flake when two builds straddle a millisecond.
     const issuedAt = '2026-05-29T12:00:00.000Z';
+    const designatedAt = '2026-05-29T12:00:00.000Z';
     const draftOne = {
       ...buildVouchingCircleLeafDraft({
         identityPubkey: op.identity.subject,
         pubkeys: [peerA, peerB, peerC],
+        designatedAt,
       }),
       issuedAt,
     };
@@ -89,6 +94,7 @@ describe('vouching_circle leaf', () => {
       ...buildVouchingCircleLeafDraft({
         identityPubkey: op.identity.subject,
         pubkeys: [peerC, peerA, peerB],
+        designatedAt,
       }),
       issuedAt,
     };
