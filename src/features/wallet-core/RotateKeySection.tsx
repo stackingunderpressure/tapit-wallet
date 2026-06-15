@@ -44,6 +44,11 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rotatedJustNow, setRotatedJustNow] = useState(false);
+  // Re-announce state: lets a wallet that ALREADY rotated (before the
+  // announcement feature shipped, or while peers were offline) push its
+  // current key to connections now.
+  const [announcing, setAnnouncing] = useState(false);
+  const [announcedTo, setAnnouncedTo] = useState<number | null>(null);
 
   // Snapshot the chain length at render time so the post-rotation
   // re-render shows the new count cleanly.
@@ -78,15 +83,16 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
   // peer. Each peer's wallet verifies the chain and learns our new key is
   // the same person, so messaging follows the rotation. Best-effort and
   // fire-and-forget — the rotation itself does not depend on delivery.
-  async function announceRotationToPeers() {
+  // Returns the number of peers it sent to.
+  async function announceRotationToPeers(): Promise<number> {
     const chain = wallet.successionChain;
-    if (chain.length === 0) return;
+    if (chain.length === 0) return 0;
     let announcement;
     try {
       announcement = wallet.sign(buildKeySuccessionAnnouncement(chain));
     } catch (err) {
       console.warn('rotation announcement build failed', err);
-      return;
+      return 0;
     }
     const me = wallet.identity.toLowerCase();
     const myKeys = new Set(wallet.keyHistory.map((k) => k.toLowerCase()));
@@ -103,6 +109,23 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
       void sendEnvelope(peer, announcement).catch((err) => {
         console.warn('rotation announcement send failed', peer, err);
       });
+    }
+    return peers.size;
+  }
+
+  // Manual re-announce — for a wallet that rotated before this feature
+  // existed, or whose peers were offline when it did. Pushes the current
+  // key to every connection so their wallets can follow the rotation.
+  async function reAnnounce() {
+    setAnnouncing(true);
+    setAnnouncedTo(null);
+    try {
+      const count = await announceRotationToPeers();
+      setAnnouncedTo(count);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 're-announce failed');
+    } finally {
+      setAnnouncing(false);
     }
   }
 
@@ -145,6 +168,32 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
           )}
         </div>
       </div>
+
+      {chainLength > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => void reAnnounce()}
+            disabled={announcing}
+            className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
+          >
+            {announcing ? 'Telling your connections…' : 'Tell my connections my current key'}
+          </button>
+          <p className="mt-1 text-xs text-muted">
+            Sends each connection a signed note that your current key is still
+            you, so your messages reach the right conversation on their end.
+            Use this if you rotated before this feature existed, or if a
+            connection was offline when you rotated.
+          </p>
+          {announcedTo !== null && (
+            <p className="mt-1 text-xs text-emerald-700" role="status">
+              {announcedTo === 0
+                ? 'No connections to tell yet — once you connect with someone, come back and tap this.'
+                : `Sent to ${announcedTo} connection${announcedTo === 1 ? '' : 's'}. They'll pick it up when reachable.`}
+            </p>
+          )}
+        </div>
+      )}
 
       {rotatedJustNow && (
         <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
