@@ -3476,3 +3476,414 @@ RECOMMENDATION: Option 1 for the friction win now, with honest labeling that an
 online-completed connection is online-verified; revisit Option 2 if in-person
 proof matters enough to warrant the nonce. Resurface with the 2026-06-15 handshake
 copy overhaul. Open question is the tradeoff itself — see chip.
+```
+Date: 2026-06-09
+Tag: COOKING APP <-> TAPIT - first external Bench-app integration over Layer 2
+Summary: Operator wants his daughter's cooking app to "hook into" Tapit: bring in
+recipes, stamp them (sign + Bitcoin-anchor) as an "I can eat this / verified"
+feature, with a recipe-card toggle that reveals "Bitcoin block N + verified" and
+the hash minted to the chain. KEY GROUNDING (verified against code, not memory):
+this needs ZERO new wallet code - the Layer 2 inter-app signing pathway is ALREADY
+BUILT (src/features/sign-request, born 2026-05-21). External apps deep-link to
+<origin>/sign?req=<base64url SignRequest>, the user approves inside the wallet,
+the wallet signs+holds+queues-anchor and redirects to the app's callback with
+?grant=<base64 SignGrant{envelope}> (or ?decline). The returned signed envelope IS
+the stamp; <origin>/verify?p=<base64url proof> is a stateless public re-verifier
+showing signature + Bitcoin block.
+This is the FIRST real third-party Bench app to consume the wallet as the
+key-holding hub - the thesis ("the hub every other app connects TO to get something
+signed") made concrete. Recipes map to kind:'journal' (dated personal record) or
+'credential' (certified). 
+LOAD-BEARING HONEST CAVEATS surfaced in the hand-off prompt: (1) block number is
+EVENTUALLY-consistent - the grant at approve-time is signed but anchor is pending;
+Bitcoin confirmation (OTS) takes hours, so the card needs a two-state design
+(Stamped->awaiting, then Verified->block N). (2) fields are FLAT string|number|
+boolean only - flatten ingredient/step arrays to strings. (3) origin is an
+untrusted display string; trust = user approval + verifiable sig + anchor. (4) v1
+transport is deep-link only (NIP-46 specced, not built).
+Deliverable: a ready-to-paste hand-off prompt at
+project-memory/.../tapit-wallet/integration/cooking-app-tapit-integration-prompt.md
+(<WALLET_ORIGIN> placeholder to fill with the deployed PWA origin).
+Stage: sprouting -> ready to build on the cooking-app side; nothing to build on ours.
+Resurface: when the daughter's app field-tests the round-trip (watch the async
+block-number UX + the flat-fields flattening as the two likeliest snags), and as
+the proof that Layer 2 is real - candidate to generalize into a tiny published
+"connect to Tapit" snippet/SDK if a second Bench app wants in.
+```
+
+```
+Date: 2026-06-11
+Tag: MOM-AND-POP LODGING WEDGE - verified-stay attestations as a Bench-app GTM
+Summary: Operator: small lake resorts / cabins / mom-and-pops (5-20 units) with a
+simple booking page are a distribution vector. Tie the wallet to the sign-in or
+guest book (simplest version), guest is directed to Tapit to "do a test" (make an
+attestation), attestations accumulate into a verifiable track record. Bundle an AI
+chatbot (the wallet-bot pattern) as a Trojan horse that delivers real value so the
+property + guests adopt our methods. Reputation thesis: verified attestations give
+a track record for validity (was the trail good, was the experience real);
+accredited users with history carry more weight, a historyless one-off carries
+little; people can post what they want but it gets no weight without a track
+record; more independent verifiers = more legitimate.
+WHY IT'S STRATEGICALLY REAL: exercises the EXACT stack already shipped - the Layer 2
+sign-request pathway (same template as the cooking-app integration) emits a
+SignRequest from the booking page; the check-in/review becomes a signed +
+OTS-anchored attestation; web-of-trust weighting scores it. Underserved market with
+a real, unsolved trust problem (fake reviews) the incumbents (Google/TripAdvisor)
+can't fix because their reviews are siloed + platform-owned. A property is a Hearth;
+the weighting is HEARTWOOD judge-weight doctrine; computeWeight exists in
+tapit-attest (advancedWeighting throws not-implemented - the hard part is stubbed).
+LOAD-BEARING HONEST CRITIQUE (don't flatter):
+1. Same caveat as the financial leaf: a signed review proves WHO claimed it + WHEN,
+   un-altered - NOT that the stay was real or good. Value lives almost entirely in
+   the WEIGHTING + CORROBORATION layer, which is the hardest + least-built part, not
+   the signing (commodity, done).
+2. SYBIL is the central threat and brutal in lodging (incentive to fake glowing
+   reviews of your own property, trash competitors). Naive "more verifiers = more
+   legit" is gameable - spin up 50 identities to verify your own review. Defense
+   requires verifiers with independent, costly-to-fake history = the SAME unsolved
+   realness/independence problem as the social sig.
+3. KEYSTONE FIX = issuer corroboration: the RESORT signs "this guest actually
+   stayed here" with the resort's key (like a bank co-signing the financial leaf).
+   That check-in attestation is hard to fake (needs the resort key) and is what
+   gives a guest's later review weight. Lead with issuer-corroborated STAYS, not
+   self-signed reviews + verifier-counting (Sybil bait).
+4. Adoption friction: "go install a separate wallet and do a test" mid-booking will
+   crush conversion. Simplest version must be near-zero-friction - attestation
+   minted FOR the guest (claim later), or purely opt-in post-stay. Trojan horse
+   must deliver value BEFORE asking for the wallet step or it dies at install.
+5. Two-sided cold start: reputation track record only compounds across MANY
+   properties; first 100 users get little reputation value. Per-property value
+   (real guestbook + genuinely useful concierge bot: checkout time, dock open,
+   local tips) must stand alone, independent of network size.
+SMALLEST USEFUL CUT (the honest lead): resort issues a SIGNED verified-stay
+attestation to the guest at checkout (issuer-corroborated, portable, self-owned,
+hard to fake); guest holds it + can attach an optional review leaf; /verify shows
+"stay attested by <resort key>". That alone is novel vs siloed platform reviews -
+a portable verified-stay credential the traveler OWNS and carries across properties.
+Weighting / accreditation / cross-property reputation + sat-staked skin-in-the-game
+(SATOSHI costly-signal vs Sybil) is the north-star that follows volume.
+Stage: sprouting. Resurface when scoping the first external Bench-app pilot or any
+reputation/weighting work; pairs with the cooking-app integration as proof Layer 2
+is a real GTM surface, not a demo.
+```
+
+```
+Date: 2026-06-11 (refinement of the mom-and-pop lodging wedge, same day)
+Tag: PRE-SIGNED CONTENT-BLIND WITNESS TOKEN - the issuance trick that protects
+negative reviews
+Maturation: sprouting -> sprouting+ (mechanism sharpened). Operator's refinement of
+the issuer-corroboration keystone.
+Summary: At BOOKING, the guest's key receives ONE pre-signed "chance" from the
+establishment - a single-use, key-bound, CONTENT-BLIND entitlement to post exactly
+one witness about this stay. The guest can then say ANYTHING (praise OR complaint);
+it stays tamper-evident, anchored, and provably from a key the establishment itself
+authorized before it knew what would be said. Clean verifiable chain:
+establishment-key -> entitlement(guest-key, stay-id) -> guest-key -> witness(content),
+all anchored.
+WHAT THE TRICK ACTUALLY FIXES (real upgrade): separates the RIGHT TO SPEAK from the
+CONTENT. Because the establishment commits (signs) at booking BEFORE knowing the
+review, it cannot censor or withhold a negative one - it already vouched the guest
+is real. And one-token-per-real-booking rate-limits Sybil at the cost of an actual
+booking. So it upgrades the ISSUANCE/CENSORSHIP axis decisively.
+WHAT IT DOESN'T FIX (bounce, honest - operator: "I'm sure it's gameable too"):
+1. Denominator/selection: a dishonest operator routes bad stays AROUND the system -
+   handles complaints off-book, refunds-for-silence, "never issued a token" for
+   walk-ins/phone bookings. You only see witnesses from tokens that were issued; the
+   suppressed bad experiences are invisible. Defense: issuance must be
+   NON-DISCRETIONARY - the token rides the booking confirmation itself (withholding
+   it = not confirming the booking). But the operator runs their own booking system,
+   so it reduces to "trust the establishment to run honest auto-issuance" - weaker
+   than trustless. Honest ceiling.
+2. Costly-but-possible fake positives: operator self-books phantom stays, gets real
+   tokens, posts verified praise. Rate-limited + COSTS a real booking (the Sybil tax,
+   good) but not eliminated. WEIGHTING still required: a gushing brand-new single-use
+   key << a real cross-property traveler's history.
+3. Token resale / off-protocol collusion: bind the token NON-TRANSFERABLY to the
+   issued key (redeemable only by it). Stops resale of the posting right; can't stop
+   a guest being paid to post dictated content (unstoppable in any review system).
+4. Extortion flip-side: an un-censorable, portable, un-deletable verified 1-star is
+   real leverage ("pay me or it posts"). Mitigate with signed right-of-reply +
+   dispute attestations; can't fully remove the leverage.
+5. Provenance != truth: proves WHO + THAT-THEY-STAYED + UNTAMPERED, never that the
+   words are accurate. A real guest can still lie. Trust emerges from corroboration
+   density + reviewer-history weighting + right-of-reply, not from any single witness.
+6. Privacy/linkability: a persistent key carrying weighty history also leaks travel
+   patterns. Selective disclosure helps; pseudonymous-but-persistent key is the
+   compromise. The more weight, the more linkable - honest tension.
+7. Pre-sign-at-booking timing hole: token exists before check-in, so it could be
+   redeemed to "review" a stay that hasn't happened. Gate redemption/validity to
+   after the stay window or mark posted-during-vs-after.
+BUILDABILITY: issuance + signed witness + verify chain all sit on existing primitives
+(credential attestation, issuer signing, sign-request Layer 2, selective disclosure,
+OTS anchor). TWO parts need real design: (a) the "one chance" uniqueness - a
+nullifier / anchored spent-set so a token can't be redeemed twice (per-establishment
+tracking is easy; global double-spend prevention needs an anchored registry); (b) the
+weighting/accreditation math (computeWeight exists; advancedWeighting stubbed).
+NET: the pre-signed content-blind token decisively wins the censorship/Sybil-rate
+axis; the truth/reputation axis still rests on weighting + aggregation (the unbuilt
+hard part). The token makes each witness CREDIBLY SOURCED; it does not make any one
+witness TRUE. Sat-staked skin-in-the-game (SATOSHI) is the later costly-signal lever.
+Resurface: when scoping the lodging pilot or any issuer-credential + reputation cut.
+```
+
+```
+Date: 2026-06-11 (maturation note on the witness-token idea, same day)
+Tag: AGGREGATE-TRUTH crystallization - outliers wash, integrity reduces to ONE knob
+Maturation: sprouting+ -> maturing. Operator's robust-statistics argument is correct
+and resolves the "provenance != truth" caveat AT THE AGGREGATE LEVEL.
+Operator's point (accepted): the system is read in AGGREGATE, not per-witness. With
+enough verified-honest independent samples, robust statistics converge on truth and
+both extremes lose - 50 "trail 2 astonishing" vs 1 "it's rocky" correctly degrades
+the complaint to a footnote (wear good shoes), and an over-the-top rave with no
+corroboration from a no-history key reads as an outlier. A key corroborated by 100
+shops earns measured faith calibrated to that history. The SIGNING LAYER's real job
+is exactly to make the samples trustworthy inputs: real guest, untampered,
+one-per-real-stay, history-tagged - so the aggregate computes over clean
+independent-ish data instead of platform sludge. Correct, coherent, on-mission
+(present weighted/corroborated signal, let each reader apply their own measured
+faith - don't hand down one central 4.3-star verdict; that's a teaching surface).
+WHAT SURVIVES THE AGGREGATE ARGUMENT (the precise residual, NOT a rebuttal):
+1. THE knob: robust stats converge on truth ONLY IF samples are INDEPENDENT. Lone
+   liars + cheap fakes wash out for free (operator is right). What survives is
+   CORRELATED manipulation - a broker controlling many keys each with manufactured
+   cross-shop history all nudging one way; if the fakes look independent and numerous
+   they BECOME the mass, not an outlier. So system integrity reduces ENTIRELY to the
+   COST of fabricating a key that looks like genuine independent history. That single
+   number is the whole game. Levers: per-real-booking cost (already in), cross-shop
+   corroboration depth, sat-stakes (SATOSHI costly-signal).
+2. DENOMINATOR is orthogonal + unsolved by aggregation: stats run on reviews that
+   EXIST. Suppressed bad stays (refund-for-silence, token never issued) bias the
+   surviving median high no matter how good the outlier math. Needs non-discretionary
+   issuance (token rides the booking confirmation); ceiling = trust the operator's
+   gate where reality enters.
+3. ASYMPTOTIC: wisdom-of-crowd is a large-N property. New property (3 reviews), new
+   traveler (no history), obscure cabin = the weak regime, exactly where 3 fakes ARE
+   the consensus. Confidence must SCALE WITH N and be SHOWN ("based on 3 stays"), not
+   hidden behind a shaky median.
+4. "TRUTH" is precise for OBJECTIVE physical claims (is trail 2 rocky) but for
+   SUBJECTIVE ones it's robust consensus-of-those-who-showed-up - a humbler, honester
+   label than "truth."
+ENGINEERING REDUCTION: the design is sound and is literally HEARTWOOD judge-weight.
+It reduces to (a) computeWeight/advancedWeighting (stubbed) = history+corroboration
+weighting, (b) a Sybil-COST anchor on fabricating independent history, (c)
+non-discretionary issuance, (d) honest confidence-vs-N display. (a)+(d) are the
+buildable near-term; (b) is the deep one.
+```
+
+```
+Date: 2026-06-11 (threat-model close on the witness-token arc, same day)
+Tag: WALLET-AS-CAPTCHA - proof-of-personhood via non-parallelizable physical cost
+Maturation: maturing -> maturing (threat model resolved to its real boundary).
+Operator closes the cost-knob question I left open: the wallet+real-stay is the
+CAPTCHA / proof-of-personhood gate. A bot downloads a wallet and signs an identity
+for free (worthless), but CANNOT get a night's stay and convince a human owner a
+real person stayed - the gate's cost is PHYSICAL and NON-PARALLELIZABLE (a click
+farm can't physically stay at 100 cabins and charm 100 owners). This annihilates the
+Twitter-bot mass-spam failure mode that makes open review systems worthless.
+ELEGANT PROPERTY operator named: influence and stake are COUPLED. A no-crowd voice
+is just an opinion, easily discarded; only a key with real cross-shop reputation can
+move the needle, and such a key risks that earned reputation to post a dishonest
+review - "who would risk being the first, with no crowd to stand with." The only
+voice loud enough to harm a business is the voice with the most to lose. Honest
+DEFAULT when data is thin: fall back to first-hand / trusted-referral (web-of-trust),
+the hardest-to-fake mechanism - and making that the explicit default (not a
+fake-confident score) is on-mission sovereignty literacy.
+THE REAL RESIDUAL BOUNDARY (what survives BECAUSE the cheap attacks are dead - a sign
+the design works, attackers forced up the cost curve):
+1. TARGETED low-volume on SMALL-N: the gate kills industrial spam but not a funded
+   competitor buying a FEW real-stay negatives against a NEW property that has no
+   protective mass yet. The cost-gate and the aggregate-gate cover for each other
+   EXCEPT in the small-N x targeted-attack cell. Defense: corroboration density +
+   show-your-N + right-of-reply; honest weakness early.
+2. DISHONEST OWNER: the captcha-checker is an interested party. Solves BOTS cleanly,
+   solves insider gaming NOT AT ALL (selective issuance, self-booked praise). Bot
+   problem != dishonest-insider problem; the gate is the former only.
+3. CAPTURED/BRIBED HIGH-REP KEY: the gate concentrates trust into reputable keys,
+   which raises the VALUE of subverting one (bribe a 100-shop traveler to trash a
+   rival - measured-faith makes it land hard). Mitigated by anomaly-detection on
+   out-of-character reviews (the key that loves everyone then savages one place looks
+   off), not eliminated.
+4. REFERRAL-FALLBACK depth: the web-of-trust default is only as good as its roots; a
+   freshly bootstrapped region has shallow roots. Honest start = one real
+   family/community (mission: "if it only works for one family it succeeded").
+META: wallet-as-captcha doesn't make it unattackable; it raises the cost FLOOR so
+only motivated, skilled, targeted, VISIBLE, self-limiting attacks remain - which is
+the most any real trust system achieves. Goal isn't perfect; it's "expensive enough
+that honest is the dominant strategy for almost everyone." That is achieved here.
+
+```
+Date: 2026-06-11 (CORRECTION to the threat-model close, same day)
+Tag: PURCHASED-INFLUENCE ATTACK COLLAPSES - the residual is INSIDER, not outsider
+Maturation: correction of an overstatement in the prior two entries (the "targeted
+small-N" and "captured high-rep key" residuals were weaker than stated). Operator's
+dichotomy is correct and I concede it.
+Operator's fork (accepted): the competitor-down-the-street who wants to buy a hit
+either uses LOW-rep keys (discarded - "bought nothing") or needs HIGH-rep keys (real
+people who must be willing to BURN hard-earned reputation - scarce, expensive,
+one-shot, self-limiting). To actually SHIFT an aggregate verdict you need a CROWD of
+independent reputable voices, and THAT crowd is exactly what the personhood gate
+makes unmanufacturable: low-rep keys don't count, and you can't cheaply mass-produce
+high-rep keys because reputation requires real non-parallelizable stays. So a single
+captured key can't fake a mass, and one high-rep negative against a real mass is just
+an anomaly flagged against that key's own pattern. THIS ALSO RESOLVES the earlier
+"correlated fakes become the mass" worry (2026-06-11 aggregate-truth entry):
+correlated fakes can't acquire the credibility that would let them count as the mass.
+The purchased-influence / outsider attack genuinely collapses under the operator's
+own logic. I overstated it.
+WHAT ACTUALLY SURVIVES (a DIFFERENT attacker, not the one being questioned):
+1. THE INSIDER (owner), not the outsider (competitor): the owner uses REAL cooperating
+   people - self / friends / family who really stay - to mint GENUINE positive tokens,
+   and suppresses negatives by not issuing tokens (denominator). This doesn't need
+   "bought reputation" because the reviewers and stays are real; it's insider
+   self-dealing at the issuance gate, which is an interested party. Bounded: a few
+   friends can't out-mass real volume, and it faces the same show-N / referral default.
+2. COLD-START THINNESS (universal, not an attack): at N=0->few, ANY source honest or
+   not is thin, and "discard the lone opinion" needs a crowd to discard AGAINST. The
+   discount mechanism requires a denominator. Handled by the operator's own fix: show
+   the N honestly + default to first-hand/referral when thin, never launder a thin
+   sample as a verdict.
+NET CORRECTION: system is robust against PURCHASED outside influence (operator right).
+The real boundary is (a) INSIDER honesty at the issuance gate and (b) cold-start
+thinness - and BOTH are handled by the same honest posture already named: show-your-N
++ referral-default. The design already contains the answer to the attacks I'd named.
+
+```
+Date: 2026-06-11 (SYNTHESIS / resting point of the witness-token arc, same day)
+Tag: CHECK-IN ISSUANCE + INCENTIVE-COMPATIBILITY - honesty as the dominant strategy
+Maturation: maturing -> fruiting body (the arc reached a coherent resting synthesis).
+THE DENOMINATOR FIX (operator): issue the irrevocable review-key at CHECK-IN (start
+of stay), before the outcome is known, as a VISIBLE BLANKET POLICY ("everyone who
+stays gets one"). This converts suppression from invisible to SELF-INCRIMINATING: a
+guest given no key has grounds to be loud, and an owner who publicly runs
+"I cryptographically prove everyone who stayed" can't quietly withhold without
+breaking his own stated policy and burning HIS OWN credibility. The owner is a keyed
+participant too - influence-stake coupling now applies to the ISSUER, not just
+reviewers. So the gatekeeper has skin in the game.
+THE RUNNING-YOU-DOWN REFRAME (operator, correct): the system never stops detractors -
+people always badmouth off-system, that's the pre-existing default and always will be.
+What CHANGED is truth now has a VERIFIABLE COUNTERWEIGHT it never had: 98/100
+cryptographically-proven great stays means one bad voice correctly reads as "a bad day,
+world on tilt," not a verdict. You don't silence the critic; you give reality a louder,
+provable signal.
+THE UNIFYING THESIS (operator, = SATOSHI.md): design so that COOPERATING with the
+system beats ATTACKING it - everyone does better for themselves by going along, so
+honesty is the dominant strategy and gaming it just "gets you handed your ass." This is
+Bitcoin's incentive compatibility, and it's the through-line under EVERYTHING in this
+arc: the personhood gate, influence-stake coupling, check-in issuance, aggregate-truth
+all serve making honesty the cheapest winning move. This is the correct north star.
+HONEST RESIDUAL (precise, few, not manufactured):
+1. THE TOOTH: the suppression VICTIM can't PROVE suppression - the un-keyed guest has
+   no token precisely BECAUSE it was withheld, so "I stayed and got nothing" is
+   unverifiable and falls back to word-of-mouth. Presence is provable only through the
+   owner-controlled token => the owner keeps structural denominator power. MITIGATION
+   (real build, not free): a PUBLIC SIGNED issuance-POLICY commitment + a grievance
+   channel; BETTER - root the entitlement in the BOOKING/payment confirmation the GUEST
+   independently holds, moving issuance upstream of the owner's discretionary check-in
+   handout. Each step up reduces owner discretion; never fully zero (turtles).
+2. Soft denominator-shaping: owner comps/fixes unhappy guests off-system before review
+   so they don't post. Mild, often genuinely benign (fixing problems IS good), but
+   skews the distribution positive for non-quality reasons.
+3. Bootstrap to escape velocity: incentive-compatibility is the right END-STATE but not
+   automatic at small-N - early on, going-along confers little benefit yet (like early
+   Bitcoin mining near-worthless). Has to reach the point where cooperation pays.
+4. Bitcoin-analogy precision: right in SPIRIT (incentive compatibility) but enforced
+   SOCIALLY/economically (probabilistic, reputational) not by deterministic consensus
+   (cryptographic finality). Bitcoin REJECTS an invalid block by math, every node, no
+   judgment; this makes cheating reputationally UNPROFITABLE-in-expectation. Real and
+   powerful (how reputation markets work) but softer than consensus finality - build
+   the social-incentive layer DELIBERATELY, don't assume math enforces it.
+ARC STATUS: resting synthesis reached. The lodging wedge is a coherent
+incentive-compatible design on shipped primitives (Layer 2 sign-request + credential
+issuance + selective disclosure + OTS anchor); the two unbuilt deep parts remain
+weighting (computeWeight/advancedWeighting stubbed) and a Sybil/discretion-cost anchor.
+Next: if piloted, build smallest = booking-rooted verified-stay credential + public
+issuance-policy commitment + honest show-your-N; defer weighting math to volume.
+
+```
+Date: 2026-06-11 (extension: reciprocal signing + quality-uplift, same day)
+Tag: RECIPROCAL STAY SIGNING + REVIEW-AS-MARKET-DISCIPLINE
+Maturation: fruiting body (extends the resting synthesis with two new mechanisms).
+RECIPROCAL SIGNING (operator): guest checks in with their cryptographic key, signs
+their review, owner signs BACK; the mutual signature shows an ongoing happy
+relationship start-to-finish, and many cleanly reciprocated check-in/out cycles build
+a track record for BOTH parties. BUILDABLE NOW: this is literally the shipped cosigning
+primitive (mergeSignatures - two sigs on one envelope by envelopeId; the handshake
+co-sign pattern). A stay = a co-signed attestation.
+THE DESIGN-CRITICAL FORK (don't get this wrong): the owner's countersignature can mean
+two very different things - (i) "I confirm this person stayed / the stay closed
+cleanly" (presence, CONTENT-BLIND, always signable), or (ii) "I endorse the CONTENT of
+this review." If reciprocity means (ii), the owner only countersigns reviews he LIKES,
+so negative reviews go unreciprocated and look second-class => suppression rebuilt at
+the countersignature stage, undoing the check-in-issuance fix. CORRECT DESIGN: split
+them. Co-sign the STAY/COMPLETION (neutral, both can always sign - "this happened, loop
+closed"); keep the REVIEW as the guest's UNILATERAL signed leaf. Then "reciprocally
+closed" = clean mutual completion (a real, honest dual-sided reputation signal - 50
+cleanly-closed stays proves a good guest; 200 proves a clean operator) WITHOUT giving
+the owner a veto over opinion. A soured stay shows as ABSENCE of countersignature -
+real but low-fidelity (could be dispute, or just offline/forgot; needs a reason).
+COLLUSION caveat: mutual signing proves AGREEMENT, not TRUTH - a colluding pair can
+reciprocally praise each other. Provenance!=truth at the pair level; defended the same
+way - aggregate across many INDEPENDENT counterparties + history weighting (a pair that
+only ever praises each other with no other independent history is an anomaly).
+QUALITY-UPLIFT (operator: "doesn't the threat of a review system raise quality
+expectations?"): YES, directionally right and it's the symmetric incentive to the
+personhood gate - the gate makes HONESTY the reviewer's dominant strategy; a verifiable
+PORTABLE hard-to-game reputation makes QUALITY the owner's dominant strategy, because
+reputation becomes durable CAPITAL you build and carry, not a platform score you can
+flee by rebranding. Escaping your history gets expensive => longer-horizon incentive to
+be good. Same Bitcoin incentive-compatibility theme; both sides pushed toward the
+cooperative high-quality equilibrium. HONEST CAVEATS: (1) GOODHART - it raises MEASURED
+quality on review-salient dimensions, which can be gamed or pull effort from unmeasured
+things ("when a measure becomes a target it stops being a good measure"); can also
+breed defensiveness/homogenization/appeasement. (2) Only bites once the system has
+TEETH (reputation materially moves bookings) - "eventually" = post escape-velocity;
+below that the threat is empty. (3) Sorting effect: good operators opt in to signal,
+bad ones stay out to dodge accountability - opting out becomes a signal ONCE being-in
+is the expected default.
+NET: reciprocal signing is a near-term-buildable dual-sided reputation primitive on the
+existing cosigning code IF countersignature = clean-completion not content-endorsement.
+Quality-uplift is the owner-side half of the same incentive-compatibility thesis, real
+but Goodhart-bounded and teeth-dependent.
+
+```
+Date: 2026-06-11 (LENS CORRECTION - operator pulled me back to the Prime Directive)
+Tag: ADDITIVE VALUE, NOT SOLVE-EVERYTHING - the framing that re-reads the whole arc
+Maturation: fruiting body -> the load-bearing reframe of the entire witness-token arc.
+OPERATOR'S CORRECTION (accepted, and it's right): I kept escalating threat models as
+if the bar were "solve trust / be attack-proof." WRONG BAR. Nobody has solved trust
+(not Google, not TripAdvisor, not anyone). The goal is to ADD A VERIFIABLE LAYER OF
+VALUE on top of an already-flawed system, not replace or perfect it. This is literally
+the Prime Directive ("build the smallest useful version correctly") - the operator is
+MORE doctrine-aligned than my escalating critique was. I drifted into boiling the ocean.
+THE CHICKEN-AND-EGG DISSOLVES: I kept raising cold-start as a blocker. But you're not
+hatching trust from zero - the world ALREADY runs on flawed trust (the chicken AND egg
+already exist). We add a provable overlay on top. So "an attacker could still do X" is
+not a refutation; it just means the new layer doesn't fix that pre-existing flaw - it
+was never supposed to. The only question that matters: does it add a provable thing
+that didn't exist before? YES - portable, math-verifiable, mutually-attested
+interaction history, which degrades GRACEFULLY back to ordinary human judgment when
+data is thin ("was it a good day? I tried it, liked it / didn't" - and no review or
+thin history is NOT the end of the world, just no data).
+ADOPTION PATH (operator): start with a few who love the novelty ("I can prove it - our
+new guestbook"); it becomes the new norm fast; then NOT having the cryptographic chain
+feels behind. Novelty -> norm -> expected-default. Legitimate and how real adoption
+works.
+THE ARTIFACT (concrete + buildable): a STAGED HASH-CHAIN of a relationship - booking
+start -> check-in -> service stages ("bed turning was perfect") -> checkout, EACH stage
+attested along the way as mutual, accreting into hundreds of positive linked proofs
+over time. Maps to shipped primitives: each stage = an attestation; the chain = linked/
+succession attestations (successionLink in tapit-attest); mutual = cosigning. "Cream
+rises" = the visible HEAVINESS (weight) of each review; light ones default back to human
+judgment. The operator already integrated the show-your-N humility I kept harping on.
+RE-READS THE PRIOR ENTRIES: the "residuals" logged earlier (insider self-dealing,
+captured keys, targeted small-N, Goodhart) are NOT blockers under this lens - they are
+pre-existing flaws of the trust world that the additive layer simply doesn't claim to
+fix. Keep them as known-limits notes, NOT as gates on shipping.
+THE ONE THING THAT STAYS LOAD-BEARING (because it IS the added value, not an attack):
+"verifiable by anyone OUTSIDE the system using math" must be literally TRUE - the proof
+has to verify independently, off-our-domain, with standard tooling, not only inside our
+own /verify page. If the proof only checks inside our app, we didn't add the
+provable-to-anyone layer we're claiming - we built another walled garden with a verify
+button. So independent off-domain math-verifiability is THE value prop and the cheapest
+highest-leverage thing to nail. (This was prior "gap #1"; under the additive lens it's
+not a residual - it's the product.)

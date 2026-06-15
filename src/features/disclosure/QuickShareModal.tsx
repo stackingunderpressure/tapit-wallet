@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { QuickSharePreset } from './quickSharePresets.ts';
 import { ShareCard } from './ShareCard.tsx';
 import { buildVerifyUrl } from './buildVerifyUrl.ts';
+import { downloadOtsFile } from './exportProof.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 
 // Tapping a preset in the Quick-share section opens this modal.
@@ -138,6 +139,23 @@ export function QuickShareModal({ preset, onClose }: Props) {
                 {copied ? 'Copied' : 'Copy link'}
               </button>
             </div>
+
+            {anchor?.proof && (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => downloadOtsFile(anchor.proof)}
+                  className="w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass py-2.5 text-xs font-medium text-fresh-text-primary backdrop-blur-xl"
+                >
+                  Download Bitcoin timestamp (.ots)
+                </button>
+                <p className="mt-1.5 text-center text-[0.7rem] text-fresh-text-secondary">
+                  Lets whoever you send it to confirm the Bitcoin timestamp
+                  themselves with the standard OpenTimestamps tools — no app, and
+                  no taking our word for it.
+                </p>
+              </div>
+            )}
 
             <button
               type="button"

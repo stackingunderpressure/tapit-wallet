@@ -3,6 +3,7 @@ import type { Attestation } from 'tapit-attest';
 import { multiDisclosureProof, envelopeId } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
+import { downloadOtsFile } from './exportProof.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
@@ -37,7 +38,7 @@ interface Props {
 
 type Step =
   | { kind: 'pick' }
-  | { kind: 'generated'; paths: string[]; json: string };
+  | { kind: 'generated'; paths: string[]; json: string; otsProofHex?: string };
 
 // "Share a proof" flow. The operator picks one or more leaves out of
 // the attestation's claim tree and the wallet calls
@@ -100,7 +101,7 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
       const anchor = deriveVerificationStatus(attestation, row).anchor;
       const shared = anchor ? { ...bundle, anchor } : bundle;
       const json = JSON.stringify(shared, null, 2);
-      setStep({ kind: 'generated', paths, json });
+      setStep({ kind: 'generated', paths, json, otsProofHex: anchor?.proof });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'could not generate proof');
     }
@@ -239,7 +240,25 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
                   View as share card →
                 </button>
               )}
+              {step.otsProofHex && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    step.otsProofHex && downloadOtsFile(step.otsProofHex)
+                  }
+                  className="text-xs text-accent hover:underline"
+                >
+                  Download .ots
+                </button>
+              )}
             </div>
+            {step.otsProofHex && (
+              <p className="mt-1.5 text-[11px] text-muted">
+                The .ots file lets whoever you send it to confirm the Bitcoin
+                timestamp themselves with the standard OpenTimestamps tools —
+                no app, and no taking our word for it.
+              </p>
+            )}
             {showQr && <QrShow text={step.json} label="Disclosure proof" />}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (

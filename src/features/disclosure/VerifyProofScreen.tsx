@@ -21,6 +21,7 @@ import {
   type AnchorCheck,
   type ProofAnchor,
 } from './verifyProofAnchor.ts';
+import { downloadOtsFile } from './exportProof.ts';
 
 interface VerifiedField {
   path: string;
@@ -130,6 +131,19 @@ export function VerifyProofScreen() {
   const [outcome, setOutcome] = useState<Outcome>({ kind: 'idle' });
   const [scanning, setScanning] = useState(false);
   const [anchorCheck, setAnchorCheck] = useState<AnchorCheck>({ state: 'none' });
+  const [copied, setCopied] = useState(false);
+
+  // Portable verify: copy the self-contained proof JSON so it can be re-checked
+  // in any compatible verifier off this page.
+  async function copyProof() {
+    try {
+      await navigator.clipboard.writeText(raw);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      window.prompt('Copy the proof:', raw);
+    }
+  }
 
   // When a VALID disclosure result carries a Bitcoin anchor, re-verify the
   // anchor against the proven digest (async, network-free) and show the
@@ -459,6 +473,48 @@ export function VerifyProofScreen() {
               )}
             </>
           )}
+
+          <div className="mt-4 border-t border-ink/10 pt-3">
+            <div className="text-xs uppercase tracking-wide text-muted">
+              Verify this without this page
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Don't take our word for it — these checks run anywhere, with no app,
+              server, or trust in this page. Copy the proof to re-check the
+              signature math in any compatible verifier.
+              {outcome.anchor
+                ? ' Download the Bitcoin timestamp as a standard OpenTimestamps (.ots) file and verify it against the chain with the ots client or opentimestamps.org, using the digest below.'
+                : ''}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void copyProof()}
+                className="rounded-md border border-ink/15 px-3 py-1.5 text-xs font-medium hover:bg-ink/5"
+              >
+                {copied ? 'Copied' : 'Copy proof'}
+              </button>
+              {outcome.anchor &&
+                (anchorCheck.state === 'confirmed' ||
+                  anchorCheck.state === 'pending') && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      outcome.anchor && downloadOtsFile(outcome.anchor.proof)
+                    }
+                    className="rounded-md border border-ink/15 px-3 py-1.5 text-xs font-medium hover:bg-ink/5"
+                  >
+                    Download Bitcoin timestamp (.ots)
+                  </button>
+                )}
+            </div>
+            <div className="mt-2 text-[10px] uppercase tracking-wide text-muted">
+              Digest
+            </div>
+            <p className="mt-0.5 break-all rounded bg-ink/[0.04] px-2 py-1 font-mono text-[11px]">
+              {outcome.digest}
+            </p>
+          </div>
         </section>
       )}
 

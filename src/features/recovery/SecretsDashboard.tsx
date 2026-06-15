@@ -378,7 +378,7 @@ export function SecretsDashboard() {
             together to bring it back. You hand the pieces out; the secret
             itself never leaves this device whole.
           </p>
-          <p className="rounded-md border border-ink/10 bg-paper/60 px-3 py-2 text-[11px] text-muted">
+          <p className="border-l-2 border-accent/60 pl-3 text-[11px] text-muted">
             {LEAK_VS_LOSS}
           </p>
           <label className="block">
