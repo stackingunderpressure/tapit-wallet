@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Wallet } from 'tapit-attest';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Attestation, Wallet } from 'tapit-attest';
 import type { Transport } from '../transport/transport.ts';
 import type { InboxChatMessage } from '../transport/encryptedInbox.ts';
 import type { ThreadMessage } from './threadMessage.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
+import {
+  buildPeerKeyAlias,
+  resolveCanonical,
+  resolveCurrent,
+} from '../transport/peerSuccession.ts';
 import { useChatPersistence } from './useChatPersistence.ts';
 
 export interface SendChatMessageResult {
@@ -15,6 +20,14 @@ export interface UseChatTransportArgs {
   wallet: Wallet | null;
   ownerId: string | null;
   passphrase: string | null;
+  /**
+   * Wallet holdings — read for verified peer key-succession announcements
+   * so a peer who rotated still lands in the SAME thread (peer-rotation
+   * fix). Threads are keyed by the peer's canonical (genesis) key, which
+   * equals their handshake key, so the existing PeerThread lookup finds
+   * them with no change.
+   */
+  holdings: readonly Attestation[];
 }
 
 export interface UseChatTransportResult {
@@ -47,11 +60,18 @@ export function useChatTransport({
   wallet,
   ownerId,
   passphrase,
+  holdings,
 }: UseChatTransportArgs): UseChatTransportResult {
   const [chatThreadsByPeer, setChatThreadsByPeer] = useState<
     ReadonlyMap<string, readonly ThreadMessage[]>
   >(() => new Map());
   const chatSubRef = useRef<{ close(): void } | null>(null);
+  // Peer key-alias resolver, rebuilt as holdings change. A ref so the
+  // long-lived chat subscription handler (bound once per transport) and
+  // the send callback always read the latest map without re-binding.
+  const alias = useMemo(() => buildPeerKeyAlias(holdings), [holdings]);
+  const aliasRef = useRef(alias);
+  aliasRef.current = alias;
 
   useEffect(() => {
     if (!transport || !wallet) return;
@@ -63,20 +83,28 @@ export function useChatTransport({
           transport,
           wallet,
           (item: InboxChatMessage) => {
+            // Resolve the sender through verified peer succession: a peer
+            // who rotated their key lands in their EXISTING thread (keyed
+            // by their canonical/genesis key = their handshake key), not a
+            // new invisible one. Unknown senders resolve to themselves.
+            const threadKey = resolveCanonical(
+              item.senderPubkey,
+              aliasRef.current,
+            );
             const incoming: ThreadMessage = {
               direction: 'in',
               text: item.payload.text,
               ts: item.receivedAt,
-              peerPubkey: item.senderPubkey,
+              peerPubkey: threadKey,
               eventId: item.eventId,
             };
             setChatThreadsByPeer((prev) => {
-              const existing = prev.get(item.senderPubkey) ?? [];
+              const existing = prev.get(threadKey) ?? [];
               if (existing.some((m) => m.eventId === item.eventId)) {
                 return prev;
               }
               const next = new Map(prev);
-              next.set(item.senderPubkey, [...existing, incoming]);
+              next.set(threadKey, [...existing, incoming]);
               return next;
             });
           },
@@ -108,14 +136,19 @@ export function useChatTransport({
       }
       const trimmed = text.trim();
       if (trimmed.length === 0) return {};
+      // Resolve through peer succession: thread state is keyed by the
+      // peer's canonical key (so it stays one conversation across their
+      // rotations), but the message is ADDRESSED to their current key.
+      const threadKey = resolveCanonical(recipientPubkey, aliasRef.current);
+      const sendTarget = resolveCurrent(recipientPubkey, aliasRef.current);
       // Optimistic local append before publish so the composer
       // clears instantly and the operator sees their message in
       // the thread. Publish result attaches the event id below.
       const localTs = Math.floor(Date.now() / 1000);
       setChatThreadsByPeer((prev) => {
-        const existing = prev.get(recipientPubkey) ?? [];
+        const existing = prev.get(threadKey) ?? [];
         const next = new Map(prev);
-        next.set(recipientPubkey, [
+        next.set(threadKey, [
           ...existing,
           {
             direction: 'out',
@@ -132,7 +165,7 @@ export function useChatTransport({
       const result = await sendChatMessageTo(
         transport,
         { text: trimmed },
-        recipientPubkey,
+        sendTarget,
         wallet,
         { created_at: localTs },
       );
@@ -152,7 +185,7 @@ export function useChatTransport({
       const summary = summarizePublish(result.publish);
       if (summary.tone === 'fail') {
         setChatThreadsByPeer((prev) => {
-          const existing = prev.get(recipientPubkey) ?? [];
+          const existing = prev.get(threadKey) ?? [];
           const filtered = existing.filter(
             (m) =>
               !(
@@ -163,7 +196,7 @@ export function useChatTransport({
               ),
           );
           const next = new Map(prev);
-          next.set(recipientPubkey, filtered);
+          next.set(threadKey, filtered);
           return next;
         });
         throw new Error(summary.detail);
@@ -173,7 +206,7 @@ export function useChatTransport({
       // ts + text + direction since the optimistic record had no id.
       const eventId = result.event.id;
       setChatThreadsByPeer((prev) => {
-        const existing = prev.get(recipientPubkey) ?? [];
+        const existing = prev.get(threadKey) ?? [];
         const updated = existing.map((m) =>
           m.direction === 'out' &&
           m.ts === localTs &&
@@ -183,7 +216,7 @@ export function useChatTransport({
             : m,
         );
         const next = new Map(prev);
-        next.set(recipientPubkey, updated);
+        next.set(threadKey, updated);
         return next;
       });
       // 'pending' = at least one relay still might land it, but no

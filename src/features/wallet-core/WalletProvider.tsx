@@ -622,6 +622,7 @@ export function WalletProvider({ children }: Props) {
     wallet: activeWallet,
     ownerId: ownerId ?? null,
     passphrase,
+    holdings,
   });
 
   // Compound peer-removal: drop the handshake envelope and clear the
