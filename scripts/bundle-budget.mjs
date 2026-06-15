@@ -444,8 +444,10 @@ const BUDGETS = [
   // (generationOf + treeGenerations) so the tree reads as a shape, not a
   // flat list. Measured 4.05KB gz; bumped 4.0 -> 4.5KiB. 2026-06-15
   // node-detail slice (tap a person -> their stories via storiesAbout)
-  // measured 4.72KB gz; bumped 4.5 -> 5.0KiB.
-  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 5_120, label: 'FamilyTreeEditor' },
+  // measured 4.72KB gz; bumped 4.5 -> 5.0KiB. 2026-06-15 add-a-moment
+  // inline composer (createJournalEntry + subject_node link) measured
+  // 5.25KB gz; bumped 5.0 -> 5.5KiB.
+  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 5_632, label: 'FamilyTreeEditor' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from

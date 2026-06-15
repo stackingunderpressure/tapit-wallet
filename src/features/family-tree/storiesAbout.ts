@@ -1,6 +1,14 @@
-import type { Attestation } from 'tapit-attest';
+import type { Attestation, FieldBranch } from 'tapit-attest';
 import { momentTimestamp } from '../journal/momentDate.ts';
 import type { KinNode } from './kinGraph.ts';
+
+function claimLeaf(att: Attestation, name: string): string {
+  const claim = att.claim as FieldBranch;
+  const node = claim.children.find((c) => c.name === name);
+  return node && node.node === 'leaf' && typeof node.value === 'string'
+    ? node.value
+    : '';
+}
 
 // Family-tree render slice — the moments/stories ABOUT a person.
 //
@@ -17,6 +25,10 @@ import type { KinNode } from './kinGraph.ts';
 /** True when a journal attestation is about this person-node. */
 export function isStoryAbout(att: Attestation, node: KinNode): boolean {
   if (att.kind !== 'journal') return false;
+  // Robust link first: a subject_node leaf binding to this node's id.
+  const subjectNode = claimLeaf(att, 'subject_node').trim();
+  if (subjectNode.length > 0) return subjectNode === node.id;
+  // Legacy fallback: match by subject (keyed pubkey or name label).
   const subject = (att.subject ?? '').trim().toLowerCase();
   if (subject.length === 0) return false;
   if (node.keyedPubkey && subject === node.keyedPubkey.toLowerCase()) {

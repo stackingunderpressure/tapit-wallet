@@ -7,9 +7,12 @@ function journal(
   subject: string,
   eventDate?: string,
   issuedAt = '2026-01-01T00:00:00.000Z',
+  subjectNode?: string,
 ): Attestation {
   const children: { node: 'leaf'; name: string; value: string }[] = [];
   if (eventDate) children.push({ node: 'leaf', name: 'event_date', value: eventDate });
+  if (subjectNode)
+    children.push({ node: 'leaf', name: 'subject_node', value: subjectNode });
   return {
     kind: 'journal',
     subject,
@@ -39,6 +42,16 @@ describe('isStoryAbout', () => {
   it('ignores non-journal attestations', () => {
     const cred = { ...journal('Pam Winchester'), kind: 'credential' } as Attestation;
     expect(isStoryAbout(cred, pam)).toBe(false);
+  });
+  it('matches by subject_node id even when the name differs', () => {
+    const e = journal('wrong name', undefined, undefined, pam.id);
+    expect(isStoryAbout(e, pam)).toBe(true);
+  });
+  it('a subject_node binding to a DIFFERENT node excludes it (name ignored)', () => {
+    // subject name would match by the legacy path, but the explicit
+    // node link points elsewhere, so the robust link wins.
+    const e = journal('Pam Winchester', undefined, undefined, 'other-node');
+    expect(isStoryAbout(e, pam)).toBe(false);
   });
 });
 

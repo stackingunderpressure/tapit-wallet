@@ -41,6 +41,13 @@ export interface JournalInput {
    * when it was recorded. See momentDate.ts for the honesty boundary.
    */
   eventDate?: string;
+  /**
+   * Optional family-tree person-node id (the envelopeId of a person-node
+   * anchor) this entry is ABOUT. Written as a `subject_node` leaf so a
+   * story binds to a specific person robustly, instead of relying on a
+   * name match. Used by the family tree's "moments about <person>" view.
+   */
+  subjectNode?: string;
 }
 
 export interface JournalEntryResult {
@@ -71,6 +78,12 @@ export async function createJournalEntry(
   // backfilled memories never forge their recording time.
   if (input.eventDate && input.eventDate.trim().length > 0) {
     fields.event_date = input.eventDate.trim();
+  }
+
+  // Robust link to a family-tree person-node (envelopeId), so a story
+  // about a keyless ancestor binds to the node, not just a name.
+  if (input.subjectNode && input.subjectNode.trim().length > 0) {
+    fields.subject_node = input.subjectNode.trim();
   }
 
   if (input.attachment) {

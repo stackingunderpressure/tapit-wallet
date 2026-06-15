@@ -8,7 +8,9 @@ import { storiesAbout } from './storiesAbout.ts';
 import {
   readEventDate,
   formatEventDate,
+  normalizeEventDateInput,
 } from '../journal/momentDate.ts';
+import { createJournalEntry } from '../journal/createJournalEntry.ts';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 
 function claimString(att: Attestation, name: string): string {
@@ -50,7 +52,7 @@ function addToSet(map: Map<string, Set<string>>, k: string, v: string) {
 }
 
 export function FamilyTreeEditor({ onClose }: Props) {
-  const { wallet, ownerId, holdings, save } = useWallet();
+  const { wallet, ownerId, passphrase, prefs, holdings, save } = useWallet();
   const worker = useAnchorWorker();
 
   const [extra, setExtra] = useState<Extra>({
@@ -70,6 +72,52 @@ export function FamilyTreeEditor({ onClose }: Props) {
     node: KinNode;
     relationship: string;
   } | null>(null);
+  // Moments composed from within a person's detail, kept locally so they
+  // show immediately; they are also real held+anchored journal entries.
+  const [addedStories, setAddedStories] = useState<Attestation[]>([]);
+  const [momentText, setMomentText] = useState('');
+  const [momentDate, setMomentDate] = useState('');
+  const [momentBusy, setMomentBusy] = useState(false);
+  const [momentError, setMomentError] = useState<string | null>(null);
+
+  async function addMoment(person: KinNode) {
+    if (momentText.trim().length === 0) {
+      setMomentError('Write a few words first.');
+      return;
+    }
+    if (!passphrase) {
+      setMomentError('Wallet is locked — sign in again.');
+      return;
+    }
+    setMomentBusy(true);
+    setMomentError(null);
+    try {
+      const { attestation } = await createJournalEntry(
+        wallet,
+        ownerId,
+        passphrase,
+        worker,
+        {
+          text: momentText.trim(),
+          category: 'Family',
+          subject: person.keyedPubkey ?? person.displayName,
+          subjectNode: person.id,
+          eventDate: normalizeEventDateInput(momentDate),
+        },
+        prefs.cloudSync,
+      );
+      await save();
+      setAddedStories((prev) => [attestation, ...prev]);
+      setMomentText('');
+      setMomentDate('');
+    } catch (err) {
+      setMomentError(
+        err instanceof Error ? err.message : 'Could not save this moment.',
+      );
+    } finally {
+      setMomentBusy(false);
+    }
+  }
 
   // Merge the persisted graph with the optimistic adds so a just-added
   // relative shows immediately, regardless of context refresh timing.
@@ -194,7 +242,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
 
   if (selected) {
     const person = selected.node;
-    const stories = storiesAbout(holdings, person);
+    const stories = storiesAbout([...addedStories, ...holdings], person);
     return (
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
         <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
@@ -235,9 +283,8 @@ export function FamilyTreeEditor({ onClose }: Props) {
             </div>
             {stories.length === 0 ? (
               <p className="mt-2 text-sm text-muted">
-                No moments yet. In the journal, write an entry about{' '}
-                {person.displayName} (set “About → Someone else” to their name)
-                and it will gather here.
+                No moments yet. Add the first one below — a story, something
+                they did, how they made you feel.
               </p>
             ) : (
               <ul className="mt-2 space-y-3">
@@ -271,6 +318,50 @@ export function FamilyTreeEditor({ onClose }: Props) {
                 })}
               </ul>
             )}
+
+            <div className="mt-4 rounded-lg border border-ink/10 bg-white p-3">
+              <label
+                className="text-xs font-medium"
+                htmlFor="ft-moment-text"
+              >
+                Add a moment about {person.displayName}
+              </label>
+              <textarea
+                id="ft-moment-text"
+                rows={3}
+                value={momentText}
+                onChange={(e) => setMomentText(e.target.value)}
+                placeholder="A story, something they did, how they made you feel…"
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={momentDate}
+                  onChange={(e) => setMomentDate(e.target.value)}
+                  className="flex-1 rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm"
+                  aria-label="When did this happen (optional)"
+                />
+                <button
+                  type="button"
+                  onClick={() => void addMoment(person)}
+                  disabled={momentBusy}
+                  className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper disabled:opacity-40"
+                >
+                  {momentBusy ? 'Signing…' : 'Sign moment'}
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-muted">
+                Optional date — leave empty if it happened today; set a past
+                date to record an older memory.
+              </p>
+              {momentError && (
+                <p className="mt-1 text-xs text-red-600" role="alert">
+                  {momentError}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>
