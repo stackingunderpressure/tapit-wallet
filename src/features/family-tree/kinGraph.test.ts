@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { Wallet, envelopeId } from 'tapit-attest';
-import { buildKinGraph, relationshipLabel, type KinGraph } from './kinGraph.ts';
+import {
+  buildKinGraph,
+  relationshipLabel,
+  generationOf,
+  type KinGraph,
+} from './kinGraph.ts';
 import { buildPersonNodeDraft } from './personNode.ts';
 import { buildParentEdgeDraft } from './kinEdge.ts';
 
@@ -91,6 +96,32 @@ describe('relationshipLabel — affinity', () => {
     expect(relationshipLabel(g, 'me', 'sib_spouse')).toBe('sibling-in-law'));
   it('null for an unrelated node', () =>
     expect(relationshipLabel(g, 'me', 'stranger')).toBeNull());
+});
+
+describe('generationOf', () => {
+  const g = family();
+  it('parent is +1, grandparent +2, great-grandparent +3', () => {
+    expect(generationOf(g, 'me', 'p1')).toBe(1);
+    expect(generationOf(g, 'me', 'gp')).toBe(2);
+    expect(generationOf(g, 'me', 'ggp')).toBe(3);
+  });
+  it('child is -1', () => expect(generationOf(g, 'p1', 'me')).toBe(-1));
+  it('sibling and cousin are same generation (0)', () => {
+    expect(generationOf(g, 'me', 'sib')).toBe(0);
+    expect(generationOf(g, 'me', 'cousin1')).toBe(0);
+  });
+  it('aunt/uncle is +1, niece/nephew is -1', () => {
+    expect(generationOf(g, 'me', 'p2')).toBe(1);
+    expect(generationOf(g, 'me', 'sib_child')).toBe(-1);
+  });
+  it('first cousin once removed (younger) is -1', () =>
+    expect(generationOf(g, 'me', 'cousin1_child')).toBe(-1));
+  it('spouse and sibling-in-law are same generation (0)', () => {
+    expect(generationOf(g, 'me', 'me_spouse')).toBe(0);
+    expect(generationOf(g, 'me', 'sib_spouse')).toBe(0);
+  });
+  it('null for an unrelated node', () =>
+    expect(generationOf(g, 'me', 'stranger')).toBeNull());
 });
 
 describe('buildKinGraph round-trip with signed attestations', () => {

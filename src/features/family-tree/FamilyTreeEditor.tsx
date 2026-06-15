@@ -1,13 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
-import {
-  buildKinGraph,
-  relationshipLabel,
-  type KinGraph,
-  type KinNode,
-} from './kinGraph.ts';
+import { buildKinGraph, type KinGraph, type KinNode } from './kinGraph.ts';
 import { createPersonNode, createKinEdge } from './createFamilyTree.ts';
+import { groupByGeneration } from './treeGenerations.ts';
 
 // Family-tree CUT 1 — the edit-your-adjacent-layer editor.
 //
@@ -83,18 +79,13 @@ export function FamilyTreeEditor({ onClose }: Props) {
     : null;
   const canSibling = Boolean(selfId && myParentId);
 
-  const people = useMemo(() => {
-    const out: { id: string; label: string; node: KinNode }[] = [];
-    for (const node of graph.nodes.values()) {
-      if (node.id === selfId) continue;
-      const label = selfId
-        ? relationshipLabel(graph, selfId, node.id) ?? 'relative'
-        : 'relative';
-      out.push({ id: node.id, label, node });
-    }
-    out.sort((a, b) => a.node.displayName.localeCompare(b.node.displayName));
-    return out;
-  }, [graph, selfId]);
+  // Generation rows (oldest at top, you in the middle, children below) —
+  // the tree read as a shape rather than a flat list.
+  const generations = useMemo(
+    () => groupByGeneration(graph, selfId),
+    [graph, selfId],
+  );
+  const hasPeople = graph.nodes.size > (selfId ? 1 : 0);
 
   async function ensureSelf(): Promise<string> {
     if (selfId) return selfId;
@@ -201,30 +192,41 @@ export function FamilyTreeEditor({ onClose }: Props) {
         </p>
 
         <div className="mt-4 rounded-xl border border-ink/10 bg-white p-3">
-          {people.length === 0 ? (
+          {!hasPeople ? (
             <p className="text-sm text-muted">
               No one on your tree yet. Add your first relative below.
             </p>
           ) : (
-            <ul className="space-y-2">
-              {people.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="font-medium">{p.node.displayName}</span>
-                  <span className="text-xs text-muted">
-                    {p.label}
-                    {p.node.born || p.node.died ? (
-                      <span className="ml-1">
-                        ({p.node.born ?? '?'}
-                        {p.node.died ? `–${p.node.died}` : ''})
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
+            <div className="space-y-4">
+              {generations.map((group) => (
+                <div key={String(group.generation)}>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                    {group.title}
+                  </div>
+                  <ul className="mt-1 space-y-1.5">
+                    {group.members.map((m) => (
+                      <li
+                        key={m.id}
+                        className={`flex items-center justify-between text-sm ${
+                          m.relationship === 'you' ? 'font-semibold' : ''
+                        }`}
+                      >
+                        <span>{m.node.displayName}</span>
+                        <span className="text-xs text-muted">
+                          {m.relationship}
+                          {m.node.born || m.node.died ? (
+                            <span className="ml-1">
+                              ({m.node.born ?? '?'}
+                              {m.node.died ? `–${m.node.died}` : ''})
+                            </span>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
 

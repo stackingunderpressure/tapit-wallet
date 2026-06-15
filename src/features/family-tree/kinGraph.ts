@@ -207,3 +207,63 @@ export function relationshipLabel(
   }
   return null;
 }
+
+/**
+ * Genealogical GENERATION of `to` relative to `from`: positive = older
+ * (ancestors / their generation — parent +1, grandparent +2), 0 = same
+ * generation (sibling, cousin, spouse), negative = younger (child -1,
+ * niece/nephew -1, grandchild -2). Blood only; null when untraceable.
+ */
+function bloodGeneration(
+  graph: KinGraph,
+  from: string,
+  to: string,
+): number | null {
+  if (from === to) return 0;
+  const ancFrom = ancestorsOf(graph, from);
+  const ancTo = ancestorsOf(graph, to);
+  if (ancFrom.has(to)) return ancFrom.get(to) as number; // ancestor → +d
+  if (ancTo.has(from)) return -(ancTo.get(from) as number); // descendant → -d
+
+  let best: { dF: number; dT: number } | null = null;
+  for (const [anc, dF] of ancFrom) {
+    const dT = ancTo.get(anc);
+    if (dT === undefined) continue;
+    if (dF === 0 || dT === 0) continue;
+    if (
+      !best ||
+      Math.max(dF, dT) < Math.max(best.dF, best.dT) ||
+      (Math.max(dF, dT) === Math.max(best.dF, best.dT) &&
+        dF + dT < best.dF + best.dT)
+    ) {
+      best = { dF, dT };
+    }
+  }
+  if (!best) return null;
+  return best.dF - best.dT;
+}
+
+/**
+ * Generation of `toId` relative to `fromId`, including affinity: a
+ * spouse is the same generation (0); an in-law takes the generation of
+ * the blood relative they attach to. Null when no relationship traces.
+ */
+export function generationOf(
+  graph: KinGraph,
+  fromId: string,
+  toId: string,
+): number | null {
+  if (fromId === toId) return 0;
+  if (graph.spouses.get(fromId)?.has(toId)) return 0;
+  const g = bloodGeneration(graph, fromId, toId);
+  if (g !== null) return g;
+  for (const spouseOfTo of graph.spouses.get(toId) ?? []) {
+    const gg = bloodGeneration(graph, fromId, spouseOfTo);
+    if (gg !== null) return gg;
+  }
+  for (const mySpouse of graph.spouses.get(fromId) ?? []) {
+    const gg = bloodGeneration(graph, mySpouse, toId);
+    if (gg !== null) return gg;
+  }
+  return null;
+}

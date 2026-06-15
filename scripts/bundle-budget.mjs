@@ -440,8 +440,10 @@ const BUDGETS = [
   // derived relationship). React.lazy from PeopleTabBody's Tree view, so
   // its chunk only loads when the operator opens the editor; the pure
   // graph core (personNode/kinEdge/kinGraph/createFamilyTree) rides in
-  // here too. Measured 3.59KB gz.
-  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 4_096, label: 'FamilyTreeEditor' },
+  // here too. 2026-06-15 render slice added the generation-grouped view
+  // (generationOf + treeGenerations) so the tree reads as a shape, not a
+  // flat list. Measured 4.05KB gz; bumped 4.0 -> 4.5KiB.
+  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 4_608, label: 'FamilyTreeEditor' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from
