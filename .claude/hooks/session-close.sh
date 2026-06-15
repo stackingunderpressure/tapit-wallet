@@ -49,31 +49,27 @@ cp "$SESSION_FILE" "$ARCHIVE_DIR/session-${TIMESTAMP}.json"
 
 git add "$SESSION_FILE" "$ARCHIVE_DIR/session-${TIMESTAMP}.json" 2>/dev/null || true
 
-# Push refspec — direct main when the carpenter is checked out on main
-# (comms v2 default), or dispatch-branch:main when the carpenter is on
-# a dispatch branch (PFOR-016 sandbox pattern; checking out local main
-# in such environments is unsafe per CLAUDE.md). Without this branch
-# detection the push silently fails under dispatch-sandbox mode and
-# leaves an unpushed checkpoint commit that any branch-gate hook will
-# then block on, producing an infinite Stop-fire loop.
+# WORKFLOW OVERRIDE -- operator quarterback model (2026-06-15).
+# NEVER auto-push to main. Every cut accumulates on the working branch and
+# is merged to main only in deliberate batches on the operator's command, so
+# that a Netlify production build (and its fee) fires once per batch instead
+# of once per session close. This hook commits the comms checkpoint, tags it
+# [skip ci] so even a branch deploy will not build, and pushes the CURRENT
+# BRANCH ONLY -- never the dispatch-branch:main refspec the prior version used.
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
-if [ "$CURRENT_BRANCH" = "main" ]; then
-  PUSH_REFSPEC="main"
-else
-  PUSH_REFSPEC="${CURRENT_BRANCH}:main"
-fi
 
 if ! git diff --cached --quiet; then
-  git commit -m "session: ${TIMESTAMP} comms checkpoint" >/dev/null 2>&1 || true
-  # Push to main with simple retry on transient network errors.
-  for delay in 0 2 4 8 16; do
-    [ "$delay" -gt 0 ] && sleep "$delay"
-    if git push origin "$PUSH_REFSPEC" 2>/dev/null; then break; fi
-  done
-  # When on a dispatch branch, also push the branch ref itself so
-  # origin tracks the carpenter's working state, not just main.
+  git commit -m "session: ${TIMESTAMP} comms checkpoint [skip ci]" >/dev/null 2>&1 || true
+  # Push to the working branch only. If somehow on main (should not happen
+  # under the quarterback model) do NOT push, to avoid triggering a
+  # production build; leave the commit local for the operator to batch.
   if [ "$CURRENT_BRANCH" != "main" ]; then
-    git push origin "$CURRENT_BRANCH" 2>/dev/null || true
+    for delay in 0 2 4 8 16; do
+      [ "$delay" -gt 0 ] && sleep "$delay"
+      if git push origin "${CURRENT_BRANCH}:${CURRENT_BRANCH}" 2>/dev/null; then break; fi
+    done
+  else
+    echo "session-close: on main under quarterback model; not auto-pushing (batch-merge is operator-driven)." >&2
   fi
 fi
 
