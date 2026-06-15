@@ -336,132 +336,160 @@ export function HandshakeModal({ onClose }: Props) {
         {step === 'role' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              Connecting links you and another person. Start one if you're
-              the one inviting them — works whether they're with you in
-              person or across the world. Join one if they've already
-              started by showing you their code.
+              A connection is a shared record that you two know each other —
+              you each keep a copy, locked to Bitcoin's clock. To do it in
+              person, one of you shows a code and the other scans it. It
+              doesn't matter who goes first.
             </p>
             <div className="mt-4 space-y-2">
               <button
                 type="button"
-                onClick={() => setStep('start')}
+                onClick={() => {
+                  setOpenPanel('with-you');
+                  setStep('start');
+                }}
                 className={primaryBtn}
               >
-                Start a handshake
+                Show my code
               </button>
               <button
                 type="button"
                 onClick={() => setStep('r-ready')}
                 className="w-full rounded-md border border-ink/15 py-3 text-sm font-medium"
               >
-                Join one in person
+                Scan their code
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenPanel('not-here');
+                  setStep('start');
+                }}
+                className="w-full rounded-md border border-ink/15 py-3 text-sm font-medium"
+              >
+                They're not with me
               </button>
             </div>
           </>
         )}
 
-        {step === 'start' && (
-          <div className="mt-3 space-y-2">
-            <AccordionPanel
-              label="If they're with you"
-              hint="Show your code · scan theirs"
-              open={openPanel === 'with-you'}
-              onToggle={() =>
-                setOpenPanel(openPanel === 'with-you' ? 'not-here' : 'with-you')
-              }
+        {step === 'start' && openPanel === 'with-you' && (
+          <div className="mt-3">
+            <div className={`${eyebrow}`}>In person · Step 1 of 3</div>
+            <h3 className="mt-1 text-lg font-semibold">Show them this code</h3>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted">
+              <li>The other person opens their wallet and scans this code.</li>
+              <li>
+                Their phone then shows a code back to you — tap{' '}
+                <span className="font-medium text-ink">Scan their code</span>{' '}
+                below and point your camera at it.
+              </li>
+            </ol>
+            {identity ? (
+              <div className="mt-3">
+                <QrShow text={canonicalEnvelope(identity)} label="Your code" />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!identity) return;
+                    const code = canonicalEnvelope(identity);
+                    try {
+                      await navigator.clipboard.writeText(code);
+                      setIdentityCopied(true);
+                      setTimeout(() => setIdentityCopied(false), 1500);
+                    } catch {
+                      window.prompt('Copy your code:', code);
+                    }
+                  }}
+                  className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+                >
+                  {identityCopied
+                    ? '✓ Copied — paste it to them'
+                    : '📋 Copy my code (if their camera won’t scan)'}
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-red-600">
+                Your identity isn't ready yet.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setScanInitialMode('camera');
+                setScanning(true);
+              }}
+              className={`mt-3 ${primaryBtn}`}
             >
-              {identity ? (
-                <>
-                  <QrShow
-                    text={canonicalEnvelope(identity)}
-                    label="Show them this code"
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!identity) return;
-                      const code = canonicalEnvelope(identity);
-                      try {
-                        await navigator.clipboard.writeText(code);
-                        setIdentityCopied(true);
-                        setTimeout(() => setIdentityCopied(false), 1500);
-                      } catch {
-                        window.prompt('Copy your code:', code);
-                      }
-                    }}
-                    className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
-                  >
-                    {identityCopied ? '✓ Copied' : '📋 Copy my code'}
-                  </button>
-                </>
-              ) : (
-                <p className="mt-2 text-sm text-red-600">
-                  Your identity isn't ready yet.
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setScanInitialMode('camera');
-                  setScanning(true);
-                }}
-                className={`mt-3 ${primaryBtn}`}
-              >
-                Scan their code →
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setScanInitialMode('paste');
-                  setScanning(true);
-                }}
-                className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
-              >
-                📋 Paste their code instead
-              </button>
-            </AccordionPanel>
+              Scan their code →
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScanInitialMode('paste');
+                setScanning(true);
+              }}
+              className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+            >
+              📋 Paste their code instead
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenPanel('not-here')}
+              className="mt-3 w-full text-center text-xs text-muted underline"
+            >
+              They're not with me right now
+            </button>
+          </div>
+        )}
 
-            <AccordionPanel
-              label="If they're not here"
-              hint={
-                prefs.nostrTransportEnabled
-                  ? 'Pick or paste their public key'
-                  : 'Needs you online'
-              }
-              open={openPanel === 'not-here'}
-              onToggle={() =>
-                setOpenPanel(openPanel === 'not-here' ? 'with-you' : 'not-here')
-              }
-            >
+        {step === 'start' && openPanel === 'not-here' && (
+          <div className="mt-3">
+            <div className={`${eyebrow}`}>Far away</div>
+            <h3 className="mt-1 text-lg font-semibold">
+              Send {remoteName.trim() || 'them'} a connection
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              Paste or pick their public key. It lands in their wallet and
+              they can say yes whenever — you don't both need to be online at
+              the same time.
+              {!prefs.nostrTransportEnabled &&
+                ' Turn on staying reachable in Settings first so it can send.'}
+            </p>
+            <div className="mt-3">
               <PeerPicker
                 holdings={holdings}
                 myIdentity={identity?.subject ?? ''}
                 value={remotePubkey}
                 onChange={setRemotePubkey}
               />
-              <label className="mt-3 block text-sm">
-                <span className="text-muted">Their name (optional)</span>
-                <input
-                  type="text"
-                  value={remoteName}
-                  onChange={(e) => setRemoteName(e.target.value)}
-                  placeholder="What should the record say about them?"
-                  className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
-                />
-              </label>
-              <RelationshipChips
-                value={relationship}
-                onChange={setRelationship}
+            </div>
+            <label className="mt-3 block text-sm">
+              <span className="text-muted">Their name (optional)</span>
+              <input
+                type="text"
+                value={remoteName}
+                onChange={(e) => setRemoteName(e.target.value)}
+                placeholder="What should the record call them?"
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
               />
-              <button
-                type="button"
-                onClick={startRemoteHandshake}
-                disabled={busy || remotePubkey.trim().length === 0}
-                className={`mt-3 ${primaryBtn}`}
-              >
-                {busy ? 'Sending…' : 'Send connection'}
-              </button>
-            </AccordionPanel>
+            </label>
+            <RelationshipChips value={relationship} onChange={setRelationship} />
+            <button
+              type="button"
+              onClick={startRemoteHandshake}
+              disabled={busy || remotePubkey.trim().length === 0}
+              className={`mt-3 ${primaryBtn}`}
+            >
+              {busy ? 'Sending…' : 'Send connection'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpenPanel('with-you')}
+              className="mt-3 w-full text-center text-xs text-muted underline"
+            >
+              They're with me right now
+            </button>
           </div>
         )}
 
@@ -501,13 +529,14 @@ export function HandshakeModal({ onClose }: Props) {
 
         {step === 'i-preview' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>Step 2 of 3</div>
+            <div className={`mt-2 ${eyebrow}`}>In person · Step 2 of 3</div>
             <h3 className="mt-1 text-lg font-semibold">
               Connect with {peerName || 'this person'}?
             </h3>
             <p className="mt-1 text-sm text-muted">
-              This records that you two connected in person, and you both
-              keep a copy. It's locked to Bitcoin's clock like everything else.
+              You scanned their code. Confirm here, then your phone shows one
+              last code for them to scan. You'll both keep a copy, locked to
+              Bitcoin's clock.
             </p>
             {handshake && readHandshake(handshake).relationship && (
               <div className="mt-3 rounded-md border border-ink/15 bg-ink/[0.02] px-3 py-2 text-sm">
@@ -531,15 +560,19 @@ export function HandshakeModal({ onClose }: Props) {
 
         {step === 'i-show-cosigned' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>Step 3 of 3</div>
+            <div className={`mt-2 ${eyebrow}`}>In person · Step 3 of 3</div>
+            <h3 className="mt-1 text-lg font-semibold">
+              Last step — show this code
+            </h3>
             <p className="mt-1 text-sm text-muted">
-              Show this back to {peerName || 'them'} so their wallet
-              gets the final, confirmed copy. Then you're done.
+              Hold your phone up so {peerName || 'they'} can scan this. Once
+              they do, their wallet has the confirmed copy and you're both
+              done. You can close this now.
             </p>
             {handshake && (
               <QrShow
                 text={canonicalEnvelope(handshake)}
-                label="Confirmed connection"
+                label="Confirmed connection — let them scan it"
               />
             )}
             <button
@@ -554,29 +587,44 @@ export function HandshakeModal({ onClose }: Props) {
 
         {step === 'r-ready' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>Step 1 of 3</div>
+            <div className={`mt-2 ${eyebrow}`}>In person · Step 1 of 3</div>
+            <h3 className="mt-1 text-lg font-semibold">Scan their code</h3>
             <p className="mt-1 text-sm text-muted">
-              Scan the code the other person is showing you on their wallet.
+              Point your camera at the code on the other person's wallet to
+              begin. You'll confirm the connection on the next screen.
             </p>
             <button
               type="button"
-              onClick={() => setScanning(true)}
+              onClick={() => {
+                setScanInitialMode('camera');
+                setScanning(true);
+              }}
               className={`mt-4 ${primaryBtn}`}
             >
               Scan their code
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScanInitialMode('paste');
+                setScanning(true);
+              }}
+              className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+            >
+              📋 Paste their code instead
             </button>
           </>
         )}
 
         {step === 'r-preview' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>Step 2 of 3</div>
+            <div className={`mt-2 ${eyebrow}`}>In person · Step 2 of 3</div>
             <h3 className="mt-1 text-lg font-semibold">
-              {peerName || 'This person'} wants to connect
+              Connect with {peerName || 'this person'}?
             </h3>
             <p className="mt-1 text-sm text-muted">
-              This makes one in-person connection. You say yes now, they
-              say yes next, and you both keep a copy.
+              You scanned their code. Say yes here and your phone will show a
+              code back for them to scan — then you're both done.
             </p>
             <RelationshipChips
               value={relationship}
@@ -588,31 +636,41 @@ export function HandshakeModal({ onClose }: Props) {
               disabled={busy}
               className={`mt-4 ${primaryBtn}`}
             >
-              {busy ? 'Saving…' : 'Connect'}
+              {busy ? 'Saving…' : 'Yes — show my code back'}
             </button>
           </>
         )}
 
         {step === 'r-show-handshake' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>Step 3 of 3</div>
-            <p className="mt-1 text-sm text-muted">
-              Show this to {peerName || 'them'}. They scan it and say yes,
-              then show you their final code.
-            </p>
+            <div className={`mt-2 ${eyebrow}`}>In person · Step 3 of 3</div>
+            <h3 className="mt-1 text-lg font-semibold">
+              Show this back to {peerName || 'them'}
+            </h3>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted">
+              <li>They scan this code and confirm on their phone.</li>
+              <li>
+                Their phone shows one last code — tap{' '}
+                <span className="font-medium text-ink">Scan their code</span>{' '}
+                and scan it to finish.
+              </li>
+            </ol>
             {handshake && (
               <QrShow
                 text={canonicalEnvelope(handshake)}
-                label="Your connection"
+                label="Your code — let them scan it"
               />
             )}
             <button
               type="button"
-              onClick={() => setScanning(true)}
+              onClick={() => {
+                setScanInitialMode('camera');
+                setScanning(true);
+              }}
               disabled={busy}
               className={`mt-4 ${primaryBtn}`}
             >
-              {busy ? 'Saving…' : 'Next: scan their confirmed code'}
+              {busy ? 'Saving…' : 'Scan their code →'}
             </button>
           </>
         )}
@@ -695,46 +753,3 @@ function RelationshipChips({
   );
 }
 
-// Lightweight controlled accordion panel. Header line carries the
-// section label + a one-line hint and a rotating chevron; body
-// only renders when open so closed panels are tap-targets that
-// take no vertical room beyond the header. Used by the unified
-// Start step to fit two handshake paths (in-person + remote) on
-// one screen without forcing the operator to scroll past one to
-// reach the other.
-function AccordionPanel({
-  label,
-  hint,
-  open,
-  onToggle,
-  children,
-}: {
-  label: string;
-  hint: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-xl border border-ink/10 bg-white overflow-hidden">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-ink/[0.02]"
-      >
-        <div className="min-w-0">
-          <div className={eyebrow}>{label}</div>
-          <div className="mt-0.5 text-xs text-muted truncate">{hint}</div>
-        </div>
-        <span
-          aria-hidden
-          className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-        >
-          ▾
-        </span>
-      </button>
-      {open && <div className="px-4 pb-4">{children}</div>}
-    </section>
-  );
-}

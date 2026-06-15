@@ -257,7 +257,10 @@ const BUDGETS = [
   // happen?" event_date input + the momentDate helper import, ~0.2KB gz.
   // HEAD was already a touch over 25.5 from prior arc growth; audited as
   // intentional. Bumped 25.5 -> 26.25KiB (measured 25.93KB gz).
-  { pattern: /^HomeScreen-.*\.js$/, gz: 26_880, label: 'HomeScreen' },
+  // 2026-06-15 handshake copy overhaul (clearer step language + numbered
+  // instructions, accordion removed) net +~0.05KB; bumped 26.25 -> 26.5KiB
+  // (measured 26.30KB gz).
+  { pattern: /^HomeScreen-.*\.js$/, gz: 27_136, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
