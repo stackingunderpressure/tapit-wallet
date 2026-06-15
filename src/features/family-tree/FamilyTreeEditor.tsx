@@ -5,6 +5,8 @@ import { buildKinGraph, type KinGraph, type KinNode } from './kinGraph.ts';
 import { createPersonNode, createKinEdge } from './createFamilyTree.ts';
 import { groupByGeneration } from './treeGenerations.ts';
 import { storiesAbout } from './storiesAbout.ts';
+import { explainRelationship } from './kinEducation.ts';
+import { identiconSeed } from '../connections/identicon.ts';
 import {
   readEventDate,
   formatEventDate,
@@ -32,8 +34,35 @@ function claimString(att: Attestation, name: string): string {
 
 type Relation = 'parent' | 'child' | 'spouse' | 'sibling';
 
+const RELATION_CHIPS: { value: Relation; label: string; emoji: string }[] = [
+  { value: 'parent', label: 'Parent', emoji: '↑' },
+  { value: 'sibling', label: 'Sibling', emoji: '↔' },
+  { value: 'spouse', label: 'Spouse', emoji: '∞' },
+  { value: 'child', label: 'Child', emoji: '↓' },
+];
+
 interface Props {
   onClose: () => void;
+}
+
+// A stable colored avatar for a person — identicon hues from their key
+// (or node id, for keyless ancestors) + initials from their name.
+function KinAvatar({ node, size = 36 }: { node: KinNode; size?: number }) {
+  const seed = identiconSeed(node.keyedPubkey ?? node.id, node.displayName);
+  return (
+    <span
+      aria-hidden
+      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.4,
+        background: `linear-gradient(135deg, hsl(${seed.hueA} 55% 52%), hsl(${seed.hueB} 55% 42%))`,
+      }}
+    >
+      {seed.initials}
+    </span>
+  );
 }
 
 interface Extra {
@@ -154,6 +183,8 @@ export function FamilyTreeEditor({ onClose }: Props) {
     [graph, selfId],
   );
   const hasPeople = graph.nodes.size > (selfId ? 1 : 0);
+  const peopleCount = graph.nodes.size;
+  const generationSpan = generations.length;
 
   async function ensureSelf(): Promise<string> {
     if (selfId) return selfId;
@@ -263,18 +294,31 @@ export function FamilyTreeEditor({ onClose }: Props) {
             </button>
           </div>
 
-          <div className="mt-3 text-center">
-            <h2 className="text-xl font-semibold">{person.displayName}</h2>
-            <div className="mt-1 text-xs text-muted">
+          <div className="mt-3 flex flex-col items-center text-center animate-fresh-rise motion-reduce:animate-none">
+            <KinAvatar node={person} size={64} />
+            <h2 className="mt-2 text-xl font-semibold">{person.displayName}</h2>
+            <span className="mt-1 rounded-full bg-accent/10 px-3 py-0.5 text-sm font-medium text-accent">
               {selected.relationship}
+            </span>
+            <div className="mt-1 text-xs text-muted">
               {person.born || person.died ? (
-                <span className="ml-1">
-                  · {person.born ?? '?'}
+                <span>
+                  {person.born ?? '?'}
                   {person.died ? `–${person.died}` : ''}
                 </span>
               ) : null}
-              {!person.keyed && <span className="ml-1">· remembered by you</span>}
+              {!person.keyed && (
+                <span className={person.born || person.died ? 'ml-1' : ''}>
+                  · remembered by you
+                </span>
+              )}
             </div>
+            {selected.relationship !== 'you' && (
+              <p className="mt-2 max-w-xs rounded-lg bg-ink/[0.03] px-3 py-2 text-xs text-muted">
+                <span aria-hidden>📖 </span>
+                {explainRelationship(selected.relationship)}
+              </p>
+            )}
           </div>
 
           <div className="mt-4">
@@ -347,7 +391,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
                   type="button"
                   onClick={() => void addMoment(person)}
                   disabled={momentBusy}
-                  className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper disabled:opacity-40"
+                  className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition active:animate-fresh-press motion-reduce:active:animate-none disabled:opacity-40"
                 >
                   {momentBusy ? 'Signing…' : 'Sign moment'}
                 </button>
@@ -372,7 +416,15 @@ export function FamilyTreeEditor({ onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Your family tree</h2>
+          <div>
+            <h2 className="text-lg font-semibold">🌳 Your family tree</h2>
+            {hasPeople && (
+              <div className="mt-0.5 text-xs text-muted">
+                {peopleCount} {peopleCount === 1 ? 'person' : 'people'} ·{' '}
+                {generationSpan} generation{generationSpan === 1 ? '' : 's'}
+              </div>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
@@ -382,51 +434,75 @@ export function FamilyTreeEditor({ onClose }: Props) {
           </button>
         </div>
         <p className="mt-1 text-xs text-muted">
-          Add the people closest to you — parents, kids, your spouse, your
-          siblings. The rest fills in when you connect with family. People with
-          no wallet of their own are simply remembered by you.
+          Add the people closest to you — the rest fills in as you connect with
+          family. Tap anyone to learn how you're related and to keep their
+          stories. People with no wallet are simply remembered by you.
         </p>
 
-        <div className="mt-4 rounded-xl border border-ink/10 bg-white p-3">
+        <div className="mt-4 rounded-xl border border-ink/10 bg-white p-2.5">
           {!hasPeople ? (
-            <p className="text-sm text-muted">
-              No one on your tree yet. Add your first relative below.
+            <p className="px-1 py-2 text-sm text-muted">
+              No one here yet 🌱 — add your first relative below and watch your
+              tree grow.
             </p>
           ) : (
             <div className="space-y-4">
               {generations.map((group) => (
                 <div key={String(group.generation)}>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <div className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
                     {group.title}
                   </div>
-                  <ul className="mt-1 space-y-1.5">
-                    {group.members.map((m) => (
-                      <li key={m.id}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSelected({
-                              node: m.node,
-                              relationship: m.relationship,
-                            })
-                          }
-                          className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-sm hover:bg-ink/5 ${
-                            m.relationship === 'you' ? 'font-semibold' : ''
-                          }`}
+                  <ul className="mt-1.5 space-y-1.5">
+                    {group.members.map((m) => {
+                      const isYou = m.relationship === 'you';
+                      return (
+                        <li
+                          key={m.id}
+                          className="animate-fresh-rise motion-reduce:animate-none"
                         >
-                          <span>{m.node.displayName}</span>
-                          <span className="text-xs text-muted">
-                            {m.relationship}
-                            {m.node.born || m.node.died ? (
-                              <span className="ml-1">
-                                ({m.node.born ?? '?'}
-                                {m.node.died ? `–${m.node.died}` : ''})
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelected({
+                                node: m.node,
+                                relationship: m.relationship,
+                              })
+                            }
+                            className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-ink/5 active:animate-fresh-press motion-reduce:active:animate-none ${
+                              isYou ? 'bg-accent/5' : ''
+                            }`}
+                          >
+                            <KinAvatar node={m.node} />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className={`truncate text-sm ${isYou ? 'font-semibold' : 'font-medium'}`}
+                                >
+                                  {m.node.displayName}
+                                </span>
+                                <span className="shrink-0 rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-muted">
+                                  {m.relationship}
+                                </span>
                               </span>
-                            ) : null}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
+                              {!isYou && (
+                                <span className="mt-0.5 block truncate text-[11px] text-muted">
+                                  {explainRelationship(m.relationship)}
+                                </span>
+                              )}
+                              {(m.node.born || m.node.died) && (
+                                <span className="mt-0.5 block text-[11px] text-muted">
+                                  {m.node.born ?? '?'}
+                                  {m.node.died ? `–${m.node.died}` : ''}
+                                </span>
+                              )}
+                            </span>
+                            <span aria-hidden className="text-muted">
+                              ›
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -449,20 +525,30 @@ export function FamilyTreeEditor({ onClose }: Props) {
             />
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="ft-relation">
-              Their relation to you
-            </label>
-            <select
-              id="ft-relation"
-              value={relation}
-              onChange={(e) => setRelation(e.target.value as Relation)}
-              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-            >
-              <option value="parent">Parent</option>
-              <option value="child">Child</option>
-              <option value="spouse">Spouse</option>
-              <option value="sibling">Sibling</option>
-            </select>
+            <span className="text-sm font-medium">Their relation to you</span>
+            <div className="mt-1.5 grid grid-cols-4 gap-2">
+              {RELATION_CHIPS.map((c) => {
+                const active = relation === c.value;
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setRelation(c.value)}
+                    aria-pressed={active}
+                    className={`rounded-lg border px-2 py-2 text-xs font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${
+                      active
+                        ? 'border-ink bg-ink text-paper'
+                        : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]'
+                    }`}
+                  >
+                    <span aria-hidden className="block text-sm">
+                      {c.emoji}
+                    </span>
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
             {relation === 'sibling' && !canSibling && (
               <p className="mt-1 text-xs text-amber-700">
                 Add one of your parents first — siblings are linked by the
@@ -499,9 +585,9 @@ export function FamilyTreeEditor({ onClose }: Props) {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-md bg-ink py-3 text-paper font-medium disabled:opacity-40"
+            className="w-full rounded-md bg-ink py-3 text-paper font-medium transition active:animate-fresh-press motion-reduce:active:animate-none disabled:opacity-40"
           >
-            {busy ? 'Adding to your tree…' : 'Add to my tree'}
+            {busy ? 'Adding to your tree…' : '🌿 Add to my tree'}
           </button>
           {error && (
             <p className="text-sm text-red-600" role="alert">
