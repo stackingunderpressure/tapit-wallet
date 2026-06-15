@@ -371,7 +371,9 @@ const BUDGETS = [
   { pattern: /^createOrganization-.*\.js$/, gz: 3_000, label: 'createOrganization helpers' },
   // 5e-iii-a CohortEditorModal is React.lazy from SettingsScreen so
   // the cohort-picker UI only loads when the operator opens it.
-  { pattern: /^CohortEditorModal-.*\.js$/, gz: 4_000, label: 'CohortEditorModal' },
+  // 2026-06-15 circle-trust gating: circleTrust + the warning banner /
+  // ack-gate ride this lazy chunk. Measured 4.40KB gz; bumped 3.91 -> 4.5KiB.
+  { pattern: /^CohortEditorModal-.*\.js$/, gz: 4_608, label: 'CohortEditorModal' },
   // 5e-iii-a createCohort helpers get hoisted once both
   // CohortEditorModal and LatticePanel import from the same file.
   // 2026-06-03: the recovery-hardening home-screen backup nudge calls

@@ -7,6 +7,7 @@ import {
   readCohort,
   type CohortMember,
 } from './createCohort.ts';
+import { circleTrust, circleTrustWarning } from './circleTrust.ts';
 import { DistributeSharesModal } from './DistributeSharesModal.tsx';
 
 interface Props {
@@ -61,9 +62,22 @@ export function CohortEditorModal({ onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [distributeOpen, setDistributeOpen] = useState(false);
+  // High-stakes gate (trust model CUT C): acknowledge a circle with zero
+  // in-person-verified helpers before sealing it.
+  const [ackWeak, setAckWeak] = useState(false);
 
   const N = selected.size;
   const thresholdClamped = Math.max(2, Math.min(N, threshold));
+
+  // Verification mix of the chosen helpers — drives the warning banner.
+  const trust = useMemo(
+    () => circleTrust([...selected], holdings),
+    [selected, holdings],
+  );
+  const trustWarning = circleTrustWarning(trust);
+  // Only the zero-in-person ('none') case requires explicit acknowledgment;
+  // a 'thin' circle warns but does not block.
+  const needsAck = trust.verdict === 'none';
 
   function toggle(pubkey: string) {
     setSelected((prev) => {
@@ -175,10 +189,42 @@ export function CohortEditorModal({ onClose }: Props) {
               </p>
             </div>
 
+            {trustWarning && N >= 2 && (
+              <div
+                className={`mt-4 rounded-md border px-3 py-2 text-sm ${
+                  trustWarning.tone === 'red'
+                    ? 'border-red-300 bg-red-50 text-red-900'
+                    : 'border-amber-300 bg-amber-50 text-amber-900'
+                }`}
+                role="alert"
+              >
+                <div className="font-medium">
+                  {trustWarning.tone === 'red'
+                    ? '⚠ No in-person helpers'
+                    : 'Heads up on your mix'}
+                </div>
+                <p className="mt-1">{trustWarning.text}</p>
+                {needsAck && (
+                  <label className="mt-2 flex items-start gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={ackWeak}
+                      onChange={(e) => setAckWeak(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      I'm certain who these helpers are and want to continue
+                      without an in-person one.
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={publish}
-              disabled={busy || N < 2}
+              disabled={busy || N < 2 || (needsAck && !ackWeak)}
               className="mt-4 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
             >
               {busy ? 'Saving…' : 'Save my helpers'}
