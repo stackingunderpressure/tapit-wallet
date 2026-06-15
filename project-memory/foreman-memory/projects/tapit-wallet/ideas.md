@@ -3427,3 +3427,52 @@ reconciliation, CUT 5 civic rollup. Resurface with: ultimate-cut-list (tree is
 the cut after the keystone), Pam-node mockup, witness-family-tree, agreement-to-
 enter-the-tree. The parked dedupe question is now ANSWERED in the spec: yes, a
 canonical family-co-signed person-anchor per node.
+
+---
+
+## 2026-06-15 — Streamline the in-person handshake: scan once, finish over Nostr (vs the 3-QR ping-pong)
+Tag: ux / handshake / mycelium / tradeoff / friction
+Stage: sprouting (a friction cut with a real security tradeoff)
+One-line: The in-person handshake is a 3-QR back-and-forth ONLY because it uses
+no network and both wallets must end holding the same dual-signed envelope; the
+auto-complete-over-Nostr loop already exists (it IS the "they're not here" path:
+routeFor sends a 1-sig handshake -> receiver inbox auto-offers cosign -> sends
+back -> absorb), so the streamline is to let the in-person case finish over Nostr
+after a single scan — at the cost of the in-person verification tier.
+
+Operator's framing: "Can we streamline the handshake even more — not so much
+back-and-forth and confusion, just here's this, here's this, both approved, it
+updates over Nostr?"
+
+WHY THE BACK-AND-FORTH EXISTS: Tier P (in-person) is 3 QR transmissions because
+with NO network you need a round trip for BOTH signatures to land in ONE envelope
+(initiator shows identity -> responder scans+signs+shows -> initiator scans+
+cosigns+shows -> responder scans). The 3rd hop is what makes "in person" honest:
+both signatures were exchanged face-to-face, no network MITM.
+
+WHAT ALREADY EXISTS: the remote/Nostr path (envelopeRoute.routeFor) auto-completes
+with zero manual ping-pong — send a 1-sig handshake, the peer's inbox offers one
+tap to approve, it cosigns + sends back, and the initiator's inbox absorbs the 2nd
+signature silently. "Both approved, updates over Nostr" is already built.
+
+THE STREAMLINE OPTIONS (the fork):
+1. SCAN-ONCE-THEN-NOSTR (smallest, recommended). When both are online, the
+   in-person flow becomes: scan their code ONCE to grab their key, tap send, and
+   it completes over Nostr exactly like the remote path — no QR ping-pong. The 3-QR
+   stays only as the pure-offline fallback. COST (honest): the record is
+   verification=remote (online-verified), not the stronger in-person tier, because
+   the cosignature arrives over the network, not face-to-face. Tiny code (route the
+   in-person scan into the existing remote flow).
+2. IN-PERSON-STRONG IN TWO SCANS. Keep the face-to-face guarantee but cut to two
+   quick (near-simultaneous) scans: each scans the other once, capturing a signed
+   "present with you now" nonce; each builds a 1-sig handshake + the presence proof,
+   then completes over Nostr. Stays in-person-honest, half the steps. COST: a real
+   protocol addition (presence nonce + verify), more work + tests.
+3. JUST DEFAULT TO REMOTE WHEN ONLINE. Don't add a path; when Nostr is on, steer
+   people to the already-simple remote flow and treat 3-QR as the rare offline case.
+   Smallest possible change (copy/routing nudge).
+
+RECOMMENDATION: Option 1 for the friction win now, with honest labeling that an
+online-completed connection is online-verified; revisit Option 2 if in-person
+proof matters enough to warrant the nonce. Resurface with the 2026-06-15 handshake
+copy overhaul. Open question is the tradeoff itself — see chip.
