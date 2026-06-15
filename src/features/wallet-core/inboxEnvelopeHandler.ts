@@ -13,6 +13,10 @@ import {
 } from '../recovery/secretPiece.ts';
 import { recordPieceReceipt, upsertRecord } from '../recovery/secretLedger.ts';
 import { secretsLedgerStore } from '../storage/secretsLedgerStore.ts';
+import {
+  isKeySuccessionAnnouncement,
+  isVerifiedAnnouncement,
+} from '../transport/peerSuccession.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 // Inbox-arrival handler factory — extracted from WalletProvider so
@@ -105,6 +109,29 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
           console.warn('secret-piece receipt collect failed', err);
         }
       })();
+      return;
+    }
+    // A peer's key-succession announcement: they rotated and are telling
+    // us their new key descends from the key we know. Verify it (chain
+    // valid + signed by the chain's current key) and silently HOLD it so
+    // the peer key-alias resolver can map their new messages back to the
+    // person we already know — then never surface it as an inbox row.
+    // Unverified/forged announcements are dropped, not held.
+    if (isKeySuccessionAnnouncement(item.envelope)) {
+      if (isVerifiedAnnouncement(item.envelope)) {
+        void (async () => {
+          try {
+            await wallet.hold(item.envelope);
+            const pass = passphraseRef.current;
+            if (pass && ownerId) {
+              await saveWallet(wallet, pass, ownerId);
+            }
+            setHoldings(await wallet.holdings());
+          } catch (err) {
+            console.warn('peer key-succession ingest failed', err);
+          }
+        })();
+      }
       return;
     }
     void (async () => {

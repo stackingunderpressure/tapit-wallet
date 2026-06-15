@@ -295,7 +295,10 @@ const BUDGETS = [
   // edge) to this chunk, measured 11.90KB gz. The cryptographic work is
   // in adoptExistingKey (WalletProvider chunk), not here. Bumped
   // 11 -> 12.25KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 12_544, label: 'SettingsScreen' },
+  // 2026-06-15 peer-rotation fix cut 2: RotateKeySection broadcasts a
+  // key-succession announcement to peers on rotate (imports peerSuccession
+  // + handshake reader). Measured 12.31KB gz; bumped 12.25 -> 12.6KiB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 12_902, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
   // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer

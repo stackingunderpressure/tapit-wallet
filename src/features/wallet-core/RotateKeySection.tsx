@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import type { Wallet } from 'tapit-attest';
+import { useWallet } from './useWallet.ts';
+import { buildKeySuccessionAnnouncement } from '../transport/peerSuccession.ts';
+import { isHandshake, readHandshake } from '../connections/createHandshake.ts';
 
 interface Props {
   wallet: Wallet;
@@ -35,6 +38,7 @@ function shortKey(s: string): string {
 // concrete risk: if you held a recovery share encrypted to YOUR
 // old pubkey, your wallet can't decrypt it after you rotate.
 export function RotateKeySection({ wallet, save, refresh }: Props) {
+  const { holdings, sendEnvelope } = useWallet();
   const [confirming, setConfirming] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,6 +59,11 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
       wallet.rotate();
       await save();
       await refresh();
+      // Tell known peers we rotated so their wallets can follow us across
+      // the new key (peer-rotation fix). Best-effort: a signed succession
+      // announcement to every handshake peer; failures don't block the
+      // rotation, which has already landed locally.
+      void announceRotationToPeers();
       setRotatedJustNow(true);
       setConfirming(false);
       setAcknowledged(false);
@@ -62,6 +71,38 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
       setError(err instanceof Error ? err.message : 'rotation failed');
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Broadcast a signed key-succession announcement to every handshake
+  // peer. Each peer's wallet verifies the chain and learns our new key is
+  // the same person, so messaging follows the rotation. Best-effort and
+  // fire-and-forget — the rotation itself does not depend on delivery.
+  async function announceRotationToPeers() {
+    const chain = wallet.successionChain;
+    if (chain.length === 0) return;
+    let announcement;
+    try {
+      announcement = wallet.sign(buildKeySuccessionAnnouncement(chain));
+    } catch (err) {
+      console.warn('rotation announcement build failed', err);
+      return;
+    }
+    const me = wallet.identity.toLowerCase();
+    const myKeys = new Set(wallet.keyHistory.map((k) => k.toLowerCase()));
+    const peers = new Set<string>();
+    for (const a of holdings) {
+      if (!isHandshake(a)) continue;
+      const v = readHandshake(a);
+      for (const id of [v.initiatorId, v.responderId]) {
+        const lc = id?.toLowerCase();
+        if (lc && lc !== me && !myKeys.has(lc)) peers.add(id);
+      }
+    }
+    for (const peer of peers) {
+      void sendEnvelope(peer, announcement).catch((err) => {
+        console.warn('rotation announcement send failed', peer, err);
+      });
     }
   }
 
@@ -143,11 +184,10 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
             <li>
               Your Mycelium inbox automatically re-subscribes to the new
               pubkey, so your wallet does not go dark on the receive side.
-              But your peers do not know you rotated until you tell them
-              (a rotation-announcement broadcast is a future feature); until
-              then, messages they send still go to your old pubkey and
-              don't reach you. Re-handshaking with active contacts after a
-              rotation is the manual workaround.
+              Your wallet also sends each of your connections a signed notice
+              that your new key is the same you — so their wallets follow you
+              across the rotation (it sends when you're online; a peer who is
+              offline picks it up next time you're both reachable).
             </li>
             <li>
               Messages encrypted-to-your-old-pubkey can no longer be

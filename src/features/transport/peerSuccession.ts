@@ -73,6 +73,22 @@ export function readSuccessionChain(att: Attestation): SuccessionLink[] | null {
 }
 
 /**
+ * True when an announcement is trustworthy: its chain verifies end to end
+ * AND the envelope is signed by the chain's current key. The gate used
+ * both when ingesting a peer's announcement and when building the alias
+ * map, so junk/forged announcements never get held or trusted.
+ */
+export function isVerifiedAnnouncement(att: Attestation): boolean {
+  if (!isKeySuccessionAnnouncement(att)) return false;
+  const chain = readSuccessionChain(att);
+  if (!chain || chain.length === 0) return false;
+  const result = verifySuccessionChain(chain);
+  if (!result.valid || !result.currentKey) return false;
+  const current = result.currentKey.toLowerCase();
+  return (att.signatures ?? []).some((s) => s.signer.toLowerCase() === current);
+}
+
+/**
  * Resolver from any key a peer has used → their canonical (genesis) key,
  * plus canonical → current key. Built ONLY from announcements whose chain
  * cryptographically verifies AND that are signed by the chain's current

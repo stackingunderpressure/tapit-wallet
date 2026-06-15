@@ -4,6 +4,7 @@ import type { SuccessionLink } from 'tapit-attest';
 import {
   buildKeySuccessionAnnouncement,
   isKeySuccessionAnnouncement,
+  isVerifiedAnnouncement,
   readSuccessionChain,
   buildPeerKeyAlias,
   resolveCanonical,
@@ -36,6 +37,32 @@ describe('key-succession announcement', () => {
     const leaf = claim.children.find((c) => c.name === 'credential_type');
     if (leaf) leaf.value = 'membership';
     expect(isKeySuccessionAnnouncement(signed)).toBe(false);
+  });
+});
+
+describe('isVerifiedAnnouncement', () => {
+  it('accepts a chain-valid announcement signed by the current key', () => {
+    const { signed } = rotatedAnnouncement();
+    expect(isVerifiedAnnouncement(signed)).toBe(true);
+  });
+  it('rejects one not signed by the current key', () => {
+    const prev = generateKeypair();
+    const current = generateKeypair();
+    const imposter = generateKeypair();
+    const chain = [
+      createSuccessionLink({ fromPrivateKey: prev.privateKey, toKey: current.publicKey }),
+    ];
+    const signed = Wallet.fromKeypair(imposter).sign(
+      buildKeySuccessionAnnouncement(chain),
+    );
+    expect(isVerifiedAnnouncement(signed)).toBe(false);
+  });
+  it('rejects a non-announcement', () => {
+    const { signed } = rotatedAnnouncement();
+    const claim = signed.claim as { children: { name: string; value: unknown }[] };
+    const leaf = claim.children.find((c) => c.name === 'credential_type');
+    if (leaf) leaf.value = 'membership';
+    expect(isVerifiedAnnouncement(signed)).toBe(false);
   });
 });
 
