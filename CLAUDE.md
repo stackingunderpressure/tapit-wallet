@@ -45,6 +45,18 @@ cleverness. Useful beats flashy. Safe beats fast. The user's keys
 never leave the wallet unencrypted — that rule outranks every
 other.
 
+## The Wedge Test — vet every idea before it earns build time
+
+This is the operator's brand discipline, now a standing rule: the product is 100% custom and finds the wedge every time — the unique, specific value to a human that bridges the gap between corporate software / corporate AI bots and something genuinely his. Every idea — a whole app or a single feature — passes these five questions BEFORE it earns build time. Answer them in minutes, not days: this test kills commodity work, it is NOT an excuse to over-plan.
+
+1. **Already solved?** Does a tool the user could just pick up already do this well? If yes, integrate it or skip it — do not rebuild the commodity.
+2. **Wedge or plumbing?** Is this the uniquely valuable thing, or merely plumbing for it? Plumbing (auth, payments, sync) is allowed ONLY when it names the wedge it serves — never ship plumbing as the product.
+3. **A dime tomorrow?** Will the platforms or the AI labs commoditize this in 6–12 months? If yes, let them carry it; don't sink craft into something about to be free.
+4. **Human-specific value + brand gap?** Is it uniquely, specifically valuable to a real human, and does it widen the gap between this custom, sovereign, human-first work and corporate software / corporate bots? If not, cut it.
+5. **Vet fast, lose nothing.** Park anything uncertain in the project's ideas file (nothing is wasted); prune the rest.
+
+**Pass rule:** build it ONLY if it is the wedge, or named plumbing in direct service of a specific wedge. Everything else is parked or killed. (Codified fleet-wide in AppCommander: CLAUDE.md non-negotiable #12, the bootstrap wedge gate, and the skeleton-shared doctrine.)
+
 ## Stack
 - React 18 + Vite + TypeScript + Tailwind
 - Supabase (Postgres + Auth + Edge Functions) — auth and the
