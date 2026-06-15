@@ -275,4 +275,27 @@ describe('buildRemoteHandshakeDraft family_hint leaf', () => {
     expect(cosigned.signatures.length).toBe(2);
     expect(readHandshake(cosigned).familyHint).toBe('Crew');
   });
+
+  it('met_in_person: absent by default, set when self-attested, covered by both sigs', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const plain = buildRemoteHandshakeDraft(a.identity, {
+      pubkey: b.identity.subject,
+      name: 'B',
+    });
+    expect(readHandshake(plain).metInPerson).toBe(false);
+
+    const attested = buildRemoteHandshakeDraft(
+      a.identity,
+      { pubkey: b.identity.subject, name: 'B' },
+      'friend',
+      undefined,
+      true,
+    );
+    expect(readHandshake(attested).metInPerson).toBe(true);
+    expect(readHandshake(attested).verification).toBe('remote');
+    const cosigned = b.wallet.sign(a.wallet.sign(attested));
+    expect(cosigned.signatures.length).toBe(2);
+    expect(readHandshake(cosigned).metInPerson).toBe(true);
+  });
 });

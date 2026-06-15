@@ -35,7 +35,15 @@ export function ConnectionCard({ attestation, myIdentity, onOpen }: Props) {
     ? hs.handshakeAt
     : parsed.toLocaleDateString();
   const isRemote = hs.verification === 'remote';
-  const badgeLabel = isRemote ? 'Remote' : 'In person';
+  // Honest tiering: a face-to-face co-signed connection is "In person".
+  // A network-completed one is "Online"; if the operator self-attested
+  // they met, say "Online · met in person" — their word, not proof, but
+  // truthfully distinct from a plain online connection.
+  const badgeLabel = isRemote
+    ? hs.metInPerson
+      ? 'Online · met in person'
+      : 'Online'
+    : 'In person';
   const badgeClass = isFresh
     ? isRemote
       ? 'bg-fresh-surface-glass text-fresh-text-tertiary border border-fresh-surface-edge'

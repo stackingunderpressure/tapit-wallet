@@ -68,6 +68,15 @@ export interface HandshakeView {
    *  from a family-named invite link. '' when absent. Display-only —
    *  lets the founder pre-target Add-to-family at the right family. */
   familyHint: string;
+  /**
+   * Self-attested in-person claim. On a connection completed over the
+   * network (verification='remote'), the operator may tick "we met in
+   * person" — a CLAIM both parties' signatures then cover, not a
+   * cryptographic proof of presence the way verification='in-person'
+   * (the 3-QR ceremony) is. Surfaced honestly as "you said you met in
+   * person", never as proof. False when the leaf is absent.
+   */
+  metInPerson: boolean;
 }
 
 /** Read a handshake attestation's fields into a plain view. */
@@ -81,6 +90,7 @@ export function readHandshake(att: Attestation): HandshakeView {
     handshakeAt: leafValue(att, 'handshake_at'),
     relationship: leafValue(att, 'relationship'),
     familyHint: leafValue(att, 'family_hint'),
+    metInPerson: leafValue(att, 'met_in_person') === 'true',
   };
 }
 
@@ -130,6 +140,7 @@ export function buildRemoteHandshakeDraft(
   responder: { pubkey: string; name: string },
   relationship?: string,
   familyHint?: string,
+  metInPerson?: boolean,
 ): Attestation {
   const fields: Record<string, string> = {
     verification: 'remote',
@@ -141,6 +152,12 @@ export function buildRemoteHandshakeDraft(
   };
   if (relationship && relationship.length > 0) {
     fields.relationship = relationship;
+  }
+  // Self-attested in-person claim on a network-completed connection.
+  // Both signatures cover it (same envelope); it is the operator's
+  // word, surfaced as such — never as cryptographic proof of presence.
+  if (metInPerson) {
+    fields.met_in_person = 'true';
   }
   // Optional family_hint leaf (2026-06-01): when a remote handshake is
   // born from a family-named invite link, the invitee carries the

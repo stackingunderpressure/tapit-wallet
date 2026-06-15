@@ -260,7 +260,10 @@ const BUDGETS = [
   // 2026-06-15 handshake copy overhaul (clearer step language + numbered
   // instructions, accordion removed) net +~0.05KB; bumped 26.25 -> 26.5KiB
   // (measured 26.30KB gz).
-  { pattern: /^HomeScreen-.*\.js$/, gz: 27_136, label: 'HomeScreen' },
+  // 2026-06-15 handshake streamline (scan-once-then-Nostr + self-attest
+  // checkbox, RelationshipChips extracted) net +~0.18KB; bumped 26.5 ->
+  // 27.0KiB (measured 26.68KB gz).
+  { pattern: /^HomeScreen-.*\.js$/, gz: 27_648, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort

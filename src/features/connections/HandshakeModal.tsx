@@ -16,6 +16,8 @@ import {
 } from './createHandshake.ts';
 import { PeerPicker } from './PeerPicker.tsx';
 import { extractPubkey } from './extractPubkey.ts';
+import { RelationshipChips } from './RelationshipChips.tsx';
+import { relationshipLabel } from './relationshipOptions.ts';
 import {
   summarizePublish,
   type PublishStatusSummary,
@@ -52,38 +54,13 @@ const eyebrow = 'text-xs uppercase tracking-wide text-accent';
 const primaryBtn =
   'w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40 transition active:animate-fresh-press motion-reduce:active:animate-none';
 
-// Relationship-leaf options the chip picker offers. Wire values are
-// lowercase so they stay stable across builds; display labels are
-// capitalised for the operator's eyes. Empty string means the
-// operator chose not to label the bond — the leaf is omitted from
-// the attestation, which round-trips as relationship: '' on read.
-// Immediate-family options surface first so the attested
-// relationship can be specific where it matters most (spouse +
-// child were operator-named must-haves; parent + sibling round
-// out the immediate set). 'family' stays as the catch-all for
-// extended relatives. Order matters — the chip picker renders in
-// declaration order, and family-shaped bonds clustering at the
-// top is the right discoverability default for the families-first
-// pilot the wallet is targeting.
-const RELATIONSHIPS: { value: string; label: string }[] = [
-  { value: 'spouse', label: 'Spouse' },
-  { value: 'child', label: 'Child' },
-  { value: 'parent', label: 'Parent' },
-  { value: 'sibling', label: 'Sibling' },
-  { value: 'family', label: 'Family' },
-  { value: 'friend', label: 'Friend' },
-  { value: 'coworker', label: 'Coworker' },
-  { value: 'acquaintance', label: 'Acquaintance' },
-  { value: 'other', label: 'Other' },
-];
-
-/** Capitalised display form of a relationship wire value. */
-function relationshipLabel(value: string): string {
-  return RELATIONSHIPS.find((r) => r.value === value)?.label ?? value;
-}
-
 export function HandshakeModal({ onClose }: Props) {
-  const { wallet, ownerId, holdings, identity, anchorWorker, prefs, sendEnvelope, save } = useWallet();
+  const { wallet, ownerId, holdings, identity, anchorWorker, prefs, sendEnvelope, save, relayStatus } = useWallet();
+  // Whether the connection can finish over Nostr right now (transport on
+  // AND at least one relay open). Drives the low-friction "scan once,
+  // finish over Nostr" default on the scan path.
+  const canFinishOverNostr =
+    prefs.nostrTransportEnabled && (relayStatus ?? []).some((s) => s.open);
   const [step, setStep] = useState<Step>('role');
   const [scanning, setScanning] = useState(false);
   // Track which entry point opened the scan modal so QrScanModal
@@ -117,6 +94,10 @@ export function HandshakeModal({ onClose }: Props) {
   const [openPanel, setOpenPanel] = useState<'with-you' | 'not-here'>('with-you');
   // Transient "Copied" feedback for the copy-my-code button under the QR.
   const [identityCopied, setIdentityCopied] = useState(false);
+  // Self-attested "we met in person" on the scan-once-then-Nostr path.
+  // Default true because you literally just scanned their code face to
+  // face; it's your claim, surfaced honestly (not cryptographic proof).
+  const [metInPerson, setMetInPerson] = useState(true);
 
   function fail(err: unknown, fallback: string) {
     setError(err instanceof Error ? err.message : fallback);
@@ -181,6 +162,39 @@ export function HandshakeModal({ onClose }: Props) {
       setStep('r-show-handshake');
     } catch (err) {
       fail(err, 'Could not build the handshake.');
+    }
+  }
+
+  // Scan-once-then-Nostr finish (the low-friction default). You scanned
+  // their identity in person; instead of the 3-QR back-and-forth, build a
+  // 1-sig connection to their pubkey and ship it over Nostr. Their wallet
+  // auto-cosigns from its inbox (routeFor: 1-sig handshake → cosign-
+  // witness) and the confirmed copy comes back to your inbox on its own.
+  // verification='remote' (honest — the cosignature arrives over the
+  // network), plus the self-attested met_in_person claim when ticked.
+  async function sendScannedOverNostr() {
+    if (!scannedIdentity || !identity) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const draft = buildRemoteHandshakeDraft(
+        identity,
+        { pubkey: scannedIdentity.subject, name: peerName.trim() },
+        relationship,
+        undefined,
+        metInPerson,
+      );
+      const signed = wallet.sign(draft);
+      await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
+      await save();
+      const result = await sendEnvelope(scannedIdentity.subject, signed);
+      setRemoteSendStatus(summarizePublish(result));
+      setHandshake(signed);
+      setStep('remote-sent');
+    } catch (err) {
+      fail(err, 'Could not send the connection.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -503,6 +517,11 @@ export function HandshakeModal({ onClose }: Props) {
               Your copy is saved. Once they say yes, your wallet picks up
               their yes from your inbox on its own — nothing else to do.
             </p>
+            {handshake && readHandshake(handshake).metInPerson && (
+              <p className="mt-2 text-xs text-muted">
+                Saved with your note that you met in person.
+              </p>
+            )}
             {remoteSendStatus && (
               <p
                 className={`mt-2 text-xs ${
@@ -587,11 +606,11 @@ export function HandshakeModal({ onClose }: Props) {
 
         {step === 'r-ready' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>In person · Step 1 of 3</div>
+            <div className={`mt-2 ${eyebrow}`}>Connect</div>
             <h3 className="mt-1 text-lg font-semibold">Scan their code</h3>
             <p className="mt-1 text-sm text-muted">
-              Point your camera at the code on the other person's wallet to
-              begin. You'll confirm the connection on the next screen.
+              Point your camera at the code on the other person's wallet. You'll
+              confirm the connection on the next screen.
             </p>
             <button
               type="button"
@@ -618,26 +637,72 @@ export function HandshakeModal({ onClose }: Props) {
 
         {step === 'r-preview' && (
           <>
-            <div className={`mt-2 ${eyebrow}`}>In person · Step 2 of 3</div>
+            <div className={`mt-2 ${eyebrow}`}>
+              {canFinishOverNostr ? 'Connect' : 'In person · Step 2 of 3'}
+            </div>
             <h3 className="mt-1 text-lg font-semibold">
               Connect with {peerName || 'this person'}?
             </h3>
-            <p className="mt-1 text-sm text-muted">
-              You scanned their code. Say yes here and your phone will show a
-              code back for them to scan — then you're both done.
-            </p>
             <RelationshipChips
               value={relationship}
               onChange={setRelationship}
             />
-            <button
-              type="button"
-              onClick={buildAndSign}
-              disabled={busy}
-              className={`mt-4 ${primaryBtn}`}
-            >
-              {busy ? 'Saving…' : 'Yes — show my code back'}
-            </button>
+
+            {canFinishOverNostr ? (
+              <>
+                <p className="mt-3 text-sm text-muted">
+                  You scanned their code. Send the connection and you're done —
+                  it reaches their wallet and they approve it on their phone.
+                  Nothing else to scan.
+                </p>
+                <label className="mt-3 flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={metInPerson}
+                    onChange={(e) => setMetInPerson(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    We met in person
+                    <span className="block text-xs text-muted">
+                      Your word, saved on the record — not the same as the
+                      stronger face-to-face proof below.
+                    </span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={sendScannedOverNostr}
+                  disabled={busy}
+                  className={`mt-4 ${primaryBtn}`}
+                >
+                  {busy ? 'Sending…' : 'Send connection'}
+                </button>
+                <button
+                  type="button"
+                  onClick={buildAndSign}
+                  disabled={busy}
+                  className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm"
+                >
+                  Prove it in person instead (scan back & forth)
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 text-sm text-muted">
+                  You scanned their code. Say yes here and your phone will show
+                  a code back for them to scan — then you're both done.
+                </p>
+                <button
+                  type="button"
+                  onClick={buildAndSign}
+                  disabled={busy}
+                  className={`mt-4 ${primaryBtn}`}
+                >
+                  {busy ? 'Saving…' : 'Yes — show my code back'}
+                </button>
+              </>
+            )}
           </>
         )}
 
@@ -712,44 +777,4 @@ export function HandshakeModal({ onClose }: Props) {
   );
 }
 
-// Chip picker for the optional relationship leaf. Tapping a chip
-// toggles its selection — picking the same chip again clears the
-// label entirely so the leaf is omitted from the envelope. Both
-// the in-person builder (r-preview) and the remote initiator
-// (not-here panel) render this; the picker writes to the parent's
-// `relationship` state which the build* functions read at signing.
-function RelationshipChips({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (next: string) => void;
-}) {
-  return (
-    <div className="mt-3">
-      <div className="text-xs text-muted">How do you know them? (optional)</div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {RELATIONSHIPS.map((r) => {
-          const selected = value === r.value;
-          return (
-            <button
-              key={r.value}
-              type="button"
-              onClick={() => onChange(selected ? '' : r.value)}
-              aria-pressed={selected}
-              className={
-                'rounded-full border px-3 py-1 text-xs font-medium transition ' +
-                (selected
-                  ? 'border-ink bg-ink text-paper'
-                  : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]')
-              }
-            >
-              {r.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
