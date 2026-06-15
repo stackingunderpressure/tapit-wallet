@@ -7,7 +7,10 @@ import {
   type KinGraph,
 } from './kinGraph.ts';
 import { buildPersonNodeDraft } from './personNode.ts';
-import { buildParentEdgeDraft } from './kinEdge.ts';
+import {
+  buildParentEdgeDraft,
+  buildSameAsEdgeDraft,
+} from './kinEdge.ts';
 
 function emptyGraph(): KinGraph {
   return {
@@ -143,5 +146,28 @@ describe('buildKinGraph round-trip with signed attestations', () => {
     expect(graph.nodes.get(meId)?.keyed).toBe(true);
     expect(relationshipLabel(graph, meId, pamId)).toBe('parent');
     expect(relationshipLabel(graph, pamId, meId)).toBe('child');
+  });
+
+  it('fuses two person-nodes joined by a same_as edge into one canonical node', () => {
+    const w = Wallet.generate();
+    // Two separately-created "Pam" nodes (e.g. mine + my sister's), one
+    // carrying the birth date, then a human-confirmed same_as binding.
+    const pamA = w.sign(
+      buildPersonNodeDraft(w.identity, { displayName: 'Pam' }),
+    );
+    const pamB = w.sign(
+      buildPersonNodeDraft(w.identity, { displayName: 'Pam', born: '1949-01-01' }),
+    );
+    const idA = envelopeId(pamA);
+    const idB = envelopeId(pamB);
+    const bind = w.sign(buildSameAsEdgeDraft(w.identity, idA, idB));
+
+    const graph = buildKinGraph([pamA, pamB, bind]);
+    // Exactly one canonical node, carrying both ids as aliases and the
+    // merged birth date.
+    expect(graph.nodes.size).toBe(1);
+    const node = [...graph.nodes.values()][0];
+    expect(node?.aliasIds?.slice().sort()).toEqual([idA, idB].sort());
+    expect(node?.born).toBe('1949-01-01');
   });
 });

@@ -20,6 +20,13 @@ import { isKinEdge, readKinEdge } from './kinEdge.ts';
 
 export interface KinNode extends PersonNodeView {
   id: string;
+  /**
+   * Every original person-node id that resolves to this canonical node,
+   * including its own id. After a same_as merge a canonical node carries
+   * all the merged ids here so stories that bound to a pre-merge id
+   * (subject_node) still match. Absent on hand-built graphs == [id].
+   */
+  aliasIds?: string[];
 }
 
 export interface KinGraph {
@@ -49,29 +56,112 @@ function addToSet(map: Map<string, Set<string>>, key: string, value: string) {
  * so a partially-synced tree still walks.
  */
 export function buildKinGraph(holdings: readonly Attestation[]): KinGraph {
-  const graph: KinGraph = {
-    nodes: new Map(),
-    parents: new Map(),
-    children: new Map(),
-    spouses: new Map(),
-  };
+  // Pass 1 — collect raw person-node views and classify edges. same_as
+  // edges are held aside to drive the union-find that fuses duplicates.
+  const rawNodes = new Map<string, KinNode>();
+  const parentEdges: [string, string][] = []; // [parent, child]
+  const spouseEdges: [string, string][] = [];
+  const sameAsPairs: [string, string][] = [];
   for (const att of holdings) {
     if (isPersonNode(att)) {
       const id = envelopeId(att);
-      graph.nodes.set(id, { id, ...readPersonNode(att) });
+      rawNodes.set(id, { id, aliasIds: [id], ...readPersonNode(att) });
     }
   }
   for (const att of holdings) {
     if (!isKinEdge(att)) continue;
     const edge = readKinEdge(att);
     if (!edge) continue;
-    if (edge.relation === 'parent_of') {
-      addToSet(graph.parents, edge.to, edge.from);
-      addToSet(graph.children, edge.from, edge.to);
-    } else {
-      addToSet(graph.spouses, edge.from, edge.to);
-      addToSet(graph.spouses, edge.to, edge.from);
+    if (edge.relation === 'parent_of') parentEdges.push([edge.from, edge.to]);
+    else if (edge.relation === 'spouse') spouseEdges.push([edge.from, edge.to]);
+    else if (edge.relation === 'same_as') sameAsPairs.push([edge.from, edge.to]);
+  }
+
+  // Pass 2 — union-find over same_as bindings.
+  const parentOf = new Map<string, string>();
+  function find(x: string): string {
+    let p = parentOf.get(x);
+    if (p === undefined) {
+      parentOf.set(x, x);
+      return x;
     }
+    while (p !== parentOf.get(p)) p = parentOf.get(p) as string;
+    parentOf.set(x, p);
+    return p;
+  }
+  for (const id of rawNodes.keys()) find(id);
+  for (const [a, b] of sameAsPairs) {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parentOf.set(ra, rb);
+  }
+  // Group ids by their set root, then pick a deterministic canonical id
+  // per set: prefer a keyed node, then the lexicographically smallest id.
+  const sets = new Map<string, string[]>();
+  const allIds = new Set<string>([...rawNodes.keys(), ...sameAsPairs.flat()]);
+  for (const id of allIds) {
+    const r = find(id);
+    const arr = sets.get(r) ?? [];
+    arr.push(id);
+    sets.set(r, arr);
+  }
+  const canonicalOf = new Map<string, string>();
+  for (const ids of sets.values()) {
+    let canon = ids[0];
+    if (canon === undefined) continue;
+    for (const id of ids) {
+      const idKeyed = Boolean(rawNodes.get(id)?.keyedPubkey);
+      const canonKeyed = Boolean(rawNodes.get(canon)?.keyedPubkey);
+      if (idKeyed && !canonKeyed) canon = id;
+      else if (idKeyed === canonKeyed && id < canon) canon = id;
+    }
+    for (const id of ids) canonicalOf.set(id, canon);
+  }
+  const canonical = (id: string): string => canonicalOf.get(id) ?? id;
+
+  // Pass 3 — build merged canonical node views.
+  const graph: KinGraph = {
+    nodes: new Map(),
+    parents: new Map(),
+    children: new Map(),
+    spouses: new Map(),
+  };
+  for (const ids of sets.values()) {
+    const views = ids
+      .map((id) => rawNodes.get(id))
+      .filter((v): v is KinNode => v !== undefined);
+    const firstView = views[0];
+    if (firstView === undefined) continue; // edge-only ids carry no node detail
+    const canon = canonical(firstView.id);
+    const keyed = views.find((v) => v.keyedPubkey);
+    const named =
+      views.find((v) => v.displayName && v.displayName !== 'Someone') ??
+      firstView;
+    graph.nodes.set(canon, {
+      id: canon,
+      aliasIds: ids.slice().sort(),
+      displayName: named.displayName,
+      born: views.find((v) => v.born)?.born,
+      died: views.find((v) => v.died)?.died,
+      keyedPubkey: keyed?.keyedPubkey,
+      keyed: Boolean(keyed),
+    });
+  }
+
+  // Pass 4 — edges via canonical ids, dropping self-loops a merge creates.
+  for (const [p, c] of parentEdges) {
+    const cp = canonical(p);
+    const cc = canonical(c);
+    if (cp === cc) continue;
+    addToSet(graph.parents, cc, cp);
+    addToSet(graph.children, cp, cc);
+  }
+  for (const [a, b] of spouseEdges) {
+    const ca = canonical(a);
+    const cb = canonical(b);
+    if (ca === cb) continue;
+    addToSet(graph.spouses, ca, cb);
+    addToSet(graph.spouses, cb, ca);
   }
   return graph;
 }

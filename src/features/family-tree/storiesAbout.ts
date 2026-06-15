@@ -25,9 +25,13 @@ function claimLeaf(att: Attestation, name: string): string {
 /** True when a journal attestation is about this person-node. */
 export function isStoryAbout(att: Attestation, node: KinNode): boolean {
   if (att.kind !== 'journal') return false;
-  // Robust link first: a subject_node leaf binding to this node's id.
+  // Robust link first: a subject_node leaf binding to this node's id (or
+  // any pre-merge alias id that was fused into this canonical node).
   const subjectNode = claimLeaf(att, 'subject_node').trim();
-  if (subjectNode.length > 0) return subjectNode === node.id;
+  if (subjectNode.length > 0) {
+    const ids = node.aliasIds ?? [node.id];
+    return ids.includes(subjectNode);
+  }
   // Legacy fallback: match by subject (keyed pubkey or name label).
   const subject = (att.subject ?? '').trim().toLowerCase();
   if (subject.length === 0) return false;

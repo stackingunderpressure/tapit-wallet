@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildParentEdgeDraft,
   buildSpouseEdgeDraft,
+  buildSameAsEdgeDraft,
   isKinEdge,
   readKinEdge,
 } from './kinEdge.ts';
@@ -34,6 +35,18 @@ describe('buildSpouseEdgeDraft', () => {
     expect(isKinEdge(draft)).toBe(true);
     expect(readKinEdge(draft)).toEqual({
       relation: 'spouse',
+      from: N1,
+      to: N2,
+    });
+  });
+});
+
+describe('buildSameAsEdgeDraft', () => {
+  it('builds a same_as binding edge', () => {
+    const draft = buildSameAsEdgeDraft(AUTHOR, N1, N2);
+    expect(isKinEdge(draft)).toBe(true);
+    expect(readKinEdge(draft)).toEqual({
+      relation: 'same_as',
       from: N1,
       to: N2,
     });

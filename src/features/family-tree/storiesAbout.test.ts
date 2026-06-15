@@ -53,6 +53,18 @@ describe('isStoryAbout', () => {
     const e = journal('Pam Winchester', undefined, undefined, 'other-node');
     expect(isStoryAbout(e, pam)).toBe(false);
   });
+  it('matches a subject_node that is an ALIAS id of a merged node', () => {
+    // After a same_as merge the canonical node carries alias ids; a story
+    // bound to a pre-merge id must still match.
+    const merged: KinNode = {
+      id: 'canonical',
+      displayName: 'Pam Winchester',
+      keyed: false,
+      aliasIds: ['canonical', 'premerge-id'],
+    };
+    const e = journal('whatever', undefined, undefined, 'premerge-id');
+    expect(isStoryAbout(e, merged)).toBe(true);
+  });
 });
 
 describe('storiesAbout', () => {

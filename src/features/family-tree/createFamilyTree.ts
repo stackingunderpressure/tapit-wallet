@@ -6,7 +6,6 @@ import { buildPersonNodeDraft, type PersonNodeInput } from './personNode.ts';
 import {
   buildParentEdgeDraft,
   buildSpouseEdgeDraft,
-  type KinRelation,
 } from './kinEdge.ts';
 
 // Family-tree CUT 1 — the impure persistence layer.
@@ -63,7 +62,7 @@ export async function createKinEdge(
   wallet: Wallet,
   ownerId: string,
   worker: WorkerHandle | null,
-  relation: KinRelation,
+  relation: 'parent_of' | 'spouse',
   from: string,
   to: string,
 ): Promise<{ attestation: Attestation; edgeId: string }> {

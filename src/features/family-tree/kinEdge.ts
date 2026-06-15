@@ -19,7 +19,7 @@ import { relationshipAttestation } from 'tapit-attest';
 // binds their graphs). Node ids are envelopeId values of person-node
 // anchors.
 
-export type KinRelation = 'parent_of' | 'spouse';
+export type KinRelation = 'parent_of' | 'spouse' | 'same_as';
 
 export interface KinEdgeView {
   relation: KinRelation;
@@ -89,17 +89,35 @@ export function buildSpouseEdgeDraft(
   return buildEdgeDraft(authorIdentity, 'spouse', aNodeId, bNodeId);
 }
 
+/**
+ * same_as edge: a HUMAN-CONFIRMED binding declaring two person-nodes are
+ * the SAME person. This is how the merge cut fuses a duplicate across two
+ * relatives' trees onto one canonical node (the graph union-finds these).
+ * Never created automatically on a name match — always a person's
+ * confirmation, and family-co-signable so the canonical node accretes
+ * weight. Symmetric.
+ */
+export function buildSameAsEdgeDraft(
+  authorIdentity: string,
+  aNodeId: string,
+  bNodeId: string,
+): Attestation {
+  return buildEdgeDraft(authorIdentity, 'same_as', aNodeId, bNodeId);
+}
+
 /** True when an attestation is a kin edge. */
 export function isKinEdge(att: Attestation): boolean {
   if (att.kind !== 'relationship') return false;
   const r = leafValue(att, 'kin_relation');
-  return r === 'parent_of' || r === 'spouse';
+  return r === 'parent_of' || r === 'spouse' || r === 'same_as';
 }
 
 /** Read a kin edge into a plain view, or null when malformed. */
 export function readKinEdge(att: Attestation): KinEdgeView | null {
   const relation = leafValue(att, 'kin_relation');
-  if (relation !== 'parent_of' && relation !== 'spouse') return null;
+  if (relation !== 'parent_of' && relation !== 'spouse' && relation !== 'same_as') {
+    return null;
+  }
   const from = leafValue(att, 'kin_from');
   const to = leafValue(att, 'kin_to');
   if (from.length === 0 || to.length === 0) return null;
