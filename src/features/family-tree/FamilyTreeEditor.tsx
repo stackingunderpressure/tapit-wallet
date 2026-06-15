@@ -4,6 +4,20 @@ import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { buildKinGraph, type KinGraph, type KinNode } from './kinGraph.ts';
 import { createPersonNode, createKinEdge } from './createFamilyTree.ts';
 import { groupByGeneration } from './treeGenerations.ts';
+import { storiesAbout } from './storiesAbout.ts';
+import {
+  readEventDate,
+  formatEventDate,
+} from '../journal/momentDate.ts';
+import type { Attestation, FieldBranch } from 'tapit-attest';
+
+function claimString(att: Attestation, name: string): string {
+  const claim = att.claim as FieldBranch;
+  const node = claim.children.find((c) => c.name === name);
+  return node && node.node === 'leaf' && typeof node.value === 'string'
+    ? node.value
+    : '';
+}
 
 // Family-tree CUT 1 — the edit-your-adjacent-layer editor.
 //
@@ -50,6 +64,12 @@ export function FamilyTreeEditor({ onClose }: Props) {
   const [died, setDied] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // When set, the modal shows that person's detail (relationship + the
+  // moments you've signed about them) instead of the editor.
+  const [selected, setSelected] = useState<{
+    node: KinNode;
+    relationship: string;
+  } | null>(null);
 
   // Merge the persisted graph with the optimistic adds so a just-added
   // relative shows immediately, regardless of context refresh timing.
@@ -172,6 +192,91 @@ export function FamilyTreeEditor({ onClose }: Props) {
     }
   }
 
+  if (selected) {
+    const person = selected.node;
+    const stories = storiesAbout(holdings, person);
+    return (
+      <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
+        <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              className="text-sm text-muted hover:text-ink"
+            >
+              ← Tree
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-muted hover:text-ink"
+            >
+              Done
+            </button>
+          </div>
+
+          <div className="mt-3 text-center">
+            <h2 className="text-xl font-semibold">{person.displayName}</h2>
+            <div className="mt-1 text-xs text-muted">
+              {selected.relationship}
+              {person.born || person.died ? (
+                <span className="ml-1">
+                  · {person.born ?? '?'}
+                  {person.died ? `–${person.died}` : ''}
+                </span>
+              ) : null}
+              {!person.keyed && <span className="ml-1">· remembered by you</span>}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Moments about {person.displayName}
+            </div>
+            {stories.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                No moments yet. In the journal, write an entry about{' '}
+                {person.displayName} (set “About → Someone else” to their name)
+                and it will gather here.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-3">
+                {stories.map((s) => {
+                  const ev = readEventDate(s);
+                  const when = ev
+                    ? formatEventDate(ev)
+                    : new Date(
+                        claimString(s, 'written_at') || s.issuedAt,
+                      ).toLocaleDateString();
+                  const title = claimString(s, 'title');
+                  const text = claimString(s, 'text');
+                  return (
+                    <li
+                      key={s.subject + (claimString(s, 'written_at') || s.issuedAt)}
+                      className="rounded-lg border border-ink/10 bg-white p-3"
+                    >
+                      <div className="text-xs font-medium text-ink">{when}</div>
+                      {title && (
+                        <div className="mt-0.5 text-sm font-semibold">
+                          {title}
+                        </div>
+                      )}
+                      {text && (
+                        <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-sm">
+                          {text}
+                        </p>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
@@ -205,22 +310,30 @@ export function FamilyTreeEditor({ onClose }: Props) {
                   </div>
                   <ul className="mt-1 space-y-1.5">
                     {group.members.map((m) => (
-                      <li
-                        key={m.id}
-                        className={`flex items-center justify-between text-sm ${
-                          m.relationship === 'you' ? 'font-semibold' : ''
-                        }`}
-                      >
-                        <span>{m.node.displayName}</span>
-                        <span className="text-xs text-muted">
-                          {m.relationship}
-                          {m.node.born || m.node.died ? (
-                            <span className="ml-1">
-                              ({m.node.born ?? '?'}
-                              {m.node.died ? `–${m.node.died}` : ''})
-                            </span>
-                          ) : null}
-                        </span>
+                      <li key={m.id}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelected({
+                              node: m.node,
+                              relationship: m.relationship,
+                            })
+                          }
+                          className={`flex w-full items-center justify-between rounded px-1 py-0.5 text-left text-sm hover:bg-ink/5 ${
+                            m.relationship === 'you' ? 'font-semibold' : ''
+                          }`}
+                        >
+                          <span>{m.node.displayName}</span>
+                          <span className="text-xs text-muted">
+                            {m.relationship}
+                            {m.node.born || m.node.died ? (
+                              <span className="ml-1">
+                                ({m.node.born ?? '?'}
+                                {m.node.died ? `–${m.node.died}` : ''})
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
                       </li>
                     ))}
                   </ul>
