@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { buildKinGraph, type KinGraph, type KinNode } from './kinGraph.ts';
@@ -109,6 +109,18 @@ export function FamilyTreeEditor({ onClose }: Props) {
   const [momentBusy, setMomentBusy] = useState(false);
   const [momentError, setMomentError] = useState<string | null>(null);
 
+  // The add form (name/relation/dates) is shared between the main "add to
+  // me" view and a person's detail "add a relative of them" view — only
+  // one renders at a time. Clear it whenever you switch so nothing leaks
+  // across people.
+  useEffect(() => {
+    setName('');
+    setBorn('');
+    setDied('');
+    setError(null);
+    setRelation('parent');
+  }, [selected]);
+
   async function addMoment(person: KinNode) {
     if (momentText.trim().length === 0) {
       setMomentError('Write a few words first.');
@@ -209,20 +221,26 @@ export function FamilyTreeEditor({ onClose }: Props) {
     return nodeId;
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  // Add a relative of WHOEVER `resolveTarget` returns — yourself (from the
+  // main form) or any person you've tapped into (from their detail). This
+  // is what lets the tree grow outward: add Mom, then from Mom add her
+  // parents (your grandparents), her siblings (your aunts/uncles), and so
+  // on — so great-uncles and third cousins actually come into being.
+  async function addRelative(resolveTarget: () => Promise<string>): Promise<void> {
     if (name.trim().length === 0) {
       setError('Give this person a name.');
-      return;
-    }
-    if (relation === 'sibling' && !canSibling) {
-      setError('Add one of your parents first, so siblings can share them.');
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const me = await ensureSelf();
+      const targetId = await resolveTarget();
+      const targetParent = [...(graph.parents.get(targetId) ?? [])][0] ?? null;
+      if (relation === 'sibling' && !targetParent) {
+        throw new Error(
+          'Add a parent for this person first — siblings are linked by the parent they share.',
+        );
+      }
       const { nodeId: relId } = await createPersonNode(wallet, ownerId, worker, {
         displayName: name.trim(),
         born: born.trim() || undefined,
@@ -235,27 +253,29 @@ export function FamilyTreeEditor({ onClose }: Props) {
         died: died.trim() || undefined,
         keyed: false,
       };
-
       const newParents: [string, string][] = [];
       const newSpouses: [string, string][] = [];
       if (relation === 'parent') {
-        await createKinEdge(wallet, ownerId, worker, 'parent_of', relId, me);
-        newParents.push([relId, me]);
+        await createKinEdge(wallet, ownerId, worker, 'parent_of', relId, targetId);
+        newParents.push([relId, targetId]);
       } else if (relation === 'child') {
-        await createKinEdge(wallet, ownerId, worker, 'parent_of', me, relId);
-        newParents.push([me, relId]);
+        await createKinEdge(wallet, ownerId, worker, 'parent_of', targetId, relId);
+        newParents.push([targetId, relId]);
       } else if (relation === 'spouse') {
-        await createKinEdge(wallet, ownerId, worker, 'spouse', me, relId);
-        newSpouses.push([me, relId]);
+        await createKinEdge(wallet, ownerId, worker, 'spouse', targetId, relId);
+        newSpouses.push([targetId, relId]);
       } else {
-        // sibling — share my first parent
-        const parentId = myParentId as string;
-        await createKinEdge(wallet, ownerId, worker, 'parent_of', parentId, relId);
-        newParents.push([parentId, relId]);
+        await createKinEdge(
+          wallet,
+          ownerId,
+          worker,
+          'parent_of',
+          targetParent as string,
+          relId,
+        );
+        newParents.push([targetParent as string, relId]);
       }
-
       await save();
-
       setExtra((prev) => ({
         nodes: [...prev.nodes, relNode],
         parents: [...prev.parents, ...newParents],
@@ -269,6 +289,109 @@ export function FamilyTreeEditor({ onClose }: Props) {
     } finally {
       setBusy(false);
     }
+  }
+
+  // The shared add-relative form — rendered on the main view ("add to me")
+  // and on a person's detail ("add a relative of them"). Same state, one at
+  // a time, cleared on view switch by the effect above.
+  function renderAddForm(opts: {
+    onAdd: () => void;
+    canSibling: boolean;
+    relationLabel: string;
+    submitLabel: string;
+  }) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          opts.onAdd();
+        }}
+        className="mt-4 space-y-3"
+      >
+        <div>
+          <label className="text-sm font-medium" htmlFor="ft-name">
+            Name
+          </label>
+          <input
+            id="ft-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder='e.g. "Grandma Pam"'
+            className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+        </div>
+        <div>
+          <span className="text-sm font-medium">{opts.relationLabel}</span>
+          <div className="mt-1.5 grid grid-cols-4 gap-2">
+            {RELATION_CHIPS.map((c) => {
+              const active = relation === c.value;
+              return (
+                <button
+                  key={c.value}
+                  type="button"
+                  onClick={() => setRelation(c.value)}
+                  aria-pressed={active}
+                  className={`rounded-lg border px-2 py-2 text-xs font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${
+                    active
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]'
+                  }`}
+                >
+                  <span aria-hidden className="block text-sm">
+                    {c.emoji}
+                  </span>
+                  {c.label}
+                </button>
+              );
+            })}
+          </div>
+          {relation === 'sibling' && !opts.canSibling && (
+            <p className="mt-1 text-xs text-amber-700">
+              Add a parent first — siblings are linked by the parent they share.
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <label className="text-xs text-muted" htmlFor="ft-born">
+              Born (optional)
+            </label>
+            <input
+              id="ft-born"
+              type="date"
+              value={born}
+              onChange={(e) => setBorn(e.target.value)}
+              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="text-xs text-muted" htmlFor="ft-died">
+              Died (optional)
+            </label>
+            <input
+              id="ft-died"
+              type="date"
+              value={died}
+              onChange={(e) => setDied(e.target.value)}
+              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm"
+            />
+          </div>
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-md bg-ink py-3 text-paper font-medium transition active:animate-fresh-press motion-reduce:active:animate-none disabled:opacity-40"
+        >
+          {busy ? 'Adding…' : opts.submitLabel}
+        </button>
+        {error && (
+          <p className="text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    );
   }
 
   if (selected) {
@@ -407,6 +530,22 @@ export function FamilyTreeEditor({ onClose }: Props) {
               )}
             </div>
           </div>
+
+          <div className="mt-5 border-t border-ink/10 pt-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+              Grow the tree from {person.displayName}
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Add their parents, kids, spouse, or a sibling — this is how
+              grandparents, great-uncles, and cousins come into your tree.
+            </p>
+            {renderAddForm({
+              onAdd: () => void addRelative(() => Promise.resolve(person.id)),
+              canSibling: (graph.parents.get(person.id)?.size ?? 0) > 0,
+              relationLabel: `Their relation to ${person.displayName}`,
+              submitLabel: '🌿 Add a relative',
+            })}
+          </div>
         </div>
       </div>
     );
@@ -510,91 +649,12 @@ export function FamilyTreeEditor({ onClose }: Props) {
           )}
         </div>
 
-        <form onSubmit={submit} className="mt-4 space-y-3">
-          <div>
-            <label className="text-sm font-medium" htmlFor="ft-name">
-              Name
-            </label>
-            <input
-              id="ft-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder='e.g. "Grandma Pam"'
-              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-            />
-          </div>
-          <div>
-            <span className="text-sm font-medium">Their relation to you</span>
-            <div className="mt-1.5 grid grid-cols-4 gap-2">
-              {RELATION_CHIPS.map((c) => {
-                const active = relation === c.value;
-                return (
-                  <button
-                    key={c.value}
-                    type="button"
-                    onClick={() => setRelation(c.value)}
-                    aria-pressed={active}
-                    className={`rounded-lg border px-2 py-2 text-xs font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${
-                      active
-                        ? 'border-ink bg-ink text-paper'
-                        : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]'
-                    }`}
-                  >
-                    <span aria-hidden className="block text-sm">
-                      {c.emoji}
-                    </span>
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-            {relation === 'sibling' && !canSibling && (
-              <p className="mt-1 text-xs text-amber-700">
-                Add one of your parents first — siblings are linked by the
-                parent you share.
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-muted" htmlFor="ft-born">
-                Born (optional)
-              </label>
-              <input
-                id="ft-born"
-                type="date"
-                value={born}
-                onChange={(e) => setBorn(e.target.value)}
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-muted" htmlFor="ft-died">
-                Died (optional)
-              </label>
-              <input
-                id="ft-died"
-                type="date"
-                value={died}
-                onChange={(e) => setDied(e.target.value)}
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-md bg-ink py-3 text-paper font-medium transition active:animate-fresh-press motion-reduce:active:animate-none disabled:opacity-40"
-          >
-            {busy ? 'Adding to your tree…' : '🌿 Add to my tree'}
-          </button>
-          {error && (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
-        </form>
+        {renderAddForm({
+          onAdd: () => void addRelative(() => ensureSelf()),
+          canSibling,
+          relationLabel: 'Their relation to you',
+          submitLabel: '🌿 Add to my tree',
+        })}
       </div>
     </div>
   );
