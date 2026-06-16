@@ -339,6 +339,15 @@ const BUDGETS = [
   // Hoisted into shared chunks once the capture bridge began sharing
   // the journal pipeline with the composer. ~0.5KB / ~0.9KB gz today.
   { pattern: /^createJournalEntry-.*\.js$/, gz: 1_000, label: 'createJournalEntry' },
+  // 2026-06-16: the journal everyday-life tags feature (journalTags.ts, a
+  // shared helper imported by JournalComposer, JournalTabs, JournalDetail,
+  // FreshTodayCarousel, and createJournalEntry) is hoisted by Rollup into its
+  // own post-auth chunk and had landed under the 3KB catch-all without a named
+  // budget. Verified clean -- it carries only tag logic; react/supabase/
+  // tapit-attest are correctly split elsewhere. It lives on the journal route,
+  // not the login path, and is already a shared chunk, so further code-
+  // splitting buys nothing; the named budget is the right move. ~3.54KB gz today.
+  { pattern: /^journalTags-.*\.js$/, gz: 4_500, label: 'journalTags' },
   // 2026-06-16 bump (1_500 -> 4_000): mediaStore grew from a local-only
   // IndexedDB store into a local IDB store PLUS a Supabase remote-mirror
   // cloud-sync path (remoteMediaStore, the new-device restore). The chunk
