@@ -27,12 +27,6 @@ const PeopleSecretsSection = lazy(() =>
     default: m.PeopleSecretsSection,
   })),
 );
-const FamilyTreeEditor = lazy(() =>
-  import('../family-tree/FamilyTreeEditor.tsx').then((m) => ({
-    default: m.FamilyTreeEditor,
-  })),
-);
-
 type View = 'list' | 'tree';
 
 interface Props {
@@ -91,7 +85,6 @@ export function PeopleTabBody({
     handshake: Attestation;
   } | null>(null);
   const [view, setView] = useState<View>('list');
-  const [treeEditorOpen, setTreeEditorOpen] = useState(false);
 
   // Hide and dismiss inbox rows that are relay-replayed duplicates of
   // handshakes the operator has already completed. The Nostr relay
@@ -195,15 +188,6 @@ export function PeopleTabBody({
             </div>
           }
         >
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setTreeEditorOpen(true)}
-              className="rounded-md border border-ink/15 bg-white px-3 py-1.5 text-xs font-medium hover:bg-ink/5"
-            >
-              ✏️ Edit family tree
-            </button>
-          </div>
           <PeopleTree
             holdings={holdings}
             myIdentity={myIdentity}
@@ -230,11 +214,6 @@ export function PeopleTabBody({
           onScanEnvelope={onScanEnvelope}
           onOpenThread={handleOpenThread}
         />
-      )}
-      {treeEditorOpen && (
-        <Suspense fallback={null}>
-          <FamilyTreeEditor onClose={() => setTreeEditorOpen(false)} />
-        </Suspense>
       )}
     </section>
   );

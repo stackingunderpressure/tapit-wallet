@@ -19,6 +19,9 @@ import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 import { IdentityGateSections } from './IdentityGateSections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
+// Eager (not lazy) by operator request — the family tree is a headline
+// surface and should be instantly present, not loaded on demand.
+import { FamilyTreeEditor } from '../family-tree/FamilyTreeEditor.tsx';
 import { InviteShareButton } from '../connections/InviteShareButton.tsx';
 import { useAcceptPendingInvite } from '../connections/useAcceptPendingInvite.ts';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
@@ -104,13 +107,14 @@ import { useSecretPieceHeartbeat } from '../recovery/useSecretPieceHeartbeat.ts'
 // Journal is the diary, Identity the founding card plus memberships,
 // Captured the capture-bridge entries, People the Mycelium
 // handshakes (Phase 5a).
-type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'lattice';
+type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'family' | 'lattice';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'identity', label: 'Identity' },
   { id: 'captured', label: 'Captured' },
   { id: 'people', label: 'People' },
+  { id: 'family', label: 'Family' },
   { id: 'lattice', label: 'Lattice' },
 ];
 
@@ -636,6 +640,12 @@ export function HomeScreen() {
           onPromote={handlePromote}
         />
         </>
+      )}
+
+      {tab === 'family' && (
+        <section className="mt-5">
+          <FamilyTreeEditor embedded />
+        </section>
       )}
 
       {tab === 'lattice' && (

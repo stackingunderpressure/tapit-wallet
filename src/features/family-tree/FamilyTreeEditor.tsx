@@ -1,30 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
-import { buildKinGraph, type KinGraph, type KinNode } from './kinGraph.ts';
-import { createPersonNode, createKinEdge } from './createFamilyTree.ts';
+import {
+  buildKinGraph,
+  generationOf,
+  type KinGraph,
+  type KinNode,
+} from './kinGraph.ts';
+import {
+  createPersonNode,
+  createKinEdge,
+  createPersonEdit,
+} from './createFamilyTree.ts';
+import { readPersonChanges } from './personEdit.ts';
 import { groupByGeneration } from './treeGenerations.ts';
 import { storiesAbout } from './storiesAbout.ts';
-import { explainRelationship } from './kinEducation.ts';
-import { genderKinLabel } from './gender.ts';
 import type { Sex } from './personNode.ts';
-import { KinAvatar } from './KinAvatar.tsx';
 import { FamilyTreeCanvas } from './FamilyTreeCanvas.tsx';
-import {
-  readEventDate,
-  formatEventDate,
-  normalizeEventDateInput,
-} from '../journal/momentDate.ts';
+import { PersonDetailView } from './PersonDetailView.tsx';
+import { normalizeEventDateInput } from '../journal/momentDate.ts';
 import { createJournalEntry } from '../journal/createJournalEntry.ts';
-import type { Attestation, FieldBranch } from 'tapit-attest';
-
-function claimString(att: Attestation, name: string): string {
-  const claim = att.claim as FieldBranch;
-  const node = claim.children.find((c) => c.name === name);
-  return node && node.node === 'leaf' && typeof node.value === 'string'
-    ? node.value
-    : '';
-}
+import type { Attestation } from 'tapit-attest';
 
 // Family-tree CUT 1 — the edit-your-adjacent-layer editor.
 //
@@ -56,7 +52,11 @@ const SEX_LABELS: Record<Relation, { female: string; male: string }> = {
 };
 
 interface Props {
-  onClose: () => void;
+  /** Modal mode supplies this; embedded tab mode omits it. */
+  onClose?: () => void;
+  /** When true, render as an inline page (the Family tab) instead of a
+   *  full-screen modal — no overlay, no "Done" button. */
+  embedded?: boolean;
 }
 
 interface Extra {
@@ -74,7 +74,7 @@ function addToSet(map: Map<string, Set<string>>, k: string, v: string) {
   s.add(v);
 }
 
-export function FamilyTreeEditor({ onClose }: Props) {
+export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
   const { wallet, ownerId, passphrase, prefs, holdings, save } = useWallet();
   const worker = useAnchorWorker();
 
@@ -83,6 +83,19 @@ export function FamilyTreeEditor({ onClose }: Props) {
     parents: [],
     spouses: [],
   });
+  // Optimistic signed corrections (rename / dates / sex / remove) — appended
+  // to the holdings the graph is folded from so an edit shows instantly,
+  // before the wallet context refreshes.
+  const [addedEdits, setAddedEdits] = useState<Attestation[]>([]);
+  // Per-person edit panel state (only meaningful while a person is selected).
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editBorn, setEditBorn] = useState('');
+  const [editDied, setEditDied] = useState('');
+  const [editSex, setEditSex] = useState<Sex | undefined>(undefined);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [name, setName] = useState('');
   const [relation, setRelation] = useState<Relation>('parent');
   const [sex, setSex] = useState<Sex | undefined>(undefined);
@@ -115,6 +128,9 @@ export function FamilyTreeEditor({ onClose }: Props) {
     setSex(undefined);
     setError(null);
     setRelation('parent');
+    setEditing(false);
+    setEditError(null);
+    setConfirmRemove(false);
   }, [selected]);
 
   async function addMoment(person: KinNode) {
@@ -158,8 +174,14 @@ export function FamilyTreeEditor({ onClose }: Props) {
 
   // Merge the persisted graph with the optimistic adds so a just-added
   // relative shows immediately, regardless of context refresh timing.
+  // Holdings the tree is folded from, plus optimistic corrections.
+  const sourceHoldings = useMemo(
+    () => [...holdings, ...addedEdits],
+    [holdings, addedEdits],
+  );
+
   const graph = useMemo<KinGraph>(() => {
-    const g = buildKinGraph(holdings);
+    const g = buildKinGraph(sourceHoldings);
     for (const n of extra.nodes) if (!g.nodes.has(n.id)) g.nodes.set(n.id, n);
     for (const [p, c] of extra.parents) {
       addToSet(g.parents, c, p);
@@ -170,7 +192,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
       addToSet(g.spouses, b, a);
     }
     return g;
-  }, [holdings, extra]);
+  }, [sourceHoldings, extra]);
 
   const selfId = useMemo<string | null>(() => {
     for (const node of graph.nodes.values()) {
@@ -193,6 +215,136 @@ export function FamilyTreeEditor({ onClose }: Props) {
   const hasPeople = graph.nodes.size > (selfId ? 1 : 0);
   const peopleCount = graph.nodes.size;
   const generationSpan = generations.length;
+
+  // Delightful, honest headline numbers about the tree — the Merkle family
+  // tree "screaming" what it knows back at you. All derived from the graph.
+  const stats = useMemo(() => {
+    let back = 0;
+    let forward = 0;
+    let remembered = 0;
+    let keyed = 0;
+    let oldestYear: number | null = null;
+    for (const node of graph.nodes.values()) {
+      if (node.keyed) keyed++;
+      else remembered++;
+      if (selfId && node.id !== selfId) {
+        const g = generationOf(graph, selfId, node.id);
+        if (g !== null && g > 0) back = Math.max(back, g);
+        if (g !== null && g < 0) forward = Math.max(forward, -g);
+      }
+      const year = node.born ? new Date(node.born).getFullYear() : NaN;
+      if (!Number.isNaN(year) && (oldestYear === null || year < oldestYear)) {
+        oldestYear = year;
+      }
+    }
+    const links =
+      [...graph.parents.values()].reduce((n, s) => n + s.size, 0) +
+      [...graph.spouses.values()].reduce((n, s) => n + s.size, 0) / 2;
+    return { back, forward, remembered, keyed, oldestYear, links };
+  }, [graph, selfId]);
+
+  // The selected person's append-only change history + governance verdict.
+  const changes = useMemo(
+    () =>
+      selected
+        ? readPersonChanges(
+            sourceHoldings,
+            selected.node.aliasIds ?? [selected.node.id],
+            selected.node,
+          )
+        : null,
+    [selected, sourceHoldings],
+  );
+
+  function openEdit(person: KinNode) {
+    setEditName(person.displayName);
+    setEditBorn(person.born ?? '');
+    setEditDied(person.died ?? '');
+    setEditSex(person.sex);
+    setEditError(null);
+    setConfirmRemove(false);
+    setEditing(true);
+  }
+
+  // Sign an append-only correction to the selected person. While the person is
+  // solo-controlled this takes effect at once; once two signers control them
+  // it is saved as a proposal that applies only when the others co-sign.
+  async function applyEdit(person: KinNode) {
+    if (editName.trim().length === 0) {
+      setEditError('Give this person a name.');
+      return;
+    }
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      const { attestation } = await createPersonEdit(
+        wallet,
+        ownerId,
+        worker,
+        person.id,
+        {
+          displayName: editName.trim(),
+          born: editBorn.trim() || undefined,
+          died: editDied.trim() || undefined,
+          sex: editSex,
+        },
+      );
+      await save();
+      setAddedEdits((prev) => [...prev, attestation]);
+      setEditing(false);
+      // Reflect the change in the open detail header immediately.
+      setSelected((s) =>
+        s
+          ? {
+              ...s,
+              node: {
+                ...s.node,
+                displayName: editName.trim(),
+                born: editBorn.trim() || undefined,
+                died: editDied.trim() || undefined,
+                sex: editSex,
+              },
+            }
+          : s,
+      );
+    } catch (err) {
+      setEditError(
+        err instanceof Error ? err.message : 'Could not save this change.',
+      );
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  async function removePerson(person: KinNode) {
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      const { attestation } = await createPersonEdit(
+        wallet,
+        ownerId,
+        worker,
+        person.id,
+        { removed: true, displayName: person.displayName },
+      );
+      await save();
+      setAddedEdits((prev) => [...prev, attestation]);
+      setSelected(null);
+    } catch (err) {
+      setEditError(
+        err instanceof Error ? err.message : 'Could not remove this person.',
+      );
+    } finally {
+      setEditBusy(false);
+    }
+  }
+
+  // Short, friendly label for who signed a change.
+  function signerLabel(signer: string): string {
+    return signer === wallet.identity.toLowerCase()
+      ? 'you'
+      : `${signer.slice(0, 8)}…`;
+  }
 
   async function ensureSelf(): Promise<string> {
     if (selfId) return selfId;
@@ -423,166 +575,66 @@ export function FamilyTreeEditor({ onClose }: Props) {
     );
   }
 
-  if (selected) {
-    const person = selected.node;
-    const stories = storiesAbout([...addedStories, ...holdings], person);
-    return (
+  // Page/modal chrome. Embedded (the Family tab) renders inline; modal mode
+  // keeps the full-screen overlay. A plain function, not a component, so the
+  // form inputs inside never remount and lose focus between renders.
+  const frame = (children: ReactNode) =>
+    embedded ? (
+      <div>{children}</div>
+    ) : (
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
         <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="text-sm text-muted hover:text-ink"
-            >
-              ← Tree
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-sm text-muted hover:text-ink"
-            >
-              Done
-            </button>
-          </div>
-
-          <div className="mt-3 flex flex-col items-center text-center animate-fresh-rise motion-reduce:animate-none">
-            <KinAvatar node={person} size={64} />
-            <h2 className="mt-2 text-xl font-semibold">{person.displayName}</h2>
-            <span className="mt-1 rounded-full bg-accent/10 px-3 py-0.5 text-sm font-medium text-accent">
-              {genderKinLabel(selected.relationship, person.sex)}
-            </span>
-            <div className="mt-1 text-xs text-muted">
-              {person.born || person.died ? (
-                <span>
-                  {person.born ?? '?'}
-                  {person.died ? `–${person.died}` : ''}
-                </span>
-              ) : null}
-              {!person.keyed && (
-                <span className={person.born || person.died ? 'ml-1' : ''}>
-                  · remembered by you
-                </span>
-              )}
-            </div>
-            {selected.relationship !== 'you' && (
-              <p className="mt-2 max-w-xs rounded-lg bg-ink/[0.03] px-3 py-2 text-xs text-muted">
-                <span aria-hidden>📖 </span>
-                {explainRelationship(selected.relationship)}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-4">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-              Moments about {person.displayName}
-            </div>
-            {stories.length === 0 ? (
-              <p className="mt-2 text-sm text-muted">
-                No moments yet. Add the first one below — a story, something
-                they did, how they made you feel.
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-3">
-                {stories.map((s) => {
-                  const ev = readEventDate(s);
-                  const when = ev
-                    ? formatEventDate(ev)
-                    : new Date(
-                        claimString(s, 'written_at') || s.issuedAt,
-                      ).toLocaleDateString();
-                  const title = claimString(s, 'title');
-                  const text = claimString(s, 'text');
-                  return (
-                    <li
-                      key={s.subject + (claimString(s, 'written_at') || s.issuedAt)}
-                      className="rounded-lg border border-ink/10 bg-white p-3"
-                    >
-                      <div className="text-xs font-medium text-ink">{when}</div>
-                      {title && (
-                        <div className="mt-0.5 text-sm font-semibold">
-                          {title}
-                        </div>
-                      )}
-                      {text && (
-                        <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-sm">
-                          {text}
-                        </p>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-
-            <div className="mt-4 rounded-lg border border-ink/10 bg-white p-3">
-              <label
-                className="text-xs font-medium"
-                htmlFor="ft-moment-text"
-              >
-                Add a moment about {person.displayName}
-              </label>
-              <textarea
-                id="ft-moment-text"
-                rows={3}
-                value={momentText}
-                onChange={(e) => setMomentText(e.target.value)}
-                placeholder="A story, something they did, how they made you feel…"
-                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              />
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  type="date"
-                  max={new Date().toISOString().slice(0, 10)}
-                  value={momentDate}
-                  onChange={(e) => setMomentDate(e.target.value)}
-                  className="flex-1 rounded-md border border-ink/15 bg-white px-2 py-1.5 text-sm"
-                  aria-label="When did this happen (optional)"
-                />
-                <button
-                  type="button"
-                  onClick={() => void addMoment(person)}
-                  disabled={momentBusy}
-                  className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-paper transition active:animate-fresh-press motion-reduce:active:animate-none disabled:opacity-40"
-                >
-                  {momentBusy ? 'Signing…' : 'Sign moment'}
-                </button>
-              </div>
-              <p className="mt-1 text-[11px] text-muted">
-                Optional date — leave empty if it happened today; set a past
-                date to record an older memory.
-              </p>
-              {momentError && (
-                <p className="mt-1 text-xs text-red-600" role="alert">
-                  {momentError}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-5 border-t border-ink/10 pt-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-              Grow the tree from {person.displayName}
-            </div>
-            <p className="mt-1 text-xs text-muted">
-              Add their parents, kids, spouse, or a sibling — this is how
-              grandparents, great-uncles, and cousins come into your tree.
-            </p>
-            {renderAddForm({
-              onAdd: () => void addRelative(() => Promise.resolve(person.id)),
-              canSibling: (graph.parents.get(person.id)?.size ?? 0) > 0,
-              relationLabel: `Their relation to ${person.displayName}`,
-              submitLabel: '🌿 Add a relative',
-            })}
-          </div>
+          {children}
         </div>
       </div>
     );
+
+  if (selected) {
+    const person = selected.node;
+    const stories = storiesAbout([...addedStories, ...holdings], person);
+    return frame(
+      <PersonDetailView
+        person={person}
+        relationship={selected.relationship}
+        embedded={embedded}
+        onBack={() => setSelected(null)}
+        onClose={onClose}
+        stories={stories}
+        changes={changes}
+        editing={editing}
+        editName={editName}
+        setEditName={setEditName}
+        editBorn={editBorn}
+        setEditBorn={setEditBorn}
+        editDied={editDied}
+        setEditDied={setEditDied}
+        editSex={editSex}
+        setEditSex={setEditSex}
+        editBusy={editBusy}
+        editError={editError}
+        confirmRemove={confirmRemove}
+        setConfirmRemove={setConfirmRemove}
+        onOpenEdit={() => openEdit(person)}
+        onApplyEdit={() => void applyEdit(person)}
+        onRemove={() => void removePerson(person)}
+        onCancelEdit={() => setEditing(false)}
+        signerLabel={signerLabel}
+        momentText={momentText}
+        setMomentText={setMomentText}
+        momentDate={momentDate}
+        setMomentDate={setMomentDate}
+        momentBusy={momentBusy}
+        momentError={momentError}
+        onAddMoment={() => void addMoment(person)}
+        renderAddForm={renderAddForm}
+        onAddRelative={() => void addRelative(() => Promise.resolve(person.id))}
+        canSibling={(graph.parents.get(person.id)?.size ?? 0) > 0}
+      />,
+    );
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
+  return frame(
+    <>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold">🌳 Your family tree</h2>
@@ -593,19 +645,57 @@ export function FamilyTreeEditor({ onClose }: Props) {
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm text-muted hover:text-ink"
-          >
-            Done
-          </button>
+          {!embedded && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-muted hover:text-ink"
+            >
+              Done
+            </button>
+          )}
         </div>
-        <p className="mt-1 text-xs text-muted">
-          Add the people closest to you — the rest fills in as you connect with
-          family. Tap anyone to learn how you're related and to keep their
-          stories. People with no wallet are simply remembered by you.
-        </p>
+
+        {hasPeople && (
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {[
+              { n: peopleCount, label: peopleCount === 1 ? 'person' : 'people' },
+              {
+                n: generationSpan,
+                label: generationSpan === 1 ? 'generation' : 'generations',
+              },
+              { n: stats.back, label: stats.back === 1 ? 'gen back' : 'gens back' },
+              {
+                n: stats.forward,
+                label: stats.forward === 1 ? 'gen ahead' : 'gens ahead',
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-ink/10 bg-white px-1 py-2 text-center"
+              >
+                <div className="text-lg font-semibold text-accent">{s.n}</div>
+                <div className="text-[10px] leading-tight text-muted">
+                  {s.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {hasPeople && (
+          <p className="mt-2 text-center text-[11px] text-muted">
+            🌳 Rooted by you{stats.oldestYear ? `, back to ${stats.oldestYear}` : ''}
+            {' '}· {Math.round(stats.links)} ties · anchored to Bitcoin
+          </p>
+        )}
+        {!hasPeople && (
+          <p className="mt-1 text-xs text-muted">
+            Add the people closest to you — the rest fills in as you connect
+            with family. Tap anyone to see how you're related, fix details, or
+            keep their stories. People with no wallet are simply remembered by
+            you.
+          </p>
+        )}
 
         <div className="mt-4 rounded-xl border border-ink/10 bg-white p-2.5">
           {!hasPeople ? (
@@ -630,7 +720,6 @@ export function FamilyTreeEditor({ onClose }: Props) {
           relationLabel: 'Their relation to you',
           submitLabel: '🌿 Add to my tree',
         })}
-      </div>
-    </div>
-  );
+      </>,
+    );
 }

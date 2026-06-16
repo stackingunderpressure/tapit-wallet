@@ -277,7 +277,13 @@ const BUDGETS = [
   // 2026-06-16 diary tags: JournalComposer tag picker + JournalTabs tag
   // filter ride HomeScreen's graph. Measured 27.23KB gz; bumped 27.0 ->
   // 27.5KiB.
-  { pattern: /^HomeScreen-.*\.js$/, gz: 28_160, label: 'HomeScreen' },
+  // 2026-06-16 Family tab: the family tree is promoted to its own top-level
+  // tab and imported EAGERLY (operator: "not lazy — I want the visual to
+  // scream"), so the whole family-tree feature (FamilyTreeEditor + canvas +
+  // treeLayout + personEdit signed-correction model + PersonDetailView +
+  // createJournalEntry) now rides HomeScreen's static graph instead of a
+  // lazy chunk. Measured 37.62KB gz; bumped 27.5 -> 40KiB.
+  { pattern: /^HomeScreen-.*\.js$/, gz: 40_960, label: 'HomeScreen' },
   { pattern: /^JournalDetail-.*\.js$/, gz: 8_000, label: 'JournalDetail' },
   // SettingsScreen grew through org-mode declaration (5b-org-i),
   // custom-relay editor (5c-i-λ), and now the recovery-cohort
@@ -507,7 +513,11 @@ const BUDGETS = [
   // and the FamilyTreeCanvas SVG node-link renderer replace the flat
   // generation-row list and ride in this lazy chunk. Measured 8.83KB gz;
   // bumped 8.25 -> 9.5KiB.
-  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 9_728, label: 'FamilyTreeEditor' },
+  // 2026-06-16 Family-tab promotion retires this lazy chunk: FamilyTreeEditor
+  // is now imported EAGERLY by HomeScreen (its own Family tab), so it no
+  // longer code-splits into a FamilyTreeEditor-*.js chunk — its cost moved
+  // into the HomeScreen budget above. Entry kept (matches nothing now) only
+  // as the historical record of this feature's chunk lineage.
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from

@@ -7,6 +7,7 @@ import {
   buildParentEdgeDraft,
   buildSpouseEdgeDraft,
 } from './kinEdge.ts';
+import { buildPersonEditDraft, type PersonEditState } from './personEdit.ts';
 
 // Family-tree CUT 1 — the impure persistence layer.
 //
@@ -77,4 +78,26 @@ export async function createKinEdge(
     draft,
   );
   return { attestation, edgeId: id };
+}
+
+/**
+ * Sign + hold + anchor an append-only correction to a person-node (rename,
+ * fix dates, set mother/father, or remove). The node id never changes; the
+ * correction names it and the graph folds it in latest-wins. Returns the
+ * correction's own id.
+ */
+export async function createPersonEdit(
+  wallet: Wallet,
+  ownerId: string,
+  worker: WorkerHandle | null,
+  targetNodeId: string,
+  state: PersonEditState,
+): Promise<{ attestation: Attestation; editId: string }> {
+  const { attestation, id } = await signHoldAnchor(
+    wallet,
+    ownerId,
+    worker,
+    buildPersonEditDraft(wallet.identity, targetNodeId, state),
+  );
+  return { attestation, editId: id };
 }

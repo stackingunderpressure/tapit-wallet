@@ -2,6 +2,12 @@ import type { Attestation } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { isPersonNode, readPersonNode, type PersonNodeView } from './personNode.ts';
 import { isKinEdge, readKinEdge } from './kinEdge.ts';
+import {
+  isPersonEdit,
+  readPersonEdit,
+  foldPersonEdits,
+  type PersonEditView,
+} from './personEdit.ts';
 
 // Family-tree CUT 1 — the pure KIN GRAPH + relationship namer.
 //
@@ -59,6 +65,8 @@ export function buildKinGraph(holdings: readonly Attestation[]): KinGraph {
   // Pass 1 — collect raw person-node views and classify edges. same_as
   // edges are held aside to drive the union-find that fuses duplicates.
   const rawNodes = new Map<string, KinNode>();
+  const nodeSigners = new Map<string, Set<string>>();
+  const editViews: PersonEditView[] = [];
   const parentEdges: [string, string][] = []; // [parent, child]
   const spouseEdges: [string, string][] = [];
   const sameAsPairs: [string, string][] = [];
@@ -66,6 +74,13 @@ export function buildKinGraph(holdings: readonly Attestation[]): KinGraph {
     if (isPersonNode(att)) {
       const id = envelopeId(att);
       rawNodes.set(id, { id, aliasIds: [id], ...readPersonNode(att) });
+      nodeSigners.set(
+        id,
+        new Set(att.signatures.map((s) => s.signer.toLowerCase())),
+      );
+    } else if (isPersonEdit(att)) {
+      const ev = readPersonEdit(att);
+      if (ev && !editViews.some((e) => e.id === ev.id)) editViews.push(ev);
     }
   }
   for (const att of holdings) {
@@ -164,6 +179,42 @@ export function buildKinGraph(holdings: readonly Attestation[]): KinGraph {
     addToSet(graph.spouses, ca, cb);
     addToSet(graph.spouses, cb, ca);
   }
+
+  // Pass 5 — fold append-only corrections over each canonical node. Latest
+  // authorized snapshot wins (display name, born, died, sex); a node whose
+  // effective state is "removed" drops out of the rendered graph. Corrections
+  // that fail the co-signature rule stay on the ledger but are not applied
+  // here (see foldPersonEdits / readPersonChanges for the governance verdict).
+  if (editViews.length > 0) {
+    const byCanon = new Map<string, PersonEditView[]>();
+    for (const ev of editViews) {
+      const canon = canonical(ev.editsNode);
+      const arr = byCanon.get(canon) ?? [];
+      arr.push(ev);
+      byCanon.set(canon, arr);
+    }
+    for (const [canon, node] of [...graph.nodes]) {
+      const edits = byCanon.get(canon);
+      if (!edits || edits.length === 0) continue;
+      const baseSigners = new Set<string>();
+      for (const aliasId of node.aliasIds ?? [node.id]) {
+        for (const s of nodeSigners.get(aliasId) ?? []) baseSigners.add(s);
+      }
+      const folded = foldPersonEdits(node, [...baseSigners], edits);
+      if (folded.removed) {
+        graph.nodes.delete(canon);
+        continue;
+      }
+      graph.nodes.set(canon, {
+        ...node,
+        displayName: folded.view.displayName,
+        born: folded.view.born,
+        died: folded.view.died,
+        sex: folded.view.sex,
+      });
+    }
+  }
+
   return graph;
 }
 
