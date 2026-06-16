@@ -23,10 +23,18 @@
   "commits": [
     "2b8dfe3 feat(family-tree): editable people + own Family tab + signed change history",
     "54e3ba0 feat(secrets): purpose-built secret module in People — holders visible, one-tap bring-back",
-    "d2d9879 feat(keychain): dedicated key-dashboard tab — secrets + social recovery in one home"
+    "d2d9879 feat(keychain): dedicated key-dashboard tab — secrets + social recovery in one home",
+    "398d808 feat(family-tree): visible branches + fillable ancestor slots above you"
   ],
   "files_touched": [
     ".carpenter/session.json",
+    "src/features/family-tree/ancestorSlots.ts",
+    "src/features/family-tree/ancestorSlots.test.ts",
+    "src/features/family-tree/FamilyTreeCanvas.tsx",
+    "src/features/family-tree/FamilyTreeEditor.tsx",
+    "src/features/family-tree/kinGraph.ts",
+    "src/features/family-tree/manifest.ts",
+    "project-memory/foreman-memory/projects/tapit-wallet/ideas.md",
     "src/features/family-tree/personEdit.ts",
     "src/features/family-tree/personEdit.test.ts",
     "src/features/family-tree/kinGraph.ts",

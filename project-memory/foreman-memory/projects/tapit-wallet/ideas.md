@@ -3915,3 +3915,15 @@ Grounding: there is already a "Lattice" tab (LatticePanel.tsx) that read-only-vi
 
 Phasing: Phase 1 (this repo) - repurpose Lattice -> Keychain dashboard; move secrets in; surface social-recovery + liveness indicators; remove the secrets module from People (consolidation). Phase 2 - pull the cohort editor + distribute + recovery ceremony out of Settings/locked-screen into the dashboard as first-class actionable sections (keeping the lost-device ceremony reachable from the locked screen too, since the app can't open then). Phase 3 (cross-repo) - DynastyTrust multisig tiles via the inter-app signing pathway. Resurface after Phase 1 ships: ask the operator which liveness indicators matter most to see first.
 
+
+---
+
+Date: 2026-06-16
+Tag: family-tree / ratification / co-signature / mycelium-transport / governance
+Stage: sprouting
+One-line: Collect siblings' co-signatures over the network on a proposed family-detail edit, so the all-kids-must-sign rule completes for the multi-kid case.
+
+Operator framing: "Change sign and when all registered kids sign it's completely ratified and takes all to change. If only one registered kid then they can edit at will just sign it and it changes."
+
+Grounding: the BRAIN is already built. foldPersonEdits (personEdit.ts) enforces N-of-N: a solo controller's edits apply immediately (the "one registered kid edits at will" half — DONE), and once 2+ signers control a person every subsequent edit only applies when ALL controlling signers have signed it. PersonDetailView already surfaces this (requiresCosign banner + per-edit pending/signed badges). What's missing is the human/transport loop for the multi-kid case: when a kid proposes an edit to a co-controlled person, send that proposed-edit attestation to the other registered kids over the existing Mycelium NIP-17 transport (exactly the round-trip FamilyRatifyModal.tsx already does for family-unit envelopes), let each sibling review + append their signature, merge the co-signed edit back, and only then does foldPersonEdits flip it from pending to applied across everyone's tree. Open design question to resurface in chip form: who counts as a "registered kid / controlling signer" for a given person-node — is it the node's accumulated signers (today's model), or should it be explicitly the keyed children of that person derived from parent_of edges? That choice changes who the proposed edit gets routed to. This is the named next dedicated cut after the visible-branches + ancestor-slots slice (commit 398d808).
+
