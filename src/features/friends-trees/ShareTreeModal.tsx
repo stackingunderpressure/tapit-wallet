@@ -11,6 +11,11 @@ import {
   collectMyTreeAttestations,
   findMyRootNodeId,
 } from './familyTreeBundle.ts';
+import {
+  buildMinimalProjection,
+  type MinimalTreeProjection,
+} from './familyTreeProjection.ts';
+import { generationSpan } from './generationSpan.ts';
 
 // Friends' trees — the CONSENTED SHARE surface (slice 1).
 //
@@ -42,9 +47,15 @@ type SendState =
   | { kind: 'pending'; peer: VouchingCandidate; detail: string }
   | { kind: 'failed'; peer: VouchingCandidate; detail: string };
 
+type ShareMode = 'minimal' | 'full';
+
 export function ShareTreeModal({ onClose }: Props) {
   const { wallet, holdings, relayStatus, sendEnvelope, identity } = useWallet();
   const [state, setState] = useState<SendState>({ kind: 'idle' });
+  // Privacy default: MINIMAL. The operator opts IN to a full share. This is
+  // the privacy rail's user-facing default — first names + structure only,
+  // no dates, no surnames, no other wallet keys leave the wallet.
+  const [mode, setMode] = useState<ShareMode>('minimal');
 
   const myName = useMemo(() => {
     const names = peerNamesByPubkey(holdings, wallet.identity);
@@ -73,14 +84,47 @@ export function ShareTreeModal({ onClose }: Props) {
     return myTree.filter((a) => a.kind === 'credential').length;
   }, [myTree]);
 
+  // The MINIMAL projection that WOULD be sent — computed at build time on the
+  // sender from the FOLDED graph so the preview shows EXACTLY what crosses the
+  // wire (first names + structure + the one shared-anchor key, nothing else).
+  // The anchor pubkey is the sender's own identity (the keyedPubkey on their
+  // self-node), so mergeCandidates still finds the shared relative on receipt.
+  const projection = useMemo<MinimalTreeProjection>(
+    () => buildMinimalProjection(myTree, wallet.identity),
+    [myTree, wallet.identity],
+  );
+  // Preview figures, derived ONLY from the redacted projection (so the preview
+  // itself reveals nothing the share would not).
+  const previewPeople = projection.nodes.length;
+  const previewGenerations = useMemo(
+    () => generationSpan(projection),
+    [projection],
+  );
+  const previewFirstNames = useMemo(() => {
+    const names = projection.nodes
+      .map((n) => n.firstName)
+      .filter((n) => n.length > 0);
+    return names.slice(0, 8);
+  }, [projection]);
+
   async function confirmShare(peer: VouchingCandidate) {
     setState({ kind: 'sending', peer });
     try {
-      const draft = buildFamilyTreeBundleDraft(wallet.identity, {
-        trees: myTree,
-        rootNodeId: myRootId,
-        sharerName: myName,
-      });
+      // MINIMAL (default): ship ONLY the redacted projection — redaction
+      // already happened at build time, so surnames / dates / sex / non-anchor
+      // keys never enter the envelope. FULL (opt-in): ship the attestations.
+      const draft =
+        mode === 'minimal'
+          ? buildFamilyTreeBundleDraft(wallet.identity, {
+              projection,
+              rootNodeId: myRootId,
+              sharerName: myName,
+            })
+          : buildFamilyTreeBundleDraft(wallet.identity, {
+              trees: myTree,
+              rootNodeId: myRootId,
+              sharerName: myName,
+            });
       const signed = wallet.sign(draft);
       const publish = await sendEnvelope(peer.pubkey, signed);
       const summary = summarizePublish(publish);
@@ -148,6 +192,40 @@ export function ShareTreeModal({ onClose }: Props) {
 
         {networkLive && myTree.length > 0 && (
           <>
+            <div className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-muted">
+              How much to share
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setMode('minimal')}
+                className={`rounded-lg border px-3 py-2 text-left transition active:animate-fresh-press motion-reduce:active:animate-none ${
+                  mode === 'minimal'
+                    ? 'border-ink bg-ink/[0.04]'
+                    : 'border-ink/15 bg-white hover:bg-ink/[0.02]'
+                }`}
+              >
+                <div className="text-xs font-semibold">Minimal</div>
+                <div className="mt-0.5 text-[11px] text-muted">
+                  First names only, no dates
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('full')}
+                className={`rounded-lg border px-3 py-2 text-left transition active:animate-fresh-press motion-reduce:active:animate-none ${
+                  mode === 'full'
+                    ? 'border-ink bg-ink/[0.04]'
+                    : 'border-ink/15 bg-white hover:bg-ink/[0.02]'
+                }`}
+              >
+                <div className="text-xs font-semibold">Full</div>
+                <div className="mt-0.5 text-[11px] text-muted">
+                  Complete tree
+                </div>
+              </button>
+            </div>
+
             <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-muted">
               Share with — your trusted circle
             </div>
@@ -199,20 +277,62 @@ export function ShareTreeModal({ onClose }: Props) {
 
                       {showConfirm && (
                         <div className="mt-2 rounded-md bg-ink/[0.03] px-3 py-2">
-                          <p className="text-xs text-ink">
-                            Share my family tree with{' '}
-                            <span className="font-semibold">{peer.name}</span>?
-                            This sends {peopleCount} tree record
-                            {peopleCount === 1 ? '' : 's'} — your people and how
-                            they are related — to them and no one else.
-                          </p>
+                          {mode === 'minimal' ? (
+                            <>
+                              <p className="text-xs text-ink">
+                                Share my family tree with{' '}
+                                <span className="font-semibold">
+                                  {peer.name}
+                                </span>
+                                ?
+                              </p>
+                              <div className="mt-2 rounded-md border border-ink/10 bg-white px-2.5 py-2">
+                                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                                  This is exactly what {peer.name} will receive
+                                </div>
+                                <div className="mt-1 text-xs text-ink">
+                                  {previewPeople} {previewPeople === 1
+                                    ? 'person'
+                                    : 'people'}{' '}
+                                  · {previewGenerations}{' '}
+                                  {previewGenerations === 1
+                                    ? 'generation'
+                                    : 'generations'}{' '}
+                                  · first names only
+                                </div>
+                                {previewFirstNames.length > 0 && (
+                                  <div className="mt-1 text-[11px] text-muted">
+                                    {previewFirstNames.join(', ')}
+                                    {previewPeople > previewFirstNames.length
+                                      ? '…'
+                                      : ''}
+                                  </div>
+                                )}
+                                <div className="mt-1.5 text-[10px] text-muted">
+                                  No surnames, no birth or death dates, no other
+                                  wallet keys. Just first names and who is
+                                  related to whom.
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-xs text-ink">
+                              Share my <span className="font-semibold">full</span>{' '}
+                              family tree with{' '}
+                              <span className="font-semibold">{peer.name}</span>?
+                              This sends {peopleCount} tree record
+                              {peopleCount === 1 ? '' : 's'} — full names, dates,
+                              and how everyone is related — to them and no one
+                              else.
+                            </p>
+                          )}
                           <div className="mt-2 flex gap-2">
                             <button
                               type="button"
                               onClick={() => void confirmShare(peer)}
                               className="flex-1 rounded-md bg-ink py-1.5 text-xs font-medium text-paper transition active:animate-fresh-press motion-reduce:active:animate-none"
                             >
-                              Share my family tree with {peer.name}
+                              Share with {peer.name}
                             </button>
                             <button
                               type="button"

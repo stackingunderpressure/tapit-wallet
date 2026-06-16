@@ -137,7 +137,10 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
             sharerName: view.sharerName,
             rootNodeId: view.rootNodeId,
             sharedAt: view.sharedAt,
+            // Exactly one of trees / projection is populated depending on the
+            // share mode the sender chose (minimal is the default).
             trees: view.trees,
+            ...(view.projection ? { projection: view.projection } : {}),
           });
         } catch (err) {
           console.warn('friend family-tree share absorb failed', err);

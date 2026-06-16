@@ -111,6 +111,66 @@ describe('familyTreeBundle — build -> read round-trip', () => {
   });
 });
 
+describe('familyTreeBundle — minimal vs full variant', () => {
+  it('a full bundle reads back with projection null and isMinimal false', () => {
+    const w = Wallet.generate();
+    const { trees } = makeTree(w);
+    const signed = w.sign(
+      buildFamilyTreeBundleDraft(w.identity, {
+        trees,
+        rootNodeId: null,
+        sharerName: 'Full',
+      }),
+    );
+    const view = readFamilyTreeBundle(signed, w.publicKey);
+    expect(view.isMinimal).toBe(false);
+    expect(view.projection).toBeNull();
+    expect(view.trees.length).toBe(trees.length);
+  });
+
+  it('a minimal bundle reads back with a projection and no full attestations', () => {
+    const w = Wallet.generate();
+    const projection = {
+      nodes: [{ id: 'n1', firstName: 'Pam' }],
+      edges: [],
+      anchorNodeId: 'n1',
+      anchorPubkey: w.identity,
+    };
+    const signed = w.sign(
+      buildFamilyTreeBundleDraft(w.identity, {
+        projection,
+        rootNodeId: 'n1',
+        sharerName: 'Min',
+      }),
+    );
+    const view = readFamilyTreeBundle(signed, w.publicKey);
+    expect(view.isMinimal).toBe(true);
+    expect(view.trees).toEqual([]);
+    expect(view.projection?.nodes[0]?.firstName).toBe('Pam');
+    expect(view.projection?.anchorNodeId).toBe('n1');
+  });
+
+  it('BACKWARD COMPAT: a legacy full bundle with NO is_minimal leaf still reads as full', () => {
+    // Simulate a slice-1 bundle: build full, then strip the is_minimal leaf
+    // so the envelope looks exactly like one signed before this slice existed.
+    const w = Wallet.generate();
+    const { trees } = makeTree(w);
+    const draft = buildFamilyTreeBundleDraft(w.identity, {
+      trees,
+      rootNodeId: null,
+      sharerName: 'Legacy',
+    });
+    draft.claim.children = draft.claim.children.filter(
+      (c) => !(c.node === 'leaf' && c.name === 'is_minimal'),
+    );
+    const signed = w.sign(draft);
+    const view = readFamilyTreeBundle(signed, w.publicKey);
+    expect(view.isMinimal).toBe(false);
+    expect(view.projection).toBeNull();
+    expect(view.trees.length).toBe(trees.length);
+  });
+});
+
 describe('familyTreeBundle — defensive reader', () => {
   it('is not a bundle when credential_type does not match', () => {
     const w = Wallet.generate();

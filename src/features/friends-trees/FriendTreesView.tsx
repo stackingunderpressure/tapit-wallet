@@ -11,6 +11,7 @@ import {
   type KinNode,
 } from '../family-tree/kinGraph.ts';
 import { mergeCandidates } from '../family-tree/mergeCandidates.ts';
+import { kinGraphFromProjection } from './familyTreeProjection.ts';
 import { createKinEdge } from '../family-tree/createFamilyTree.ts';
 import { heldSameAsPairs, pairIsLinked } from '../family-tree/sameAsLinks.ts';
 import { FamilyTreeCanvas } from '../family-tree/FamilyTreeCanvas.tsx';
@@ -109,12 +110,17 @@ export function FriendTreesView({ initialFromPubkey }: Props) {
     [records, openFrom],
   );
 
-  // The friend's graph, built PURELY from their shared attestations. This is a
-  // separate graph object — it is never merged into the operator's holdings.
-  const theirGraph = useMemo<KinGraph | null>(
-    () => (open ? buildKinGraph(open.trees) : null),
-    [open],
-  );
+  // The friend's graph, built PURELY from their shared data. A MINIMAL share
+  // (projection present) is reconstructed directly from the redacted projection
+  // (kinGraphFromProjection) — first names + structure + the one shared-anchor
+  // key, nothing else ever crossed the wire. A FULL share (legacy / opt-in) is
+  // built from the shared attestations. Either way this is a separate graph
+  // object — never merged into the operator's holdings.
+  const theirGraph = useMemo<KinGraph | null>(() => {
+    if (!open) return null;
+    if (open.projection) return kinGraphFromProjection(open.projection);
+    return buildKinGraph(open.trees);
+  }, [open]);
 
   // The operator's own graph, for the read-only "people you both know"
   // highlight only.

@@ -765,6 +765,21 @@ const BUDGETS = [
   // generic catch-all. ~3.02KB gz today.
   { pattern: /^backupBanner-.*\.js$/, gz: 3_500, label: 'backupBanner' },
 
+  // ShareTreeModal — the consented family-tree SHARE surface, React.lazy from
+  // HomeScreen's Family tab so the cold path never pays for it. Slice 1
+  // (2026-06-16) shipped under the 3KB catch-all. The 2026-06-16 PRIVACY-
+  // REDACTED minimal-share slice added the Minimal-vs-Full mode toggle, the
+  // build-time projection (buildMinimalProjection import edge), and the
+  // "this is exactly what {friend} will receive" preview (generationSpan +
+  // the redacted summary + first-name sample render branch), pushing it to
+  // 3.11KB gz — a hair over the catch-all. The chunk is already lazy and only
+  // loads when the operator opens the share modal; the projection + preview
+  // ARE the privacy wedge (no blind share), so the growth is intentional and
+  // cannot be split off without removing the preview the operator must see
+  // before tapping send. Named budget with headroom rather than inflating the
+  // generic catch-all.
+  { pattern: /^ShareTreeModal-.*\.js$/, gz: 4_000, label: 'ShareTreeModal' },
+
   // FriendTreesView — the read-only "friends' trees" surface, React.lazy
   // from HomeScreen's Family tab so the Classic/Family cold path never pays
   // for it. Slice 1 (2026-06-16, consented family-tree share) shipped under

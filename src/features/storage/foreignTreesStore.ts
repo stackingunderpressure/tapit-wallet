@@ -1,5 +1,6 @@
 import { encrypt, decrypt, type Attestation, type EncryptedBlob } from 'tapit-attest';
 import { idb } from '../../shared/lib/idb.ts';
+import type { MinimalTreeProjection } from '../friends-trees/familyTreeProjection.ts';
 
 // Local persistence for FRIENDS' family trees received over the network. A
 // friend taps "Share my family tree with you"; their bundle arrives through
@@ -28,8 +29,19 @@ export interface ForeignTreeRecord {
   rootNodeId: string | null;
   /** ISO 8601 — when the friend signed the share (the share moment). */
   sharedAt: string;
-  /** The friend's family-tree attestations (person-nodes / kin-edges / edits). */
+  /**
+   * FULL share: the friend's family-tree attestations (person-nodes /
+   * kin-edges / edits). Empty for a minimal share (which carries `projection`
+   * instead). A record always carries exactly one of trees / projection.
+   */
   trees: Attestation[];
+  /**
+   * MINIMAL share: the redacted projection (first names + structure + the one
+   * shared-anchor keyedPubkey). Absent for a full share. Older records
+   * (pre-minimal slice) have no projection field, so reading it as optional
+   * keeps backward compatibility with already-stored full trees.
+   */
+  projection?: MinimalTreeProjection;
 }
 
 const KEY = (ownerId: string) => `foreign-trees:${ownerId}`;

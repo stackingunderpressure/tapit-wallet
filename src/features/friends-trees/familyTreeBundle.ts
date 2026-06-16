@@ -4,6 +4,7 @@ import { leafValue } from '../connections/createHandshake.ts';
 import { isPersonNode, readPersonNode } from '../family-tree/personNode.ts';
 import { isKinEdge } from '../family-tree/kinEdge.ts';
 import { isPersonEdit } from '../family-tree/personEdit.ts';
+import type { MinimalTreeProjection } from './familyTreeProjection.ts';
 
 // Friends' trees — the CONSENTED family-tree SHARE bundle (slice 1).
 //
@@ -28,6 +29,22 @@ import { isPersonEdit } from '../family-tree/personEdit.ts';
 //     as any string scalar leaf), so the bundle is one ordinary signed
 //     attestation that rides the existing sendEnvelopeTo path.
 //
+// MINIMAL-SHARE PRIVACY SLICE (2026-06-16) — minimal is the DEFAULT:
+//   - A bundle is built in one of two modes. FULL mode carries the complete
+//     attestation set (trees_json), unchanged from slice 1. MINIMAL mode
+//     carries ONLY a redacted projection (projection_json, is_minimal='true'):
+//     each person's FIRST NAME + the tree STRUCTURE (parent_of / spouse) +
+//     the single shared-anchor keyedPubkey. It carries NO surname, NO born,
+//     NO died, NO sex, and NO keyedPubkey other than the shared anchor's.
+//   - Redaction happens at BUILD TIME on the sender (see familyTreeProjection
+//     .buildMinimalProjection). The sensitive fields are stripped BEFORE the
+//     bundle is signed, so they never cross the wire — there is no
+//     "trust the recipient to hide it" anywhere in this path.
+//   - readFamilyTreeBundle detects the variant: minimal bundles return a
+//     pre-built KinGraph reconstructed directly from the projection (no fake
+//     signed attestations); full bundles keep returning parsed trees.
+//     Existing/received FULL bundles still render — backward compatible.
+//
 // The bundle is a CLAIM the sharer signs: "this is my family tree, as I hold
 // it, shared with you now." The signing date is never forged; the envelope
 // signer is the sharer's identity, which the receiver attributes as
@@ -36,8 +53,19 @@ import { isPersonEdit } from '../family-tree/personEdit.ts';
 const CREDENTIAL_TYPE = 'family-tree-bundle';
 
 export interface FamilyTreeBundleInput {
-  /** The sharer's family-tree attestations (nodes + edges + edits). */
-  trees: readonly Attestation[];
+  /**
+   * FULL mode: the sharer's family-tree attestations (nodes + edges + edits).
+   * Provide this OR `projection`, never both. When `projection` is set the
+   * bundle is built in minimal mode and `trees` is ignored.
+   */
+  trees?: readonly Attestation[];
+  /**
+   * MINIMAL mode (the DEFAULT share): the redacted projection — first names +
+   * structure + the single shared-anchor keyedPubkey only. When set, the
+   * bundle carries projection_json + is_minimal='true' and NO full
+   * attestations. Redaction already happened (build-time, on the sender).
+   */
+  projection?: MinimalTreeProjection;
   /**
    * The sharer's OWN self person-node id (envelopeId of the person-node keyed
    * to their identity). The receiver roots the read-only canvas on this so
@@ -52,7 +80,19 @@ export interface FamilyTreeBundleInput {
 export interface FamilyTreeBundleView {
   /** The envelope signer — the sharer's identity pubkey (provenance). */
   senderPubkey: string;
+  /**
+   * Full-mode attestations, parsed defensively. Empty for a minimal bundle
+   * (a minimal bundle carries no attestations — only the projection).
+   */
   trees: Attestation[];
+  /**
+   * Minimal-mode projection, or null for a full bundle. When present the view
+   * is a minimal share and the receiver renders from `projection` directly
+   * (kinGraphFromProjection) rather than from `trees`.
+   */
+  projection: MinimalTreeProjection | null;
+  /** True for a minimal (redacted) bundle, false for a full one. */
+  isMinimal: boolean;
   rootNodeId: string | null;
   sharerName: string;
   /** ISO 8601 — when the sharer signed this bundle (the share moment). */
@@ -73,17 +113,40 @@ export function buildFamilyTreeBundleDraft(
   authorIdentity: string,
   input: FamilyTreeBundleInput,
 ): Attestation {
+  const base = {
+    credential_type: CREDENTIAL_TYPE,
+    sharer_name: input.sharerName.trim(),
+    root_node_id: input.rootNodeId ?? '',
+    shared_at: new Date().toISOString(),
+  };
+
+  // MINIMAL mode — carry ONLY the redacted projection. The full attestations
+  // (and therefore surnames, dates, sex, and every non-anchor keyedPubkey)
+  // are NEVER serialized into this envelope. is_minimal='true' marks the
+  // variant; trees_json is empty so the defensive full reader yields [].
+  if (input.projection) {
+    return credentialAttestation({
+      subject: authorIdentity,
+      tier: 'notable',
+      fields: {
+        ...base,
+        is_minimal: 'true',
+        projection_json: JSON.stringify(input.projection),
+        trees_json: '',
+      },
+    });
+  }
+
+  // FULL mode (opt-in) — the whole family-tree attestation set, unchanged.
   return credentialAttestation({
     subject: authorIdentity,
     tier: 'notable',
     fields: {
-      credential_type: CREDENTIAL_TYPE,
-      sharer_name: input.sharerName.trim(),
-      root_node_id: input.rootNodeId ?? '',
-      shared_at: new Date().toISOString(),
+      ...base,
+      is_minimal: 'false',
       // The whole family-tree attestation set, as canonical JSON. A leaf
       // value is a string scalar; the receiver re-parses it defensively.
-      trees_json: JSON.stringify(input.trees),
+      trees_json: JSON.stringify(input.trees ?? []),
     },
   });
 }
@@ -113,13 +176,78 @@ export function readFamilyTreeBundle(
   senderPubkey: string,
 ): FamilyTreeBundleView {
   const rootRaw = leafValue(att, 'root_node_id');
+  // Minimal iff explicitly flagged AND the projection actually parses. A
+  // missing is_minimal leaf (old full bundles) reads '' -> full path, so
+  // backward compatibility is automatic.
+  const projection =
+    leafValue(att, 'is_minimal') === 'true'
+      ? parseProjectionJson(leafValue(att, 'projection_json'))
+      : null;
   return {
     senderPubkey,
-    trees: parseTreesJson(leafValue(att, 'trees_json')),
+    // A minimal bundle carries no attestations; a full bundle carries them.
+    trees: projection ? [] : parseTreesJson(leafValue(att, 'trees_json')),
+    projection,
+    isMinimal: projection !== null,
     rootNodeId: rootRaw.trim().length > 0 ? rootRaw : null,
     sharerName: leafValue(att, 'sharer_name') || 'A friend',
     sharedAt: leafValue(att, 'shared_at') || att.issuedAt,
   };
+}
+
+/**
+ * Recover a MinimalTreeProjection from a JSON string, DEFENSIVELY. Any parse
+ * failure, non-object, or structurally-wrong payload yields null so the
+ * caller falls back to the full-attestation path (or renders empty) rather
+ * than crashing. Individual junk nodes/edges are dropped; the projection
+ * carries only string ids, first names, and the known relations.
+ */
+function parseProjectionJson(raw: string): MinimalTreeProjection | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const p = parsed as Record<string, unknown>;
+  if (!Array.isArray(p.nodes) || !Array.isArray(p.edges)) return null;
+
+  const nodes = p.nodes
+    .filter(
+      (n): n is { id: string; firstName: string } =>
+        typeof n === 'object' &&
+        n !== null &&
+        typeof (n as Record<string, unknown>).id === 'string' &&
+        typeof (n as Record<string, unknown>).firstName === 'string',
+    )
+    .map((n) => ({ id: n.id, firstName: n.firstName }));
+
+  const edges = p.edges
+    .filter((e): e is { relation: string; from: string; to: string } => {
+      if (typeof e !== 'object' || e === null) return false;
+      const r = e as Record<string, unknown>;
+      return (
+        (r.relation === 'parent_of' ||
+          r.relation === 'spouse' ||
+          r.relation === 'same_as') &&
+        typeof r.from === 'string' &&
+        typeof r.to === 'string'
+      );
+    })
+    .map((e) => ({
+      relation: e.relation as 'parent_of' | 'spouse' | 'same_as',
+      from: e.from,
+      to: e.to,
+    }));
+
+  const anchorNodeId =
+    typeof p.anchorNodeId === 'string' ? p.anchorNodeId : null;
+  const anchorPubkey =
+    typeof p.anchorPubkey === 'string' ? p.anchorPubkey : null;
+
+  return { nodes, edges, anchorNodeId, anchorPubkey };
 }
 
 /** Recover an array of attestation-shaped entries from a JSON string. Any
