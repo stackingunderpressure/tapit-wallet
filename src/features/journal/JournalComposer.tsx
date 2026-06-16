@@ -5,6 +5,7 @@ import { SUGGESTED_CATEGORIES } from './categories.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { normalizeImage } from './normalizeImage.ts';
 import { normalizeEventDateInput } from './momentDate.ts';
+import { SUGGESTED_TAGS, normalizeTag } from './journalTags.ts';
 
 const CameraCaptureModal = lazy(() =>
   import('../camera/CameraCaptureModal.tsx').then((m) => ({
@@ -63,8 +64,27 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
   const [attachment, setAttachment] = useState<File | null>(null);
   const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  // Everyday-life tags (multi-select suggested + custom). Searchable later.
+  const [tags, setTags] = useState<string[]>([]);
+  const [customTag, setCustomTag] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleTag(tag: string) {
+    setTags((prev) =>
+      prev.some((t) => t.toLowerCase() === tag.toLowerCase())
+        ? prev.filter((t) => t.toLowerCase() !== tag.toLowerCase())
+        : [...prev, tag],
+    );
+  }
+  function addCustomTag() {
+    const t = normalizeTag(customTag);
+    if (t.length === 0) return;
+    if (!tags.some((x) => x.toLowerCase() === t.toLowerCase())) {
+      setTags((prev) => [...prev, t]);
+    }
+    setCustomTag('');
+  }
 
   // Picker handler — normalizes HEIC/HEIF/etc. to JPEG so the photo
   // renders everywhere (iPhone captures HEIC by default; Chrome and
@@ -131,6 +151,7 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
               : subjectLabel.trim(),
           attachment: attachment ?? undefined,
           eventDate: normalizeEventDateInput(eventDate),
+          tags,
         },
         prefs.cloudSync,
       );
@@ -261,6 +282,78 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
             className="mt-2 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         )}
+      </div>
+
+      <div>
+        <span className="text-sm font-medium">
+          Tags{' '}
+          <span className="font-normal text-muted">
+            (optional — search by these later)
+          </span>
+        </span>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          {SUGGESTED_TAGS.map((t) => {
+            const active = tags.some(
+              (x) => x.toLowerCase() === t.toLowerCase(),
+            );
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleTag(t)}
+                aria-pressed={active}
+                className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                  active
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]'
+                }`}
+              >
+                {t}
+              </button>
+            );
+          })}
+          {/* custom tags the operator typed in that aren't in the suggested set */}
+          {tags
+            .filter(
+              (t) =>
+                !SUGGESTED_TAGS.some(
+                  (s) => s.toLowerCase() === t.toLowerCase(),
+                ),
+            )
+            .map((t) => (
+              <button
+                key={`custom-${t}`}
+                type="button"
+                onClick={() => toggleTag(t)}
+                aria-pressed
+                className="rounded-full border border-ink bg-ink px-2.5 py-1 text-xs text-paper"
+              >
+                {t} ✕
+              </button>
+            ))}
+        </div>
+        <div className="mt-2 flex gap-2">
+          <input
+            type="text"
+            value={customTag}
+            onChange={(e) => setCustomTag(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addCustomTag();
+              }
+            }}
+            placeholder="Add your own tag…"
+            className="flex-1 rounded-md border border-ink/15 bg-white px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+          <button
+            type="button"
+            onClick={addCustomTag}
+            className="rounded-md border border-ink/15 bg-white px-3 py-2 text-sm hover:bg-ink/5"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       <div>

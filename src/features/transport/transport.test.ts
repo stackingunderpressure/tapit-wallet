@@ -169,7 +169,7 @@ describe('encrypted inbox round-trip', () => {
       received.push(item.envelope);
     });
     await sendEnvelopeTo(transport, alice.identity, bob.wallet.publicKey, alice.wallet);
-    await flush();
+    await waitUntil(() => received.length >= 1);
     expect(received).toHaveLength(1);
     expect(received[0]!.subject).toBe(alice.wallet.publicKey);
   });
@@ -245,7 +245,7 @@ describe('encrypted inbox round-trip', () => {
       senders.push(item.senderPubkey);
     });
     await sendEnvelopeToSelf(transport, alice.identity, alice.wallet);
-    await flush();
+    await waitUntil(() => received.length >= 1);
     expect(received).toHaveLength(1);
     // The self-CC arrives with senderPubkey == recipient (own identity);
     // the inbox handler at the application layer uses that signal to
@@ -270,7 +270,7 @@ describe('chat-message round-trip (NIP-17 gift-wrapped, kind 1059)', () => {
       bob.wallet.publicKey,
       alice.wallet,
     );
-    await flush();
+    await waitUntil(() => received.length >= 1);
     expect(received).toHaveLength(1);
     expect(received[0]!.payload.text).toBe('we were here, bang bang');
     expect(received[0]!.senderPubkey).toBe(alice.wallet.publicKey);
@@ -314,7 +314,7 @@ describe('chat-message round-trip (NIP-17 gift-wrapped, kind 1059)', () => {
       bob.wallet.publicKey,
       alice.wallet,
     );
-    await flush();
+    await waitUntil(() => envSeen.length >= 1 && chatSeen.length >= 1);
     expect(envSeen).toHaveLength(1);
     expect(chatSeen).toHaveLength(1);
     expect(chatSeen[0]!.payload.text).toBe('just a hello');
@@ -666,5 +666,27 @@ function noopWS(): typeof WebSocket {
 async function flush(): Promise<void> {
   for (let i = 0; i < 4; i++) {
     await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+// Deterministically wait for an async delivery to land, instead of a fixed
+// number of macrotask flushes. The receive path awaits crypto.subtle.digest
+// (verifyEvent, twice per gift-wrap), which in Node can resolve on the libuv
+// threadpool — so under full-suite load (concurrent crypto in other tests)
+// the chat/inbox handler can settle AFTER a fixed flush() has already run,
+// leaving `received` empty and the assertion flaky. Polling until the
+// condition holds (or a generous timeout) removes that race without changing
+// production, where the handler is fire-and-forget and the UI just re-renders
+// when the message arrives.
+async function waitUntil(
+  predicate: () => boolean,
+  timeoutMs = 3000,
+): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('waitUntil: condition not met within timeout');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
   }
 }

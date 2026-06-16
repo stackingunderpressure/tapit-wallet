@@ -4,6 +4,7 @@ import { multiDisclosureProof, envelopeId } from 'tapit-attest';
 import { leafIndex } from './leafIndex.ts';
 import { canShare, shareText } from '../../shared/lib/share.ts';
 import { downloadOtsFile } from './exportProof.ts';
+import { buildVerifyUrl } from './buildVerifyUrl.ts';
 import { QrShow } from '../qr/QrShow.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
@@ -38,7 +39,18 @@ interface Props {
 
 type Step =
   | { kind: 'pick' }
-  | { kind: 'generated'; paths: string[]; json: string; otsProofHex?: string };
+  | {
+      kind: 'generated';
+      paths: string[];
+      json: string;
+      otsProofHex?: string;
+      /** A /verify?p=<proof> link when the proof fits inline — the QR
+       *  encodes this so a normal camera scan opens the verifier with the
+       *  proof preloaded. Undefined (QR falls back to the JSON) past the
+       *  inline byte budget. */
+      verifyUrl?: string;
+      urlIsInline?: boolean;
+    };
 
 // "Share a proof" flow. The operator picks one or more leaves out of
 // the attestation's claim tree and the wallet calls
@@ -101,7 +113,27 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
       const anchor = deriveVerificationStatus(attestation, row).anchor;
       const shared = anchor ? { ...bundle, anchor } : bundle;
       const json = JSON.stringify(shared, null, 2);
-      setStep({ kind: 'generated', paths, json, otsProofHex: anchor?.proof });
+      // Build the one-tap verify link so the QR can preload the verifier on
+      // a plain camera scan. Best-effort — if it can't mint (or is too big
+      // to ride inline) the QR falls back to the raw proof JSON and the
+      // recipient pastes / uses the verify page's own Scan-QR.
+      let verifyUrl: string | undefined;
+      let urlIsInline = false;
+      try {
+        const minted = buildVerifyUrl(attestation, paths);
+        verifyUrl = minted.verifyUrl;
+        urlIsInline = minted.urlIsInline;
+      } catch {
+        /* keep verifyUrl undefined — QR uses the JSON */
+      }
+      setStep({
+        kind: 'generated',
+        paths,
+        json,
+        otsProofHex: anchor?.proof,
+        verifyUrl,
+        urlIsInline,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'could not generate proof');
     }
@@ -259,7 +291,27 @@ export function ShareProofModal({ attestation, onClose, peerLabel }: Props) {
                 no app, and no taking our word for it.
               </p>
             )}
-            {showQr && <QrShow text={step.json} label="Disclosure proof" />}
+            {showQr && (
+              <>
+                <QrShow
+                  text={
+                    step.urlIsInline && step.verifyUrl
+                      ? step.verifyUrl
+                      : step.json
+                  }
+                  label={
+                    step.urlIsInline && step.verifyUrl
+                      ? 'Scan to verify'
+                      : 'Disclosure proof'
+                  }
+                />
+                <p className="mt-1.5 text-[11px] text-muted">
+                  {step.urlIsInline && step.verifyUrl
+                    ? 'Point any phone camera at this — it opens the verifier with the proof already loaded. No app needed.'
+                    : 'This proof is too large to fit a scan-to-open link. Copy it below and paste it on the verify page (or use Scan QR there).'}
+                </p>
+              </>
+            )}
             <div className="mt-3 flex gap-2 flex-wrap">
               {canShare() && (
                 <button
