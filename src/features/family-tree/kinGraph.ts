@@ -33,6 +33,14 @@ export interface KinNode extends PersonNodeView {
    * (subject_node) still match. Absent on hand-built graphs == [id].
    */
   aliasIds?: string[];
+  /**
+   * Set ONLY on synthetic placeholder nodes injected for the canvas (a
+   * missing "known spot above you" — an unfilled parent). Carries the id of
+   * the real child this empty slot is a parent of, so a tap can open the
+   * add-a-parent form already pointed at that child. Never present on a real
+   * person-node read from holdings.
+   */
+  placeholderFor?: string;
 }
 
 export interface KinGraph {

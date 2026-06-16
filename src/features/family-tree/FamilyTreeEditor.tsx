@@ -14,6 +14,7 @@ import {
 } from './createFamilyTree.ts';
 import { readPersonChanges } from './personEdit.ts';
 import { groupByGeneration } from './treeGenerations.ts';
+import { withAncestorSlots } from './ancestorSlots.ts';
 import { storiesAbout } from './storiesAbout.ts';
 import type { Sex } from './personNode.ts';
 import { FamilyTreeCanvas } from './FamilyTreeCanvas.tsx';
@@ -103,6 +104,11 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
   const [died, setDied] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // When you tap an empty "known spot above you" in the tree, the add form
+  // below points at that child so a new name lands as their parent.
+  const [slotTarget, setSlotTarget] = useState<{ id: string; name: string } | null>(
+    null,
+  );
   // When set, the modal shows that person's detail (relationship + the
   // moments you've signed about them) instead of the editor.
   const [selected, setSelected] = useState<{
@@ -200,6 +206,15 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
     }
     return null;
   }, [graph, wallet.identity]);
+
+  // The graph the CANVAS draws: the real graph plus dashed placeholder slots
+  // for the missing known spots above you (your unfilled parents and
+  // grandparents). Kept separate so stats / generations stay counted off the
+  // real people only.
+  const canvasGraph = useMemo<KinGraph>(
+    () => withAncestorSlots(graph, selfId),
+    [graph, selfId],
+  );
 
   const myParentId = selfId
     ? [...(graph.parents.get(selfId) ?? [])][0] ?? null
@@ -435,11 +450,25 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
       setBorn('');
       setDied('');
       setSex(undefined);
+      setSlotTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add to your tree.');
     } finally {
       setBusy(false);
     }
+  }
+
+  // Tapping an empty "known spot above you" — point the add form at that
+  // child as a parent add. We stay on the tree view and prime the form below.
+  function openSlot(childId: string) {
+    const child = graph.nodes.get(childId);
+    setSlotTarget({ id: childId, name: child?.displayName || 'this person' });
+    setRelation('parent');
+    setName('');
+    setBorn('');
+    setDied('');
+    setSex(undefined);
+    setError(null);
   }
 
   // The shared add-relative form — rendered on the main view ("add to me")
@@ -705,20 +734,41 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
             </p>
           ) : (
             <FamilyTreeCanvas
-              graph={graph}
+              graph={canvasGraph}
               selfId={selfId}
               onSelect={(node, relationship) =>
                 setSelected({ node, relationship })
               }
+              onAddAncestor={openSlot}
             />
           )}
         </div>
 
+        {slotTarget && (
+          <div className="mt-4 flex items-center justify-between rounded-lg border border-ink/15 bg-accent/10 px-3 py-2">
+            <span className="text-xs text-ink">
+              🌿 Filling in a parent for{' '}
+              <span className="font-semibold">{slotTarget.name}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setSlotTarget(null)}
+              className="text-xs text-muted hover:text-ink"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {renderAddForm({
-          onAdd: () => void addRelative(() => ensureSelf()),
+          onAdd: () =>
+            void addRelative(() =>
+              slotTarget ? Promise.resolve(slotTarget.id) : ensureSelf(),
+            ),
           canSibling,
-          relationLabel: 'Their relation to you',
-          submitLabel: '🌿 Add to my tree',
+          relationLabel: slotTarget
+            ? `Their relation to ${slotTarget.name}`
+            : 'Their relation to you',
+          submitLabel: slotTarget ? '🌿 Add this parent' : '🌿 Add to my tree',
         })}
       </>,
     );

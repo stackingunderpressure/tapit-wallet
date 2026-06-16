@@ -22,9 +22,17 @@ interface Props {
   graph: KinGraph;
   selfId: string | null;
   onSelect: (node: KinNode, relationship: string) => void;
+  /** Tapping an empty "known spot above you" placeholder — childId is the
+   *  person whose missing parent this slot would fill. */
+  onAddAncestor?: (childId: string) => void;
 }
 
-export function FamilyTreeCanvas({ graph, selfId, onSelect }: Props) {
+export function FamilyTreeCanvas({
+  graph,
+  selfId,
+  onSelect,
+  onAddAncestor,
+}: Props) {
   const { layout, positions, width, height } = useMemo(() => {
     const lay = layoutTree(graph, selfId);
     const innerW = Math.max(1, lay.maxRowSize) * COL_GAP;
@@ -75,6 +83,10 @@ export function FamilyTreeCanvas({ graph, selfId, onSelect }: Props) {
             }
             // parent_of: orthogonal elbow from the parent's bottom to the
             // child's top, bending at the midpoint between the two rows.
+            // A branch into an empty "add a parent" slot is drawn faint +
+            // dashed so it reads as a gap waiting to be filled; a real
+            // lineage branch is drawn clearly so the tree looks connected.
+            const intoSlot = Boolean(graph.nodes.get(e.fromId)?.placeholderFor);
             const pBottom = a.cy + NODE_H / 2 - 18;
             const cTop = b.cy - NODE_H / 2 + 18;
             const midY = (pBottom + cTop) / 2;
@@ -83,8 +95,9 @@ export function FamilyTreeCanvas({ graph, selfId, onSelect }: Props) {
                 key={`p${i}`}
                 d={`M ${a.cx} ${pBottom} L ${a.cx} ${midY} L ${b.cx} ${midY} L ${b.cx} ${cTop}`}
                 fill="none"
-                stroke="rgba(40,40,40,0.18)"
-                strokeWidth={2}
+                stroke={intoSlot ? 'rgba(70,60,45,0.28)' : 'rgba(70,60,45,0.55)'}
+                strokeWidth={intoSlot ? 1.5 : 2.25}
+                strokeDasharray={intoSlot ? '4 4' : undefined}
               />
             );
           })}
@@ -93,6 +106,30 @@ export function FamilyTreeCanvas({ graph, selfId, onSelect }: Props) {
         {layout.nodes.map((n) => {
           const p = positions.get(n.id);
           if (!p) return null;
+          // An empty "known spot above you" — a dashed ghost that opens the
+          // add-a-parent form for its child when tapped.
+          if (n.node.placeholderFor) {
+            return (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => onAddAncestor?.(n.node.placeholderFor as string)}
+                className="absolute flex flex-col items-center justify-center rounded-xl border border-dashed border-ink/15 bg-white px-1.5 py-1.5 text-center text-muted transition active:animate-fresh-press motion-reduce:active:animate-none hover:text-accent"
+                style={{
+                  left: p.cx - NODE_W / 2,
+                  top: p.cy - NODE_H / 2,
+                  width: NODE_W,
+                  height: NODE_H,
+                }}
+                aria-label="Add a missing parent"
+              >
+                <span aria-hidden className="text-xl leading-none">
+                  +
+                </span>
+                <span className="mt-1 text-[10px] leading-tight">add parent</span>
+              </button>
+            );
+          }
           const label = genderKinLabel(n.relationship, n.node.sex);
           return (
             <button
