@@ -56,7 +56,18 @@ const BUDGETS = [
   // surfaces) grew the cold-start login bundle and had landed without a
   // budget bump. Audited as intentional. Bumped 12.21 -> 13.0KiB
   // (measured 12.83KB gz).
-  { pattern: /^index-.*\.js$/, gz: 13_312, label: 'login bundle (main)' },
+  // 2026-06-16 bump (13.0 -> 13.5KiB): env-embedding correction, not code
+  // growth. Vite inlines VITE_SUPABASE_URL and the ~200-char anon-key JWT into
+  // this entry as string literals at build time. A local build with empty env
+  // (the dev default) never embeds them, so the prior figure undercounted; the
+  // Netlify production build embeds the real values, and the JWT is high-
+  // entropy so it gzips poorly, adding ~50 bytes past the old budget. Verified
+  // by reproducing locally with representative-length env values: the check
+  // measures 13.05KB gz, matching the Netlify failure exactly. Those literals
+  // are required to construct the Supabase client on the login path, so they
+  // cannot be code-split away. Budget now clears the production-measured size
+  // with headroom for env-value length variation.
+  { pattern: /^index-.*\.js$/, gz: 13_824, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
   // variable blocks plus the aurora-drift keyframes + background.
