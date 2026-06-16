@@ -502,7 +502,12 @@ const BUDGETS = [
   // mother vs father, grandma vs grandpa): optional person sex + the
   // relation-aware Mother/Father toggle + gender.ts label mapping ride in
   // this chunk. Measured 7.75KB gz; bumped 7.5 -> 8.25KiB.
-  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 8_448, label: 'FamilyTreeEditor' },
+  // 2026-06-16 connected-tree slice (operator: "not a Merkle-looking tree"):
+  // the pure treeLayout engine (generation rows + barycenter column ordering)
+  // and the FamilyTreeCanvas SVG node-link renderer replace the flat
+  // generation-row list and ride in this lazy chunk. Measured 8.83KB gz;
+  // bumped 8.25 -> 9.5KiB.
+  { pattern: /^FamilyTreeEditor-.*\.js$/, gz: 9_728, label: 'FamilyTreeEditor' },
   // 2026-05-29 VouchingCircleSection (Tier 1 item 11 sub-cuts A + C.2)
   // — React.lazy from HomeScreen Identity tab. Carries the
   // candidate-finder helper (reads family / cohort / handshake from

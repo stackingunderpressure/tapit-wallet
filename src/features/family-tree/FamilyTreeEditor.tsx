@@ -8,7 +8,8 @@ import { storiesAbout } from './storiesAbout.ts';
 import { explainRelationship } from './kinEducation.ts';
 import { genderKinLabel } from './gender.ts';
 import type { Sex } from './personNode.ts';
-import { identiconSeed } from '../connections/identicon.ts';
+import { KinAvatar } from './KinAvatar.tsx';
+import { FamilyTreeCanvas } from './FamilyTreeCanvas.tsx';
 import {
   readEventDate,
   formatEventDate,
@@ -56,26 +57,6 @@ const SEX_LABELS: Record<Relation, { female: string; male: string }> = {
 
 interface Props {
   onClose: () => void;
-}
-
-// A stable colored avatar for a person — identicon hues from their key
-// (or node id, for keyless ancestors) + initials from their name.
-function KinAvatar({ node, size = 36 }: { node: KinNode; size?: number }) {
-  const seed = identiconSeed(node.keyedPubkey ?? node.id, node.displayName);
-  return (
-    <span
-      aria-hidden
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size * 0.4,
-        background: `linear-gradient(135deg, hsl(${seed.hueA} 55% 52%), hsl(${seed.hueB} 55% 42%))`,
-      }}
-    >
-      {seed.initials}
-    </span>
-  );
 }
 
 interface Extra {
@@ -633,67 +614,13 @@ export function FamilyTreeEditor({ onClose }: Props) {
               tree grow.
             </p>
           ) : (
-            <div className="space-y-4">
-              {generations.map((group) => (
-                <div key={String(group.generation)}>
-                  <div className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                    {group.title}
-                  </div>
-                  <ul className="mt-1.5 space-y-1.5">
-                    {group.members.map((m) => {
-                      const isYou = m.relationship === 'you';
-                      return (
-                        <li
-                          key={m.id}
-                          className="animate-fresh-rise motion-reduce:animate-none"
-                        >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelected({
-                                node: m.node,
-                                relationship: m.relationship,
-                              })
-                            }
-                            className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-ink/5 active:animate-fresh-press motion-reduce:active:animate-none ${
-                              isYou ? 'bg-accent/5' : ''
-                            }`}
-                          >
-                            <KinAvatar node={m.node} />
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-center gap-2">
-                                <span
-                                  className={`truncate text-sm ${isYou ? 'font-semibold' : 'font-medium'}`}
-                                >
-                                  {m.node.displayName}
-                                </span>
-                                <span className="shrink-0 rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-muted">
-                                  {genderKinLabel(m.relationship, m.node.sex)}
-                                </span>
-                              </span>
-                              {!isYou && (
-                                <span className="mt-0.5 block truncate text-[11px] text-muted">
-                                  {explainRelationship(m.relationship)}
-                                </span>
-                              )}
-                              {(m.node.born || m.node.died) && (
-                                <span className="mt-0.5 block text-[11px] text-muted">
-                                  {m.node.born ?? '?'}
-                                  {m.node.died ? `–${m.node.died}` : ''}
-                                </span>
-                              )}
-                            </span>
-                            <span aria-hidden className="text-muted">
-                              ›
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </div>
+            <FamilyTreeCanvas
+              graph={graph}
+              selfId={selfId}
+              onSelect={(node, relationship) =>
+                setSelected({ node, relationship })
+              }
+            />
           )}
         </div>
 
