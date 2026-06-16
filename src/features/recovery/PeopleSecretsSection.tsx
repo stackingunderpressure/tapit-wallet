@@ -1,15 +1,20 @@
 import { lazy, Suspense, useState } from 'react';
 
-// "Your secrets" inside the People tab — the collapsible condo. List + Tree
-// stay visible above; this sits as its own card that collapses down and
-// expands when needed (operator, 2026-06-05: "list and tree visible always
-// and secrets collapse down expand when needed"). It owns only the open/close
-// state and lazy-loads the heavy dashboard chunk on first expand, so people
-// who never open secrets pay nothing for it.
+// "Your secrets" inside the People tab — a real, purpose-built MODULE, not a
+// collapsible paragraph (operator, 2026-06-16: "make it like a secret module,
+// a thing that looks like that's what it's made to do, not a little block of
+// text you click on... see who you sent your secrets to right off the bat and
+// bring them back in one click"). It presents as its own surface with an icon
+// tile and a clear purpose line, opens straight to your secret cards (who holds
+// each piece + one-tap bring-back live on each card), and stays collapsible so
+// it never dominates the tab. The heavy dashboard chunk still lazy-loads, but
+// it loads open by default now so the module reads as something that does
+// something for you.
 //
-// Moved here from the Identity-tab launcher card: the operator wanted the
-// whole secrets experience integrated where the connections and threads live,
-// "not having to go somewhere else."
+// This is the single home for YOUR secrets. Wallet recovery (the cohort that
+// can restore this wallet on a new device) is its own special flow in Settings
+// and on the locked-out screen, deliberately kept distinct so it can't be
+// confused with a casual secret.
 
 const SecretsDashboard = lazy(() =>
   import('./SecretsDashboard.tsx').then((m) => ({
@@ -18,20 +23,26 @@ const SecretsDashboard = lazy(() =>
 );
 
 export function PeopleSecretsSection() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   return (
-    <section className="mt-4 rounded-2xl border border-ink/10 bg-paper shadow-sm">
+    <section className="mt-4 overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-sm">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left"
       >
-        <span className="min-w-0">
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-xl"
+        >
+          🔐
+        </span>
+        <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">Your secrets</span>
           <span className="mt-0.5 block text-xs text-muted">
-            Cards your circle holds for you — set them up, hand the pieces out,
-            bring them back.
+            Split a secret across people you trust. See who holds each piece and
+            bring it back in one tap.
           </span>
         </span>
         <svg

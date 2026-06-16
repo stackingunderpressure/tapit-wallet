@@ -485,7 +485,12 @@ const BUDGETS = [
   // past 8.5KB without a budget bump. Audited as intentional; still
   // loads only when the secrets panel is expanded. Bumped 8.30 ->
   // 8.75KiB (measured 8.56KB gz).
-  { pattern: /^SecretsDashboard-.*\.js$/, gz: 8_960, label: 'SecretsDashboard' },
+  // 2026-06-16 secret-module pass (operator: "make it a real module, see who
+  // holds your pieces right off the bat, bring it back in one tap"): the ledger
+  // cards now render holder chips + held badges + a per-card one-tap bring-back,
+  // and the recover view shows who-to-ask (with ask-over-chat) for the targeted
+  // secret. Measured 9.60KB gz; bumped 8.75 -> 10.5KiB.
+  { pattern: /^SecretsDashboard-.*\.js$/, gz: 10_752, label: 'SecretsDashboard' },
   // 2026-06-14 family-tree CUT 1 editor — FamilyTreeEditor is the
   // edit-your-adjacent-layer modal (add parent/child/spouse/sibling as
   // witnessed person-nodes + kin edges, list your people with their

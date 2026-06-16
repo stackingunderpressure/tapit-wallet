@@ -126,6 +126,8 @@ export function SecretsDashboard() {
   // recover state
   const [pasted, setPasted] = useState('');
   const [recovered, setRecovered] = useState<CombineResult | null>(null);
+  // Which secret a per-card "Bring it back" targets (null = generic recover).
+  const [recoverId, setRecoverId] = useState<string | null>(null);
 
   // Load the saved ledger once. Decrypt failure resolves to [] in the store.
   useEffect(() => {
@@ -301,10 +303,13 @@ export function SecretsDashboard() {
   }
 
   const detailRecord = detailId ? records.find((r) => r.id === detailId) ?? null : null;
+  const recoverRecord = recoverId ? records.find((r) => r.id === recoverId) ?? null : null;
 
   const subTitle =
     mode === 'recover'
-      ? 'Bring a secret back'
+      ? recoverRecord
+        ? `Bring back "${recoverRecord.name || 'secret'}"`
+        : 'Bring a secret back'
       : mode === 'pick'
         ? 'New secret'
         : mode === 'create'
@@ -331,7 +336,7 @@ export function SecretsDashboard() {
           records={records}
           onOpen={(id) => { setDetailId(id); setMode('detail'); }}
           onNew={() => setMode('pick')}
-          onRecover={() => { setRecovered(null); setPasted(''); setMode('recover'); }}
+          onRecover={(id) => { setRecovered(null); setPasted(''); setRecoverId(id ?? null); setMode('recover'); }}
         />
       )}
 
@@ -637,6 +642,50 @@ export function SecretsDashboard() {
 
       {mode === 'recover' && (
         <div className="mt-4 space-y-3">
+          {recoverRecord && (
+            <div className="rounded-xl border border-ink/15 bg-white px-3.5 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                Ask these people for their piece
+              </div>
+              <p className="mt-1 text-[11px] text-muted">
+                Any {recoverRecord.threshold} of {recoverRecord.total} brings
+                "{recoverRecord.name || 'this secret'}" back. Reach out, then
+                paste the pieces below as they come in.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {recoverRecord.pieces.map((p) => {
+                  const who =
+                    (p.holderName && p.holderName.trim()) ||
+                    methodLabel(p.method) ||
+                    'not handed out yet';
+                  return (
+                    <li
+                      key={`rcv-${p.index}`}
+                      className="flex items-center justify-between text-[11px]"
+                    >
+                      <span className="truncate">
+                        Piece {p.index} · {who}
+                      </span>
+                      {p.holderPubkey && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            sendChatMessage(
+                              p.holderPubkey as string,
+                              `Hey${p.holderName ? ` ${p.holderName}` : ''} — I'm bringing back "${recoverRecord.name || 'a shared secret'}". Could you send me back the piece you're holding? Open your Tapit wallet and forward it over. Thank you!`,
+                            )
+                          }
+                          className="ml-2 shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-semibold text-accent hover:bg-accent/20"
+                        >
+                          Ask over chat
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           <p className="text-xs text-muted">
             Paste the pieces — one per line — from the people who hold them.
             When you have enough, the secret appears. Nothing is sent

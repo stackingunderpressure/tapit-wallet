@@ -3887,3 +3887,17 @@ provable-to-anyone layer we're claiming - we built another walled garden with a 
 button. So independent off-domain math-verifiability is THE value prop and the cheapest
 highest-leverage thing to nail. (This was prior "gap #1"; under the additive lens it's
 not a residual - it's the product.)
+
+---
+
+Date: 2026-06-16
+Tag: secrets / shamir / social-recovery / consolidation / ux / people-tab / wedge
+Stage: sprouting
+One-line: Collapse the three scattered secret-splitting surfaces into ONE purpose-built "secret module" that shows who holds your pieces at a glance and brings a secret back in one click.
+
+Operator framing (his words, paraphrased from voice): "When I start a secret let's make it like a secret MODULE - a thing that looks like that's what it's made to do, not a little block of text you click on and then do something. Make it look like it belongs there and integrated. See who you sent your secrets to right off the bat and retrieve those secrets back with one click of a button, not going through five screens. Clean up the people tab and anywhere else that's like 'hey wanna store a secret?' - we've got like three of them in different places that kind of all do the same thing. Be smart about not redundant doing the same thing in different spots or looking cheap."
+
+Grounding (from the 2026-06-16 inventory): the same Shamir chassis (splitSecret / combineShares in tapit-attest, wrapped by sharedSecret.ts splitSharedSecret / combineSharedSecret) powers three distinct UX surfaces: (1) SecretsDashboard.tsx (arbitrary user secrets - safe words, passwords) reached via the collapsible "Your secrets" card in PeopleSecretsSection.tsx on the People tab; (2) CohortEditorModal.tsx + DistributeSharesModal.tsx (split the wallet backup key K_data to a recovery cohort) reached from Settings; (3) RecoveryInitiatorModal.tsx (the lost-device recovery ceremony) reached from the locked-out screen. Shared data model already exists: secretLedger.ts (SecretRecord/PieceRecord, who-holds-what metadata, never stores the secret value unless "keep a copy" opted in), secretsLedgerStore.ts (encrypted-at-rest), secretPiece.ts (NIP-44 encrypted piece envelopes + receipts so the owner sees confirmed holders), secretPieceHeartbeat.ts (liveness pings), createShares.ts (recovery-share envelopes). The crypto and ledger are clean and reusable; the redundancy is purely at the UI/entry-point layer. Retrieval today: arbitrary secrets = paste every piece into a textarea; wallet recovery = 4-screen ceremony. No "who holds my pieces" overview at the top level; no one-click bring-back.
+
+Design seed: one Secret module that (a) lists each secret you've made as a real card with its M-of-N status and the faces/names of who holds each piece right on the card; (b) one-click "Bring it back" that, for Tapit holders, fires the request envelopes and reconstructs as shares arrive (reusing the recovery ceremony plumbing) rather than manual paste; (c) folds the wallet-recovery cohort in as a first-class "your most important secret: this wallet" card so it's the SAME surface, not a separate Settings modal; (d) removes the cheap collapsible-paragraph entry on People and any duplicate "store a secret" CTAs, cross-linking to the one module. Open question parked for operator: own top-level "Vault/Secrets" tab vs. integrated module inside People; and whether wallet-recovery cohort fully merges in or stays linked-but-separate. Resurface: chip question asked 2026-06-16.
+
