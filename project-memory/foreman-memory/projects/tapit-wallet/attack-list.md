@@ -95,5 +95,16 @@ opens a spam vector. The succession-verified fix (above) is the right one.
 **Flake note update:** attack-list item 7 flake (a), the identity-gate
 canonicalization intermittent, was ROOT-CAUSED + FIXED 2026-06-15 (pinnable
 designated_at; commit on main). Flake (b), the NIP-17 chat round-trip
-intermittent, is STILL latent and worth rooting out (ephemeral-key / timestamp
-randomness in the test).
+intermittent, was ROOT-CAUSED + FIXED 2026-06-16. NOT a crypto bug (the
+gift-wrap round-trip is 300/300 in isolation) and NOT randomness — it was a
+TEST timing artifact: verifyEvent hashes via crypto.subtle.digest (async,
+twice per unwrap), which in Node can resolve on the libuv threadpool, so under
+full-suite load (concurrent crypto in e.g. the recovery ceremony test running
+beside it) the fire-and-forget handleIncomingChat settled AFTER the test's
+fixed flush() of 4 macrotasks, leaving `received` empty and the length-1
+assertion flaky (~9%, caught on run 11/20). Fix: the four positive-delivery
+assertions now use a waitUntil(predicate, timeout) poll instead of a fixed
+flush(), so they wait for arrival deterministically regardless of threadpool
+load. Production is unaffected — the handler is fire-and-forget and the UI
+re-renders when the message lands; there was never a fixed-flush race there.
+Both documented latent flakes are now closed.
