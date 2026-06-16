@@ -171,9 +171,12 @@ when the assistant stops or compaction is triggered. It:
   `.carpenter/archive/session-<UTC-timestamp>.json`,
 - commits the archive + session.json as `session: <timestamp>
   comms checkpoint`,
-- pushes via dispatch-branch refspec (`<branch>:main`) per
-  PFOR-016 when the carpenter is on a dispatch branch, or
-  directly to `main` when checked out on main.
+- pushes the comms checkpoint to the WORKING BRANCH only and
+  tags it `[skip ci]` -- it NEVER pushes to `main` (quarterback /
+  build-fee override, 2026-06-15; see the project brief
+  `2026-06-15-quarterback-workflow-and-build-fee-discipline.md`).
+  The deliberate batch-merge to `main` is operator-driven so a
+  Netlify build fires once per batch, not once per session.
 
 That is the whole loop. The next session's SessionStart hook
 reads the file the previous Stop hook just pushed.

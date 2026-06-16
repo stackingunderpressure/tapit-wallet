@@ -4,9 +4,12 @@
 # Stop / PreCompact hook — comms v2 self-reinforcing loop closer.
 #
 # Writes/updates .carpenter/session.json with this session's
-# narrative, archives a timestamped copy, commits, and pushes main.
-# The next session's SessionStart hook will pull main and read this
-# file to prime context.
+# narrative, archives a timestamped copy, commits, and pushes the
+# WORKING BRANCH only -- never main (quarterback / build-fee override;
+# see the WORKFLOW OVERRIDE block below and the project brief
+# 2026-06-15-quarterback-workflow-and-build-fee-discipline.md).
+# The next session's SessionStart hook reads this file from the
+# working branch to prime context.
 #
 # The CARPENTER itself is responsible for writing the narrative
 # fields BEFORE this hook fires — typically by overwriting
