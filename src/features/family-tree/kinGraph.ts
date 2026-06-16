@@ -143,6 +143,7 @@ export function buildKinGraph(holdings: readonly Attestation[]): KinGraph {
       displayName: named.displayName,
       born: views.find((v) => v.born)?.born,
       died: views.find((v) => v.died)?.died,
+      sex: views.find((v) => v.sex)?.sex,
       keyedPubkey: keyed?.keyedPubkey,
       keyed: Boolean(keyed),
     });

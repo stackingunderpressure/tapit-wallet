@@ -28,6 +28,23 @@ describe('buildPersonNodeDraft', () => {
     expect(view.died).toBe('2022-05-02');
     expect(view.keyed).toBe(false);
     expect(view.keyedPubkey).toBeUndefined();
+    expect(view.sex).toBeUndefined();
+  });
+
+  it('round-trips an optional sex and ignores a bad value', () => {
+    const female = readPersonNode(
+      buildPersonNodeDraft(AUTHOR, { displayName: 'Pam', sex: 'female' }),
+    );
+    expect(female.sex).toBe('female');
+    const male = readPersonNode(
+      buildPersonNodeDraft(AUTHOR, { displayName: 'Cliff', sex: 'male' }),
+    );
+    expect(male.sex).toBe('male');
+    // An unset sex stays unset rather than being invented.
+    const none = readPersonNode(
+      buildPersonNodeDraft(AUTHOR, { displayName: 'Anon' }),
+    );
+    expect(none.sex).toBeUndefined();
   });
 
   it('subjects a keyed node to the person and lowercases the pubkey', () => {

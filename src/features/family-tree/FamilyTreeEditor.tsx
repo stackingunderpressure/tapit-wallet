@@ -6,6 +6,8 @@ import { createPersonNode, createKinEdge } from './createFamilyTree.ts';
 import { groupByGeneration } from './treeGenerations.ts';
 import { storiesAbout } from './storiesAbout.ts';
 import { explainRelationship } from './kinEducation.ts';
+import { genderKinLabel } from './gender.ts';
+import type { Sex } from './personNode.ts';
 import { identiconSeed } from '../connections/identicon.ts';
 import {
   readEventDate,
@@ -40,6 +42,17 @@ const RELATION_CHIPS: { value: Relation; label: string; emoji: string }[] = [
   { value: 'spouse', label: 'Spouse', emoji: '∞' },
   { value: 'child', label: 'Child', emoji: '↓' },
 ];
+
+// The sex toggle reads in the family's own words for the chosen relation —
+// "Mother / Father" when adding a parent, "Sister / Brother" for a sibling —
+// so a person can say which one without learning the word "sex". Optional;
+// left unset, the tree keeps the neutral label.
+const SEX_LABELS: Record<Relation, { female: string; male: string }> = {
+  parent: { female: 'Mother', male: 'Father' },
+  child: { female: 'Daughter', male: 'Son' },
+  sibling: { female: 'Sister', male: 'Brother' },
+  spouse: { female: 'Wife', male: 'Husband' },
+};
 
 interface Props {
   onClose: () => void;
@@ -91,6 +104,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
   });
   const [name, setName] = useState('');
   const [relation, setRelation] = useState<Relation>('parent');
+  const [sex, setSex] = useState<Sex | undefined>(undefined);
   const [born, setBorn] = useState('');
   const [died, setDied] = useState('');
   const [busy, setBusy] = useState(false);
@@ -117,6 +131,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
     setName('');
     setBorn('');
     setDied('');
+    setSex(undefined);
     setError(null);
     setRelation('parent');
   }, [selected]);
@@ -245,12 +260,14 @@ export function FamilyTreeEditor({ onClose }: Props) {
         displayName: name.trim(),
         born: born.trim() || undefined,
         died: died.trim() || undefined,
+        sex,
       });
       const relNode: KinNode = {
         id: relId,
         displayName: name.trim(),
         born: born.trim() || undefined,
         died: died.trim() || undefined,
+        sex,
         keyed: false,
       };
       const newParents: [string, string][] = [];
@@ -284,6 +301,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
       setName('');
       setBorn('');
       setDied('');
+      setSex(undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add to your tree.');
     } finally {
@@ -351,6 +369,36 @@ export function FamilyTreeEditor({ onClose }: Props) {
               Add a parent first — siblings are linked by the parent they share.
             </p>
           )}
+        </div>
+        <div>
+          <span className="text-sm font-medium">
+            {SEX_LABELS[relation].female} or {SEX_LABELS[relation].male}?{' '}
+            <span className="font-normal text-muted">(optional)</span>
+          </span>
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
+            {(['female', 'male'] as const).map((s) => {
+              const active = sex === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  // Tap the active one again to clear it (back to unspecified).
+                  onClick={() => setSex(active ? undefined : s)}
+                  aria-pressed={active}
+                  className={`rounded-lg border px-2 py-2 text-sm font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${
+                    active
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-ink/15 bg-white text-ink hover:bg-ink/[0.04]'
+                  }`}
+                >
+                  <span aria-hidden className="mr-1">
+                    {s === 'female' ? '♀' : '♂'}
+                  </span>
+                  {SEX_LABELS[relation][s]}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div className="flex gap-2">
           <div className="flex-1">
@@ -421,7 +469,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
             <KinAvatar node={person} size={64} />
             <h2 className="mt-2 text-xl font-semibold">{person.displayName}</h2>
             <span className="mt-1 rounded-full bg-accent/10 px-3 py-0.5 text-sm font-medium text-accent">
-              {selected.relationship}
+              {genderKinLabel(selected.relationship, person.sex)}
             </span>
             <div className="mt-1 text-xs text-muted">
               {person.born || person.died ? (
@@ -620,7 +668,7 @@ export function FamilyTreeEditor({ onClose }: Props) {
                                   {m.node.displayName}
                                 </span>
                                 <span className="shrink-0 rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-muted">
-                                  {m.relationship}
+                                  {genderKinLabel(m.relationship, m.node.sex)}
                                 </span>
                               </span>
                               {!isYou && (

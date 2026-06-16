@@ -19,6 +19,15 @@ import { credentialAttestation } from 'tapit-attest';
 // keyless node can later become keyed when a child gets their own wallet
 // (the custody-handoff pattern), but we never invent a key.
 
+/**
+ * A person's sex, recorded ONLY so the tree can name kin in the words a
+ * family actually uses — mother / father, grandmother / grandfather,
+ * sister / brother, daughter / son, aunt / uncle. Optional and never
+ * invented: left unset, every derived label stays in its neutral form
+ * ("parent", "grandparent") exactly as before.
+ */
+export type Sex = 'female' | 'male';
+
 export interface PersonNodeInput {
   /** The person's display name, e.g. "Pam Winchester". Required. */
   displayName: string;
@@ -26,6 +35,8 @@ export interface PersonNodeInput {
   born?: string;
   /** Optional death date claim. Present marks the person as deceased. */
   died?: string;
+  /** Optional sex, for gendered kin naming (mother/father, …). */
+  sex?: Sex;
   /**
    * The 64-char hex pubkey of this person's own wallet, IF they have
    * one. Absent for keyless witnessed people (most ancestors). Never
@@ -38,6 +49,7 @@ export interface PersonNodeView {
   displayName: string;
   born?: string;
   died?: string;
+  sex?: Sex;
   keyedPubkey?: string;
   /** True when this person holds their own wallet (keyed_pubkey set). */
   keyed: boolean;
@@ -81,6 +93,9 @@ export function buildPersonNodeDraft(
   if (input.died && input.died.trim().length > 0) {
     fields.died = input.died.trim();
   }
+  if (input.sex === 'female' || input.sex === 'male') {
+    fields.sex = input.sex;
+  }
   if (input.keyedPubkey && input.keyedPubkey.trim().length > 0) {
     fields.keyed_pubkey = input.keyedPubkey.trim().toLowerCase();
   }
@@ -105,10 +120,14 @@ export function isPersonNode(att: Attestation): boolean {
 /** Read a person-node's fields into a plain view. */
 export function readPersonNode(att: Attestation): PersonNodeView {
   const keyedPubkey = leafValue(att, 'keyed_pubkey') || undefined;
+  const sexRaw = leafValue(att, 'sex');
+  const sex: Sex | undefined =
+    sexRaw === 'female' || sexRaw === 'male' ? sexRaw : undefined;
   return {
     displayName: leafValue(att, 'display_name') || 'Someone',
     born: leafValue(att, 'born') || undefined,
     died: leafValue(att, 'died') || undefined,
+    sex,
     keyedPubkey,
     keyed: Boolean(keyedPubkey),
   };
