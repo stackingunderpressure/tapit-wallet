@@ -84,13 +84,14 @@ const MarkPresenceModal = lazy(() =>
     default: m.MarkPresenceModal,
   })),
 );
-// 5e-iv — Lattice panel lazy-loaded the same way: only when the
-// operator opens the Lattice tab do we ship the aggregation logic +
-// rendering. Bulk of code lives in lattice.ts (pure functions) +
-// LatticePanel.tsx (the view).
-const LatticePanel = lazy(() =>
-  import('../recovery/LatticePanel.tsx').then((m) => ({
-    default: m.LatticePanel,
+// Keychain — the dashboard for your key (Phase 1: secrets + social recovery),
+// lazy-loaded only when the operator opens the tab. It internally lazy-loads
+// the heavy LatticePanel + SecretsDashboard chunks, so the tab shell stays
+// light. Evolves the old read-only Lattice tab into one home for advanced
+// key tasks (see KeychainTab.tsx + the key-dashboard idea entry).
+const KeychainTab = lazy(() =>
+  import('../recovery/KeychainTab.tsx').then((m) => ({
+    default: m.KeychainTab,
   })),
 );
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
@@ -115,7 +116,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'captured', label: 'Captured' },
   { id: 'people', label: 'People' },
   { id: 'family', label: 'Family' },
-  { id: 'lattice', label: 'Lattice' },
+  { id: 'lattice', label: 'Keychain' },
 ];
 
 // A capture (Phase 4.5 capture bridge) is a journal-kind
@@ -649,17 +650,15 @@ export function HomeScreen() {
       )}
 
       {tab === 'lattice' && (
-        <section className="mt-5">
-          <Suspense
-            fallback={
-              <div className="rounded-2xl border border-ink/10 bg-white px-4 py-6 text-center text-sm text-muted">
-                Loading lattice…
-              </div>
-            }
-          >
-            <LatticePanel />
-          </Suspense>
-        </section>
+        <Suspense
+          fallback={
+            <div className="mt-5 rounded-2xl border border-ink/10 bg-white px-4 py-6 text-center text-sm text-muted">
+              Loading your key dashboard…
+            </div>
+          }
+        >
+          <KeychainTab />
+        </Suspense>
       )}
 
       {tab === 'journal' && (

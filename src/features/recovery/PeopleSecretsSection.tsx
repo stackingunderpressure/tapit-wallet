@@ -1,7 +1,9 @@
 import { lazy, Suspense, useState } from 'react';
 
-// "Your secrets" inside the People tab — a real, purpose-built MODULE, not a
-// collapsible paragraph (operator, 2026-06-16: "make it like a secret module,
+// "Your secrets" — a real, purpose-built MODULE (now the secrets section of the
+// Keychain key-dashboard tab; moved out of the People tab 2026-06-16 so all
+// key tasks live in one place), not a collapsible paragraph (operator: "make
+// it like a secret module,
 // a thing that looks like that's what it's made to do, not a little block of
 // text you click on... see who you sent your secrets to right off the bat and
 // bring them back in one click"). It presents as its own surface with an icon

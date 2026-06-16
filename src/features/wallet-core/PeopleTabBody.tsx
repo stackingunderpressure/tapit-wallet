@@ -22,11 +22,6 @@ const PeerThread = lazy(() =>
 const PeopleTree = lazy(() =>
   import('../connections/PeopleTree.tsx').then((m) => ({ default: m.PeopleTree })),
 );
-const PeopleSecretsSection = lazy(() =>
-  import('../recovery/PeopleSecretsSection.tsx').then((m) => ({
-    default: m.PeopleSecretsSection,
-  })),
-);
 type View = 'list' | 'tree';
 
 interface Props {
@@ -147,9 +142,6 @@ export function PeopleTabBody({
         onDismiss={dismissInboxEnvelope}
         onOpen={routeInbox}
       />
-      <Suspense fallback={null}>
-        <PeopleSecretsSection />
-      </Suspense>
       <div className="mt-4 flex items-center justify-end">
         <div
           role="tablist"

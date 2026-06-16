@@ -13,6 +13,7 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/circleTrust.test.ts',
     'src/features/recovery/lattice.ts',
     'src/features/recovery/LatticePanel.tsx',
+    'src/features/recovery/KeychainTab.tsx',
     'src/features/recovery/createShares.ts',
     'src/features/recovery/createShares.test.ts',
     'src/features/recovery/DistributeSharesModal.tsx',
