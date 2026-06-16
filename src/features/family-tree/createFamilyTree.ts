@@ -6,6 +6,7 @@ import { buildPersonNodeDraft, type PersonNodeInput } from './personNode.ts';
 import {
   buildParentEdgeDraft,
   buildSpouseEdgeDraft,
+  buildSameAsEdgeDraft,
 } from './kinEdge.ts';
 import { buildPersonEditDraft, type PersonEditState } from './personEdit.ts';
 
@@ -57,20 +58,29 @@ export async function createPersonNode(
 
 /**
  * Sign + hold + anchor a kin edge. For 'parent_of', `from` is the parent
- * node id and `to` is the child; for 'spouse' the two are symmetric.
+ * node id and `to` is the child; for 'spouse' the two are symmetric. For
+ * 'same_as', `from`/`to` are the two person-node ids being declared one
+ * person — symmetric, and ALWAYS the result of an explicit human confirm
+ * (never auto-created on a name match). The same_as draft carries ONLY the
+ * two node ids plus the author's signature: no names, no dates, no foreign
+ * personal data ever rides on the edge.
  */
 export async function createKinEdge(
   wallet: Wallet,
   ownerId: string,
   worker: WorkerHandle | null,
-  relation: 'parent_of' | 'spouse',
+  relation: 'parent_of' | 'spouse' | 'same_as',
   from: string,
   to: string,
 ): Promise<{ attestation: Attestation; edgeId: string }> {
-  const draft =
-    relation === 'spouse'
-      ? buildSpouseEdgeDraft(wallet.identity, from, to)
-      : buildParentEdgeDraft(wallet.identity, from, to);
+  let draft: Attestation;
+  if (relation === 'spouse') {
+    draft = buildSpouseEdgeDraft(wallet.identity, from, to);
+  } else if (relation === 'same_as') {
+    draft = buildSameAsEdgeDraft(wallet.identity, from, to);
+  } else {
+    draft = buildParentEdgeDraft(wallet.identity, from, to);
+  }
   const { attestation, id } = await signHoldAnchor(
     wallet,
     ownerId,

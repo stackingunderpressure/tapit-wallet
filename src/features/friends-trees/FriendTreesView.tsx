@@ -11,6 +11,8 @@ import {
   type KinNode,
 } from '../family-tree/kinGraph.ts';
 import { mergeCandidates } from '../family-tree/mergeCandidates.ts';
+import { createKinEdge } from '../family-tree/createFamilyTree.ts';
+import { heldSameAsPairs, pairIsLinked } from '../family-tree/sameAsLinks.ts';
 import { FamilyTreeCanvas } from '../family-tree/FamilyTreeCanvas.tsx';
 import { KinAvatar } from '../family-tree/KinAvatar.tsx';
 import { genderKinLabel } from '../family-tree/gender.ts';
@@ -30,10 +32,30 @@ import { genderKinLabel } from '../family-tree/gender.ts';
 // shared with you on {date}" — and the friend's sender pubkey is shown so the
 // share is attributable.
 //
-// PRIVACY RAIL #7: "People you both know" is a READ-ONLY highlight from
-// mergeCandidates. It surfaces keyless people who look like the same person in
-// both trees, anchored on the friend you both connect through. It does NOT
-// create any same_as binding or merge anything — that is a deferred slice.
+// PRIVACY RAIL #7: "People you both know" is sourced from mergeCandidates — a
+// pure, read-only highlight of keyless people who look like the same person in
+// both trees, anchored on the friend you both connect through.
+//
+// CONSENTED SAME-AS MERGE SLICE (2026-06-16): a candidate pair can be CONFIRMED
+// as one person by an explicit per-pair human tap, which signs a same_as kin-
+// edge binding YOUR node id to the FRIEND's node id, then holds + anchors + saves
+// it (via createKinEdge, the wallet's standard sign -> hold -> anchorQueue
+// pipeline). Rails enforced here:
+//   - NEVER auto-merge: a bind happens only on an explicit per-pair confirm tap.
+//     No bind on render, no bulk "merge all".
+//   - The same_as edge carries ONLY the two node ids + the signer's signature
+//     (buildSameAsEdgeDraft) — no names, no dates, no foreign personal data.
+//   - Binding does NOT import the friend's personal data: the ONLY thing held is
+//     the same_as edge (ids). The friend's tree stays in foreignTreesStore,
+//     untouched; we never wallet.hold a foreign attestation here.
+//   - The friend-tree view stays otherwise READ-ONLY — the confirm-bind is the
+//     only new write; no edit/remove of the friend's people.
+//   - Honest reversibility: a same_as edge is append-only and signed, so a wrong
+//     bind is the user's own local CLAIM, correctable later by a removal follow-on
+//     (unbind is a DEFERRED slice; a wrong bind is not catastrophic).
+// Already-confirmed pairs are detected by reading the user's own held same_as
+// edges (sameAsLinks.heldSameAsPairs) and matching the candidate's two node ids
+// in either order; confirmed pairs render in a "linked" state.
 
 interface Props {
   /** Optional: open straight onto one friend's tree (e.g. deep link). */
@@ -51,7 +73,8 @@ function formatShared(iso: string): string {
 }
 
 export function FriendTreesView({ initialFromPubkey }: Props) {
-  const { ownerId, passphrase, holdings } = useWallet();
+  const { wallet, ownerId, anchorWorker, passphrase, holdings, save } =
+    useWallet();
   const [records, setRecords] = useState<ForeignTreeRecord[] | null>(null);
   const [openFrom, setOpenFrom] = useState<string | null>(
     initialFromPubkey ?? null,
@@ -60,6 +83,15 @@ export function FriendTreesView({ initialFromPubkey }: Props) {
     node: KinNode;
     relationship: string;
   } | null>(null);
+  // Pairs the human confirmed THIS session (order-insensitive keys), shown
+  // immediately so the row flips to "linked" before the holdings refresh lands.
+  const [optimisticLinked, setOptimisticLinked] = useState<Set<string>>(
+    () => new Set(),
+  );
+  // The candidate pair a same_as bind is in flight for ("mineId:theirsId"),
+  // so its single confirm button can show a pending state and stay disabled.
+  const [binding, setBinding] = useState<string | null>(null);
+  const [bindError, setBindError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,6 +129,44 @@ export function FriendTreesView({ initialFromPubkey }: Props) {
     if (!theirGraph || !open) return [];
     return mergeCandidates(myGraph, theirGraph, open.fromPubkey);
   }, [myGraph, theirGraph, open]);
+
+  // The same_as pairs THIS wallet already holds (read from own holdings only —
+  // the friend's foreign tree is never consulted). Order-insensitive keys.
+  const heldPairs = useMemo(
+    () => heldSameAsPairs(holdings as Attestation[]),
+    [holdings],
+  );
+
+  // A candidate is CONFIRMED when a held same_as edge binds its two node ids
+  // (either order), OR it was confirmed this session (optimistic).
+  function isConfirmed(mineId: string, theirsId: string): boolean {
+    return (
+      pairIsLinked(heldPairs, mineId, theirsId) ||
+      pairIsLinked(optimisticLinked, mineId, theirsId)
+    );
+  }
+
+  // CONSENTED bind: sign a same_as edge (your node id <-> friend's node id),
+  // hold + anchor + save it, then mark the pair confirmed optimistically. The
+  // edge carries only the two ids + your signature; no foreign data is held.
+  async function confirmSamePerson(mineId: string, theirsId: string) {
+    const rowKey = `${mineId}:${theirsId}`;
+    setBindError(null);
+    setBinding(rowKey);
+    try {
+      await createKinEdge(wallet, ownerId, anchorWorker, 'same_as', mineId, theirsId);
+      await save();
+      setOptimisticLinked((prev) => {
+        const next = new Set(prev);
+        next.add(mineId < theirsId ? `${mineId} ${theirsId}` : `${theirsId} ${mineId}`);
+        return next;
+      });
+    } catch (e) {
+      setBindError(e instanceof Error ? e.message : 'Could not link these people.');
+    } finally {
+      setBinding(null);
+    }
+  }
 
   if (records === null) {
     return (
@@ -163,27 +233,70 @@ export function FriendTreesView({ initialFromPubkey }: Props) {
             </p>
           ) : (
             <ul className="mt-2 space-y-1.5">
-              {bothKnow.map((c) => (
-                <li
-                  key={`${c.mine.id}:${c.theirs.id}`}
-                  className="flex items-center gap-2 rounded-lg border border-ink/10 bg-white px-3 py-2"
-                >
-                  <KinAvatar node={c.theirs} size={28} />
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
-                      {c.theirs.displayName}
+              {bothKnow.map((c) => {
+                const rowKey = `${c.mine.id}:${c.theirs.id}`;
+                const confirmed = isConfirmed(c.mine.id, c.theirs.id);
+                const pending = binding === rowKey;
+                const yourName = c.mine.displayName;
+                const friendName = c.theirs.displayName;
+                return (
+                  <li
+                    key={rowKey}
+                    className={`rounded-lg border px-3 py-2 ${
+                      confirmed
+                        ? 'border-accent/30 bg-accent/[0.06]'
+                        : 'border-ink/10 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <KinAvatar node={c.theirs} size={28} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          {friendName}
+                        </div>
+                        {confirmed ? (
+                          <div className="truncate text-[11px] text-accent">
+                            ✓ Linked — same as your {yourName}
+                          </div>
+                        ) : (
+                          <div className="truncate text-[11px] text-muted">
+                            {c.reason}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="truncate text-[11px] text-muted">
-                      {c.reason}
-                    </div>
-                  </div>
-                </li>
-              ))}
+                    {!confirmed && (
+                      <div className="mt-2">
+                        <p className="text-[11px] text-muted">
+                          Link {open.sharerName}'s "{friendName}" with your "
+                          {yourName}" as one person?
+                        </p>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() =>
+                            void confirmSamePerson(c.mine.id, c.theirs.id)
+                          }
+                          className="mt-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white transition active:animate-fresh-press motion-reduce:active:animate-none disabled:opacity-60"
+                        >
+                          {pending
+                            ? 'Linking…'
+                            : 'This is the same person — link them'}
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
+          {bindError && (
+            <p className="mt-1 text-[11px] text-red-600">{bindError}</p>
+          )}
           <p className="mt-1 text-[10px] text-muted">
-            Shown for you to recognize — nothing is merged or changed in either
-            tree.
+            Linking signs a private claim that these two records are one person.
+            It binds only the two records' ids — none of your friend's details
+            are copied into your wallet, and their tree is left untouched.
           </p>
         </div>
       </section>

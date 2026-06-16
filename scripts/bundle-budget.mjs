@@ -765,6 +765,19 @@ const BUDGETS = [
   // generic catch-all. ~3.02KB gz today.
   { pattern: /^backupBanner-.*\.js$/, gz: 3_500, label: 'backupBanner' },
 
+  // FriendTreesView — the read-only "friends' trees" surface, React.lazy
+  // from HomeScreen's Family tab so the Classic/Family cold path never pays
+  // for it. Slice 1 (2026-06-16, consented family-tree share) shipped under
+  // the 3KB catch-all. The 2026-06-16 CONSENTED same-as merge slice added the
+  // per-pair confirm-bind affordance (the createKinEdge same_as import edge,
+  // the sameAsLinks pure reader, and the linked/confirm render branch), pushing
+  // it to 3.15KB gz — a hair over the catch-all. The chunk is already lazy and
+  // only loads when the operator opens a friend's tree, so further code-
+  // splitting the confirm UI would only add Suspense flicker mid-view for
+  // ~150 bytes; the growth is the intentional merge-confirm surface. Named
+  // budget with headroom rather than inflating the generic catch-all.
+  { pattern: /^FriendTreesView-.*\.js$/, gz: 4_000, label: 'FriendTreesView' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.
