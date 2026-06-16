@@ -18,6 +18,7 @@ import { CustodyHandoffModal } from '../cosigning/CustodyHandoffModal.tsx';
 import { ShareProofModal } from '../disclosure/ShareProofModal.tsx';
 import { StampedPhotoButton } from './StampedPhotoButton.tsx';
 import { readEventDate, isBackfilled, formatEventDate } from './momentDate.ts';
+import { readTags } from './journalTags.ts';
 import { displayNameOf } from '../connections/createHandshake.ts';
 import { noteTextFromEntry } from '../transport/nostrNote.ts';
 import { sharedNotesStore } from '../storage/sharedNotesStore.ts';
@@ -116,6 +117,7 @@ export function JournalDetail() {
   }
 
   const text = readString(entry.claim, 'text');
+  const entryTags = readTags(entry);
   const category = readString(entry.claim, 'category') ?? 'Diary';
   const subject = entry.subject;
   const writtenAt = readString(entry.claim, 'written_at') ?? entry.issuedAt;
@@ -204,6 +206,18 @@ export function JournalDetail() {
           </div>
         )}
         <div className="mt-1 text-xs text-muted">About: {subject}</div>
+        {entryTags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {entryTags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full bg-ink/[0.06] px-2.5 py-0.5 text-xs text-muted"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
         {text && <p className="mt-3 whitespace-pre-wrap">{text}</p>}
         {attachmentUrl && attachmentIsImage && (
           <>

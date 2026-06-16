@@ -3,6 +3,7 @@ import { journalAttestation, envelopeId } from 'tapit-attest';
 import { mediaStore } from '../storage/mediaStore.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
+import { dedupeTags } from './journalTags.ts';
 
 export interface JournalInput {
   /**
@@ -48,6 +49,12 @@ export interface JournalInput {
    * name match. Used by the family tree's "moments about <person>" view.
    */
   subjectNode?: string;
+  /**
+   * Optional everyday-life tags (Food, Places, Friends, custom…). Stored
+   * as a signed `tags` leaf (canonical JSON array, deduped) so entries can
+   * be pulled back up by tag. Separate from `category` (the single tab).
+   */
+  tags?: string[];
 }
 
 export interface JournalEntryResult {
@@ -103,6 +110,13 @@ export async function createJournalEntry(
   }
 
   if (input.source) fields.source = input.source;
+
+  // Everyday-life tags — deduped, signed, so the entry can be searched by
+  // tag later. Omitted when empty so older verifiers see no new field.
+  if (input.tags && input.tags.length > 0) {
+    const cleaned = dedupeTags(input.tags);
+    if (cleaned.length > 0) fields.tags = JSON.stringify(cleaned);
+  }
 
   const draft = journalAttestation({
     subject: input.subject,

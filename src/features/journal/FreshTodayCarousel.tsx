@@ -3,6 +3,7 @@ import type { Attestation, FieldBranch } from 'tapit-attest';
 import { FreshTodayCard } from './FreshTodayCard.tsx';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { categoryAccent } from './categoryAccents.ts';
+import { allTags, entriesWithTags } from './journalTags.ts';
 
 interface Props {
   entries: Attestation[];
@@ -65,6 +66,16 @@ export function FreshTodayCarousel({ entries }: Props) {
   const [activeCategory, setActiveCategory] = useState<string>(ALL);
   const [activeSubject, setActiveSubject] = useState<SubjectFilter>(ALL);
   const [sort, setSort] = useState<SortChoice>('newest');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const tagOptions = useMemo(() => allTags(entries), [entries]);
+
+  function toggleTag(tag: string) {
+    setSelectedTags((prev) =>
+      prev.some((t) => t.toLowerCase() === tag.toLowerCase())
+        ? prev.filter((t) => t.toLowerCase() !== tag.toLowerCase())
+        : [...prev, tag],
+    );
+  }
 
   const filtered = useMemo(() => {
     let list = entries;
@@ -76,11 +87,12 @@ export function FreshTodayCarousel({ entries }: Props) {
     } else if (activeSubject === OTHERS) {
       list = list.filter((e) => e.subject !== walletKey);
     }
+    list = entriesWithTags(list, selectedTags);
     const sorted = [...list].sort((a, b) =>
       sort === 'newest' ? writtenAt(b) - writtenAt(a) : writtenAt(a) - writtenAt(b),
     );
     return sorted;
-  }, [entries, activeCategory, activeSubject, sort, walletKey]);
+  }, [entries, activeCategory, activeSubject, sort, selectedTags, walletKey]);
 
   if (entries.length === 0) {
     return (
@@ -164,6 +176,45 @@ export function FreshTodayCarousel({ entries }: Props) {
           </button>
         ))}
       </div>
+
+      {/* Tag filter strip — search your everyday tags (food, places,
+          friends…). AND-narrows with the other filters. */}
+      {tagOptions.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+          <span className="shrink-0 text-[0.62rem] uppercase tracking-[0.22em] text-fresh-text-tertiary">
+            Tags
+          </span>
+          {tagOptions.map(({ tag, count }) => {
+            const active = selectedTags.some(
+              (t) => t.toLowerCase() === tag.toLowerCase(),
+            );
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => toggleTag(tag)}
+                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium border transition active:animate-fresh-press motion-reduce:active:animate-none ${
+                  active
+                    ? 'border-fresh-accent-primary text-fresh-text-primary bg-fresh-accent-primary/[0.12]'
+                    : 'bg-fresh-surface-glass text-fresh-text-secondary border-fresh-surface-edge hover:text-fresh-text-primary'
+                }`}
+              >
+                {tag}
+                <span className="ml-1 text-fresh-text-tertiary">{count}</span>
+              </button>
+            );
+          })}
+          {selectedTags.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedTags([])}
+              className="shrink-0 text-xs text-fresh-text-tertiary underline"
+            >
+              clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Result count + vertical card stack. pb-28 reserves room
           for the compose FAB to sit over empty space instead of
