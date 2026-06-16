@@ -336,7 +336,16 @@ const BUDGETS = [
   // Hoisted into shared chunks once the capture bridge began sharing
   // the journal pipeline with the composer. ~0.5KB / ~0.9KB gz today.
   { pattern: /^createJournalEntry-.*\.js$/, gz: 1_000, label: 'createJournalEntry' },
-  { pattern: /^mediaStore-.*\.js$/, gz: 1_500, label: 'mediaStore' },
+  // 2026-06-16 bump (1_500 -> 4_000): mediaStore grew from a local-only
+  // IndexedDB store into a local IDB store PLUS a Supabase remote-mirror
+  // cloud-sync path (remoteMediaStore, the new-device restore). The chunk
+  // is verified clean -- it carries only the two store modules' own logic;
+  // encrypt/decrypt/sha256/supabase are correctly split into their own
+  // chunks, nothing heavy is fused in. Code-splitting the 67-line
+  // remoteMediaStore would inject an async boundary into the local-first/
+  // remote-fallback get() path for ~1KB, so the honest fix is this budget.
+  // ~3.05KB gz today.
+  { pattern: /^mediaStore-.*\.js$/, gz: 4_000, label: 'mediaStore' },
   // Cosigning helpers (parseEnvelope + mergeSignatures) hoisted into
   // a shared chunk once the connections feature began reusing them.
   // ~1.9KB gz today.
