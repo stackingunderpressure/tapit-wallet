@@ -13,6 +13,11 @@ import {
 } from '../recovery/secretPiece.ts';
 import { recordPieceReceipt, upsertRecord } from '../recovery/secretLedger.ts';
 import { secretsLedgerStore } from '../storage/secretsLedgerStore.ts';
+import { foreignTreesStore } from '../storage/foreignTreesStore.ts';
+import {
+  isFamilyTreeBundle,
+  readFamilyTreeBundle,
+} from '../friends-trees/familyTreeBundle.ts';
 import {
   isKeySuccessionAnnouncement,
   isVerifiedAnnouncement,
@@ -107,6 +112,35 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
           await secretsLedgerStore.save(ownerId, pass, upsertRecord(records, updated));
         } catch (err) {
           console.warn('secret-piece receipt collect failed', err);
+        }
+      })();
+      return;
+    }
+    // A friend's CONSENTED family-tree share arrives FROM a peer. Persist it
+    // into the encrypted foreignTreesStore SILENTLY — zero owner chore, it
+    // just appears under "Friends' trees" next time they open the Family tab —
+    // and never surface it as an inbox row. PRIVACY RAIL #2: the bundle is
+    // NEVER wallet.hold'd and NEVER mixed into the operator's own holdings or
+    // kin graph; it lives only in the foreign-trees store, rooted on the
+    // friend's own self-node and shown read-only. The senderPubkey is the
+    // envelope signer recovered by the transport — that is the honest
+    // provenance the receiver attributes the tree to. Tightly guarded +
+    // fire-and-forget so it can never disrupt other arrivals.
+    if (isFamilyTreeBundle(item.envelope)) {
+      void (async () => {
+        try {
+          const pass = passphraseRef.current;
+          if (!pass || !ownerId) return;
+          const view = readFamilyTreeBundle(item.envelope, item.senderPubkey);
+          await foreignTreesStore.upsert(ownerId, pass, {
+            fromPubkey: view.senderPubkey,
+            sharerName: view.sharerName,
+            rootNodeId: view.rootNodeId,
+            sharedAt: view.sharedAt,
+            trees: view.trees,
+          });
+        } catch (err) {
+          console.warn('friend family-tree share absorb failed', err);
         }
       })();
       return;

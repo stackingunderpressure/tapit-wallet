@@ -164,7 +164,18 @@ const BUDGETS = [
   // provider graph, pushing it to 11.90KB gz. These are load-bearing
   // recovery UX a nontechnical user can't reach any other way; the cost
   // is justified. Bumped 11.25 -> 12.25KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 12_544, label: 'WalletProvider' },
+  // 2026-06-16 friends-trees (consented family-tree share): the inbox
+  // dispatch point (inboxEnvelopeHandler, statically in the provider graph)
+  // gained a silent friend-tree-share absorb branch mirroring the existing
+  // secret-piece-receipt branch. The branch's routing predicate
+  // (isFamilyTreeBundle) plus the bundle reader + foreignTreesStore absorb
+  // code are static here the same way the secret-piece branch's
+  // secretsLedgerStore is — the handler dispatches synchronously on every
+  // arrival, so the predicate cannot be deferred, and a dynamic-import of the
+  // absorb half measured LARGER (chunk-loader glue) than the static edge. The
+  // heavy UI (ShareTreeModal / FriendTreesView) is React.lazy and ships in its
+  // own chunks, not here. Net cost ~60 bytes gz. Bumped 12.25 -> 12.5KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 12_800, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -742,6 +753,17 @@ const BUDGETS = [
   // gz today; budget carries headroom for the recovery-flow
   // passkey-bind cut still pending.
   { pattern: /^webauthn-.*\.js$/, gz: 1_500, label: 'webauthn helpers' },
+
+  // backupBanner — the post-setup "set up a way back in" nudge logic shared
+  // across the HomeScreen surfaces. Previously bucketed into a neighbour chunk
+  // under the catch-all; the 2026-06-16 friends-trees HomeScreen import-graph
+  // change (the Family tab body moved into its own FamilyTabBody component,
+  // shifting how rollup co-locates the remaining HomeScreen helpers) re-split
+  // this into its own chunk at ~3.02KB gz, a hair over the 3KB catch-all. The
+  // module's own content is unchanged — only the chunk boundary moved — so it
+  // earns an explicit named budget with headroom rather than inflating the
+  // generic catch-all. ~3.02KB gz today.
+  { pattern: /^backupBanner-.*\.js$/, gz: 3_500, label: 'backupBanner' },
 
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately

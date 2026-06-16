@@ -19,9 +19,7 @@ import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 import { IdentityGateSections } from './IdentityGateSections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
-// Eager (not lazy) by operator request — the family tree is a headline
-// surface and should be instantly present, not loaded on demand.
-import { FamilyTreeEditor } from '../family-tree/FamilyTreeEditor.tsx';
+import { FamilyTabBody } from './FamilyTabBody.tsx';
 import { InviteShareButton } from '../connections/InviteShareButton.tsx';
 import { useAcceptPendingInvite } from '../connections/useAcceptPendingInvite.ts';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
@@ -643,11 +641,7 @@ export function HomeScreen() {
         </>
       )}
 
-      {tab === 'family' && (
-        <section className="mt-5">
-          <FamilyTreeEditor embedded />
-        </section>
-      )}
+      {tab === 'family' && <FamilyTabBody />}
 
       {tab === 'lattice' && (
         <Suspense

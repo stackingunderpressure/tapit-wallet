@@ -1,0 +1,24 @@
+import type { FeatureManifest } from '../../shared/lib/manifest.ts';
+
+export const manifest: FeatureManifest = {
+  slug: 'friends-trees',
+  born: '2026-06-16',
+  purpose:
+    'The CONSENTED "share my family tree / view a friend\'s real tree" feature (slice 1: the share -> receive -> view round-trip plus a read-only "people you both know" highlight). A person taps "Share my family tree with {name}" — an explicit per-person human confirm — and only then does the wallet pack ONLY their family-tree attestations (person-nodes, kin-edges, person-edits via collectMyTreeAttestations) into one signed family-tree-bundle credential and send it over the existing encrypted Mycelium transport (sendEnvelope) to that one recipient. The recipient\'s wallet recognizes the bundle in the single inbox-dispatch point (inboxEnvelopeHandler), reads it back defensively, and persists it into the encrypted foreignTreesStore — NEVER via wallet.hold and NEVER mixed into their own holdings or kin graph; the operator\'s own tree is untouched. The Family tab gained a "Your tree | Friends\' trees" toggle plus a "Share my tree" button; Friends\' trees lists each friend\'s shared tree with provenance ("{friend}\'s tree — shared with you on {date}", sender pubkey shown), and tapping one opens a strictly READ-ONLY view: the friend\'s tree rendered through FamilyTreeCanvas rooted on their own self-node (built via buildKinGraph over the bundle\'s attestations), a read-only person detail with no edit/add/remove/sign controls, and a read-only "People you both know" section from mergeCandidates(myGraph, theirGraph, sharedPubkey) that surfaces overlapping keyless relatives without creating any same_as binding or merging anything. Deferred (NOT built this slice): actual merge/same_as binding, revocation/unshare, live re-sync, multi-signature, scoped/partial sharing.',
+  touches: [
+    'src/features/friends-trees/familyTreeBundle.ts',
+    'src/features/friends-trees/familyTreeBundle.test.ts',
+    'src/features/friends-trees/ShareTreeModal.tsx',
+    'src/features/friends-trees/FriendTreesView.tsx',
+    'src/features/storage/foreignTreesStore.ts',
+    'src/features/wallet-core/inboxEnvelopeHandler.ts',
+    'src/features/wallet-core/FamilyTabBody.tsx',
+    'src/features/wallet-core/HomeScreen.tsx',
+  ],
+  depends_on: ['wallet-core', 'family-tree', 'connections', 'transport', 'storage'],
+  pause_safe: true,
+  removal_safe: false,
+  monetizable: false,
+  notes:
+    'Spec: brief 2026-06-16 networked-consented-share-family-tree. PRIVACY RAILS (blockers, enforced in code): (1) a tree leaves the wallet ONLY on an explicit per-person human confirm tap in ShareTreeModal — no auto-share, no background send; (2) a received friend-tree is persisted ONLY in foreignTreesStore (encrypted IDB, decrypt-failure returns []) — never wallet.hold, never mixed into holdings/graph; (3) collectMyTreeAttestations filters EXPLICITLY by the three family-tree predicates (isPersonNode / isKinEdge / isPersonEdit) so secrets, journal entries, keys, and other holdings can never ride along; (4) person-nodes/kin-edges carry only PUBLIC signed claims — there is no private key or mnemonic field on these attestations to leak; (5) the friend-tree view is strictly READ-ONLY (a dedicated ReadOnlyPersonDetail with no mutating controls, not the editor\'s PersonDetailView); (6) provenance is always shown with the sender pubkey attributable, and senderPubkey is taken from the envelope signer recovered by the transport, NOT trusted from inside the bundle; (7) mergeCandidates is surfaced as a read-only highlight only, never auto-binding. The bundle is a credential-kind attestation (credential_type=family-tree-bundle) carrying sharer_name, root_node_id, shared_at, and trees_json (the family-tree attestation array as a JSON-string leaf, re-parsed defensively — malformed/junk degrades to empty/partial, never throws). The inbox handler gets ownerId + passphraseRef from its existing InboxHandlerDeps (no extension needed) and absorbs the bundle in a silent fire-and-forget branch mirroring the secret-piece-receipt branch (no inbox row). Share is only offered when Mycelium is live (relayStatus non-null). Send status surfaced inline via summarizePublish (the repo\'s established modal pattern — there is no shared useToast in tapit-wallet; RecoveryInitiatorModal / StartFamilyModal use the same inline pattern). removal_safe is false because HomeScreen + inboxEnvelopeHandler import this feature. Both UI components are React.lazy from HomeScreen so they do not bloat the HomeScreen chunk. NOTE / honest limitation: a live relay round-trip could not be exercised locally — the send path is verified by gates + the bundle codec round-trip test, not against a running Mycelium relay. Follow-on slices: human-confirmed same_as merge of "people you both know," unshare/revocation, live re-sync on tree changes, scoped/partial sharing.',
+};
