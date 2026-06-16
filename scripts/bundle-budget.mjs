@@ -99,7 +99,16 @@ const BUDGETS = [
   // moves rather than the fix shrinking.
   // 2026-06-03 A1 people-tree tier legend: new dashed/solid edge legend
   // utility classes nudged the css to 8.12KB gz. Bumped to 8.5KB.
-  { pattern: /^index-.*\.css$/, gz: 8_704, label: 'css' },
+  // 2026-06-16 family-tree EXPLORER (the speed-run focus-and-walk navigator):
+  // FamilyTreeExplorer + TreeViewToggle + TreeCanvasArea introduced a handful
+  // of new Tailwind utilities the content scanner emits (fixed-width relative
+  // cards w-24, the centered focus card max-w-[12rem] + border-2 + the
+  // ring-accent focus ring, the children fan-out overflow-x-auto row, the
+  // segmented-toggle shadow-sm). Measured 8.52KB gz, ~20 bytes past the prior
+  // budget. The classes are intrinsic to the explorer's converge-up/fan-down
+  // layout and cannot be code-split out of the single Tailwind sheet. Bumped
+  // 8.5 -> 8.6KiB.
+  { pattern: /^index-.*\.css$/, gz: 8_806, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;

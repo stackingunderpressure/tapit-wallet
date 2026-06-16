@@ -17,7 +17,7 @@ import { groupByGeneration } from './treeGenerations.ts';
 import { withAncestorSlots } from './ancestorSlots.ts';
 import { storiesAbout } from './storiesAbout.ts';
 import type { Sex } from './personNode.ts';
-import { FamilyTreeCanvas } from './FamilyTreeCanvas.tsx';
+import { TreeCanvasArea } from './TreeCanvasArea.tsx';
 import { PersonDetailView } from './PersonDetailView.tsx';
 import { normalizeEventDateInput } from '../journal/momentDate.ts';
 import { createJournalEntry } from '../journal/createJournalEntry.ts';
@@ -726,23 +726,22 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
           </p>
         )}
 
-        <div className="mt-4 rounded-xl border border-ink/10 bg-white p-2.5">
-          {!hasPeople ? (
+        {!hasPeople ? (
+          <div className="mt-4 rounded-xl border border-ink/10 bg-white p-2.5">
             <p className="px-1 py-2 text-sm text-muted">
               No one here yet 🌱 — add your first relative below and watch your
               tree grow.
             </p>
-          ) : (
-            <FamilyTreeCanvas
-              graph={canvasGraph}
-              selfId={selfId}
-              onSelect={(node, relationship) =>
-                setSelected({ node, relationship })
-              }
-              onAddAncestor={openSlot}
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          <TreeCanvasArea
+            graph={graph}
+            canvasGraph={canvasGraph}
+            selfId={selfId}
+            onSelect={(node, relationship) => setSelected({ node, relationship })}
+            onAddAncestor={openSlot}
+          />
+        )}
 
         {slotTarget && (
           <div className="mt-4 flex items-center justify-between rounded-lg border border-ink/15 bg-accent/10 px-3 py-2">
