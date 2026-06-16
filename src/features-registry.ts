@@ -29,6 +29,7 @@ import { manifest as persona } from './features/persona/manifest.ts';
 import { manifest as snapshotBuilder } from './features/snapshot-builder/manifest.ts';
 import { manifest as suggestedQuestions } from './features/suggested-questions/manifest.ts';
 import { manifest as temporal } from './features/temporal/manifest.ts';
+import { manifest as signIn } from './features/sign-in/manifest.ts';
 
 export const features: readonly FeatureManifest[] = [
   auth,
@@ -57,4 +58,5 @@ export const features: readonly FeatureManifest[] = [
   snapshotBuilder,
   suggestedQuestions,
   temporal,
+  signIn,
 ];
