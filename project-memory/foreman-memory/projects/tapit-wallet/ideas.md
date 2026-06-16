@@ -3939,3 +3939,37 @@ Operator framing: "You pick and add in a friends circle and you can follow their
 
 Grounding: the family-tree is a blood/affinity graph (kinEdge relations are only parent_of, spouse, same_as -- no friend edge). Your social "circle" already exists separately as the handshake connections in the connections feature (HandshakeModal/createHandshake, VouchingCircleSection, FreshCrew). The pure brain for relating two people's trees across a shared person is mergeCandidates.ts, but it has NO UI and NO network yet -- so actually pulling/viewing another person's tree is the deferred handshake tree-exchange slice the family-tree manifest names. Decision-filter call already made: a "friend" should REUSE the existing handshake circle, not a new kin edge (wedge test #1 -- integrate what's already solved; friends are not blood, so they don't belong as a parent_of/spouse leaf). The real fork that needs the operator: when you "follow their graph up and down to see their tree," is it (A) a tree YOU build and hold -- you curate friends into a circle and grow/record their relatives yourself, tapping a friend re-roots the generational layout on them so you walk up to their parents and down to their kids, everything staying in your wallet, no data shared; or (B) the NETWORKED version -- a friend you're handshaked with consents to share their actual family tree and you browse their real ancestors/descendants live over Mycelium, which is the big tree-exchange/merge slice and means personal family data crosses the network under a consent model. A is the safe local wedge and a prerequisite either way; B is sovereignty-grade data-sharing that must not be assumed. Recommendation: A first, B as the named next slice.
 
+
+---
+
+Date: 2026-06-16
+Tag: friends-trees / privacy / redacted-share / minimal-disclosure / safety-rail
+Stage: sprouting
+One-line: A privacy button so sharing never over-shares -- first names only, nothing private/personal -- and ideally minimal-by-default.
+
+Operator framing: "some people might not want to share the last name or the place of birth or something like that so maybe we have a privacy button and it never over shares only first names and nothing private personal."
+
+Grounding + key technical truth: a person-node is a SIGNED attestation, so you cannot quietly strip a field off the original and still have a valid signature -- the privacy path must build a FRESH, signed REDACTED PROJECTION bundle that carries only the allowed fields, not the raw attestations. Today a person-node stores displayName (one string), born (date), died (date), sex, keyedPubkey (public). There is NO separate last-name or place-of-birth field yet, so "first name only" = send only the first token of displayName and omit born/died/sex; nothing like birthplace can leak today because we don't store it. When structured fields (surname, birthplace) are added later, the privacy projection refuses them by default. Recommendation: make MINIMAL the default with an explicit "share more" opt-in (safe beats fast), and the share modal previews exactly what the friend will receive before the tap. This should ship BEFORE real-tree sharing is used in anger -- it is a rail, not a nicety.
+
+---
+
+Date: 2026-06-16
+Tag: friends-trees / same_as-merge / tight-family / one-node-not-two-hubs / layer-toggles
+Stage: sprouting
+One-line: When you've handshaked a friend's parent (tight overlapping family), show that person ONCE, not as a hub wired to another hub at a different level -- with layer toggles (friends on/off, per-generation).
+
+Operator framing: "would it show if I've hand shook with one of my friends parents because it's a tight family... it wouldn't look like a hub that's connected to another hub at a different level or only when you toggle friends on maybe or you can toggle on each layer."
+
+Grounding: one human = one node. The same_as merge (buildKinGraph already union-finds same_as edges into one canonical node carrying aliasIds) is exactly the mechanism: when a person is both your friend's parent AND someone you've handshaked, bind the two appearances into a single node shown once, with both facts derivable (friend's-parent relationship + you-are-connected). That avoids the "hub wired to a hub at another level" look. The operator's toggle instinct is right: a Friends layer switch and per-generation-layer toggles let the user control density instead of drowning in cross-links. The consented same_as merge across trees is the already-named next slice; this idea says it is ALSO the cure for the tight-family double-hub.
+
+---
+
+Date: 2026-06-16
+Tag: friends-trees / UX / scroll-explore / generational-navigator / polish
+Stage: sprouting
+One-line: A scroll-driven "speed run up and down" explorer -- scroll up and ancestors converge (narrower toward the apex), scroll down and descendants fan out wider down different legs.
+
+Operator framing: "almost feel like you could speed run up and down the thing... the more you scroll up you go up the [tree] and then when you scroll down it gets wider and bigger you can go down different legs. That's just how I see it and it's probably not practical -- I just thought the UX needed a little polishing."
+
+Grounding + verdict: this IS practical and it is a GOOD mental model, not a throwaway. Genealogy is literally narrow-up (ancestors converge toward an apex pair) and wide-down (descendants fan out across legs). treeLayout already assigns every node a (generation row, column) deterministically, so a scroll-driven navigator that keeps the focused generation centered, narrows as you flick up and widens as you flick down, and lets you follow one leg at a time is a UX layer on top of the layout we already compute -- no new graph math. Worth building as the explorer polish after the privacy rail + merge land.
+
