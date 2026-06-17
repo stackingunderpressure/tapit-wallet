@@ -14,7 +14,7 @@ import { mergeCandidates } from '../family-tree/mergeCandidates.ts';
 import { kinGraphFromProjection } from './familyTreeProjection.ts';
 import { createKinEdge } from '../family-tree/createFamilyTree.ts';
 import { heldSameAsPairs, pairIsLinked } from '../family-tree/sameAsLinks.ts';
-import { FamilyTreeCanvas } from '../family-tree/FamilyTreeCanvas.tsx';
+import { TreeCanvasArea } from '../family-tree/TreeCanvasArea.tsx';
 import { KinAvatar } from '../family-tree/KinAvatar.tsx';
 import { genderKinLabel } from '../family-tree/gender.ts';
 
@@ -218,8 +218,15 @@ export function FriendTreesView({ initialFromPubkey }: Props) {
           </div>
         </div>
 
+        {/* The friend's shared tree, with the same "Tree | Explore" toggle
+            the editor has: Tree (default) is the connected canvas, Explore
+            speed-walks up/down their lineage. selfId is the FRIEND's own node
+            (open.rootNodeId), so every relationship label reads relative to
+            the friend, not to you. READ-ONLY: no canvasGraph (no dashed
+            ancestor slots) and no onAddAncestor, so no editing affordance is
+            wired; onSelect opens the same read-only person detail as before. */}
         <div className="mt-3">
-          <FamilyTreeCanvas
+          <TreeCanvasArea
             graph={theirGraph}
             selfId={open.rootNodeId}
             onSelect={(node, relationship) =>
