@@ -140,7 +140,9 @@ export function SignApprovalScreen() {
         >
           {state.request.intent === 'cosign-existing'
             ? 'Approve — co-sign this'
-            : 'Approve — sign this'}
+            : state.request.intent === 'sign-in'
+              ? 'Approve — sign in'
+              : 'Approve — sign this'}
         </button>
         <button
           type="button"

@@ -1,4 +1,9 @@
-import type { AttestationKind, FieldValue, TierName } from 'tapit-attest';
+import type {
+  AttestationKind,
+  FieldValue,
+  SignInChallenge,
+  TierName,
+} from 'tapit-attest';
 import { verifyEnvelope } from 'tapit-attest';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import type { SignRequest } from './types.ts';
@@ -35,6 +40,48 @@ function b64UrlDecode(input: string): string {
 
 function isFieldValue(v: unknown): v is FieldValue {
   return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+}
+
+/** True when `v` is a hex string encoding exactly `bytes` bytes. */
+function isHexBytes(v: unknown, bytes: number): v is string {
+  return typeof v === 'string' && new RegExp(`^[0-9a-fA-F]{${bytes * 2}}$`).test(v);
+}
+
+/**
+ * Validate the shape of a verifier-issued sign-in challenge as it arrives in a
+ * sign-in request. Mirrors tapit-attest's own `isChallengeShape` (v===1, a
+ * 32-byte hex nonce, a non-empty audience, and string timestamps) so the
+ * wallet declines a malformed challenge BEFORE asking the user to approve, and
+ * so the challenge the wallet signs is the same shape the verifier will echo
+ * against. Returns the narrowed challenge or throws SignRequestError.
+ */
+function requireSignInChallenge(value: unknown): SignInChallenge {
+  if (!value || typeof value !== 'object') {
+    throw new SignRequestError('invalid_request', 'challenge must be an object');
+  }
+  const c = value as Record<string, unknown>;
+  if (c.v !== 1) {
+    throw new SignRequestError('invalid_request', 'challenge.v must be 1');
+  }
+  if (!isHexBytes(c.nonce, 32)) {
+    throw new SignRequestError('invalid_request', 'challenge.nonce must be 32-byte hex');
+  }
+  if (typeof c.audience !== 'string' || c.audience.length === 0) {
+    throw new SignRequestError('invalid_request', 'challenge.audience must be a non-empty string');
+  }
+  if (typeof c.issuedAt !== 'string' || c.issuedAt.length === 0) {
+    throw new SignRequestError('invalid_request', 'challenge.issuedAt must be a string');
+  }
+  if (typeof c.expiresAt !== 'string' || c.expiresAt.length === 0) {
+    throw new SignRequestError('invalid_request', 'challenge.expiresAt must be a string');
+  }
+  return {
+    v: 1,
+    nonce: c.nonce,
+    audience: c.audience,
+    issuedAt: c.issuedAt,
+    expiresAt: c.expiresAt,
+  };
 }
 
 function requireOriginAndCallback(r: Record<string, unknown>): {
@@ -81,6 +128,15 @@ export function parseSignRequest(raw: string | null): SignRequest {
     throw new SignRequestError('invalid_request', "v must be 1");
   }
   const base = requireOriginAndCallback(r);
+
+  // intent 'sign-in' — answer a verifier-issued login challenge. The wallet
+  // signs the SAME challenge verbatim and returns a SignInAttestation; no new
+  // record is created and no funds move. Validate the challenge shape up front
+  // so a malformed challenge is declined before the user is ever asked.
+  if (r.intent === 'sign-in') {
+    const challenge = requireSignInChallenge(r.challenge);
+    return { v: 1, intent: 'sign-in', challenge, ...base };
+  }
 
   // intent 'cosign-existing' — the requester hands over an already-signed
   // envelope for the wallet to countersign. Validate it parses and already

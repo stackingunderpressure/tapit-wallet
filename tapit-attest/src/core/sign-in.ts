@@ -76,6 +76,26 @@ function signInDigest(base: SignInBase): Uint8Array {
   return taggedHash('tapit/sign-in', utf8ToBytes(canonicalJson(base)));
 }
 
+/**
+ * The exact bytes a holder signs to answer a sign-in challenge — exposed so
+ * a caller that holds its private key behind a signing boundary (e.g. the
+ * Tapit Wallet object, whose key never leaves the object) can compute the
+ * digest, sign it through its own `signDigest` method, and assemble the
+ * attestation WITHOUT ever extracting the raw key the way
+ * `answerSignInChallenge` requires. This is a thin pass-through to the same
+ * internal `signInDigest` computation — it does not change the digest, so an
+ * attestation built via this path verifies identically to one from
+ * `answerSignInChallenge`. The base shape is fixed to the four signed fields.
+ */
+export function signInDigestFor(base: {
+  v: 1;
+  challenge: SignInChallenge;
+  signer: string;
+  issuedAt: string;
+}): Uint8Array {
+  return signInDigest(base);
+}
+
 /** True when a value has the full, well-typed shape of a sign-in challenge. */
 function isChallengeShape(value: unknown): value is SignInChallenge {
   if (typeof value !== 'object' || value === null) return false;

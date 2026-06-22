@@ -128,3 +128,93 @@ describe('parseSignRequest — cosign-existing', () => {
     ).toBe('invalid_request');
   });
 });
+
+describe('parseSignRequest — sign-in', () => {
+  const goodChallenge = {
+    v: 1,
+    nonce: 'a'.repeat(64),
+    audience: 'dynastytrust.family',
+    issuedAt: '2026-06-22T00:00:00.000Z',
+    expiresAt: '2026-06-22T00:05:00.000Z',
+  };
+
+  it('parses a well-formed sign-in request', () => {
+    const parsed = parseSignRequest(
+      encode({
+        v: 1,
+        intent: 'sign-in',
+        origin: 'DynastyTrust',
+        callback: 'https://dynastytrust.family/cb',
+        challenge: goodChallenge,
+      }),
+    );
+    expect(parsed.intent).toBe('sign-in');
+    if (parsed.intent === 'sign-in') {
+      expect(parsed.challenge.nonce).toBe(goodChallenge.nonce);
+      expect(parsed.challenge.audience).toBe('dynastytrust.family');
+    }
+  });
+
+  it('rejects a sign-in request with a missing challenge', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'sign-in',
+            origin: 'DynastyTrust',
+            callback: 'https://dynastytrust.family/cb',
+          }),
+        ),
+      ),
+    ).toBe('invalid_request');
+  });
+
+  it('rejects a sign-in challenge with a bad nonce length', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'sign-in',
+            origin: 'DynastyTrust',
+            callback: 'https://dynastytrust.family/cb',
+            challenge: { ...goodChallenge, nonce: 'abcd' },
+          }),
+        ),
+      ),
+    ).toBe('invalid_request');
+  });
+
+  it('rejects a sign-in challenge with an empty audience', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'sign-in',
+            origin: 'DynastyTrust',
+            callback: 'https://dynastytrust.family/cb',
+            challenge: { ...goodChallenge, audience: '' },
+          }),
+        ),
+      ),
+    ).toBe('invalid_request');
+  });
+
+  it('rejects a sign-in challenge with wrong v', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'sign-in',
+            origin: 'DynastyTrust',
+            callback: 'https://dynastytrust.family/cb',
+            challenge: { ...goodChallenge, v: 2 },
+          }),
+        ),
+      ),
+    ).toBe('invalid_request');
+  });
+});

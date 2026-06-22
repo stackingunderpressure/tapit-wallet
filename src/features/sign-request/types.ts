@@ -2,6 +2,8 @@ import type {
   Attestation,
   AttestationKind,
   FieldValue,
+  SignInAttestation,
+  SignInChallenge,
   TierName,
 } from 'tapit-attest';
 
@@ -58,14 +60,47 @@ export interface CosignSignRequest extends SignRequestBase {
   envelope: Attestation;
 }
 
-export type SignRequest = AttestSignRequest | CosignSignRequest;
+/**
+ * intent 'sign-in' — the wallet answers a verifier-issued login challenge by
+ * signing it, proving the user controls their key. NO new attestation is
+ * created and NO funds move; the only thing produced is a SignInAttestation
+ * carrying the user's public key, the echoed challenge, and a Schnorr
+ * signature. The verifier (e.g. DynastyTrust) minted the challenge, persists
+ * it, and checks the returned attestation against its own stored copy. The
+ * challenge travels inside the request; the wallet signs the SAME challenge
+ * verbatim so the verifier's echo check passes.
+ */
+export interface SignInSignRequest extends SignRequestBase {
+  intent: 'sign-in';
+  /** The verifier-issued, single-use challenge to answer. */
+  challenge: SignInChallenge;
+}
+
+export type SignRequest =
+  | AttestSignRequest
+  | CosignSignRequest
+  | SignInSignRequest;
 
 export interface SignGrant {
   v: 1;
   nonce?: string;
-  /** The signed envelope. Public — keys do not leave the wallet. For a
-   *  cosign-existing grant this is the merged multi-signature envelope. */
-  envelope: Attestation;
+  /**
+   * The signed envelope. Public — keys do not leave the wallet. For a
+   * cosign-existing grant this is the merged multi-signature envelope.
+   * Present for 'attest' and 'cosign-existing' grants; ABSENT for a
+   * 'sign-in' grant, which carries `signIn` instead.
+   */
+  envelope?: Attestation;
+  /**
+   * The signed login proof. Present ONLY for a 'sign-in' grant. A
+   * SignInAttestation is NOT an Attestation envelope (different shape, no
+   * Merkle field tree, no anchoring), so it gets its own explicit field
+   * rather than being shoehorned into `envelope`. The verifier reads this,
+   * matches the echoed challenge against its stored copy, and checks the
+   * signature against the user's public key — no key material crosses the
+   * wire, only the public key and the signature.
+   */
+  signIn?: SignInAttestation;
 }
 
 export type SignDeclineReason =

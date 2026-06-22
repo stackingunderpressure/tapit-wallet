@@ -1,5 +1,5 @@
-import type { Attestation, Wallet } from 'tapit-attest';
-import { envelopeId } from 'tapit-attest';
+import type { Attestation, SignInAttestation, Wallet } from 'tapit-attest';
+import { envelopeId, signInDigestFor } from 'tapit-attest';
 import type { SignRequest, SignGrant } from './types.ts';
 import { coSignEnvelope } from './coSignEnvelope.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
@@ -23,6 +23,36 @@ export async function approveSignRequest(
   saveWallet: () => Promise<void>,
   worker: WorkerHandle | null,
 ): Promise<void> {
+  // intent 'sign-in' — answer a login challenge. This produces NO envelope to
+  // hold or anchor; it is a one-time login proof. The wallet's private key
+  // never leaves the Wallet object: we compute the exact sign-in digest with
+  // signInDigestFor(base) and sign it through wallet.signDigest(digest), the
+  // same no-key-leak seam the peer-transport layer uses. We deliberately do
+  // NOT call answerSignInChallenge() because it takes a raw private-key hex,
+  // which would force extracting the key out of the wallet — forbidden. The
+  // grant carries the SignInAttestation in its own `signIn` field, not in
+  // `envelope` (a SignInAttestation is not an Attestation envelope).
+  if (request.intent === 'sign-in') {
+    const base = {
+      v: 1 as const,
+      challenge: request.challenge,
+      signer: wallet.publicKey,
+      issuedAt: new Date().toISOString(),
+    };
+    const signature = wallet.signDigest(signInDigestFor(base));
+    const signIn: SignInAttestation = { ...base, signature };
+
+    const grant: SignGrant = {
+      v: 1,
+      ...(request.nonce ? { nonce: request.nonce } : {}),
+      signIn,
+    };
+    const url = new URL(request.callback);
+    url.searchParams.set('grant', btoa(JSON.stringify(grant)));
+    window.location.href = url.toString();
+    return;
+  }
+
   let signed: Attestation;
   if (request.intent === 'cosign-existing') {
     // Add our signature to the existing envelope; the claim (and so the
