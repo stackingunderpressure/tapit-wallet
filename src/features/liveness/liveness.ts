@@ -9,6 +9,11 @@ import {
   type LivenessState,
   type GroupTally,
 } from 'tapit-attest';
+import type { Transport, Subscription } from '../transport/transport.ts';
+import {
+  sendLivenessSignal,
+  subscribeLiveness,
+} from '../transport/livenessChannel.ts';
 
 // Liveness store/logic — slice 1. This is the wallet-side wrapper around the
 // tapit-attest liveness PRIMITIVE (tapit-attest/src/core/liveness.ts). The
@@ -312,4 +317,67 @@ export function createLivenessStore(input: CreateLivenessStoreInput): LivenessSt
     tally,
     applyIncomingSignal,
   };
+}
+
+// ─── TRANSPORT WIRING: PATH B FILLED IN ─────────────────────────────────────
+// The seam above (SendSignal / OnSignal / applyIncomingSignal) is now connected
+// to the dedicated encrypted liveness channel
+// (src/features/transport/livenessChannel.ts), which rides its own wire kind
+// TAPIT_LIVENESS_KIND — NOT the Attestation envelope inbox. These adapters are
+// the thin, optional glue: the store itself stays transport-agnostic and
+// no-op-safe (createLivenessStore with no sendSignal still works fully for the
+// local-only surface), and the wiring lives here so the import points one way
+// (feature -> transport), never the reverse. (The imports these adapters use
+// are hoisted to the top of the file.)
+
+/**
+ * Build a SendSignal seam backed by the encrypted liveness channel. Pass the
+ * result as createLivenessStore's `sendSignal` to make heartbeats and red flags
+ * actually travel: each signal is encrypted to every recipient and published on
+ * the dedicated liveness kind. The signature is already minted before this is
+ * called, so the seam never sees a private key; the Wallet does the encryption
+ * and outer signing internally. Relays see only ciphertext.
+ *
+ * A signal addressed to no recipients (an empty group) is a silent no-op — the
+ * local state was already updated by the store; there is simply no one to tell.
+ */
+export function createTransportSendSignal(
+  transport: Transport,
+  sender: Wallet,
+): SendSignal {
+  return async (signal: LivenessSignal, recipients: readonly string[]) => {
+    await Promise.all(
+      recipients.map((recipient) =>
+        sendLivenessSignal(transport, signal, recipient, sender),
+      ),
+    );
+  };
+}
+
+/**
+ * Subscribe a liveness store to the encrypted liveness channel: every decrypted
+ * AND inner-verified signal addressed to this wallet is folded into the store
+ * via applyIncomingSignal. Inner verification (verifyProofOfLife /
+ * verifyDuressFlag) happens inside the channel before the signal reaches us, so
+ * a forged heartbeat or red flag never gets here. Returns the Subscription;
+ * call close() to stop. Optional `since` (Unix seconds) limits the backfill.
+ */
+export function subscribeLivenessStore(
+  transport: Transport,
+  store: LivenessStore,
+  recipient: Wallet,
+  options: { since?: number } = {},
+): Subscription {
+  return subscribeLiveness(
+    transport,
+    recipient,
+    (item) => {
+      store.applyIncomingSignal(
+        item.kind === 'proof-of-life'
+          ? { kind: 'proof-of-life', signal: item.signal as ProofOfLife }
+          : { kind: 'duress-flag', signal: item.signal as DuressFlag },
+      );
+    },
+    options,
+  );
 }

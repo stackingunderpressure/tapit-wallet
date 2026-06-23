@@ -23,6 +23,8 @@ export const manifest: FeatureManifest = {
     'src/features/transport/envelopeRoute.ts',
     'src/features/transport/envelopeRoute.test.ts',
     'src/features/transport/NostrIndicator.tsx',
+    'src/features/transport/livenessChannel.ts',
+    'src/features/transport/livenessChannel.test.ts',
   ],
   depends_on: ['cosigning', 'connections', 'wallet-core'],
   pause_safe: true,
