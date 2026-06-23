@@ -1,0 +1,306 @@
+import { useEffect, useRef, useState } from 'react';
+import type { LivenessState } from 'tapit-attest';
+import { useWallet } from '../wallet-core/useWallet.ts';
+import {
+  createLivenessStore,
+  type LivenessStore,
+  type SubjectStatus,
+} from './liveness.ts';
+
+// LivenessPanel — the human surface for the green / no-report / red primitive.
+// Written so a worried family member understands it without any crypto words.
+//
+// Plain-English mapping (no jargon shown to the user):
+//   green     -> "Checked in"      (a fresh "I'm OK" from this person)
+//   no-report -> "No word yet"     (silence — NOT good, NOT bad, just unknown)
+//   red       -> "Asking for help" (someone they trust raised the alarm)
+//
+// The heartbeat button is gentle ("I'm OK — check me in"). Raising red is a
+// duress alarm, so it is deliberate: a second confirm step before it fires.
+//
+// Transport is path B (deferred). Until the next cut wires the liveness wire
+// kind, heartbeats and red flags are minted and held locally and the seam
+// no-ops on the network; the panel notes this honestly so nobody believes a
+// signal reached the circle when it has not yet.
+
+// A short, friendly freshness window for the demo surface: a heartbeat counts
+// as "checked in" for 24 hours. The verifier (this panel) owns the window, per
+// the primitive's design — freshness is never baked into the signed signal.
+const TTL_SECONDS = 24 * 60 * 60;
+
+interface StatePresentation {
+  label: string;
+  detail: string;
+  dot: string;
+  box: string;
+}
+
+function present(state: LivenessState): StatePresentation {
+  switch (state) {
+    case 'green':
+      return {
+        label: 'Checked in',
+        detail: 'A recent "I am OK" from this person.',
+        dot: 'bg-emerald-500',
+        box: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+      };
+    case 'red':
+      return {
+        label: 'Asking for help',
+        detail:
+          'Someone this person trusts raised the alarm. Treat this seriously.',
+        dot: 'bg-red-500',
+        box: 'border-red-200 bg-red-50 text-red-900',
+      };
+    default:
+      return {
+        label: 'No word yet',
+        detail:
+          'No recent check-in. This is not good or bad on its own — just unknown.',
+        dot: 'bg-amber-400',
+        box: 'border-amber-200 bg-amber-50 text-amber-900',
+      };
+  }
+}
+
+function shortKey(key: string): string {
+  if (key.length <= 12) return key;
+  return `${key.slice(0, 6)}…${key.slice(-4)}`;
+}
+
+export function LivenessPanel() {
+  const { wallet } = useWallet();
+
+  // One store per wallet, kept stable across renders.
+  const storeRef = useRef<LivenessStore | null>(null);
+  if (storeRef.current === null) {
+    storeRef.current = createLivenessStore({ wallet });
+  }
+  const store = storeRef.current;
+
+  // Re-render on every store change. A version counter is enough here.
+  const [, setVersion] = useState(0);
+  useEffect(() => store.subscribe(() => setVersion((v) => v + 1)), [store]);
+
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // The subject key currently pending a "raise red" confirm, or null.
+  const [confirmRed, setConfirmRed] = useState<string | null>(null);
+  // Free-text box for adding a circle member by their key.
+  const [newMember, setNewMember] = useState('');
+
+  // Read live state each render — the version counter (bumped by the store
+  // subscription) is what forces the re-render, so these are always fresh.
+  const groupState = store.getState();
+  const myStatus = store.myStatus(TTL_SECONDS);
+  const groupStatuses: SubjectStatus[] = store.groupStatuses(TTL_SECONDS);
+
+  async function heartbeat() {
+    setError(null);
+    setBusy(true);
+    try {
+      await store.sendHeartbeat();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not check in.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function doRaiseRed(subject: string) {
+    setError(null);
+    setBusy(true);
+    try {
+      await store.raiseRed(subject);
+      setConfirmRed(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not raise the alarm.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function addMember() {
+    const key = newMember.trim().toLowerCase();
+    setError(null);
+    if (!/^[0-9a-f]{64}$/.test(key)) {
+      setError('That does not look like a person key (64 hex characters).');
+      return;
+    }
+    store.setGroup([...groupState.group, key]);
+    setNewMember('');
+  }
+
+  function removeMember(key: string) {
+    store.setGroup(groupState.group.filter((k) => k !== key));
+  }
+
+  const mine = present(myStatus);
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-base font-semibold">Are you OK?</h2>
+        <p className="mt-1 text-sm text-muted">
+          A quiet way to tell the people you trust that you are alright — and to
+          see at a glance whether they are. Tap to check in. If you are ever in
+          trouble, you can raise a quiet alarm.
+        </p>
+        <p className="mt-2 text-xs text-muted">
+          Heads up: this slice keeps your check-ins on this device only. Sending
+          them to your circle over the network is the next step.
+        </p>
+      </div>
+
+      {/* My own state */}
+      <div className={`rounded-xl border px-4 py-4 ${mine.box}`}>
+        <div className="flex items-center gap-2">
+          <span className={`inline-block h-2.5 w-2.5 rounded-full ${mine.dot}`} />
+          <span className="text-sm font-semibold">You: {mine.label}</span>
+        </div>
+        <p className="mt-1 text-xs">{mine.detail}</p>
+        <button
+          type="button"
+          onClick={heartbeat}
+          disabled={busy}
+          className="mt-3 w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-50"
+        >
+          I&apos;m OK — check me in
+        </button>
+        {myStatus !== 'red' && (
+          <button
+            type="button"
+            onClick={() => setConfirmRed(wallet.publicKey)}
+            disabled={busy}
+            className="mt-2 w-full rounded-md border border-red-300 py-2 text-red-700 text-sm font-medium disabled:opacity-50"
+          >
+            I need help — raise my alarm
+          </button>
+        )}
+      </div>
+
+      {/* The circle */}
+      <div>
+        <h3 className="text-sm font-semibold">Your circle</h3>
+        <p className="mt-1 text-xs text-muted">
+          The people who can see your state and whose state you watch. Only
+          someone in this circle can raise an alarm for you.
+        </p>
+
+        <div className="mt-3 space-y-2">
+          {groupStatuses.length === 0 && (
+            <p className="text-xs text-muted">
+              No one added yet. Add a trusted person by their key below.
+            </p>
+          )}
+          {groupStatuses.map(({ subject, state }) => {
+            const p = present(state);
+            return (
+              <div
+                key={subject}
+                className={`rounded-lg border px-3 py-3 ${p.box}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${p.dot}`}
+                    />
+                    <span className="text-sm font-medium truncate">
+                      {shortKey(subject)}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold shrink-0">
+                    {p.label}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs">{p.detail}</p>
+                <div className="mt-2 flex gap-2">
+                  {state !== 'red' && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmRed(subject)}
+                      disabled={busy}
+                      className="rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 disabled:opacity-50"
+                    >
+                      Raise alarm for them
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeMember(subject)}
+                    disabled={busy}
+                    className="rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-muted hover:text-ink disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 flex gap-2">
+          <input
+            value={newMember}
+            onChange={(e) => setNewMember(e.target.value)}
+            placeholder="Trusted person's key (64 hex)"
+            className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={addMember}
+            className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600" role="alert">
+          {error}
+        </p>
+      )}
+
+      {/* Raise-red confirm — duress is deliberate, never one tap. */}
+      {confirmRed && (
+        <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
+          <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
+            <h2 className="text-base font-semibold text-red-700">
+              Raise a quiet alarm?
+            </h2>
+            <p className="mt-2 text-sm">
+              {confirmRed === wallet.publicKey
+                ? 'This tells your circle that you are in trouble. It is a serious signal — use it when you truly need help.'
+                : `This tells the circle that ${shortKey(
+                    confirmRed,
+                  )} may be in trouble. Only raise it if you really believe something is wrong.`}
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              An alarm stays raised until a human clears it. It will not quietly
+              time itself out.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => doRaiseRed(confirmRed)}
+                disabled={busy}
+                className="flex-1 rounded-md bg-red-600 py-3 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                Yes, raise the alarm
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmRed(null)}
+                disabled={busy}
+                className="flex-1 rounded-md border border-ink/15 py-3 text-sm font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

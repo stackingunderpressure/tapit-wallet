@@ -108,7 +108,15 @@ const BUDGETS = [
   // budget. The classes are intrinsic to the explorer's converge-up/fan-down
   // layout and cannot be code-split out of the single Tailwind sheet. Bumped
   // 8.5 -> 8.6KiB.
-  { pattern: /^index-.*\.css$/, gz: 8_806, label: 'css' },
+  // 2026-06-22 liveness panel (the green / no-report / red "Are you OK?"
+  // surface): LivenessPanel introduced the green/amber/red status-box
+  // utilities (border-{emerald,amber,red}-200, bg-*-50, text-*-900), the small
+  // h-2.5 w-2.5 rounded-full status dots, the red duress-confirm modal, and
+  // the per-member row utilities (truncate, min-w-0, shrink-0). The Tailwind
+  // content scanner emits each into the single sheet; they are intrinsic to
+  // the plain-English state presentation and cannot be code-split out. Measured
+  // ~8.61KB gz, a handful of bytes past the prior budget. Bumped 8.6 -> 8.7KiB.
+  { pattern: /^index-.*\.css$/, gz: 8_909, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
