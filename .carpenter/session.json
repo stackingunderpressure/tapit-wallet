@@ -25,7 +25,8 @@
     "04a8d32 feat(sign-request): sign-in intent -- answer a login challenge, no key leaves the wallet [skip ci]",
     "80f293a feat(tapit-attest): liveness primitive -- proof-of-life + duress, green/no-report/red tally [skip ci]",
     "05b04c4 feat(liveness): heartbeat + duress surface on the liveness primitive [skip ci]",
-    "ec3daf0 feat(transport): dedicated encrypted liveness channel (own kind) + wire the seam [skip ci]"
+    "ec3daf0 feat(transport): dedicated encrypted liveness channel (own kind) + wire the seam [skip ci]",
+    "ae98849 feat(liveness): mount circle check-in in Keychain, wired to live transport [skip ci]"
   ],
   "files_touched": [
     ".carpenter/session.json",
