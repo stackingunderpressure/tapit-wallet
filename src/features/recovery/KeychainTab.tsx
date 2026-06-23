@@ -19,8 +19,18 @@ const LatticePanel = lazy(() =>
   import('./LatticePanel.tsx').then((m) => ({ default: m.LatticePanel })),
 );
 
+const LivenessPanel = lazy(() =>
+  import('../liveness/LivenessPanel.tsx').then((m) => ({
+    default: m.LivenessPanel,
+  })),
+);
+
 export function KeychainTab() {
   const [recoveryOpen, setRecoveryOpen] = useState(true);
+  // Liveness starts collapsed — the dashboard already opens with secrets +
+  // social recovery expanded, and this is the newest section, so it stays
+  // tucked until the operator reaches for it.
+  const [livenessOpen, setLivenessOpen] = useState(false);
   return (
     <section className="mt-5 space-y-4">
       <header className="flex items-center gap-3">
@@ -85,6 +95,56 @@ export function KeychainTab() {
               }
             >
               <LatticePanel />
+            </Suspense>
+          </div>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-sm">
+        <button
+          type="button"
+          aria-expanded={livenessOpen}
+          onClick={() => setLivenessOpen((o) => !o)}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left"
+        >
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-xl"
+          >
+            💚
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">
+              Liveness / circle check-in
+            </span>
+            <span className="mt-0.5 block text-xs text-muted">
+              Tell the people you trust you are OK, and see at a glance whether
+              they are.
+            </span>
+          </span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            className={`h-4 w-4 shrink-0 text-muted transition-transform ${livenessOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
+            <path
+              d="M5 7.5l5 5 5-5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        {livenessOpen && (
+          <div className="border-t border-ink/10 px-4 pb-4 pt-4">
+            <Suspense
+              fallback={
+                <div className="text-xs text-muted">Loading check-in…</div>
+              }
+            >
+              <LivenessPanel />
             </Suspense>
           </div>
         )}

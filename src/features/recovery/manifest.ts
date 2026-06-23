@@ -49,7 +49,7 @@ export const manifest: FeatureManifest = {
     'src/features/recovery/useSecretPieceHeartbeat.ts',
     'src/features/recovery/secretFreshness.test.ts',
   ],
-  depends_on: ['wallet-core', 'anchoring', 'connections', 'qr', 'transport'],
+  depends_on: ['wallet-core', 'anchoring', 'connections', 'qr', 'transport', 'liveness'],
   pause_safe: true,
   removal_safe: true,
   monetizable: false,

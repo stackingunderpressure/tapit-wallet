@@ -810,6 +810,22 @@ const BUDGETS = [
   // budget with headroom rather than inflating the generic catch-all.
   { pattern: /^FriendTreesView-.*\.js$/, gz: 4_000, label: 'FriendTreesView' },
 
+  // LivenessPanel — the green / no-report / red "Are you OK?" surface,
+  // React.lazy from the Keychain tab's collapsible "Liveness / circle
+  // check-in" section so the cold path never pays for it. 2026-06-23
+  // field-test mount: this chunk did not exist before (the panel was
+  // never rendered anywhere); mounting it lazily emitted its own chunk
+  // for the first time, at ~3.97KB gz, past the 3KB catch-all. It carries
+  // the plain-English state presentation (present()), the circle add/
+  // remove editor, the two-step duress-confirm modal, the live-transport
+  // send/subscribe wiring (createTransportSendSignal + subscribeLivenessStore
+  // via the liveness feature module), and the gentle proof-of-life nudge.
+  // It is already lazy (option 1 satisfied) and loads only when the operator
+  // expands the section, so further splitting buys nothing; the named budget
+  // is the right move (option 2). Measured ~3.97KB gz; budget set with
+  // headroom for the circle-status polish still to come.
+  { pattern: /^LivenessPanel-.*\.js$/, gz: 5_000, label: 'LivenessPanel' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.

@@ -3,6 +3,8 @@ import type { LivenessState } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import {
   createLivenessStore,
+  createTransportSendSignal,
+  subscribeLivenessStore,
   type LivenessStore,
   type SubjectStatus,
 } from './liveness.ts';
@@ -18,10 +20,16 @@ import {
 // The heartbeat button is gentle ("I'm OK — check me in"). Raising red is a
 // duress alarm, so it is deliberate: a second confirm step before it fires.
 //
-// Transport is path B (deferred). Until the next cut wires the liveness wire
-// kind, heartbeats and red flags are minted and held locally and the seam
-// no-ops on the network; the panel notes this honestly so nobody believes a
-// signal reached the circle when it has not yet.
+// LIVE WIRING: the panel reuses the SAME Mycelium transport the encrypted
+// inbox + chat ride (exposed by WalletProvider through WalletContext.transport).
+// When the network is connected, the store's sendSignal is backed by the
+// dedicated encrypted liveness channel (createTransportSendSignal) so a
+// heartbeat or red flag actually travels to the circle, and a subscription
+// (subscribeLivenessStore) folds inner-verified arrivals back in. When the
+// network is off (locked / opted out / briefly unavailable) the store falls
+// back to a no-op send and the panel still works fully on-device — the feature
+// stays pause_safe / removal_safe and never breaks the app on a null transport.
+// Relays only ever see ciphertext; the private key never leaves the Wallet.
 
 // A short, friendly freshness window for the demo surface: a heartbeat counts
 // as "checked in" for 24 hours. The verifier (this panel) owns the window, per
@@ -68,19 +76,73 @@ function shortKey(key: string): string {
   return `${key.slice(0, 6)}…${key.slice(-4)}`;
 }
 
-export function LivenessPanel() {
-  const { wallet } = useWallet();
+function relativeSince(iso: string, now: number): string {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return 'recently';
+  const secs = Math.max(0, Math.floor((now - then) / 1000));
+  if (secs < 60) return 'just now';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+}
 
-  // One store per wallet, kept stable across renders.
+export function LivenessPanel() {
+  const { wallet, transport } = useWallet();
+
+  // The live transport, held in a ref so the store's send seam always reads
+  // the CURRENT transport even though the store itself is built once. This
+  // matters for field testing: the operator may open this section before the
+  // Mycelium network finishes connecting, or toggle it on in Settings while
+  // the panel is open. The ref keeps the send path correct across that change
+  // without rebuilding the store (which would drop accumulated circle state).
+  const transportRef = useRef(transport);
+  transportRef.current = transport;
+
+  // One store per wallet, kept stable across renders. The send seam delegates
+  // to whatever transport is currently live; createTransportSendSignal never
+  // sees a private key (the signature is minted by the store through
+  // wallet.signDigest before the seam is called). When no transport exists the
+  // seam is a silent no-op and the panel works fully on-device.
   const storeRef = useRef<LivenessStore | null>(null);
   if (storeRef.current === null) {
-    storeRef.current = createLivenessStore({ wallet });
+    storeRef.current = createLivenessStore({
+      wallet,
+      sendSignal: async (signal, recipients) => {
+        const live = transportRef.current;
+        if (!live) return;
+        await createTransportSendSignal(live, wallet)(signal, recipients);
+      },
+    });
   }
   const store = storeRef.current;
 
   // Re-render on every store change. A version counter is enough here.
   const [, setVersion] = useState(0);
   useEffect(() => store.subscribe(() => setVersion((v) => v + 1)), [store]);
+
+  // Live receive: when the Mycelium transport is connected, subscribe the
+  // store to the encrypted liveness channel so inner-verified heartbeats and
+  // red flags from the circle fold into state. Torn down on unmount or when
+  // the transport reference changes (lock / opt-out / key rotation) — the
+  // exact same lifecycle discipline the inbox + chat subscriptions use. A
+  // null transport is a no-op: the panel simply stays on-device until the
+  // network comes up.
+  useEffect(() => {
+    if (!transport) return;
+    const sub = subscribeLivenessStore(transport, store, wallet);
+    return () => sub.close();
+  }, [transport, store, wallet]);
+
+  // A 1-minute tick so the "last checked in" relative time and the gentle
+  // nudge stay current without a heartbeat firing. Cheap; cleared on unmount.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +156,17 @@ export function LivenessPanel() {
   const groupState = store.getState();
   const myStatus = store.myStatus(TTL_SECONDS);
   const groupStatuses: SubjectStatus[] = store.groupStatuses(TTL_SECONDS);
+
+  // Gentle proof-of-life nudge. Plain language, never alarming. Shown only
+  // when the operator has checked in at least once AND it has been longer
+  // than the freshness window (so a never-checked-in wallet sees the calm
+  // first-time copy below the button, not a "you're overdue" prompt). The
+  // 1-minute tick keeps this fresh while the panel is open.
+  const lastCheckIn = groupState.myProofOfLife?.issuedAt ?? null;
+  const lastCheckInLabel = lastCheckIn ? relativeSince(lastCheckIn, nowMs) : null;
+  const checkInStale =
+    lastCheckIn !== null &&
+    nowMs - Date.parse(lastCheckIn) > TTL_SECONDS * 1000;
 
   async function heartbeat() {
     setError(null);
@@ -147,10 +220,22 @@ export function LivenessPanel() {
           trouble, you can raise a quiet alarm.
         </p>
         <p className="mt-2 text-xs text-muted">
-          Heads up: this slice keeps your check-ins on this device only. Sending
-          them to your circle over the network is the next step.
+          {transport
+            ? 'When you check in or raise an alarm, it travels to your circle over your network — encrypted, so only they can read it.'
+            : 'Your network is off right now, so check-ins stay on this device. Turn on the network in Settings to share them with your circle.'}
         </p>
       </div>
+
+      {/* Gentle proof-of-life nudge — calm, never alarming. */}
+      {checkInStale && myStatus !== 'red' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          <p className="text-sm font-medium">It&apos;s been a while.</p>
+          <p className="mt-0.5 text-xs">
+            Your last check-in was {lastCheckInLabel}. A quick tap lets the
+            people you trust know you are alright — no rush.
+          </p>
+        </div>
+      )}
 
       {/* My own state */}
       <div className={`rounded-xl border px-4 py-4 ${mine.box}`}>
@@ -159,6 +244,11 @@ export function LivenessPanel() {
           <span className="text-sm font-semibold">You: {mine.label}</span>
         </div>
         <p className="mt-1 text-xs">{mine.detail}</p>
+        {lastCheckInLabel && (
+          <p className="mt-1 text-xs opacity-80">
+            Last check-in: {lastCheckInLabel}.
+          </p>
+        )}
         <button
           type="button"
           onClick={heartbeat}

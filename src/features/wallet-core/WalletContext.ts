@@ -4,7 +4,7 @@ import type { Prefs } from '../storage/prefsStore.ts';
 import type { SaveOutcome } from '../storage/walletStore.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
-import type { PublishResult, RelayStatus } from '../transport/transport.ts';
+import type { PublishResult, RelayStatus, Transport } from '../transport/transport.ts';
 import type { ThreadMessage } from '../messaging/threadMessage.ts';
 import type { AdoptExistingKeyResult } from './adoptExistingKey.ts';
 
@@ -39,6 +39,18 @@ export interface WalletContextValue {
    * a live indicator that hides entirely when Mycelium is off.
    */
   relayStatus: readonly RelayStatus[] | null;
+  /**
+   * The live Mycelium peer transport, or null when the network is not
+   * connected (locked, signed out, or opted out). This is the SAME
+   * instance the encrypted inbox + chat subscriptions ride; features
+   * that need to publish or subscribe on a sibling wire kind (e.g. the
+   * liveness channel, TAPIT_LIVENESS_KIND) reuse it rather than opening
+   * a second connection. A consumer MUST treat null as "no network yet"
+   * and degrade gracefully — the wallet stays fully usable offline. The
+   * private key never crosses this seam; the Wallet performs encryption
+   * and outer signing internally.
+   */
+  transport: Transport | null;
   /**
    * Encrypt an envelope to a peer's x-only pubkey, publish it through
    * the Mycelium transport, and wait for relay acks. Resolves with a
