@@ -21,5 +21,6 @@ export * from './core/nip44.js';
 export * from './core/sync.js';
 export * from './core/recovery.js';
 export * from './core/sign-in.js';
+export * from './core/liveness.js';
 export * from './core/shamir.js';
 export * from './core/wallet.js';
