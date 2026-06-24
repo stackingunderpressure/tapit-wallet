@@ -23,6 +23,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: tapit-attest integrity (one envelope standard, no drift)
+        run: node tapit-attest/scripts/check-integrity.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
