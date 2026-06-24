@@ -56,6 +56,34 @@ export function RenderRequest({ request }: Props) {
     );
   }
 
+  // sign-in — prove key control to log into another app. Nothing is kept;
+  // the wallet signs a one-time challenge and the app verifies it.
+  if (request.intent === 'sign-in') {
+    let expiresLabel = request.challenge.expiresAt;
+    try {
+      expiresLabel = new Date(request.challenge.expiresAt).toLocaleString();
+    } catch {
+      // keep the raw value if it doesn't parse
+    }
+    return (
+      <div className="rounded-md border border-ink/15 bg-paper p-4">
+        <p className="text-sm">
+          <span className="font-medium">{request.origin}</span> wants you to{' '}
+          <span className="font-medium">sign in</span> with your key.
+        </p>
+        <div className="mt-3 text-xs uppercase tracking-wide text-muted">For</div>
+        <div className="mt-1 text-sm font-medium break-words">
+          {request.challenge.audience}
+        </div>
+        <div className="mt-3 text-xs text-muted">
+          You'll prove you control your key by signing a one-time challenge.
+          Nothing is saved or shared except the proof itself, and it expires{' '}
+          {expiresLabel}.
+        </div>
+      </div>
+    );
+  }
+
   const prominent = FIELD_KEYS_PROMINENT[request.kind] ?? [];
   const prominentEntries = prominent
     .map((k) => [k, request.fields[k]] as const)

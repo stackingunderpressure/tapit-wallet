@@ -2,6 +2,8 @@ import type {
   Attestation,
   AttestationKind,
   FieldValue,
+  SignInAttestation,
+  SignInChallenge,
   TierName,
 } from 'tapit-attest';
 
@@ -58,7 +60,25 @@ export interface CosignSignRequest extends SignRequestBase {
   envelope: Attestation;
 }
 
-export type SignRequest = AttestSignRequest | CosignSignRequest;
+/**
+ * intent 'sign-in' — the wallet PROVES control of its active key by
+ * answering a relying party's TA-1 challenge. Unlike 'attest'/'cosign',
+ * NOTHING is held or anchored: a sign-in is an ephemeral bearer-challenge
+ * proof, not a kept attestation. The requester (e.g. DynastyTrust) minted
+ * the challenge, persisted it, and verifies the returned attestation with
+ * verifySignIn against that exact stored challenge. This is how an outside
+ * app logs a person in by their key instead of a password.
+ */
+export interface SignInSignRequest extends SignRequestBase {
+  intent: 'sign-in';
+  /** The single-use challenge the relying party issued and persisted. */
+  challenge: SignInChallenge;
+}
+
+export type SignRequest =
+  | AttestSignRequest
+  | CosignSignRequest
+  | SignInSignRequest;
 
 export interface SignGrant {
   v: 1;
@@ -68,13 +88,23 @@ export interface SignGrant {
   envelope: Attestation;
 }
 
+/** The grant returned for an intent 'sign-in' request. Carries only the
+ *  public sign-in attestation (signer pubkey + signature over the issued
+ *  challenge); the relying party feeds it to verifySignIn. */
+export interface SignInGrant {
+  v: 1;
+  nonce?: string;
+  attestation: SignInAttestation;
+}
+
 export type SignDeclineReason =
   | 'user_declined'
   | 'invalid_request'
   | 'unsupported_intent'
   | 'unknown_kind'
   | 'unknown_tier'
-  | 'invalid_envelope';
+  | 'invalid_envelope'
+  | 'invalid_challenge';
 
 export interface SignDecline {
   v: 1;

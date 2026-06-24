@@ -1,6 +1,6 @@
 import type { Attestation, Wallet } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
-import type { SignRequest, SignGrant } from './types.ts';
+import type { SignRequest, SignGrant, SignInGrant } from './types.ts';
 import { coSignEnvelope } from './coSignEnvelope.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
@@ -23,6 +23,22 @@ export async function approveSignRequest(
   saveWallet: () => Promise<void>,
   worker: WorkerHandle | null,
 ): Promise<void> {
+  // intent 'sign-in' — prove key control by answering the challenge, then
+  // redirect with a SignInGrant. Nothing is held, anchored, or saved: a
+  // sign-in is an ephemeral proof, not a kept attestation.
+  if (request.intent === 'sign-in') {
+    const attestation = wallet.signIn(request.challenge);
+    const grant: SignInGrant = {
+      v: 1,
+      ...(request.nonce ? { nonce: request.nonce } : {}),
+      attestation,
+    };
+    const signInUrl = new URL(request.callback);
+    signInUrl.searchParams.set('grant', btoa(JSON.stringify(grant)));
+    window.location.href = signInUrl.toString();
+    return;
+  }
+
   let signed: Attestation;
   if (request.intent === 'cosign-existing') {
     // Add our signature to the existing envelope; the claim (and so the

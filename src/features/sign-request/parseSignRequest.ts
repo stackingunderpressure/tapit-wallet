@@ -1,4 +1,9 @@
-import type { AttestationKind, FieldValue, TierName } from 'tapit-attest';
+import type {
+  AttestationKind,
+  FieldValue,
+  SignInChallenge,
+  TierName,
+} from 'tapit-attest';
 import { verifyEnvelope } from 'tapit-attest';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import type { SignRequest } from './types.ts';
@@ -35,6 +40,20 @@ function b64UrlDecode(input: string): string {
 
 function isFieldValue(v: unknown): v is FieldValue {
   return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
+}
+
+function isSignInChallenge(v: unknown): v is SignInChallenge {
+  if (!v || typeof v !== 'object') return false;
+  const c = v as Record<string, unknown>;
+  return (
+    c.v === 1 &&
+    typeof c.nonce === 'string' &&
+    /^[0-9a-fA-F]{64}$/.test(c.nonce) &&
+    typeof c.audience === 'string' &&
+    c.audience.length > 0 &&
+    typeof c.issuedAt === 'string' &&
+    typeof c.expiresAt === 'string'
+  );
 }
 
 function requireOriginAndCallback(r: Record<string, unknown>): {
@@ -85,6 +104,20 @@ export function parseSignRequest(raw: string | null): SignRequest {
   // intent 'cosign-existing' — the requester hands over an already-signed
   // envelope for the wallet to countersign. Validate it parses and already
   // carries a valid signature so the wallet never adds its name to garbage.
+  // intent 'sign-in' — the requester hands over a single-use challenge for
+  // the wallet to answer with its active key. Validate the challenge shape
+  // so the approval screen can decline cleanly; the relying party does the
+  // authoritative echo/freshness/signature check with verifySignIn.
+  if (r.intent === 'sign-in') {
+    if (!isSignInChallenge(r.challenge)) {
+      throw new SignRequestError(
+        'invalid_challenge',
+        'challenge is missing or malformed',
+      );
+    }
+    return { v: 1, intent: 'sign-in', challenge: r.challenge, ...base };
+  }
+
   if (r.intent === 'cosign-existing') {
     if (!r.envelope || typeof r.envelope !== 'object') {
       throw new SignRequestError('invalid_request', 'envelope must be an object');

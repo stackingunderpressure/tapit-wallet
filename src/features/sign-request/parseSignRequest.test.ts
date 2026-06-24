@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Wallet, verifyEnvelope } from 'tapit-attest';
+import { Wallet, verifyEnvelope, buildSignInChallenge } from 'tapit-attest';
 import { parseSignRequest, SignRequestError } from './parseSignRequest.ts';
 
 // Encode a request object the way an external app would: JSON -> base64.
@@ -126,5 +126,69 @@ describe('parseSignRequest — cosign-existing', () => {
         ),
       ),
     ).toBe('invalid_request');
+  });
+});
+
+describe('parseSignRequest — sign-in', () => {
+  const challenge = buildSignInChallenge({ audience: 'dynastytrust.family', ttlSeconds: 300 });
+
+  function encode(obj: unknown): string {
+    return btoa(JSON.stringify(obj));
+  }
+  function caughtCode(fn: () => unknown): string | undefined {
+    try {
+      fn();
+    } catch (err) {
+      return err instanceof SignRequestError ? err.code : `not-sign-request-error:${String(err)}`;
+    }
+    return undefined;
+  }
+
+  it('parses a well-formed sign-in request', () => {
+    const parsed = parseSignRequest(
+      encode({
+        v: 1,
+        intent: 'sign-in',
+        origin: 'DynastyTrust',
+        challenge,
+        callback: 'https://dynastytrust.family/auth/wallet-callback',
+      }),
+    );
+    expect(parsed.intent).toBe('sign-in');
+    if (parsed.intent === 'sign-in') {
+      expect(parsed.challenge.audience).toBe('dynastytrust.family');
+      expect(parsed.challenge.nonce).toBe(challenge.nonce);
+    }
+  });
+
+  it('rejects a missing challenge', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'sign-in',
+            origin: 'DynastyTrust',
+            callback: 'https://dynastytrust.family/cb',
+          }),
+        ),
+      ),
+    ).toBe('invalid_challenge');
+  });
+
+  it('rejects a malformed challenge (bad nonce)', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'sign-in',
+            origin: 'DynastyTrust',
+            challenge: { ...challenge, nonce: 'too-short' },
+            callback: 'https://dynastytrust.family/cb',
+          }),
+        ),
+      ),
+    ).toBe('invalid_challenge');
   });
 });

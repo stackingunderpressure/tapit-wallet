@@ -128,7 +128,7 @@ export function SignApprovalScreen() {
         <div className="mt-3 rounded-md bg-ink/5 px-3 py-2 text-xs text-muted">
           On approve you will be redirected to{' '}
           <span className="font-mono">{state.callbackHost}</span>. The wallet
-          sends only the signed envelope; your keys never leave this device.
+          sends only the signed result; your keys never leave this device.
         </div>
       </section>
 
@@ -140,7 +140,9 @@ export function SignApprovalScreen() {
         >
           {state.request.intent === 'cosign-existing'
             ? 'Approve — co-sign this'
-            : 'Approve — sign this'}
+            : state.request.intent === 'sign-in'
+              ? 'Approve — sign in'
+              : 'Approve — sign this'}
         </button>
         <button
           type="button"
