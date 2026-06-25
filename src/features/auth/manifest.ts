@@ -14,6 +14,7 @@ export const manifest: FeatureManifest = {
     'src/features/auth/WalletGuideBitcoinTab.tsx',
     'src/features/auth/OAuthButtons.tsx',
     'src/features/auth/PasswordSignIn.tsx',
+    'src/features/auth/postLoginReturn.ts',
   ],
   depends_on: [],
   pause_safe: false,

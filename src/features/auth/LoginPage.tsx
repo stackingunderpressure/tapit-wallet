@@ -1,6 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { WalletGuide } from './WalletGuide.tsx';
 import { useDeviceTheme } from '../theme/useDeviceTheme.ts';
+import { useSession } from './useSession.ts';
+import { takePostLoginReturn } from './postLoginReturn.ts';
 
 // FreshLoginShell carries the entire Fresh compose-before-login
 // onboarding state machine (Cut 5). Lazy-loaded so the cold-start
@@ -37,6 +40,21 @@ const FreshLoginShell = lazy(() =>
 // visually continuous — no Classic-flash during the chunk fetch.
 export function LoginPage() {
   const theme = useDeviceTheme();
+  const session = useSession();
+  const navigate = useNavigate();
+
+  // In-page sign-in (password / create-account) settles the session right
+  // here without a /auth/callback round-trip. If the visitor was sent here
+  // from a gated deep link (e.g. /sign?req=... from DynastyTrust), return
+  // them to it once signed in; otherwise leave the signed-in Account view as
+  // it was.
+  useEffect(() => {
+    if (session.status === 'signed-in') {
+      const back = takePostLoginReturn();
+      if (back) navigate(back, { replace: true });
+    }
+  }, [session.status, navigate]);
+
   if (theme === 'fresh') {
     return (
       <Suspense
