@@ -16,7 +16,6 @@ import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 // helper + section UI) only ships when the operator opens the
 // Identity tab. Matches the bundle-budget discipline used for the
 // Bitcoin tab and ImportNostrIdentityPrompt.
-import { IdentityGateSections } from './IdentityGateSections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { FamilyTabBody } from './FamilyTabBody.tsx';
@@ -132,7 +131,7 @@ function isCapture(att: Attestation): boolean {
 }
 
 export function HomeScreen() {
-  const { wallet, ownerId, holdings, identity, prefs, updatePrefs, anchorWorker, save, refresh, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
+  const { wallet, holdings, identity, prefs, save, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
   const [tab, setTab] = useState<Tab>('journal');
   // Complete any invite the operator accepted from a /join link: once
   // the wallet is unlocked this consumes the sessionStorage-bridged
@@ -421,20 +420,6 @@ export function HomeScreen() {
             location={identity ? leafValue(identity, 'location') || undefined : undefined}
           />
           {identity && <AttestationCard attestation={identity} />}
-          <IdentityGateSections
-            wallet={wallet}
-            ownerId={ownerId}
-            anchorWorker={anchorWorker}
-            holdings={holdings}
-            vouchingDraft={prefs.vouchingCirclePubkeys}
-            onVouchingDraftChange={(next) =>
-              void updatePrefs({ vouchingCirclePubkeys: [...next] })
-            }
-            saveAndRefresh={async () => {
-              await save();
-              await refresh();
-            }}
-          />
 
           {orgDeclaration && (
             <OrgIdentitySections

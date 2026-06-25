@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import { PeopleSecretsSection } from './PeopleSecretsSection.tsx';
+import { useWallet } from '../wallet-core/useWallet.ts';
 
 // Keychain — the dashboard for your key (operator, 2026-06-16: "a tab by itself,
 // a dashboard for your key that does other stuff... social recovery, the
@@ -25,11 +26,27 @@ const LivenessPanel = lazy(() =>
   })),
 );
 
+// The vouching circle + peer-protected gates + vouches you have given.
+// Moved here out of the Identity tab (2026-06-25, operator: "the identity
+// tab and key tab have bleed over ... make sure everything is in the right
+// tab"). The Identity tab is now purely who you ARE; everything you DO with
+// your key and your trusted circle lives here, matching the dashboard's
+// stated charter ("anything to do with extra stuff you can do with your key,
+// all in one spot").
+const IdentityGateSections = lazy(() =>
+  import('../wallet-core/IdentityGateSections.tsx').then((m) => ({
+    default: m.IdentityGateSections,
+  })),
+);
+
 export function KeychainTab() {
+  const { wallet, ownerId, anchorWorker, holdings, prefs, updatePrefs, save, refresh } =
+    useWallet();
   const [recoveryOpen, setRecoveryOpen] = useState(true);
-  // Liveness starts collapsed — the dashboard already opens with secrets +
-  // social recovery expanded, and this is the newest section, so it stays
-  // tucked until the operator reaches for it.
+  // Vouching + liveness start collapsed — the dashboard opens with secrets +
+  // social recovery expanded, and these heavier sections stay tucked until the
+  // operator reaches for them.
+  const [vouchingOpen, setVouchingOpen] = useState(false);
   const [livenessOpen, setLivenessOpen] = useState(false);
   return (
     <section className="mt-5 space-y-4">
@@ -44,7 +61,8 @@ export function KeychainTab() {
           <h2 className="text-base font-semibold">Your key</h2>
           <p className="text-xs text-muted">
             Everything you can do with your key in one place — split secrets, set
-            up recovery, and see where your pieces live.
+            up recovery, choose who vouches for you, and check in with your
+            circle.
           </p>
         </div>
       </header>
@@ -95,6 +113,67 @@ export function KeychainTab() {
               }
             >
               <LatticePanel />
+            </Suspense>
+          </div>
+        )}
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-ink/10 bg-paper shadow-sm">
+        <button
+          type="button"
+          aria-expanded={vouchingOpen}
+          onClick={() => setVouchingOpen((o) => !o)}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left"
+        >
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-xl"
+          >
+            🤝
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Vouching &amp; gates</span>
+            <span className="mt-0.5 block text-xs text-muted">
+              Who can vouch for who you are, and the things those people help
+              you unlock.
+            </span>
+          </span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 20 20"
+            className={`h-4 w-4 shrink-0 text-muted transition-transform ${vouchingOpen ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+          >
+            <path
+              d="M5 7.5l5 5 5-5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        {vouchingOpen && (
+          <div className="border-t border-ink/10 px-4 pb-4 pt-4">
+            <Suspense
+              fallback={
+                <div className="text-xs text-muted">Loading vouching…</div>
+              }
+            >
+              <IdentityGateSections
+                wallet={wallet}
+                ownerId={ownerId}
+                anchorWorker={anchorWorker}
+                holdings={holdings}
+                vouchingDraft={prefs.vouchingCirclePubkeys}
+                onVouchingDraftChange={(next) =>
+                  void updatePrefs({ vouchingCirclePubkeys: [...next] })
+                }
+                saveAndRefresh={async () => {
+                  await save();
+                  await refresh();
+                }}
+              />
             </Suspense>
           </div>
         )}
