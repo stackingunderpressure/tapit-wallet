@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LivenessState } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
+import { findVouchingCircleCandidates } from '../connections/findVouchingCircleCandidates.ts';
 import {
   createLivenessStore,
   createTransportSendSignal,
@@ -90,7 +91,17 @@ function relativeSince(iso: string, now: number): string {
 }
 
 export function LivenessPanel() {
-  const { wallet, transport } = useWallet();
+  const { wallet, transport, holdings } = useWallet();
+
+  // People the operator already trusts — family-unit, recovery-cohort, and
+  // handshake peers — so the circle can be filled with a tap instead of by
+  // pasting a raw 64-hex key. Same substrate the vouching-circle and recovery
+  // pickers use, matched on the stable genesis identity (wallet.identity, not
+  // the active publicKey) so a key rotation never hides a known peer.
+  const circleCandidates = useMemo(
+    () => findVouchingCircleCandidates(holdings, wallet.identity),
+    [holdings, wallet.identity],
+  );
 
   // The live transport, held in a ref so the store's send seam always reads
   // the CURRENT transport even though the store itself is built once. This
@@ -157,6 +168,12 @@ export function LivenessPanel() {
   const myStatus = store.myStatus(TTL_SECONDS);
   const groupStatuses: SubjectStatus[] = store.groupStatuses(TTL_SECONDS);
 
+  // Connections not already in the circle — the one-tap add options.
+  const inCircle = new Set(groupState.group.map((k) => k.toLowerCase()));
+  const candidateOptions = circleCandidates.filter(
+    (c) => !inCircle.has(c.pubkey.toLowerCase()),
+  );
+
   // Gentle proof-of-life nudge. Plain language, never alarming. Shown only
   // when the operator has checked in at least once AND it has been longer
   // than the freshness window (so a never-checked-in wallet sees the calm
@@ -193,15 +210,24 @@ export function LivenessPanel() {
     }
   }
 
-  function addMember() {
-    const key = newMember.trim().toLowerCase();
-    setError(null);
+  // Add one key to the circle, validating its shape and de-duplicating.
+  // Shared by the paste field and the one-tap "from your connections" options
+  // so both paths enforce the same rules. Returns true when the circle now
+  // contains the key (added, or already present), false on a bad key.
+  function addToCircle(raw: string): boolean {
+    const key = raw.trim().toLowerCase();
     if (!/^[0-9a-f]{64}$/.test(key)) {
       setError('That does not look like a person key (64 hex characters).');
-      return;
+      return false;
     }
+    if (groupState.group.some((k) => k.toLowerCase() === key)) return true;
     store.setGroup([...groupState.group, key]);
-    setNewMember('');
+    return true;
+  }
+
+  function addMember() {
+    setError(null);
+    if (addToCircle(newMember)) setNewMember('');
   }
 
   function removeMember(key: string) {
@@ -280,7 +306,9 @@ export function LivenessPanel() {
         <div className="mt-3 space-y-2">
           {groupStatuses.length === 0 && (
             <p className="text-xs text-muted">
-              No one added yet. Add a trusted person by their key below.
+              {candidateOptions.length > 0
+                ? 'No one added yet. Add someone you have connected with, or paste a key below.'
+                : 'No one added yet. Add a trusted person by their key below.'}
             </p>
           )}
           {groupStatuses.map(({ subject, state }) => {
@@ -329,20 +357,59 @@ export function LivenessPanel() {
           })}
         </div>
 
-        <div className="mt-3 flex gap-2">
-          <input
-            value={newMember}
-            onChange={(e) => setNewMember(e.target.value)}
-            placeholder="Trusted person's key (64 hex)"
-            className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            onClick={addMember}
-            className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium"
-          >
-            Add
-          </button>
+        {candidateOptions.length > 0 && (
+          <div className="mt-3">
+            <div className="text-xs uppercase tracking-wide text-muted">
+              From your connections
+            </div>
+            <ul className="mt-1.5 space-y-1">
+              {candidateOptions.map((c) => (
+                <li key={c.pubkey}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      addToCircle(c.pubkey);
+                    }}
+                    className="w-full flex items-center justify-between gap-2 rounded-md border border-ink/15 bg-white px-3 py-2 text-left text-sm hover:bg-ink/5"
+                  >
+                    <span className="min-w-0">
+                      <span className="block font-medium truncate">{c.name}</span>
+                      <span className="block text-xs text-muted font-mono">
+                        {shortKey(c.pubkey)}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs font-semibold text-accent">
+                      Add
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-3">
+          <div className="text-xs uppercase tracking-wide text-muted">
+            {candidateOptions.length > 0
+              ? "Or paste someone else's key"
+              : 'Add by key'}
+          </div>
+          <div className="mt-1.5 flex gap-2">
+            <input
+              value={newMember}
+              onChange={(e) => setNewMember(e.target.value)}
+              placeholder="Trusted person's key (64 hex)"
+              className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              onClick={addMember}
+              className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium"
+            >
+              Add
+            </button>
+          </div>
         </div>
       </div>
 
