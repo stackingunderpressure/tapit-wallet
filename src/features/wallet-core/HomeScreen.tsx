@@ -10,7 +10,6 @@ import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
-import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 
 // Lazy-loaded so the vouching-circle substrate (candidate finder
 // helper + section UI) only ships when the operator opens the
@@ -481,12 +480,9 @@ export function HomeScreen() {
               </div>
             )}
           </div>
-          <FamilyIdentitySections
-            familyUnits={familyUnits}
-            namesByPubkey={peerNames}
-            onStartFamily={() => setStartFamilyOpen(true)}
-            onEditFamily={(att) => setEditFamily(att)}
-          />
+          {/* Family moved to the dedicated Family tab (2026-06-26) so all
+              family lives in one place; the Identity tab is now purely you —
+              your card, memberships, presence. */}
           <div className="pt-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium text-muted">
@@ -626,7 +622,14 @@ export function HomeScreen() {
         </>
       )}
 
-      {tab === 'family' && <FamilyTabBody />}
+      {tab === 'family' && (
+        <FamilyTabBody
+          familyUnits={familyUnits}
+          namesByPubkey={peerNames}
+          onStartFamily={() => setStartFamilyOpen(true)}
+          onEditFamily={(att) => setEditFamily(att)}
+        />
+      )}
 
       {tab === 'lattice' && (
         <Suspense
