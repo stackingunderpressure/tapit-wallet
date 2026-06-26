@@ -3973,3 +3973,15 @@ Operator framing: "almost feel like you could speed run up and down the thing...
 
 Grounding + verdict: this IS practical and it is a GOOD mental model, not a throwaway. Genealogy is literally narrow-up (ancestors converge toward an apex pair) and wide-down (descendants fan out across legs). treeLayout already assigns every node a (generation row, column) deterministically, so a scroll-driven navigator that keeps the focused generation centered, narrows as you flick up and widens as you flick down, and lets you follow one leg at a time is a UX layer on top of the layout we already compute -- no new graph math. Worth building as the explorer polish after the privacy rail + merge land.
 
+
+
+---
+
+Date: 2026-06-26
+Tag: family-tab / household-tree-dedup / one-person-once / read-side-join / no-format-change
+Stage: sprouting
+One-line: A keyed living person should be entered once and be true in both the co-signed household AND the genealogy tree -- not typed into two unreconciled lists.
+
+Operator framing: "We have family in two different spots. Combine into one super family tab not spread out. Kill any redundant actions or angles." (The relocation half shipped 2026-06-26; this entry is the deeper de-dup it surfaced.)
+
+Grounding: family is TWO different models sharing a word -- the household/family-unit (connections/familyUnit.ts: one signed credential, members[] of {pubkey,name,role,as_of}, every member keyed + co-signing, an AGREEMENT) and the genealogy tree (family-tree/*: per-person personNode envelopes, keyless ancestors allowed, a MAP). Verified they never reference each other in code, so a keyed person added in one never appears in the other -- double entry. KEY FINDING that lowers the risk: both models key a keyed person by the SAME value, the genesis wallet pubkey lowercased (household member.pubkey == personNode.keyed_pubkey), so they can be JOINED today on pubkey with ZERO format change. Plan written in docs/family-tab-unification.md, three tiers: Tier 1 (recommended next, no format change) = pure joinHouseholdToTree helper + cross-surface badges ("In your tree" / "+ Add to tree" via existing createPersonNode) + one shared add path, killing the double-ENTRY friction; Tier 2 = optional additive nodeId leaf on FamilyMember (backward-compatible exactly like journal's subject_node) for keyless->keyed binding, only if that case appears; Tier 3 (deferred, real redesign) = household stops storing name inline and references tree node_ids as the single source of truth, which changes the family-unit envelope shape + ratification and needs format versioning + migration. Recommendation: Tier 1 next. Corrects the relocation commit's "format-changing follow-up" framing -- most of the value is reachable with no signed-byte change at all.
