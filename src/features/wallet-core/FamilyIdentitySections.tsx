@@ -10,6 +10,12 @@ import {
 import { IdentityChip } from '../connections/IdentityChip.tsx';
 import { useWallet } from './useWallet.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
+import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
+import { createPersonNode } from '../family-tree/createFamilyTree.ts';
+import {
+  keyedNodeIndex,
+  treeNodeForPubkey,
+} from '../family-tree/householdTreeJoin.ts';
 
 // Identity-tab Family section. Renders a decked-out card per family
 // unit the operator is a member of, with full CRUD on the operator's
@@ -83,8 +89,49 @@ export function FamilyIdentitySections({
   onStartFamily,
   onEditFamily,
 }: Props) {
-  const { wallet, sendEnvelope, unholdEnvelope } = useWallet();
+  const { wallet, ownerId, holdings, save, refresh, sendEnvelope, unholdEnvelope } =
+    useWallet();
+  const worker = useAnchorWorker();
   const myIdentity = wallet.identity.toLowerCase();
+  // Household ↔ tree join (one super Family tab, Tier 1). A household member
+  // and a genealogy person-node for the same living person share a key — the
+  // genesis pubkey — so this index lets each member row say whether that
+  // person is already in the tree, and offer a one-tap add when they are not,
+  // killing the double-entry between the two family models. Pure + derived
+  // from holdings, so after an add the refresh re-derives it and the row flips.
+  const treeIndex = useMemo(() => keyedNodeIndex(holdings), [holdings]);
+  // Per-member tree-add progress + failure, keyed by member pubkey (a person
+  // is the same person across families, so the pubkey is the right key).
+  const [addingToTree, setAddingToTree] = useState<string | null>(null);
+  const [treeAddError, setTreeAddError] = useState<Record<string, string>>({});
+
+  async function addMemberToTree(member: { pubkey: string; name: string }) {
+    setAddingToTree(member.pubkey);
+    setTreeAddError((prev) => {
+      const { [member.pubkey]: _gone, ...rest } = prev;
+      return rest;
+    });
+    try {
+      // Only the keyed person-node is written here — the exact createPersonNode
+      // call the tree editor itself makes. Relationship placement stays the
+      // editor's job (single writer of kin edges); this just ends the retype by
+      // putting the person in the tree, keyed, ready to position. The match
+      // guard means we never create a duplicate of someone already noded.
+      await createPersonNode(wallet, ownerId, worker, {
+        displayName: member.name,
+        keyedPubkey: member.pubkey,
+      });
+      await save();
+      await refresh();
+    } catch (err) {
+      setTreeAddError((prev) => ({
+        ...prev,
+        [member.pubkey]: err instanceof Error ? err.message : 'add failed',
+      }));
+    } finally {
+      setAddingToTree(null);
+    }
+  }
   // keyAliases[wallet.identity] = every key in the operator's history.
   // This is the bridge that fixes "founder shows unsigned after
   // rotation" — the signature's signer is the active key, which for a
@@ -273,6 +320,35 @@ export function FamilyIdentitySections({
                             <span className="text-amber-700"> · waiting for them</span>
                           )}
                         </div>
+                        {/* Household ↔ tree reconciliation. One person, one
+                            entry: if they're already a node in your tree say
+                            so, otherwise offer the one-tap add that ends the
+                            retype. */}
+                        {treeNodeForPubkey(treeIndex, m.pubkey) ? (
+                          <div className="ml-10 mt-0.5 text-[10px] text-emerald-700">
+                            In your tree ✓
+                          </div>
+                        ) : (
+                          <div className="ml-10 mt-0.5 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void addMemberToTree({ pubkey: m.pubkey, name: m.name })
+                              }
+                              disabled={addingToTree === m.pubkey}
+                              className="text-[10px] font-medium text-accent hover:underline disabled:opacity-60"
+                            >
+                              {addingToTree === m.pubkey
+                                ? 'Adding to your tree…'
+                                : '+ Add to your tree'}
+                            </button>
+                            {treeAddError[m.pubkey] && (
+                              <span className="text-[10px] text-red-600" role="alert">
+                                {treeAddError[m.pubkey]}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </li>
                     );
                   })}
