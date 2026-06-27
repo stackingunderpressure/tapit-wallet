@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { envelopeId, credentialAttestation } from 'tapit-attest';
 import { buildPersonNodeDraft } from './personNode.ts';
-import { keyedNodeIndex, treeNodeForPubkey } from './householdTreeJoin.ts';
+import {
+  keyedNodeIndex,
+  treeNodeForPubkey,
+  roleToTreeRelation,
+} from './householdTreeJoin.ts';
+import { FAMILY_ROLES } from '../connections/familyUnit.ts';
 
 const AUTHOR = 'a'.repeat(64);
 const KEYED_1 = 'b'.repeat(64);
@@ -73,5 +78,24 @@ describe('treeNodeForPubkey', () => {
     const index = keyedNodeIndex([node]);
 
     expect(treeNodeForPubkey(index, ABSENT)).toBeUndefined();
+  });
+});
+
+describe('roleToTreeRelation', () => {
+  it('maps every household role to a tree relation (dad/mom/parent → parent)', () => {
+    expect(roleToTreeRelation('dad')).toBe('parent');
+    expect(roleToTreeRelation('mom')).toBe('parent');
+    expect(roleToTreeRelation('parent')).toBe('parent');
+    expect(roleToTreeRelation('child')).toBe('child');
+    expect(roleToTreeRelation('spouse')).toBe('spouse');
+    expect(roleToTreeRelation('sibling')).toBe('sibling');
+  });
+
+  it('handles the entire FAMILY_ROLES vocabulary with no gaps', () => {
+    for (const role of FAMILY_ROLES) {
+      expect(['parent', 'child', 'spouse', 'sibling']).toContain(
+        roleToTreeRelation(role),
+      );
+    }
   });
 });

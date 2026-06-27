@@ -11,11 +11,17 @@ import { IdentityChip } from '../connections/IdentityChip.tsx';
 import { useWallet } from './useWallet.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
-import { createPersonNode } from '../family-tree/createFamilyTree.ts';
+import {
+  createPersonNode,
+  addRelativeNode,
+} from '../family-tree/createFamilyTree.ts';
+import { buildKinGraph } from '../family-tree/kinGraph.ts';
 import {
   keyedNodeIndex,
   treeNodeForPubkey,
+  roleToTreeRelation,
 } from '../family-tree/householdTreeJoin.ts';
+import type { FamilyRole } from '../connections/familyUnit.ts';
 
 // Identity-tab Family section. Renders a decked-out card per family
 // unit the operator is a member of, with full CRUD on the operator's
@@ -105,21 +111,60 @@ export function FamilyIdentitySections({
   const [addingToTree, setAddingToTree] = useState<string | null>(null);
   const [treeAddError, setTreeAddError] = useState<Record<string, string>>({});
 
-  async function addMemberToTree(member: { pubkey: string; name: string }) {
+  async function addMemberToTree(member: {
+    pubkey: string;
+    name: string;
+    role: FamilyRole;
+  }) {
     setAddingToTree(member.pubkey);
     setTreeAddError((prev) => {
       const { [member.pubkey]: _gone, ...rest } = prev;
       return rest;
     });
     try {
-      // Only the keyed person-node is written here — the exact createPersonNode
-      // call the tree editor itself makes. Relationship placement stays the
-      // editor's job (single writer of kin edges); this just ends the retype by
-      // putting the person in the tree, keyed, ready to position. The match
-      // guard means we never create a duplicate of someone already noded.
-      await createPersonNode(wallet, ownerId, worker, {
-        displayName: member.name,
-        keyedPubkey: member.pubkey,
+      // Adding YOURSELF just roots the tree — create your self-node if it's
+      // missing, never a relation (you are not your own parent). The badge
+      // then flips to "in your tree".
+      if (member.pubkey.toLowerCase() === myIdentity) {
+        if (!treeNodeForPubkey(treeIndex, myIdentity)) {
+          await createPersonNode(wallet, ownerId, worker, {
+            displayName: namesByPubkey.get(myIdentity) ?? member.name,
+            keyedPubkey: wallet.identity,
+          });
+          await save();
+          await refresh();
+        }
+        return;
+      }
+      // The tree roots on your self-node; ensure it exists before attaching a
+      // relative to it (mirrors the editor's ensureSelf).
+      let selfId = treeNodeForPubkey(treeIndex, myIdentity);
+      if (!selfId) {
+        const { nodeId } = await createPersonNode(wallet, ownerId, worker, {
+          displayName: namesByPubkey.get(myIdentity) ?? 'Me',
+          keyedPubkey: wallet.identity,
+        });
+        selfId = nodeId;
+      }
+      const relation = roleToTreeRelation(member.role);
+      // A sibling attaches under the parent you share; look up your first
+      // recorded parent. addRelativeNode throws a friendly nudge if there
+      // isn't one yet, surfaced as the per-row error below.
+      let targetParentId: string | null = null;
+      if (relation === 'sibling') {
+        const graph = buildKinGraph(holdings);
+        targetParentId = [...(graph.parents.get(selfId) ?? [])][0] ?? null;
+      }
+      // One writer of kin edges (addRelativeNode) places the member CONNECTED
+      // by their household role — dad/mom above you, child below, spouse
+      // beside, sibling under your shared parent — keyed to their pubkey, so a
+      // person is entered once and the two family models reconcile. The match
+      // guard on the button means we never duplicate someone already noded.
+      await addRelativeNode(wallet, ownerId, worker, {
+        relation,
+        targetId: selfId,
+        targetParentId,
+        person: { displayName: member.name, keyedPubkey: member.pubkey },
       });
       await save();
       await refresh();
@@ -333,7 +378,11 @@ export function FamilyIdentitySections({
                             <button
                               type="button"
                               onClick={() =>
-                                void addMemberToTree({ pubkey: m.pubkey, name: m.name })
+                                void addMemberToTree({
+                                  pubkey: m.pubkey,
+                                  name: m.name,
+                                  role: m.role,
+                                })
                               }
                               disabled={addingToTree === m.pubkey}
                               className="text-[10px] font-medium text-accent hover:underline disabled:opacity-60"

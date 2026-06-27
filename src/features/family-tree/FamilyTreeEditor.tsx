@@ -9,7 +9,7 @@ import {
 } from './kinGraph.ts';
 import {
   createPersonNode,
-  createKinEdge,
+  addRelativeNode,
   createPersonEdit,
 } from './createFamilyTree.ts';
 import { readPersonChanges } from './personEdit.ts';
@@ -399,17 +399,25 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
     try {
       const targetId = await resolveTarget();
       const targetParent = [...(graph.parents.get(targetId) ?? [])][0] ?? null;
-      if (relation === 'sibling' && !targetParent) {
-        throw new Error(
-          'Add a parent for this person first — siblings are linked by the parent they share.',
-        );
-      }
-      const { nodeId: relId } = await createPersonNode(wallet, ownerId, worker, {
-        displayName: name.trim(),
-        born: born.trim() || undefined,
-        died: died.trim() || undefined,
-        sex,
-      });
+      // One writer of kin edges: addRelativeNode owns the direction logic and
+      // the sibling-needs-a-shared-parent rule, and hands back the resulting
+      // graph deltas for the optimistic render below.
+      const { nodeId: relId, newParents, newSpouses } = await addRelativeNode(
+        wallet,
+        ownerId,
+        worker,
+        {
+          relation,
+          targetId,
+          targetParentId: targetParent,
+          person: {
+            displayName: name.trim(),
+            born: born.trim() || undefined,
+            died: died.trim() || undefined,
+            sex,
+          },
+        },
+      );
       const relNode: KinNode = {
         id: relId,
         displayName: name.trim(),
@@ -418,28 +426,6 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
         sex,
         keyed: false,
       };
-      const newParents: [string, string][] = [];
-      const newSpouses: [string, string][] = [];
-      if (relation === 'parent') {
-        await createKinEdge(wallet, ownerId, worker, 'parent_of', relId, targetId);
-        newParents.push([relId, targetId]);
-      } else if (relation === 'child') {
-        await createKinEdge(wallet, ownerId, worker, 'parent_of', targetId, relId);
-        newParents.push([targetId, relId]);
-      } else if (relation === 'spouse') {
-        await createKinEdge(wallet, ownerId, worker, 'spouse', targetId, relId);
-        newSpouses.push([targetId, relId]);
-      } else {
-        await createKinEdge(
-          wallet,
-          ownerId,
-          worker,
-          'parent_of',
-          targetParent as string,
-          relId,
-        );
-        newParents.push([targetParent as string, relId]);
-      }
       await save();
       setExtra((prev) => ({
         nodes: [...prev.nodes, relNode],

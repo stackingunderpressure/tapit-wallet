@@ -1,6 +1,8 @@
 import type { Attestation } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { isPersonNode, readPersonNode } from './personNode.ts';
+import type { FamilyRole } from '../connections/familyUnit.ts';
+import type { AddRelation } from './createFamilyTree.ts';
 
 // Household ↔ tree join (one super Family tab, Tier 1 — 2026-06-26).
 //
@@ -52,4 +54,27 @@ export function treeNodeForPubkey(
   pubkey: string,
 ): string | undefined {
   return index.get(pubkey.toLowerCase());
+}
+
+/**
+ * Map a household role to the tree relation the member has TO YOU, so
+ * "add to your tree" places them connected, not floating. A dad / mom /
+ * parent is a parent above you; a child is below you; a spouse beside you;
+ * a sibling shares your parent. The household member list and the tree
+ * speak different vocabularies for the same kinship — this is the one place
+ * that reconciles them.
+ */
+export function roleToTreeRelation(role: FamilyRole): AddRelation {
+  switch (role) {
+    case 'dad':
+    case 'mom':
+    case 'parent':
+      return 'parent';
+    case 'child':
+      return 'child';
+    case 'spouse':
+      return 'spouse';
+    case 'sibling':
+      return 'sibling';
+  }
 }
