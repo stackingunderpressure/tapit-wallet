@@ -144,3 +144,33 @@ export function resolveCurrent(pubkey: string, alias: PeerKeyAlias): string {
   const canonical = resolveCanonical(pubkey, alias);
   return alias.currentOf.get(canonical) ?? canonical;
 }
+
+/**
+ * Convert a PeerKeyAlias into the genesis -> [every known key] shape that
+ * familyUnit.ts's memberHasSigned / familySignatureProgress expect (the
+ * same shape PeopleTree.tsx already builds for the operator's OWN
+ * key history via wallet.keyHistory). Every key that canonicalizes to
+ * the same genesis becomes one entry, so a PEER's post-rotation
+ * signature is recognized against the genesis pubkey stored in a
+ * shared family_unit's members[] list -- the same bridge messaging
+ * already gets via resolveCanonical/resolveCurrent, applied to
+ * ratification counting instead of thread lookup. Without this, a
+ * viewer's own PeopleTree only ever knows its own rotation history,
+ * never a remote member's, so that member's family tree silently
+ * stops showing as ratified the moment they rotate (the gap named in
+ * familyUnit.ts's familySignatureProgress doc comment).
+ */
+export function peerKeyAliasToKeyHistoryMap(
+  alias: PeerKeyAlias,
+): Map<string, string[]> {
+  const byGenesis = new Map<string, string[]>();
+  for (const [key, genesis] of alias.canonicalOf) {
+    const list = byGenesis.get(genesis);
+    if (list) {
+      list.push(key);
+    } else {
+      byGenesis.set(genesis, [key]);
+    }
+  }
+  return byGenesis;
+}

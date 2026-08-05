@@ -9,6 +9,7 @@ import {
   buildPeerKeyAlias,
   resolveCanonical,
   resolveCurrent,
+  peerKeyAliasToKeyHistoryMap,
 } from './peerSuccession.ts';
 
 // genesis(prev) -> current, signed announcement by the current key.
@@ -124,5 +125,66 @@ describe('buildPeerKeyAlias / resolveCanonical / resolveCurrent', () => {
     const k = generateKeypair().publicKey;
     expect(resolveCanonical(k, alias)).toBe(k.toLowerCase());
     expect(resolveCurrent(k, alias)).toBe(k.toLowerCase());
+  });
+});
+
+describe('peerKeyAliasToKeyHistoryMap', () => {
+  it('groups a rotated peer under one genesis with both keys listed', () => {
+    const { prev, current, signed } = rotatedAnnouncement();
+    const map = peerKeyAliasToKeyHistoryMap(buildPeerKeyAlias([signed]));
+    const genesis = prev.publicKey.toLowerCase();
+    const history = map.get(genesis);
+    expect(history).toBeDefined();
+    expect(new Set(history)).toEqual(
+      new Set([prev.publicKey.toLowerCase(), current.publicKey.toLowerCase()]),
+    );
+  });
+
+  it('groups every hop of a multi-link chain under the same genesis', () => {
+    const prev = generateKeypair();
+    const mid = generateKeypair();
+    const current = generateKeypair();
+    const link0 = createSuccessionLink({
+      fromPrivateKey: prev.privateKey,
+      toKey: mid.publicKey,
+    });
+    const link1 = createSuccessionLink({
+      fromPrivateKey: mid.privateKey,
+      toKey: current.publicKey,
+      previous: link0,
+    });
+    const signed = Wallet.fromKeypair(current).sign(
+      buildKeySuccessionAnnouncement([link0, link1]),
+    );
+    const map = peerKeyAliasToKeyHistoryMap(buildPeerKeyAlias([signed]));
+    const genesis = prev.publicKey.toLowerCase();
+    const history = map.get(genesis);
+    expect(history).toBeDefined();
+    expect(new Set(history)).toEqual(
+      new Set([
+        prev.publicKey.toLowerCase(),
+        mid.publicKey.toLowerCase(),
+        current.publicKey.toLowerCase(),
+      ]),
+    );
+  });
+
+  it('returns an empty map when there are no verified announcements', () => {
+    const map = peerKeyAliasToKeyHistoryMap(buildPeerKeyAlias([]));
+    expect(map.size).toBe(0);
+  });
+
+  it('excludes an announcement not signed by the chain current key', () => {
+    const prev = generateKeypair();
+    const current = generateKeypair();
+    const imposter = generateKeypair();
+    const chain = [
+      createSuccessionLink({ fromPrivateKey: prev.privateKey, toKey: current.publicKey }),
+    ];
+    const signed = Wallet.fromKeypair(imposter).sign(
+      buildKeySuccessionAnnouncement(chain),
+    );
+    const map = peerKeyAliasToKeyHistoryMap(buildPeerKeyAlias([signed]));
+    expect(map.size).toBe(0);
   });
 });

@@ -10,6 +10,10 @@ import {
   extractPeers,
   ringPosition,
 } from './peopleTreeLayout.ts';
+import {
+  buildPeerKeyAlias,
+  peerKeyAliasToKeyHistoryMap,
+} from '../transport/peerSuccession.ts';
 
 // First-version mycelium-tree visualization (operator's 2026-05-27
 // vision, ideas.md entry). The operator sits at the canvas center as
@@ -85,18 +89,28 @@ export function PeopleTree({
     () => extractOrgs(holdings, myIdentity),
     [holdings, myIdentity],
   );
-  // keyAliases bridges the operator's genesis identity to every key
-  // they have ever used, so the family node's signed-count reflects
-  // their ratification regardless of whether they have rotated. Built
-  // once per render from the myKeyHistory prop the caller threads
-  // through from useWallet.
+  // keyAliases bridges every genesis identity we know -- ours AND any
+  // peer's -- to every key they have used, so a family node's signed-count
+  // reflects real ratification regardless of who has rotated. Ours comes
+  // from the myKeyHistory prop (useWallet); peers' come from their
+  // verified key-succession announcements already held in `holdings` (the
+  // same source useChatTransport already trusts for messaging) via
+  // buildPeerKeyAlias. Without the peer half, a remote member's post-
+  // rotation signature was never recognized and their branch of the
+  // family tree would silently stop showing as ratified the moment they
+  // rotated -- the gap named in familyUnit.ts's familySignatureProgress
+  // doc comment ("post-rotation signatures from remote peers don't [count]
+  // -- a separate problem for a later cut").
   const families = useMemo(() => {
-    const aliases = myKeyHistory
-      ? new Map<string, readonly string[]>([
-          [myIdentity.toLowerCase(), myKeyHistory.map((k) => k.toLowerCase())],
-        ])
-      : undefined;
-    return extractFamilies(holdings, myIdentity, aliases);
+    const aliases = peerKeyAliasToKeyHistoryMap(buildPeerKeyAlias(holdings));
+    if (myKeyHistory) {
+      const mine = myIdentity.toLowerCase();
+      const existing = aliases.get(mine) ?? [];
+      aliases.set(mine, [
+        ...new Set([...existing, ...myKeyHistory.map((k) => k.toLowerCase())]),
+      ]);
+    }
+    return extractFamilies(holdings, myIdentity, aliases.size > 0 ? aliases : undefined);
   }, [holdings, myIdentity, myKeyHistory]);
 
   if (peers.length === 0 && orgs.length === 0 && families.length === 0) {
