@@ -3,10 +3,7 @@ import type { Attestation, Wallet } from 'tapit-attest';
 import { envelopeId } from 'tapit-attest';
 import { saveWallet } from './saveWallet.ts';
 import { mergeSignatures } from '../cosigning/mergeSignatures.ts';
-import {
-  findCompletedHandshakeWith,
-  isHandshake,
-} from '../connections/createHandshake.ts';
+import { isRedundantHandshake } from '../connections/createHandshake.ts';
 import {
   isSecretPieceReceipt,
   readSecretPieceReceipt,
@@ -240,15 +237,20 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
         return;
       }
 
-      // Silent-drop relay replays of handshake requests from peers
-      // we already have a completed handshake with. The Nostr relay
-      // re-delivers these on every wallet unlock; surfacing them as
-      // still-pending rows confuses the operator into thinking the
-      // connection did not complete when it actually did.
-      if (
-        isHandshake(item.envelope) &&
-        findCompletedHandshakeWith(holdings, wallet.keyHistory, item.senderPubkey)
-      ) {
+      // Silent-drop GENUINE relay replays of handshake requests — same peer,
+      // same relationship/met-in-person/family-hint content as an already-
+      // completed handshake. The Nostr relay re-delivers these on every
+      // wallet unlock; surfacing them as still-pending rows confuses the
+      // operator into thinking the connection did not complete when it
+      // actually did. isRedundantHandshake (not a bare "already connected
+      // to this peer" check) is what keeps this from also swallowing a
+      // genuine amendment — same peer, but a NEW relationship label, e.g.
+      // sent via EditRelationshipModal — which must surface as a real
+      // actionable row instead (operator audit, 2026-08-06: this used to
+      // silently eat every amendment, since the old check only asked
+      // "is there any completed handshake with this peer," never "is this
+      // incoming envelope actually the same claim").
+      if (isRedundantHandshake(item.envelope, holdings, wallet.keyHistory, item.senderPubkey)) {
         return;
       }
 

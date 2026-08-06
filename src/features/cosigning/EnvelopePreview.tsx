@@ -1,5 +1,6 @@
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { isHandshake, readHandshake } from '../connections/createHandshake.ts';
+import { HandshakeRelationshipNote } from '../connections/HandshakeRelationshipNote.tsx';
 
 interface Props {
   attestation: Attestation;
@@ -18,6 +19,13 @@ interface Props {
 // sees who's connecting with whom, not raw pubkeys. Other kinds
 // get a minimal fallback — kind / tier / subject / signers —
 // until later phases.
+//
+// The handshake branch renders HandshakeRelationshipNote (2026-08-06 fix)
+// so a witness co-signing over Nostr sees the SAME relationship / met-in-
+// person / family-hint facts the in-person co-sign screen already showed —
+// before this fix, a witness could co-sign a "we are family" claim without
+// ever being shown that claim. See HandshakeRelationshipNote's own header
+// comment for the full account.
 
 function readString(claim: FieldBranch, name: string): string | undefined {
   const child = claim.children.find((c) => c.name === name);
@@ -63,6 +71,7 @@ export function EnvelopePreview({ attestation }: Props) {
             ? "You've both said yes."
             : 'One of you has said yes — your yes finishes it.'}
         </div>
+        <HandshakeRelationshipNote view={v} />
       </div>
     );
   }

@@ -77,6 +77,17 @@ export interface HandshakeView {
    * person", never as proof. False when the leaf is absent.
    */
   metInPerson: boolean;
+  /**
+   * Present only on an AMENDMENT — a new handshake envelope built by
+   * buildAmendedHandshakeDraft to change or add a relationship label on an
+   * already-completed connection. '' on an original (non-amending)
+   * handshake. A handshake attestation has no mutable fields — the only
+   * honest way to change "acquaintance" to "family" after the fact is a
+   * brand-new, re-signed record, not a silent local edit. Carrying this
+   * timestamp lets the UI say "connected March, relationship updated
+   * August" rather than pretending the amendment was the original moment.
+   */
+  amendedAt: string;
 }
 
 /** Read a handshake attestation's fields into a plain view. */
@@ -91,6 +102,7 @@ export function readHandshake(att: Attestation): HandshakeView {
     relationship: leafValue(att, 'relationship'),
     familyHint: leafValue(att, 'family_hint'),
     metInPerson: leafValue(att, 'met_in_person') === 'true',
+    amendedAt: leafValue(att, 'amended_at'),
   };
 }
 
@@ -176,6 +188,80 @@ export function buildRemoteHandshakeDraft(
     tier: 'notable',
     fields,
   });
+}
+
+// Build an AMENDMENT to an already-completed handshake — the real fix for
+// "some connections have a relationship label, some don't, and there's no
+// way to add one later" (operator audit, 2026-08-06). A handshake is a
+// mutually co-signed attestation; there is no honest way to silently edit
+// one party's local copy. Amending means a brand-new relationship-kind
+// envelope naming the SAME parties, verification tier, and original
+// handshake_at as the connection being amended (continuity — this is not a
+// new connection, it's a correction to an existing one), carrying the NEW
+// relationship value and a fresh amended_at stamp. Either party may amend;
+// the other party must cosign the amendment exactly like the original
+// handshake before it takes effect — dedupeHandshakesByPeer's existing
+// most-signatures-wins tie-break means an unconfirmed amendment (1 sig)
+// never displaces the still-valid original (2 sigs) on the People tab, so
+// there is no window where an unconfirmed claim shows as fact.
+export function buildAmendedHandshakeDraft(
+  existing: HandshakeView,
+  newRelationship: string,
+): Attestation {
+  const fields: Record<string, string> = {
+    verification: existing.verification,
+    handshake_at: existing.handshakeAt,
+    initiator_id: existing.initiatorId,
+    initiator_name: existing.initiatorName,
+    responder_id: existing.responderId,
+    responder_name: existing.responderName,
+    amended_at: new Date().toISOString(),
+  };
+  if (newRelationship && newRelationship.length > 0) {
+    fields.relationship = newRelationship;
+  }
+  if (existing.metInPerson) {
+    fields.met_in_person = 'true';
+  }
+  if (existing.familyHint && existing.familyHint.length > 0) {
+    fields.family_hint = existing.familyHint;
+  }
+  return relationshipAttestation({
+    subject: existing.initiatorId,
+    tier: 'notable',
+    fields,
+  });
+}
+
+// True when an incoming handshake attestation is a genuine no-op relay
+// replay — same peer, and every amendable field (relationship, met-in-
+// person, family-hint) identical to an already-completed handshake with
+// that peer — safe to drop silently. False for a first-ever connection
+// (nothing to compare against) AND false whenever any amendable field
+// actually differs, even though a completed handshake with that peer
+// already exists — that "same peer, different content" case is exactly an
+// amendment arriving, and must surface as a real, actionable inbox item,
+// not be silently eaten by the replay filter. Read this together with
+// findCompletedHandshakeWith's own comment: that function answers "is
+// there ANY completed connection with this peer," which conflated "safe
+// to ignore" with "already connected" and is why every incoming amendment
+// used to vanish before this fix (operator audit, 2026-08-06).
+export function isRedundantHandshake(
+  incoming: Attestation,
+  holdings: readonly Attestation[],
+  ownerKeys: string | readonly string[],
+  peerPubkey: string,
+): boolean {
+  if (!isHandshake(incoming)) return false;
+  const existing = findCompletedHandshakeWith(holdings, ownerKeys, peerPubkey);
+  if (!existing) return false;
+  const a = readHandshake(incoming);
+  const b = readHandshake(existing);
+  return (
+    (a.relationship || '') === (b.relationship || '') &&
+    a.metInPerson === b.metInPerson &&
+    (a.familyHint || '') === (b.familyHint || '')
+  );
 }
 
 // Build a pubkey → display-name lookup from the operator's holdings.

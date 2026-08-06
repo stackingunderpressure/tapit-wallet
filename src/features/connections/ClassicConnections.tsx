@@ -6,6 +6,8 @@ interface Props {
   myIdentity: string;
   /** Sub-cut 2b — tap a card to open the per-peer chat thread. */
   onOpenThread?: (peer: { pubkey: string; name: string }) => void;
+  /** Opens the amend-relationship flow for a peer's connection. */
+  onEditRelationship?: (peer: { pubkey: string; name: string; attestation: Attestation }) => void;
 }
 
 // The Classic People-tab body — connection cards list or empty state.
@@ -20,6 +22,7 @@ export function ClassicConnections({
   connectionEntries,
   myIdentity,
   onOpenThread,
+  onEditRelationship,
 }: Props) {
   return (
     <>
@@ -44,6 +47,7 @@ export function ClassicConnections({
               attestation={a}
               myIdentity={myIdentity}
               onOpen={onOpenThread}
+              onEditRelationship={onEditRelationship}
             />
           ))}
         </div>

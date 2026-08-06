@@ -17,7 +17,7 @@ import {
 import { PeerPicker } from './PeerPicker.tsx';
 import { extractPubkey } from './extractPubkey.ts';
 import { RelationshipChips } from './RelationshipChips.tsx';
-import { relationshipLabel } from './relationshipOptions.ts';
+import { HandshakeRelationshipNote } from './HandshakeRelationshipNote.tsx';
 import {
   summarizePublish,
   type PublishStatusSummary,
@@ -557,14 +557,15 @@ export function HandshakeModal({ onClose }: Props) {
               last code for them to scan. You'll both keep a copy, locked to
               Bitcoin's clock.
             </p>
-            {handshake && readHandshake(handshake).relationship && (
-              <div className="mt-3 rounded-md border border-ink/15 bg-ink/[0.02] px-3 py-2 text-sm">
-                <span className="text-muted">They labelled this connection</span>{' '}
-                <span className="font-medium">
-                  {relationshipLabel(readHandshake(handshake).relationship)}
-                </span>
-                <span className="text-muted">. Confirming means you agree.</span>
-              </div>
+            {handshake && (
+              <>
+                <HandshakeRelationshipNote view={readHandshake(handshake)} />
+                {readHandshake(handshake).relationship && (
+                  <p className="mt-1 text-xs text-muted">
+                    Confirming means you agree to this label.
+                  </p>
+                )}
+              </>
             )}
             <button
               type="button"

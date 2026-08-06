@@ -14,6 +14,15 @@ interface Props {
    * non-interactive.
    */
   onOpen?: (peer: { pubkey: string; name: string }) => void;
+  /**
+   * Opens the amend-relationship flow for this connection (operator audit,
+   * 2026-08-06 — before this there was no way to add or correct a
+   * relationship label after the fact; a blank or wrong label was
+   * permanent). Only offered once the handshake is cosigned — amending an
+   * incomplete handshake doesn't make sense until the original connection
+   * itself is settled.
+   */
+  onEditRelationship?: (peer: { pubkey: string; name: string; attestation: Attestation }) => void;
 }
 
 // One connection on the People tab. A handshake names both parties;
@@ -21,7 +30,13 @@ interface Props {
 // (Tier P "In person" or Tier R "Remote" per D-09), and the date. Two
 // signatures means the handshake completed; one means the other
 // side's co-signature is still outstanding.
-export function ConnectionCard({ attestation, myIdentity, onOpen }: Props) {
+//
+// The card body (name/badge/date) and the "Edit relationship" action are
+// separate tap targets, not nested buttons — one opens the chat thread,
+// the other opens the amend flow. Nesting an interactive element inside
+// the main <button> would be invalid HTML and would fire both handlers
+// on a single tap.
+export function ConnectionCard({ attestation, myIdentity, onOpen, onEditRelationship }: Props) {
   const { resolvedTheme } = useWallet();
   const isFresh = resolvedTheme === 'fresh';
   const hs = readHandshake(attestation);
@@ -60,12 +75,10 @@ export function ConnectionCard({ attestation, myIdentity, onOpen }: Props) {
     ? 'bg-fresh-accent-primary/15 text-fresh-accent-primary border border-fresh-accent-primary/30'
     : 'bg-ink/[0.06] text-ink border border-ink/15';
 
-  const cardClass = `rounded-2xl p-4 border w-full text-left ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10 shadow-sm'}`;
-  const interactiveClass = onOpen
-    ? isFresh
-      ? ' hover:bg-fresh-surface-glass transition'
-      : ' hover:bg-ink/[0.02] transition'
-    : '';
+  const cardClass = `rounded-2xl p-4 border ${isFresh ? 'bg-fresh-surface-raised border-fresh-surface-edge' : 'bg-white border-ink/10 shadow-sm'}`;
+  const innerClass = `w-full text-left${
+    onOpen ? (isFresh ? ' hover:bg-fresh-surface-glass transition' : ' hover:bg-ink/[0.02] transition') : ''
+  }`;
 
   const body = (
     <>
@@ -89,16 +102,35 @@ export function ConnectionCard({ attestation, myIdentity, onOpen }: Props) {
     </>
   );
 
-  if (onOpen) {
-    return (
-      <button
-        type="button"
-        onClick={() => onOpen({ pubkey: peerPubkey, name: peerName })}
-        className={cardClass + interactiveClass}
-      >
-        {body}
-      </button>
-    );
-  }
-  return <div className={cardClass}>{body}</div>;
+  // Amending only makes sense once the original handshake is settled — an
+  // incomplete (1-sig) connection needs the other party's co-signature
+  // first, not a relationship edit on top of an unfinished record.
+  const showEdit = Boolean(onEditRelationship) && cosigned;
+
+  return (
+    <div className={cardClass}>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={() => onOpen({ pubkey: peerPubkey, name: peerName })}
+          className={innerClass}
+        >
+          {body}
+        </button>
+      ) : (
+        body
+      )}
+      {showEdit && (
+        <button
+          type="button"
+          onClick={() =>
+            onEditRelationship!({ pubkey: peerPubkey, name: peerName, attestation })
+          }
+          className={`mt-2 text-xs font-medium ${isFresh ? 'text-fresh-accent-primary' : 'text-accent'} hover:underline`}
+        >
+          {relationshipLabel ? 'Edit relationship' : 'Add relationship'}
+        </button>
+      )}
+    </div>
+  );
 }

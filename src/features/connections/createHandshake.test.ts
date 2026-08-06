@@ -3,11 +3,13 @@ import { Wallet, identityAttestation } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
 
 import {
+  buildAmendedHandshakeDraft,
   buildHandshakeDraft,
   buildRemoteHandshakeDraft,
   dedupeHandshakesByPeer,
   findCompletedHandshakeWith,
   isHandshake,
+  isRedundantHandshake,
   readHandshake,
 } from './createHandshake.ts';
 
@@ -297,5 +299,131 @@ describe('buildRemoteHandshakeDraft family_hint leaf', () => {
     const cosigned = b.wallet.sign(a.wallet.sign(attested));
     expect(cosigned.signatures.length).toBe(2);
     expect(readHandshake(cosigned).metInPerson).toBe(true);
+  });
+});
+
+describe('buildAmendedHandshakeDraft', () => {
+  it('preserves parties, verification, and the original handshake_at while changing the relationship', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const original = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'acquaintance')),
+    );
+    const existing = readHandshake(original);
+    const amendment = buildAmendedHandshakeDraft(existing, 'family');
+    const view = readHandshake(amendment);
+    expect(view.relationship).toBe('family');
+    expect(view.initiatorId).toBe(existing.initiatorId);
+    expect(view.responderId).toBe(existing.responderId);
+    expect(view.verification).toBe(existing.verification);
+    expect(view.handshakeAt).toBe(existing.handshakeAt);
+    expect(view.amendedAt.length).toBeGreaterThan(0);
+  });
+
+  it('an amendment is a genuinely different envelope from the original', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const original = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'acquaintance')),
+    );
+    const amendment = buildAmendedHandshakeDraft(readHandshake(original), 'family');
+    expect(amendment.claim).not.toEqual(original.claim);
+  });
+
+  it('carries forward metInPerson and familyHint from the original', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const original = a.wallet.sign(
+      buildRemoteHandshakeDraft(
+        a.identity,
+        { pubkey: b.identity.subject, name: 'B' },
+        'friend',
+        'The Lovelaces',
+        true,
+      ),
+    );
+    const amendment = buildAmendedHandshakeDraft(readHandshake(original), 'family');
+    const view = readHandshake(amendment);
+    expect(view.metInPerson).toBe(true);
+    expect(view.familyHint).toBe('The Lovelaces');
+    expect(view.relationship).toBe('family');
+  });
+
+  it('omits the relationship leaf when amending to no label', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const original = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'family')),
+    );
+    const amendment = buildAmendedHandshakeDraft(readHandshake(original), '');
+    expect(readHandshake(amendment).relationship).toBe('');
+  });
+
+  it('both parties cosigning an amendment covers the new relationship and the amended_at stamp', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const original = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'acquaintance')),
+    );
+    const draft = buildAmendedHandshakeDraft(readHandshake(original), 'family');
+    const cosigned = bob.wallet.sign(alice.wallet.sign(draft));
+    expect(cosigned.signatures.length).toBe(2);
+    expect(readHandshake(cosigned).relationship).toBe('family');
+  });
+});
+
+describe('isRedundantHandshake', () => {
+  it('is false for a first-ever connection (nothing to compare against)', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const incoming = bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'family'));
+    expect(isRedundantHandshake(incoming, [], alice.identity.subject, bob.identity.subject)).toBe(false);
+  });
+
+  it('is true when the incoming handshake matches an already-completed one exactly (a real relay replay)', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const completed = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'family')),
+    );
+    // The relay redelivers bob's original 1-sig copy after the connection
+    // already completed.
+    const replay = bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'family'));
+    expect(
+      isRedundantHandshake(replay, [completed], alice.identity.subject, bob.identity.subject),
+    ).toBe(true);
+  });
+
+  it('is FALSE when an amendment changes the relationship, even though a completed handshake with that peer exists — the core fix', () => {
+    const alice = newWalletAs('Alice');
+    const bob = newWalletAs('Bob');
+    const completed = alice.wallet.sign(
+      bob.wallet.sign(buildHandshakeDraft(alice.identity, bob.identity, 'acquaintance')),
+    );
+    const amendment = bob.wallet.sign(
+      buildAmendedHandshakeDraft(readHandshake(completed), 'family'),
+    );
+    expect(
+      isRedundantHandshake(amendment, [completed], alice.identity.subject, bob.identity.subject),
+    ).toBe(false);
+  });
+
+  it('is false when only met_in_person differs', () => {
+    const a = newWalletAs('A');
+    const b = newWalletAs('B');
+    const completed = a.wallet.sign(
+      b.wallet.sign(
+        buildRemoteHandshakeDraft(a.identity, { pubkey: b.identity.subject, name: 'B' }, 'friend'),
+      ),
+    );
+    const amendment = b.wallet.sign(
+      buildAmendedHandshakeDraft({ ...readHandshake(completed), metInPerson: true }, 'friend'),
+    );
+    expect(isRedundantHandshake(amendment, [completed], a.identity.subject, b.identity.subject)).toBe(false);
+  });
+
+  it('is false for a non-handshake attestation', () => {
+    const alice = newWalletAs('Alice');
+    expect(isRedundantHandshake(alice.identity, [], alice.identity.subject, 'somepeer')).toBe(false);
   });
 });

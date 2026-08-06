@@ -3,6 +3,7 @@
 // option list + label helper live in relationshipOptions.ts so this stays
 // a component-only file (react-refresh).
 import { RELATIONSHIPS } from './relationshipOptions.ts';
+import { isFamilyRelationship } from './createHandshake.ts';
 
 // Chip picker for the optional relationship leaf. Tapping a chip toggles
 // its selection — picking the same chip again clears the label entirely so
@@ -39,6 +40,11 @@ export function RelationshipChips({
           );
         })}
       </div>
+      {value && isFamilyRelationship(value) && (
+        <div className="mt-2 text-xs text-muted">
+          This groups them under your Family tab too.
+        </div>
+      )}
     </div>
   );
 }

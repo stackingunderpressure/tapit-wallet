@@ -1,11 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { ClassicConnections } from '../connections/ClassicConnections.tsx';
-import {
-  findCompletedHandshakeWith,
-  isHandshake,
-  readHandshake,
-} from '../connections/createHandshake.ts';
+import { isRedundantHandshake, readHandshake } from '../connections/createHandshake.ts';
 import {
   InboxPanel,
   type InboxRouteAction,
@@ -21,6 +17,11 @@ const PeerThread = lazy(() =>
 );
 const PeopleTree = lazy(() =>
   import('../connections/PeopleTree.tsx').then((m) => ({ default: m.PeopleTree })),
+);
+const EditRelationshipModal = lazy(() =>
+  import('../connections/EditRelationshipModal.tsx').then((m) => ({
+    default: m.EditRelationshipModal,
+  })),
 );
 type View = 'list' | 'tree';
 
@@ -76,32 +77,37 @@ export function PeopleTabBody({
     handshake: Attestation;
   } | null>(null);
   const [view, setView] = useState<View>('list');
+  const [editingRelationship, setEditingRelationship] = useState<{
+    handshake: Attestation;
+    peerName: string;
+  } | null>(null);
 
-  // Hide and dismiss inbox rows that are relay-replayed duplicates of
-  // handshakes the operator has already completed. The Nostr relay
-  // re-delivers old envelopes on every wallet unlock; without this
-  // filter, a peer the operator finished connecting with shows up
-  // forever as a still-pending row that never resolves. Render-time
-  // filter for immediate visual cleanup; the useEffect below also
-  // dismisses the stale row from underlying state so it does not
-  // accumulate across multiple unlocks if the relay keeps replaying.
+  // Hide and dismiss inbox rows that are genuine relay-replayed duplicates
+  // of handshakes the operator has already completed — same peer AND every
+  // amendable field (relationship / met-in-person / family-hint) unchanged.
+  // The Nostr relay re-delivers old envelopes on every wallet unlock;
+  // without this filter, a peer the operator finished connecting with
+  // shows up forever as a still-pending row that never resolves.
+  // isRedundantHandshake (not a bare "is there any completed handshake
+  // with this peer" check) is what makes this safe: an AMENDMENT — a new
+  // envelope naming the same peer but a different relationship label,
+  // e.g. via EditRelationshipModal — has different content and must
+  // surface as a real actionable row, not be silently eaten the way a
+  // true replay is. Render-time filter for immediate visual cleanup; the
+  // useEffect below also dismisses the stale row from underlying state so
+  // it does not accumulate across multiple unlocks if the relay keeps
+  // replaying.
   const visibleInbox = useMemo(
     () =>
-      inboxEnvelopes.filter((item) => {
-        if (!isHandshake(item.envelope)) return true;
-        return !findCompletedHandshakeWith(
-          holdings,
-          myIdentity,
-          item.senderPubkey,
-        );
-      }),
+      inboxEnvelopes.filter(
+        (item) => !isRedundantHandshake(item.envelope, holdings, myIdentity, item.senderPubkey),
+      ),
     [inboxEnvelopes, holdings, myIdentity],
   );
 
   useEffect(() => {
     for (const item of inboxEnvelopes) {
-      if (!isHandshake(item.envelope)) continue;
-      if (findCompletedHandshakeWith(holdings, myIdentity, item.senderPubkey)) {
+      if (isRedundantHandshake(item.envelope, holdings, myIdentity, item.senderPubkey)) {
         dismissInboxEnvelope(item.eventId);
       }
     }
@@ -114,6 +120,10 @@ export function PeopleTabBody({
     });
     if (!handshake) return;
     setSelectedPeer({ pubkey: peer.pubkey, name: peer.name, handshake });
+  }
+
+  function handleEditRelationship(peer: { pubkey: string; name: string; attestation: Attestation }) {
+    setEditingRelationship({ handshake: peer.attestation, peerName: peer.name });
   }
 
   if (selectedPeer) {
@@ -190,6 +200,7 @@ export function PeopleTabBody({
             connectionEntries={connectionEntries}
             myIdentity={myIdentity}
             onOpenThread={handleOpenThread}
+            onEditRelationship={handleEditRelationship}
           />
         </Suspense>
       ) : (
@@ -197,7 +208,17 @@ export function PeopleTabBody({
           connectionEntries={connectionEntries}
           myIdentity={myIdentity}
           onOpenThread={handleOpenThread}
+          onEditRelationship={handleEditRelationship}
         />
+      )}
+      {editingRelationship && (
+        <Suspense fallback={null}>
+          <EditRelationshipModal
+            handshake={editingRelationship.handshake}
+            peerName={editingRelationship.peerName}
+            onClose={() => setEditingRelationship(null)}
+          />
+        </Suspense>
       )}
     </section>
   );

@@ -16,6 +16,8 @@ interface Props {
    * this person." Optional for back-compat.
    */
   onOpenThread?: (peer: { pubkey: string; name: string }) => void;
+  /** Opens the amend-relationship flow for a peer's connection. */
+  onEditRelationship?: (peer: { pubkey: string; name: string; attestation: Attestation }) => void;
 }
 
 interface Peer {
@@ -51,6 +53,7 @@ export function FreshCrew({
   connectionEntries,
   myIdentity,
   onOpenThread,
+  onEditRelationship,
 }: Props) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -123,7 +126,12 @@ export function FreshCrew({
                   else cardRefs.current.delete(peer.pubkey);
                 }}
               >
-                <ConnectionCard attestation={peer.attestation} myIdentity={myIdentity} onOpen={onOpenThread} />
+                <ConnectionCard
+                  attestation={peer.attestation}
+                  myIdentity={myIdentity}
+                  onOpen={onOpenThread}
+                  onEditRelationship={onEditRelationship}
+                />
               </div>
             ))}
           </div>
