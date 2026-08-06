@@ -59,8 +59,11 @@ export function JoinScreen() {
             </h1>
             <p className="mt-4 text-sm text-fresh-text-secondary">
               {result.invite.familyName
-                ? `Accept to connect with ${result.invite.founderName} and join their family ${result.invite.familyName}. You'll get your own wallet — your keys stay on your device, encrypted by a passphrase only you know.`
-                : `Accept to connect with ${result.invite.founderName} in Tapit. You'll get your own wallet — your keys stay on your device, encrypted by a passphrase only you know.`}
+                ? `Accept to connect with ${result.invite.founderName} and join their family ${result.invite.familyName}.`
+                : `Accept to connect with ${result.invite.founderName} in Tapit.`}{' '}
+              New here? You'll get your own wallet — your keys stay on your
+              device, encrypted by a passphrase only you know. Already have a
+              Tapit wallet? You'll just sign in.
             </p>
             <button
               type="button"
@@ -70,7 +73,8 @@ export function JoinScreen() {
               Accept &amp; continue
             </button>
             <p className="mt-4 text-center text-xs text-fresh-text-tertiary">
-              If you don't have a wallet yet, the next step sets one up.
+              New here? The next step sets up your wallet. Already have one?
+              You'll sign in instead — nothing new gets created.
             </p>
             <Link
               to="/about"
