@@ -46,8 +46,6 @@ interface Props {
     action: InboxRouteAction,
     senderPubkey: string,
   ) => void;
-  onNewHandshake: () => void;
-  onScanEnvelope: () => void;
   resolvedTheme: 'classic' | 'fresh';
   /** Sub-cut 2c — operator promoted a chat moment; HomeScreen routes it. */
   onPromote?: (payload: PromotePayload) => void;
@@ -69,8 +67,6 @@ export function PeopleTabBody({
   peerNames,
   dismissInboxEnvelope,
   routeInbox,
-  onNewHandshake,
-  onScanEnvelope,
   resolvedTheme,
   onPromote,
 }: Props) {
@@ -193,8 +189,6 @@ export function PeopleTabBody({
           <FreshCrew
             connectionEntries={connectionEntries}
             myIdentity={myIdentity}
-            onNewHandshake={onNewHandshake}
-            onScanEnvelope={onScanEnvelope}
             onOpenThread={handleOpenThread}
           />
         </Suspense>
@@ -202,8 +196,6 @@ export function PeopleTabBody({
         <ClassicConnections
           connectionEntries={connectionEntries}
           myIdentity={myIdentity}
-          onNewHandshake={onNewHandshake}
-          onScanEnvelope={onScanEnvelope}
           onOpenThread={handleOpenThread}
         />
       )}

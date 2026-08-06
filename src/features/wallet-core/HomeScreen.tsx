@@ -19,7 +19,7 @@ import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { FamilyTabBody } from './FamilyTabBody.tsx';
-import { InviteShareButton } from '../connections/InviteShareButton.tsx';
+import { ConnectCard } from '../connections/ConnectCard.tsx';
 import { useAcceptPendingInvite } from '../connections/useAcceptPendingInvite.ts';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
 import {
@@ -594,20 +594,12 @@ export function HomeScreen() {
               </button>
             </div>
           )}
-          <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-sm">
-            <div className="text-sm font-medium">Invite someone to Tapit</div>
-            <p className="mt-1 text-xs text-muted">
-              Share a link. Whoever opens it gets their own wallet and
-              connects back to you — no need to scan a code in person.
-            </p>
-            <div className="mt-3">
-              <InviteShareButton
-                founderPubkey={wallet.identity}
-                founderName={identity ? displayNameOf(identity) : 'A Tapit user'}
-                variant="primary"
-              />
-            </div>
-          </div>
+          <ConnectCard
+            founderPubkey={wallet.identity}
+            founderName={identity ? displayNameOf(identity) : 'A Tapit user'}
+            onNewHandshake={() => setHandshakeOpen(true)}
+            onScanEnvelope={() => setScanEnvelopeOpen(true)}
+          />
           <PeopleTabBody
           connectionEntries={connectionEntries}
           holdings={holdings}
@@ -618,8 +610,6 @@ export function HomeScreen() {
           peerNames={peerNames}
           dismissInboxEnvelope={dismissInboxEnvelope}
           routeInbox={routeInbox}
-          onNewHandshake={() => setHandshakeOpen(true)}
-          onScanEnvelope={() => setScanEnvelopeOpen(true)}
           resolvedTheme={resolvedTheme}
           onPromote={handlePromote}
         />

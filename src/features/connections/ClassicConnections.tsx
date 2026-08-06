@@ -4,43 +4,25 @@ import { ConnectionCard } from './ConnectionCard.tsx';
 interface Props {
   connectionEntries: Attestation[];
   myIdentity: string;
-  onNewHandshake: () => void;
-  onScanEnvelope: () => void;
   /** Sub-cut 2b — tap a card to open the per-peer chat thread. */
   onOpenThread?: (peer: { pubkey: string; name: string }) => void;
 }
 
-// The Classic People-tab body — Action buttons + connection cards
-// list or empty state. Extracted from HomeScreen so the Fresh /
-// Classic routing at that seam stays a single component swap and
-// HomeScreen stays under the 800-line hard limit.
+// The Classic People-tab body — connection cards list or empty state.
+// Extracted from HomeScreen so the Fresh / Classic routing at that seam
+// stays a single component swap and HomeScreen stays under the
+// 800-line hard limit.
 //
-// No visual or behavioural changes vs the previous inlined block.
+// The "+ New handshake" / "Scan envelope" trigger row that used to live
+// here moved up to ConnectCard (2026-08-06 People-tab consolidation) —
+// this component no longer takes onNewHandshake/onScanEnvelope.
 export function ClassicConnections({
   connectionEntries,
   myIdentity,
-  onNewHandshake,
-  onScanEnvelope,
   onOpenThread,
 }: Props) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onNewHandshake}
-          className="rounded-md bg-ink py-3 text-paper text-sm font-medium"
-        >
-          + New handshake
-        </button>
-        <button
-          type="button"
-          onClick={onScanEnvelope}
-          className="rounded-md border border-ink/20 bg-white py-3 text-ink text-sm font-medium"
-        >
-          Scan envelope
-        </button>
-      </div>
       {connectionEntries.length === 0 ? (
         <div className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-10 text-center">
           <div className="text-xs uppercase tracking-wide text-accent">
@@ -50,9 +32,8 @@ export function ClassicConnections({
             Your people, in person
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Meet someone face to face and tap New handshake — two
-            phones, one exchange, and you each hold a signed,
-            time-anchored record that you connected.
+            Connect with someone above and they'll show up here — a
+            signed, time-anchored record that you're connected.
           </p>
         </div>
       ) : (

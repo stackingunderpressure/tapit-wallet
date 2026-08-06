@@ -9,8 +9,6 @@ interface Props {
   connectionEntries: Attestation[];
   /** The operator's wallet identity pubkey, for "which side is me" math. */
   myIdentity: string;
-  onNewHandshake: () => void;
-  onScanEnvelope: () => void;
   /**
    * Sub-cut 2b — tap a bubble OR a card to open that peer's chat
    * thread. Replaces the prior scroll-to-card behaviour on the
@@ -44,12 +42,14 @@ function peerFromHandshake(att: Attestation, mine: string): Peer {
 // avatar on every reload, every install, no images fetched, no
 // metadata leaked.
 //
-// Shipped as part of Cut 8 of the 2026-05-24 Fresh roadmap.
+// Shipped as part of Cut 8 of the 2026-05-24 Fresh roadmap. The
+// "+ New handshake" / "Scan envelope" trigger row that used to live
+// here moved up to ConnectCard (2026-08-06 People-tab consolidation) —
+// this component now only renders the bubble row + card list/empty
+// state, so it no longer needs onNewHandshake/onScanEnvelope.
 export function FreshCrew({
   connectionEntries,
   myIdentity,
-  onNewHandshake,
-  onScanEnvelope,
   onOpenThread,
 }: Props) {
   const cardRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -72,23 +72,6 @@ export function FreshCrew({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onNewHandshake}
-          className="rounded-2xl bg-fresh-accent-primary py-3 text-fresh-text-inverse text-sm font-medium shadow-[0_8px_30px_-8px_rgba(192,252,77,0.55)] transition active:animate-fresh-press motion-reduce:active:animate-none"
-        >
-          + New handshake
-        </button>
-        <button
-          type="button"
-          onClick={onScanEnvelope}
-          className="rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass py-3 text-fresh-text-primary text-sm font-medium backdrop-blur-xl transition active:animate-fresh-press motion-reduce:active:animate-none"
-        >
-          Scan envelope
-        </button>
-      </div>
-
       {peers.length === 0 ? (
         <div className="mt-4 rounded-3xl border border-fresh-surface-edge bg-fresh-surface-glass backdrop-blur-xl px-5 py-10 text-center">
           <div className="text-xs uppercase tracking-[0.18em] text-fresh-accent-primary">
@@ -98,9 +81,8 @@ export function FreshCrew({
             Your people, in person.
           </h2>
           <p className="mt-2 text-sm text-fresh-text-secondary">
-            Meet someone face to face and tap New handshake — two phones,
-            one exchange, and you each hold a signed, time-anchored record
-            that you connected.
+            Connect with someone above and they'll show up here — a
+            signed, time-anchored record that you're connected.
           </p>
         </div>
       ) : (
