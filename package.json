@@ -6,7 +6,7 @@
   "description": "Sovereign identity wallet — keypair holder + Merkle holder of signed attestations.",
   "scripts": {
     "dev": "vite",
-    "prebuild": "npm --prefix tapit-attest run build",
+    "prebuild": "npm --prefix tapit-attest run build && npm --prefix bip341-psbt-signer run build",
     "build": "tsc -p tsconfig.json && vite build && node scripts/bundle-budget.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -19,6 +19,7 @@
     "verify": "npm run typecheck && npm run lint && npm run test && npm run build && npm run test:baseline && npm run doctrine:check"
   },
   "dependencies": {
+    "@dynastytrust/bip341-psbt-signer": "file:./bip341-psbt-signer",
     "@supabase/supabase-js": "^2.45.0",
     "@types/qrcode": "^1.5.6",
     "qrcode": "^1.5.4",
