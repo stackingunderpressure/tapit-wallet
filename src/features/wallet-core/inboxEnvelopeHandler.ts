@@ -19,9 +19,13 @@ import {
   readFamilyTreeBundle,
 } from '../friends-trees/familyTreeBundle.ts';
 import {
+  buildKeySuccessionAck,
+  isKeySuccessionAck,
   isKeySuccessionAnnouncement,
   isVerifiedAnnouncement,
+  readAckedEnvelopeId,
 } from '../transport/peerSuccession.ts';
+import { announcementOutbox } from '../transport/announcementOutbox.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 
 // Inbox-arrival handler factory — extracted from WalletProvider so
@@ -58,11 +62,27 @@ export interface InboxHandlerDeps {
     update: (prev: InboxEnvelope[]) => InboxEnvelope[],
   ) => void;
   setHoldings: (next: Attestation[]) => void;
+  /**
+   * Send an envelope to a peer over the Mycelium transport. Used here
+   * only to ack a verified key-succession announcement back to its
+   * sender (see the isKeySuccessionAnnouncement branch below). Optional
+   * so tests/callers that never receive announcements don't need to
+   * wire it; when absent, acks are silently skipped and the sender's
+   * announcementOutboxWorker just keeps retrying (harmless).
+   */
+  sendEnvelope?: (recipientPubkey: string, envelope: Attestation) => Promise<unknown>;
 }
 
 export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
-  const { wallet, ownerId, passphraseRef, dismissedRef, setInboxEnvelopes, setHoldings } =
-    deps;
+  const {
+    wallet,
+    ownerId,
+    passphraseRef,
+    dismissedRef,
+    setInboxEnvelopes,
+    setHoldings,
+    sendEnvelope,
+  } = deps;
   return (item: InboxEnvelope): void => {
     // Permanently-dismissed envelopes never come back, regardless of
     // whether the wallet holds a copy. This is the only suppression
@@ -148,15 +168,36 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
       })();
       return;
     }
+    // A peer's ack that they received + verified our key-succession
+    // announcement (peer-rotation fix CUT 3). Mark the matching
+    // announcementOutbox row 'received' so announcementOutboxWorker
+    // stops retrying it. Never held, never surfaced — this is transport
+    // plumbing, not something the operator needs to see. Best-effort: a
+    // failure here just means we harmlessly keep re-sending an
+    // announcement the peer already has.
+    if (isKeySuccessionAck(item.envelope)) {
+      const forEnvelope = readAckedEnvelopeId(item.envelope);
+      if (forEnvelope && ownerId) {
+        void announcementOutbox
+          .markReceived(ownerId, item.senderPubkey, forEnvelope)
+          .catch((err) => console.warn('announcement ack processing failed', err));
+      }
+      return;
+    }
     // A peer's key-succession announcement: they rotated and are telling
     // us their new key descends from the key we know. Verify it (chain
     // valid + signed by the chain's current key) and silently HOLD it so
     // the peer key-alias resolver can map their new messages back to the
     // person we already know — then never surface it as an inbox row.
-    // Unverified/forged announcements are dropped, not held.
+    // Unverified/forged announcements are dropped, not held. Once held,
+    // ack it back to the sender (CUT 3) so their outbox can stop
+    // retrying — only if we actually held it; acking something we
+    // failed to persist would be dishonest, and the sender's retry loop
+    // will simply try again later, which is harmless.
     if (isKeySuccessionAnnouncement(item.envelope)) {
       if (isVerifiedAnnouncement(item.envelope)) {
         void (async () => {
+          let held = false;
           try {
             await wallet.hold(item.envelope);
             const pass = passphraseRef.current;
@@ -164,8 +205,18 @@ export function createInboxEnvelopeHandler(deps: InboxHandlerDeps) {
               await saveWallet(wallet, pass, ownerId);
             }
             setHoldings(await wallet.holdings());
+            held = true;
           } catch (err) {
             console.warn('peer key-succession ingest failed', err);
+          }
+          if (!held || !sendEnvelope) return;
+          try {
+            const ack = wallet.sign(
+              buildKeySuccessionAck(wallet.identity, item.envelope),
+            );
+            await sendEnvelope(item.senderPubkey, ack);
+          } catch (err) {
+            console.warn('key-succession ack send failed', err);
           }
         })();
       }

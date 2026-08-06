@@ -3,6 +3,7 @@ import type { Attestation, Wallet } from 'tapit-attest';
 import type { Prefs } from '../storage/prefsStore.ts';
 import type { SaveOutcome } from '../storage/walletStore.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
+import type { AnnouncementWorkerHandle } from '../transport/announcementOutboxWorker.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 import type { PublishResult, RelayStatus, Transport } from '../transport/transport.ts';
 import type { ThreadMessage } from '../messaging/threadMessage.ts';
@@ -153,6 +154,15 @@ export interface WalletContextValue {
     peerPubkey: string,
     text: string,
   ) => Promise<{ warning?: string }>;
+  /**
+   * Retry worker for pending key-succession announcements (peer-
+   * rotation fix CUT 3). Null while idle. RotateKeySection calls
+   * .kick() after enqueueing a fresh announcement so "reconnect now"
+   * gets an immediate attempt instead of waiting for the next
+   * scheduled scan; the worker keeps retrying with backoff on its own
+   * afterward until each peer acks.
+   */
+  announcementOutboxWorker: AnnouncementWorkerHandle | null;
 }
 
 // Pulled into its own module so react-refresh fast-refresh works in

@@ -1,5 +1,9 @@
 import type { Attestation, FieldBranch, SuccessionLink } from 'tapit-attest';
-import { credentialAttestation, verifySuccessionChain } from 'tapit-attest';
+import {
+  credentialAttestation,
+  envelopeId,
+  verifySuccessionChain,
+} from 'tapit-attest';
 
 // Peer key-succession — the substrate that lets messaging follow a peer
 // across a key rotation (audit 2026-06-15, attack-list "messaging audit").
@@ -18,6 +22,7 @@ import { credentialAttestation, verifySuccessionChain } from 'tapit-attest';
 // resolution are the follow-on cuts.
 
 const CREDENTIAL_TYPE = 'key-succession';
+const ACK_CREDENTIAL_TYPE = 'key-succession-ack';
 
 function leafValue(att: Attestation, name: string): string {
   const claim = att.claim as FieldBranch;
@@ -173,4 +178,43 @@ export function peerKeyAliasToKeyHistoryMap(
     }
   }
   return byGenesis;
+}
+
+// Delivery receipt for a key-succession announcement (peer-rotation fix
+// CUT 3, operator 2026-08-05: "make the announcement stay until
+// received"). A peer who verifies and holds an incoming announcement
+// signs and sends this back to the announcer, naming the announcement's
+// envelopeId. The announcer's transport/announcementOutbox queue
+// matches it against the (peer, envelopeId) row it is retrying and
+// marks that row 'received', which stops announcementOutboxWorker from
+// resending it. This is the acknowledgment half of the mechanism; the
+// retry-with-backoff half lives in announcementOutboxWorker.ts.
+
+/** Build the unsigned ack a receiving wallet sends back to the announcer. */
+export function buildKeySuccessionAck(
+  ackerIdentity: string,
+  announcement: Attestation,
+): Attestation {
+  return credentialAttestation({
+    subject: ackerIdentity,
+    tier: 'notable',
+    fields: {
+      credential_type: ACK_CREDENTIAL_TYPE,
+      for_envelope: envelopeId(announcement),
+    },
+  });
+}
+
+/** True when an attestation is a key-succession delivery ack. */
+export function isKeySuccessionAck(att: Attestation): boolean {
+  return (
+    att.kind === 'credential' &&
+    leafValue(att, 'credential_type') === ACK_CREDENTIAL_TYPE
+  );
+}
+
+/** The envelopeId of the announcement this ack confirms, or null. */
+export function readAckedEnvelopeId(att: Attestation): string | null {
+  const raw = leafValue(att, 'for_envelope');
+  return raw || null;
 }

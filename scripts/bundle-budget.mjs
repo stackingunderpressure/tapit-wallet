@@ -192,7 +192,15 @@ const BUDGETS = [
   // absorb half measured LARGER (chunk-loader glue) than the static edge. The
   // heavy UI (ShareTreeModal / FriendTreesView) is React.lazy and ships in its
   // own chunks, not here. Net cost ~60 bytes gz. Bumped 12.25 -> 12.5KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 12_800, label: 'WalletProvider' },
+  // 2026-08-06 peer-rotation fix CUT 3 (operator: "make the announcement
+  // stay until received"): the provider now wires up
+  // useAnnouncementOutboxWorker (starts the durable retry worker for
+  // key-succession announcements) and threads a sendEnvelopeRef into
+  // inboxEnvelopeHandler so a verified announcement gets acked back to
+  // its sender. Both the worker lifecycle hook and the outbox/ack
+  // primitives live in their own files (transport chunk), so this is
+  // just the wiring edge — measured ~290 bytes gz. Bumped 12.5 -> 13KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 13_312, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -346,7 +354,14 @@ const BUDGETS = [
   // 2026-06-15 peer-rotation fix cut 2: RotateKeySection broadcasts a
   // key-succession announcement to peers on rotate (imports peerSuccession
   // + handshake reader). Measured 12.31KB gz; bumped 12.25 -> 12.6KiB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 12_902, label: 'SettingsScreen' },
+  // 2026-08-06 peer-rotation fix CUT 3 (operator: "make the announcement
+  // stay until received"): RotateKeySection now enqueues each
+  // announcement into announcementOutbox instead of a bare sendEnvelope
+  // call, kicks the retry worker for an immediate attempt, and shows a
+  // "still waiting on N connections" status line — the outbox import
+  // edge + the extra status state/UI ride this chunk since RotateKeySection
+  // is statically mounted here. Measured 12.77KB gz. Bumped 12.6 -> 13KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 13_312, label: 'SettingsScreen' },
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
   // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
   // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer

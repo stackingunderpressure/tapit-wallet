@@ -17,6 +17,7 @@ import { adoptExistingKey } from './adoptExistingKey.ts';
 import { SecureWalletPrompt } from './SecureWalletPrompt.tsx';
 import { WalletLoadingSplash, WalletOnboardingSplash } from './WalletSplash.tsx';
 import { useTransportPublish } from './useTransportPublish.ts';
+import { useAnnouncementOutboxWorker } from './useAnnouncementOutboxWorker.ts';
 import { unlockWallet } from './unlockWallet.ts';
 import {
   createIdentityAttestation,
@@ -308,6 +309,7 @@ export function WalletProvider({ children }: Props) {
       dismissedRef,
       setInboxEnvelopes,
       setHoldings,
+      sendEnvelope: (peer, envelope) => sendEnvelopeRef.current(peer, envelope),
     });
     void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
       if (cancelled) return;
@@ -400,6 +402,10 @@ export function WalletProvider({ children }: Props) {
     transport,
     activeWallet,
   );
+  // Retries pending key-succession announcements until each peer acks
+  // (CUT 3); sendEnvelopeRef also feeds the earlier onEnvelope ack-send.
+  const { worker: announcementOutboxWorker, sendEnvelopeRef } =
+    useAnnouncementOutboxWorker(ownerId, !!activeWallet, sendEnvelope);
 
   // Attach confirmed anchors back onto held attestations and persist
   // them, so backup/restore preserves the Bitcoin block height the
@@ -706,6 +712,7 @@ export function WalletProvider({ children }: Props) {
       resolvedTheme,
       chatThreadsByPeer,
       sendChatMessage,
+      announcementOutboxWorker,
     };
   }, [
     phase,
@@ -730,6 +737,7 @@ export function WalletProvider({ children }: Props) {
     resolvedTheme,
     chatThreadsByPeer,
     sendChatMessage,
+    announcementOutboxWorker,
   ]);
 
   if (!ownerId || phase.kind === 'checking') return <WalletLoadingSplash />;

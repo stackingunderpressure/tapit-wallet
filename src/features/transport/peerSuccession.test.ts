@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Wallet, generateKeypair, createSuccessionLink } from 'tapit-attest';
 import type { SuccessionLink } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import {
   buildKeySuccessionAnnouncement,
   isKeySuccessionAnnouncement,
@@ -10,6 +11,9 @@ import {
   resolveCanonical,
   resolveCurrent,
   peerKeyAliasToKeyHistoryMap,
+  buildKeySuccessionAck,
+  isKeySuccessionAck,
+  readAckedEnvelopeId,
 } from './peerSuccession.ts';
 
 // genesis(prev) -> current, signed announcement by the current key.
@@ -186,5 +190,28 @@ describe('peerKeyAliasToKeyHistoryMap', () => {
     );
     const map = peerKeyAliasToKeyHistoryMap(buildPeerKeyAlias([signed]));
     expect(map.size).toBe(0);
+  });
+});
+
+describe('key-succession ack', () => {
+  it('builds an ack naming the announcement envelopeId, identifiable and readable', () => {
+    const { signed } = rotatedAnnouncement();
+    const acker = generateKeypair();
+    const ack = Wallet.fromKeypair(acker).sign(
+      buildKeySuccessionAck(acker.publicKey, signed),
+    );
+    expect(isKeySuccessionAck(ack)).toBe(true);
+    expect(isKeySuccessionAnnouncement(ack)).toBe(false);
+    expect(readAckedEnvelopeId(ack)).toBe(envelopeId(signed));
+  });
+
+  it('is not mistaken for the announcement it acks', () => {
+    const { signed } = rotatedAnnouncement();
+    expect(isKeySuccessionAck(signed)).toBe(false);
+  });
+
+  it('readAckedEnvelopeId returns null for a non-ack credential', () => {
+    const { signed } = rotatedAnnouncement();
+    expect(readAckedEnvelopeId(signed)).toBeNull();
   });
 });

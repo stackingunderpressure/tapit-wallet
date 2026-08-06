@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Wallet } from 'tapit-attest';
+import { envelopeId } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
 import { buildKeySuccessionAnnouncement } from '../transport/peerSuccession.ts';
+import { announcementOutbox } from '../transport/announcementOutbox.ts';
 import { isHandshake, readHandshake } from '../connections/createHandshake.ts';
 
 interface Props {
@@ -38,7 +40,7 @@ function shortKey(s: string): string {
 // concrete risk: if you held a recovery share encrypted to YOUR
 // old pubkey, your wallet can't decrypt it after you rotate.
 export function RotateKeySection({ wallet, save, refresh }: Props) {
-  const { holdings, sendEnvelope } = useWallet();
+  const { holdings, ownerId, announcementOutboxWorker } = useWallet();
   const [confirming, setConfirming] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -49,6 +51,11 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
   // current key to connections now.
   const [announcing, setAnnouncing] = useState(false);
   const [announcedTo, setAnnouncedTo] = useState<number | null>(null);
+  // How many announcements this wallet has sent are still unconfirmed
+  // (CUT 3: durable outbox + ack). Refreshed on mount and after every
+  // rotate/re-announce action; NOT live-polled, since an ack only
+  // updates the count once the operator revisits this screen.
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
 
   // Snapshot the chain length at render time so the post-rotation
   // re-render shows the new count cleanly.
@@ -56,6 +63,20 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
   const identity = wallet.identity;
   const activeKey = wallet.publicKey;
   const verifies = wallet.verifyKeyHistory();
+
+  async function refreshPendingCount() {
+    try {
+      const rows = await announcementOutbox.pending(ownerId);
+      setPendingCount(rows.length);
+    } catch (err) {
+      console.warn('announcement outbox status read failed', err);
+    }
+  }
+
+  useEffect(() => {
+    void refreshPendingCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerId]);
 
   async function doRotate() {
     setBusy(true);
@@ -81,9 +102,17 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
 
   // Broadcast a signed key-succession announcement to every handshake
   // peer. Each peer's wallet verifies the chain and learns our new key is
-  // the same person, so messaging follows the rotation. Best-effort and
-  // fire-and-forget — the rotation itself does not depend on delivery.
-  // Returns the number of peers it sent to.
+  // the same person, so messaging follows the rotation. CUT 3 (operator:
+  // "make the announcement stay until received"): rather than a bare
+  // fire-and-forget send, each peer gets a durable row in
+  // announcementOutbox first, so the announcement survives this session
+  // ending. The immediate send attempted here is just the first try —
+  // kicking announcementOutboxWorker (started for the session in
+  // WalletProvider) makes that first try happen right away instead of
+  // waiting for its next scheduled scan; if a peer is offline or the
+  // send fails, the worker keeps retrying with backoff on its own until
+  // that peer sends back a verified ack. Returns the number of peers it
+  // queued the announcement for.
   async function announceRotationToPeers(): Promise<number> {
     const chain = wallet.successionChain;
     if (chain.length === 0) return 0;
@@ -94,22 +123,35 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
       console.warn('rotation announcement build failed', err);
       return 0;
     }
+    const id = envelopeId(announcement);
     const me = wallet.identity.toLowerCase();
     const myKeys = new Set(wallet.keyHistory.map((k) => k.toLowerCase()));
     const peers = new Set<string>();
     for (const a of holdings) {
       if (!isHandshake(a)) continue;
       const v = readHandshake(a);
-      for (const id of [v.initiatorId, v.responderId]) {
-        const lc = id?.toLowerCase();
-        if (lc && lc !== me && !myKeys.has(lc)) peers.add(id);
+      for (const pid of [v.initiatorId, v.responderId]) {
+        const lc = pid?.toLowerCase();
+        if (lc && lc !== me && !myKeys.has(lc)) peers.add(pid);
       }
     }
     for (const peer of peers) {
-      void sendEnvelope(peer, announcement).catch((err) => {
-        console.warn('rotation announcement send failed', peer, err);
-      });
+      try {
+        await announcementOutbox.upsert(ownerId, {
+          peer: peer.toLowerCase(),
+          envelopeId: id,
+          envelope: announcement,
+          state: 'pending',
+          attempts: 0,
+          last_attempt: null,
+          last_error: null,
+        });
+      } catch (err) {
+        console.warn('rotation announcement enqueue failed', peer, err);
+      }
     }
+    void announcementOutboxWorker?.kick();
+    void refreshPendingCount();
     return peers.size;
   }
 
@@ -182,14 +224,24 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
           <p className="mt-1 text-xs text-muted">
             Sends each connection a signed note that your current key is still
             you, so your messages reach the right conversation on their end.
-            Use this if you rotated before this feature existed, or if a
-            connection was offline when you rotated.
+            The note stays queued and keeps retrying automatically — not just
+            a one-time send — until each connection confirms they got it, so
+            a connection who is offline right now still catches up later
+            without you needing to do anything else. Use this button any time
+            you want to force an attempt right now instead of waiting.
           </p>
           {announcedTo !== null && (
             <p className="mt-1 text-xs text-emerald-700" role="status">
               {announcedTo === 0
                 ? 'No connections to tell yet — once you connect with someone, come back and tap this.'
-                : `Sent to ${announcedTo} connection${announcedTo === 1 ? '' : 's'}. They'll pick it up when reachable.`}
+                : `Queued for ${announcedTo} connection${announcedTo === 1 ? '' : 's'}. Retrying automatically until each one confirms.`}
+            </p>
+          )}
+          {pendingCount !== null && (
+            <p className="mt-1 text-xs text-muted" role="status">
+              {pendingCount === 0
+                ? 'Every connection has confirmed your current key.'
+                : `Still waiting on ${pendingCount} connection${pendingCount === 1 ? '' : 's'} to confirm — this will update once they do.`}
             </p>
           )}
         </div>
@@ -233,10 +285,12 @@ export function RotateKeySection({ wallet, save, refresh }: Props) {
             <li>
               Your Mycelium inbox automatically re-subscribes to the new
               pubkey, so your wallet does not go dark on the receive side.
-              Your wallet also sends each of your connections a signed notice
-              that your new key is the same you — so their wallets follow you
-              across the rotation (it sends when you're online; a peer who is
-              offline picks it up next time you're both reachable).
+              Your wallet also queues a signed notice to each of your
+              connections that your new key is the same you — so their
+              wallets follow you across the rotation. It keeps retrying
+              automatically, not just once, until each connection confirms
+              they received it, so a connection who is offline right now
+              still catches up on its own once you're both reachable.
             </li>
             <li>
               Messages encrypted-to-your-old-pubkey can no longer be
