@@ -5,6 +5,7 @@ import type {
   TierName,
 } from 'tapit-attest';
 import { verifyEnvelope } from 'tapit-attest';
+import { parsePsbt } from '@dynastytrust/bip341-psbt-signer';
 import { parseEnvelope } from '../cosigning/parseEnvelope.ts';
 import type { SignRequest } from './types.ts';
 
@@ -161,6 +162,47 @@ export function parseSignRequest(raw: string | null): SignRequest {
       );
     }
     return { v: 1, intent: 'cosign-existing', envelope, ...base };
+  }
+
+  // intent 'psbt-cosign' — Cut B, the DynastyTrust signing bridge. Validate
+  // psbt_hex actually parses as a PSBT (catches a malformed/truncated
+  // request before the operator ever sees an approval screen for it) and
+  // that vault_context names a non-empty descriptor to look up. The
+  // attested-trail check (does this wallet actually hold a matching
+  // vault-membership) happens later, at approve time — parsing alone
+  // can't know that; it can only reject garbage shape.
+  if (r.intent === 'psbt-cosign') {
+    if (typeof r.psbt_hex !== 'string' || !/^[0-9a-fA-F]+$/.test(r.psbt_hex)) {
+      throw new SignRequestError('invalid_psbt', 'psbt_hex must be a hex string');
+    }
+    try {
+      parsePsbt(r.psbt_hex);
+    } catch (err) {
+      throw new SignRequestError(
+        'invalid_psbt',
+        `psbt_hex does not parse: ${err instanceof Error ? err.message : 'malformed PSBT'}`,
+      );
+    }
+    if (!r.vault_context || typeof r.vault_context !== 'object') {
+      throw new SignRequestError('invalid_request', 'vault_context must be an object');
+    }
+    const vc = r.vault_context as Record<string, unknown>;
+    if (typeof vc.vault_descriptor !== 'string' || vc.vault_descriptor.length === 0) {
+      throw new SignRequestError(
+        'invalid_request',
+        'vault_context.vault_descriptor must be a non-empty string',
+      );
+    }
+    return {
+      v: 1,
+      intent: 'psbt-cosign',
+      psbt_hex: r.psbt_hex,
+      vault_context: {
+        vault_descriptor: vc.vault_descriptor,
+        ...(typeof vc.vault_name === 'string' ? { vault_name: vc.vault_name } : {}),
+      },
+      ...base,
+    };
   }
 
   // intent 'attest' — the wallet creates and signs a new attestation.

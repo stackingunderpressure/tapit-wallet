@@ -2,6 +2,7 @@ import type { Attestation, SignInAttestation, Wallet } from 'tapit-attest';
 import { envelopeId, signInDigestFor } from 'tapit-attest';
 import type { SignRequest, SignGrant } from './types.ts';
 import { coSignEnvelope } from './coSignEnvelope.ts';
+import { signPsbtCosign } from './signPsbtCosign.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
@@ -22,6 +23,15 @@ export async function approveSignRequest(
   request: SignRequest,
   saveWallet: () => Promise<void>,
   worker: WorkerHandle | null,
+  /**
+   * Only consulted for intent 'psbt-cosign'. The UI (SignApprovalScreen)
+   * decides whether the callback ritual is required (vaultTrail.
+   * requiresCallbackConfirmation) and only sets this true once the
+   * operator has confirmed it happened. Re-checked here, not just in the
+   * UI, so a UI bug can never sign a high-value spend un-gated — the
+   * wallet does its own verification first (risk register).
+   */
+  calloutConfirmed = false,
 ): Promise<void> {
   // intent 'sign-in' — answer a login challenge. This produces NO envelope to
   // hold or anchor; it is a one-time login proof. The wallet's private key
@@ -46,6 +56,26 @@ export async function approveSignRequest(
       v: 1,
       ...(request.nonce ? { nonce: request.nonce } : {}),
       signIn,
+    };
+    const url = new URL(request.callback);
+    url.searchParams.set('grant', btoa(JSON.stringify(grant)));
+    window.location.href = url.toString();
+    return;
+  }
+
+  // intent 'psbt-cosign' — Cut B, the DynastyTrust signing bridge. This is
+  // a real Bitcoin tapscript signature, not an attestation: no envelope,
+  // no hold, no anchoring. signPsbtCosign re-verifies the attested trail
+  // and the callback gate itself — never trust that the UI already
+  // checked it, since this is the actual last line of defense against
+  // signing something it shouldn't (risk register: "no rogue signing").
+  if (request.intent === 'psbt-cosign') {
+    const holdings = await wallet.holdings();
+    const signedHex = signPsbtCosign(wallet, holdings, request, calloutConfirmed);
+    const grant: SignGrant = {
+      v: 1,
+      ...(request.nonce ? { nonce: request.nonce } : {}),
+      psbt_hex: signedHex,
     };
     const url = new URL(request.callback);
     url.searchParams.set('grant', btoa(JSON.stringify(grant)));

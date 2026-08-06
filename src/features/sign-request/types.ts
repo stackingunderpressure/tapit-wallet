@@ -76,10 +76,39 @@ export interface SignInSignRequest extends SignRequestBase {
   challenge: SignInChallenge;
 }
 
+/**
+ * intent 'psbt-cosign' — Cut B (docs/build-map-and-cut-lists.md DT-4;
+ * docs/integration-phase1-signin-and-bridge.md B1, DynastyTrust repo).
+ * A DynastyTrust vault-spend PSBT is signed by a key that lives in Tapit.
+ * This is NOT an attestation — it is a Bitcoin tapscript signature, and
+ * the wallet treats it with the weight that implies. `psbt_hex` is the
+ * PSBT to add this wallet's signature to; `vault_context` is the
+ * requester's OWN description of which vault this is, used only to
+ * locate a matching held vault-membership attestation (vaultTrail.ts)
+ * and to label the banner — never trusted for the amount, destination,
+ * or which script actually gets signed. Those are always read back out
+ * of `psbt_hex` itself by the approval flow, per the risk register's "no
+ * rogue signing" rule: the wallet verifies the request against an
+ * attestation trail it already holds, not against claims inside the
+ * request.
+ */
+export interface PsbtCosignSignRequest extends SignRequestBase {
+  intent: 'psbt-cosign';
+  /** The PSBT (hex-encoded) to sign an input of. */
+  psbt_hex: string;
+  vault_context: {
+    /** Must byte-match a held vault-membership attestation's descriptor. */
+    vault_descriptor: string;
+    /** Display label only — never trusted for anything security-relevant. */
+    vault_name?: string;
+  };
+}
+
 export type SignRequest =
   | AttestSignRequest
   | CosignSignRequest
-  | SignInSignRequest;
+  | SignInSignRequest
+  | PsbtCosignSignRequest;
 
 export interface SignGrant {
   v: 1;
@@ -101,6 +130,14 @@ export interface SignGrant {
    * wire, only the public key and the signature.
    */
   signIn?: SignInAttestation;
+  /**
+   * Present ONLY for a 'psbt-cosign' grant: the PSBT hex with this
+   * wallet's tap_script_sig injected into the matching input. Not
+   * finalized and not broadcast — the requester still needs to merge
+   * every cosigner's partial signature and finalize (DynastyTrust's
+   * existing mergePsbts + /api/psbt-finalize path, unchanged).
+   */
+  psbt_hex?: string;
 }
 
 export type SignDeclineReason =
@@ -109,7 +146,10 @@ export type SignDeclineReason =
   | 'unsupported_intent'
   | 'unknown_kind'
   | 'unknown_tier'
-  | 'invalid_envelope';
+  | 'invalid_envelope'
+  | 'invalid_psbt'
+  | 'no_vault_trail'
+  | 'unknown_leaf_script';
 
 export interface SignDecline {
   v: 1;

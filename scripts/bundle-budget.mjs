@@ -362,7 +362,17 @@ const BUDGETS = [
   // edge + the extra status state/UI ride this chunk since RotateKeySection
   // is statically mounted here. Measured 12.77KB gz. Bumped 12.6 -> 13KB.
   { pattern: /^SettingsScreen-.*\.js$/, gz: 13_312, label: 'SettingsScreen' },
-  { pattern: /^SignApprovalScreen-.*\.js$/, gz: 4_000, label: 'SignApprovalScreen' },
+  // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
+  // DynastyTrust repo): the new psbt-cosign intent statically pulls in
+  // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)
+  // for the banner's real-amount/destination rendering, parseSignRequest's
+  // early PSBT-shape validation, and the actual signing in signPsbtCosign.ts
+  // + vaultTrail.ts's attested-trail + amount-tier checks. This chunk owns
+  // the money-touching code path, so the shared crypto module rides here
+  // rather than being deferred behind a dynamic import — the approval
+  // screen already gates on user interaction, so there's no bundle-size
+  // pressure to hide it further. Measured 9.45KB gz. Bumped 3.91 -> 9.75KB.
+  { pattern: /^SignApprovalScreen-.*\.js$/, gz: 9_984, label: 'SignApprovalScreen' },
   // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
   // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer
   // panel + the gated-release-bundle verdict from item 11 D4), measured

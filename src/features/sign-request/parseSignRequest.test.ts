@@ -218,3 +218,97 @@ describe('parseSignRequest — sign-in', () => {
     ).toBe('invalid_request');
   });
 });
+
+describe('parseSignRequest — psbt-cosign', () => {
+  // Same deterministic fixture as bip341-psbt-signer's own parity test
+  // (packages/bip341-psbt-signer/test/parity.test.mjs in DynastyTrust) --
+  // one taproot script-path input, one output, all fixed placeholder bytes.
+  const VALID_PSBT_HEX =
+    '70736274ff01005e020000000111111111111111111111111111111111111111111111111111111111111111110000000000fdffffff01a0860100000000002251202222222222222222222222222222222222222222222222222222222222222222000000000001012bf04902000000000022512022222222222222222222222222222222222222222222222222222222222222222215c033333333333333333333333333333333333333333333333333333333333333330251c00000';
+
+  it('parses a well-formed psbt-cosign request', () => {
+    const parsed = parseSignRequest(
+      encode({
+        v: 1,
+        intent: 'psbt-cosign',
+        origin: 'DynastyTrust',
+        callback: 'https://dynastytrust.family/cb',
+        psbt_hex: VALID_PSBT_HEX,
+        vault_context: { vault_descriptor: 'tr_multileaf(...)', vault_name: 'Family Trust' },
+      }),
+    );
+    expect(parsed.intent).toBe('psbt-cosign');
+    if (parsed.intent === 'psbt-cosign') {
+      expect(parsed.psbt_hex).toBe(VALID_PSBT_HEX);
+      expect(parsed.vault_context.vault_descriptor).toBe('tr_multileaf(...)');
+      expect(parsed.vault_context.vault_name).toBe('Family Trust');
+    }
+  });
+
+  it('rejects a malformed psbt_hex (fails to parse as a PSBT)', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'psbt-cosign',
+            origin: 'X',
+            callback: 'https://a.test/cb',
+            psbt_hex: 'deadbeef',
+            vault_context: { vault_descriptor: 'v' },
+          }),
+        ),
+      ),
+    ).toBe('invalid_psbt');
+  });
+
+  it('rejects a non-hex psbt_hex', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'psbt-cosign',
+            origin: 'X',
+            callback: 'https://a.test/cb',
+            psbt_hex: 'not hex!',
+            vault_context: { vault_descriptor: 'v' },
+          }),
+        ),
+      ),
+    ).toBe('invalid_psbt');
+  });
+
+  it('rejects a missing vault_context', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'psbt-cosign',
+            origin: 'X',
+            callback: 'https://a.test/cb',
+            psbt_hex: VALID_PSBT_HEX,
+          }),
+        ),
+      ),
+    ).toBe('invalid_request');
+  });
+
+  it('rejects an empty vault_descriptor', () => {
+    expect(
+      caughtCode(() =>
+        parseSignRequest(
+          encode({
+            v: 1,
+            intent: 'psbt-cosign',
+            origin: 'X',
+            callback: 'https://a.test/cb',
+            psbt_hex: VALID_PSBT_HEX,
+            vault_context: { vault_descriptor: '' },
+          }),
+        ),
+      ),
+    ).toBe('invalid_request');
+  });
+});
