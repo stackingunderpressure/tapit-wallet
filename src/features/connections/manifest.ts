@@ -54,6 +54,7 @@ export const manifest: FeatureManifest = {
     'src/features/connections/JoinScreen.tsx',
     'src/features/connections/useAcceptPendingInvite.ts',
     'src/features/connections/InviteShareButton.tsx',
+    'src/features/connections/PendingInviteBanner.tsx',
   ],
   depends_on: ['wallet-core', 'qr', 'cosigning', 'anchoring', 'theme', 'governance'],
   pause_safe: true,

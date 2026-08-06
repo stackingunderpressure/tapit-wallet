@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WalletGuide } from './WalletGuide.tsx';
 import { useDeviceTheme } from '../theme/useDeviceTheme.ts';
 import { useSession } from './useSession.ts';
 import { takePostLoginReturn } from './postLoginReturn.ts';
+import { hasPendingInvite } from '../connections/pendingInvite.ts';
 
 // FreshLoginShell carries the entire Fresh compose-before-login
 // onboarding state machine (Cut 5). Lazy-loaded so the cold-start
@@ -14,6 +15,21 @@ import { takePostLoginReturn } from './postLoginReturn.ts';
 const FreshLoginShell = lazy(() =>
   import('../theme/FreshLoginShell.tsx').then((m) => ({
     default: m.FreshLoginShell,
+  })),
+);
+
+// PendingInviteBanner surfaces "you're accepting an invite from X"
+// context on a signed-out /join -> sign-in handoff. Almost every
+// login-screen visit has nothing stashed (hasPendingInvite is a
+// same-module sessionStorage key check, near-zero cost either way),
+// so the banner itself — and the inviteLink.ts decode/validate
+// machinery it pulls in — is lazy-loaded and only fetched on the rare
+// visit where there's actually something to show. Same bundle-budget
+// discipline as FreshLoginShell above: the common path shouldn't pay
+// for a feature it never uses.
+const PendingInviteBanner = lazy(() =>
+  import('../connections/PendingInviteBanner.tsx').then((m) => ({
+    default: m.PendingInviteBanner,
   })),
 );
 
@@ -42,6 +58,7 @@ export function LoginPage() {
   const theme = useDeviceTheme();
   const session = useSession();
   const navigate = useNavigate();
+  const [showInviteBanner] = useState(() => hasPendingInvite());
 
   // In-page sign-in (password / create-account) settles the session right
   // here without a /auth/callback round-trip. If the visitor was sent here
@@ -55,16 +72,30 @@ export function LoginPage() {
     }
   }, [session.status, navigate]);
 
+  const inviteBanner = showInviteBanner && (
+    <Suspense fallback={null}>
+      <PendingInviteBanner />
+    </Suspense>
+  );
+
   if (theme === 'fresh') {
     return (
-      <Suspense
-        fallback={
-          <div className="relative min-h-screen overflow-hidden fresh-aurora-bg" />
-        }
-      >
-        <FreshLoginShell />
-      </Suspense>
+      <>
+        {inviteBanner}
+        <Suspense
+          fallback={
+            <div className="relative min-h-screen overflow-hidden fresh-aurora-bg" />
+          }
+        >
+          <FreshLoginShell />
+        </Suspense>
+      </>
     );
   }
-  return <WalletGuide initialTab="account" />;
+  return (
+    <>
+      {inviteBanner}
+      <WalletGuide initialTab="account" />
+    </>
+  );
 }

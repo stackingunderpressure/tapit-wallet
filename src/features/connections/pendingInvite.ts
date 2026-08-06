@@ -57,6 +57,20 @@ export function consumePendingInvite(): InvitePayload | null {
   }
 }
 
+/** Cheap existence check with none of peekPendingInvite's JSON-parse
+ *  + re-validate cost. Lets a caller (LoginPage) decide whether it's
+ *  even worth lazy-loading the invite-banner UI, so the always-loaded
+ *  login bundle isn't paying for that decision path on every visit —
+ *  only the rare one where an invite is actually stashed. */
+export function hasPendingInvite(): boolean {
+  if (typeof sessionStorage === 'undefined') return false;
+  try {
+    return sessionStorage.getItem(KEY) != null;
+  } catch {
+    return false;
+  }
+}
+
 /** Peek without clearing — used by the /join screen to decide whether
  *  a freshly-signed-in operator has an invite waiting. */
 export function peekPendingInvite(): InvitePayload | null {

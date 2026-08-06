@@ -67,7 +67,18 @@ const BUDGETS = [
   // are required to construct the Supabase client on the login path, so they
   // cannot be code-split away. Budget now clears the production-measured size
   // with headroom for env-value length variation.
-  { pattern: /^index-.*\.js$/, gz: 13_824, label: 'login bundle (main)' },
+  // 2026-08-06 bump (13.5 -> 13.6KiB): the /join -> sign-in handoff had no
+  // way to tell a signed-out visitor an invite was still waiting once they
+  // landed on the bare sign-in form (pendingInvite.ts's decode/validate
+  // logic only ran post-unlock). Added PendingInviteBanner, code-split
+  // behind React.lazy exactly like FreshLoginShell, so only its cheap,
+  // dependency-free existence check (hasPendingInvite, pendingInvite.ts)
+  // landed in this entry — the actual banner UI + invite decode/validate
+  // machinery only loads on the rare visit that has something to show.
+  // That check still added 3 bytes gz past the old budget (measured
+  // 13,827B vs the 13,824B ceiling). Not worth sacrificing readability to
+  // claw back 3 bytes; bumped with headroom instead.
+  { pattern: /^index-.*\.js$/, gz: 13_926, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
   // variable blocks plus the aurora-drift keyframes + background.
