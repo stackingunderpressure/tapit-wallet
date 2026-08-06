@@ -14,6 +14,16 @@ import {
 } from './vaultTrail.ts';
 import type { PsbtCosignSignRequest } from './types.ts';
 
+/**
+ * The only fields signPsbtCosign actually reads off a psbt-cosign request.
+ * Narrowed (rather than requiring the full PsbtCosignSignRequest, which also
+ * carries origin/callback/v/intent/nonce meant for the deeplink transport)
+ * so a Nostr-delivered request — which has no deeplink callback to redirect
+ * to — can call this the same way approveRequest.ts does, without
+ * fabricating a fake callback URL just to satisfy the type. Cut B stage B3.
+ */
+export type PsbtCosignRequestLike = Pick<PsbtCosignSignRequest, 'psbt_hex' | 'vault_context'>;
+
 // The core of Cut B's psbt-cosign intent — pure, no hold, no anchoring, no
 // redirect, so it can be unit-tested directly (same reasoning as
 // coSignEnvelope.ts for the cosign-existing intent). approveRequest.ts
@@ -44,7 +54,7 @@ export class PsbtCosignError extends Error {
 export function signPsbtCosign(
   wallet: Wallet,
   holdings: readonly Attestation[],
-  request: PsbtCosignSignRequest,
+  request: PsbtCosignRequestLike,
   calloutConfirmed: boolean,
 ): string {
   const trail = findVaultTrail(

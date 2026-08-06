@@ -20,6 +20,13 @@ import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { FamilyTabBody } from './FamilyTabBody.tsx';
 import { ConnectCard } from '../connections/ConnectCard.tsx';
+// Lazy: pulls in @dynastytrust/bip341-psbt-signer + signPsbtCosign's BIP341
+// crypto, which most sessions never touch (Bitcoin vault cosigning is a
+// small subset of wallets). Deferred so that weight doesn't ride every
+// HomeScreen load — see scripts/bundle-budget.mjs's 2026-08-06 note.
+const VaultSignInbox = lazy(() =>
+  import('../sign-request/VaultSignInbox.tsx').then((m) => ({ default: m.VaultSignInbox })),
+);
 import { useAcceptPendingInvite } from '../connections/useAcceptPendingInvite.ts';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
 import {
@@ -412,6 +419,9 @@ export function HomeScreen() {
               </p>
             </div>
           )}
+          <Suspense fallback={null}>
+            <VaultSignInbox />
+          </Suspense>
           <IdentityCard
             identity={wallet.identity}
             activeKey={wallet.publicKey}

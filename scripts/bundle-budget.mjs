@@ -373,6 +373,19 @@ const BUDGETS = [
   // screen already gates on user interaction, so there's no bundle-size
   // pressure to hide it further. Measured 9.45KB gz. Bumped 3.91 -> 9.75KB.
   { pattern: /^SignApprovalScreen-.*\.js$/, gz: 9_984, label: 'SignApprovalScreen' },
+  // 2026-08-06 Cut B stage B3 (the Tapit-side receive/respond half of the
+  // async, offline-capable vault-cosign flow over Nostr): VaultSignInbox.tsx
+  // reuses signPsbtCosign.ts (the same BIP341 signing + vault-trail checks
+  // SignApprovalScreen's psbt-cosign intent already uses) so a co-signer who
+  // was offline when a spend was proposed can still sign once they come back
+  // online, without a live deeplink tab to redirect through. Since TWO lazy
+  // chunks (SignApprovalScreen and the also-lazy VaultSignInbox) now import
+  // signPsbtCosign, Rollup correctly extracts it into its own shared chunk
+  // rather than duplicating the crypto in both bundles — this is a NEW named
+  // chunk, not a regression of an existing one; both consumers stay behind
+  // React.lazy so this never rides the eager HomeScreen bundle. Measured
+  // 4.28KB gz.
+  { pattern: /^signPsbtCosign-.*\.js$/, gz: 4_506, label: 'signPsbtCosign (shared, lazy)' },
   // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
   // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer
   // panel + the gated-release-bundle verdict from item 11 D4), measured
