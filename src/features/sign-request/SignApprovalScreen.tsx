@@ -96,7 +96,16 @@ export function SignApprovalScreen() {
     try {
       const result = await checkCirclePhrase(vaultDescriptor, phraseInput);
       setPhraseResult(result);
-      setCalloutConfirmed(result === 'normal');
+      const confirmed = result === 'normal';
+      setCalloutConfirmed(confirmed);
+      if (confirmed) {
+        // The whole point of this cut: a correct code signs immediately,
+        // no separate Approve tap. doApprove takes the confirmation as a
+        // parameter rather than reading calloutConfirmed off state, which
+        // would still read false here (state hasn't re-rendered yet).
+        await doApprove(true);
+        return;
+      }
     } finally {
       // The entered phrase never lingers past the check that consumed it.
       setPhraseInput('');
@@ -158,10 +167,16 @@ export function SignApprovalScreen() {
     );
   }
 
-  async function approve() {
+  // Split out of approve() (2026-08-08, operator: "get the rolling code
+  // and bam my transaction is signed in the background") so verifyPhrase
+  // can trigger signing the instant a correct phrase comes back, without
+  // waiting a render cycle for calloutConfirmed state to settle and
+  // without a separate manual Approve tap. Takes `confirmed` as a
+  // parameter rather than reading it off state for exactly that reason.
+  async function doApprove(confirmed: boolean) {
     if (state.kind !== 'ready') return;
     if (psbtCosignGate?.kind === 'no-trail') return;
-    if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed) return;
+    if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !confirmed) return;
     setError(null);
     setState({ kind: 'busy' });
     try {
@@ -174,13 +189,17 @@ export function SignApprovalScreen() {
           await save();
         },
         worker,
-        calloutConfirmed,
+        confirmed,
       );
       // approveSignRequest navigates via window.location; component unmounts.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign.');
       setState({ kind: 'ready', request: state.request, callbackHost: state.callbackHost });
     }
+  }
+
+  async function approve() {
+    await doApprove(calloutConfirmed);
   }
 
   function decline() {
@@ -286,12 +305,12 @@ export function SignApprovalScreen() {
                   disabled={phraseBusy || phraseInput.trim().length === 0}
                   className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium disabled:opacity-40"
                 >
-                  {phraseBusy ? 'Checking…' : 'Check'}
+                  {phraseBusy ? 'Confirming…' : 'Confirm & sign'}
                 </button>
               </div>
               {phraseResult === 'normal' && (
                 <p className="mt-2 text-xs font-medium text-emerald-700">
-                  Phrase confirmed. You can approve below.
+                  Phrase confirmed — signing now…
                 </p>
               )}
               {phraseResult === 'no-match' && (
@@ -328,23 +347,33 @@ export function SignApprovalScreen() {
       )}
 
       <div className="mt-4 space-y-2">
-        <button
-          type="button"
-          onClick={approve}
-          disabled={
-            psbtCosignGate?.kind === 'no-trail' ||
-            (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed)
-          }
-          className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40"
-        >
-          {state.request.intent === 'cosign-existing'
-            ? 'Approve — co-sign this'
-            : state.request.intent === 'sign-in'
-              ? 'Approve — sign in'
-              : state.request.intent === 'psbt-cosign'
-                ? 'Approve — sign this transaction'
-                : 'Approve — sign this'}
-        </button>
+        {/* 2026-08-08: when a phrase pair is on file for a callback-gated
+            psbt-cosign request, entering the right phrase already signs
+            (verifyPhrase -> doApprove(true), the "bam" the operator asked
+            for) -- a second manual Approve button here would just be a
+            redundant, confusing extra tap for the one case this cut exists
+            to collapse. Every other case (sign-in, cosign-existing, a
+            plain attest, or the no-phrase-pair checkbox fallback) keeps
+            the explicit button unchanged. */}
+        {!(psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseConfigured === true) && (
+          <button
+            type="button"
+            onClick={approve}
+            disabled={
+              psbtCosignGate?.kind === 'no-trail' ||
+              (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed)
+            }
+            className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40"
+          >
+            {state.request.intent === 'cosign-existing'
+              ? 'Approve — co-sign this'
+              : state.request.intent === 'sign-in'
+                ? 'Approve — sign in'
+                : state.request.intent === 'psbt-cosign'
+                  ? 'Approve — sign this transaction'
+                  : 'Approve — sign this'}
+          </button>
+        )}
         <button
           type="button"
           onClick={decline}
