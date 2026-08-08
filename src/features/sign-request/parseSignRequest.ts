@@ -193,6 +193,20 @@ export function parseSignRequest(raw: string | null): SignRequest {
         'vault_context.vault_descriptor must be a non-empty string',
       );
     }
+    let responseChannel: { kind: 'nostr'; requester_pubkey: string } | undefined;
+    if (r.response_channel !== undefined) {
+      if (!r.response_channel || typeof r.response_channel !== 'object') {
+        throw new SignRequestError('invalid_request', 'response_channel must be an object');
+      }
+      const rc = r.response_channel as Record<string, unknown>;
+      if (rc.kind !== 'nostr' || !isHexBytes(rc.requester_pubkey, 32)) {
+        throw new SignRequestError(
+          'invalid_request',
+          'response_channel must be {kind:"nostr", requester_pubkey: 32-byte hex}',
+        );
+      }
+      responseChannel = { kind: 'nostr', requester_pubkey: rc.requester_pubkey };
+    }
     return {
       v: 1,
       intent: 'psbt-cosign',
@@ -201,6 +215,7 @@ export function parseSignRequest(raw: string | null): SignRequest {
         vault_descriptor: vc.vault_descriptor,
         ...(typeof vc.vault_name === 'string' ? { vault_name: vc.vault_name } : {}),
       },
+      ...(responseChannel ? { response_channel: responseChannel } : {}),
       ...base,
     };
   }

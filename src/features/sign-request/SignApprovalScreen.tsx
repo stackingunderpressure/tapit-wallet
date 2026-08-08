@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { parsePsbt } from '@dynastytrust/bip341-psbt-signer';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
@@ -23,8 +23,9 @@ type State =
 // toggle, no JSON dump.
 export function SignApprovalScreen() {
   const [params] = useSearchParams();
-  const { wallet, ownerId, save, holdings } = useWallet();
+  const { wallet, ownerId, save, holdings, transport } = useWallet();
   const worker = useAnchorWorker();
+  const navigate = useNavigate();
   const [state, setState] = useState<State>(() => {
     try {
       const request = parseSignRequest(params.get('req'));
@@ -181,7 +182,7 @@ export function SignApprovalScreen() {
     setState({ kind: 'busy' });
     try {
       await save(); // make sure prior changes are persisted
-      await approveSignRequest(
+      const result = await approveSignRequest(
         wallet,
         ownerId,
         state.request,
@@ -190,8 +191,13 @@ export function SignApprovalScreen() {
         },
         worker,
         confirmed,
+        transport,
       );
-      // approveSignRequest navigates via window.location; component unmounts.
+      // A deeplink request navigates away via window.location and this
+      // component unmounts on its own. A Cut B3 slice 2 Nostr-delivered
+      // psbt-cosign response has nowhere to redirect to -- without this,
+      // the screen would sit on "Signing…" forever once it's actually done.
+      if (result.delivered === 'nostr') navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign.');
       setState({ kind: 'ready', request: state.request, callbackHost: state.callbackHost });
@@ -204,7 +210,8 @@ export function SignApprovalScreen() {
 
   function decline() {
     if (state.kind !== 'ready') return;
-    declineSignRequest(state.request, 'user_declined');
+    const result = declineSignRequest(state.request, 'user_declined');
+    if (result.delivered === 'none') navigate('/');
   }
 
   if (state.kind === 'busy') {
@@ -228,10 +235,19 @@ export function SignApprovalScreen() {
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <RenderRequest request={state.request} />
         <div className="mt-3 rounded-md bg-ink/5 px-3 py-2 text-xs text-muted">
-          On approve you will be redirected to{' '}
-          <span className="font-mono">{state.callbackHost}</span>. The wallet
-          sends only the signed {state.request.intent === 'psbt-cosign' ? 'transaction' : 'envelope'};
-          your keys never leave this device.
+          {state.request.intent === 'psbt-cosign' && state.request.response_channel?.kind === 'nostr' ? (
+            <>
+              On approve the signed transaction goes straight back over the network to whoever
+              asked — nothing to redirect to, your keys never leave this device.
+            </>
+          ) : (
+            <>
+              On approve you will be redirected to{' '}
+              <span className="font-mono">{state.callbackHost}</span>. The wallet
+              sends only the signed {state.request.intent === 'psbt-cosign' ? 'transaction' : 'envelope'};
+              your keys never leave this device.
+            </>
+          )}
         </div>
       </section>
 

@@ -102,6 +102,22 @@ export interface PsbtCosignSignRequest extends SignRequestBase {
     /** Display label only — never trusted for anything security-relevant. */
     vault_name?: string;
   };
+  /**
+   * Present only when this request arrived over Nostr (psbtCosignChannel.ts)
+   * rather than a same-tab deeplink. When set, approveSignRequest publishes
+   * the signed PSBT back over Nostr to `requester_pubkey` instead of
+   * redirecting to `callback` — a Nostr-delivered request has no page to
+   * redirect to. `requester_pubkey` is the EPHEMERAL pubkey DynastyTrust
+   * minted for this one request (tapit-nostr-cosign.ts); it keeps that
+   * keypair's private half alive in memory only long enough to decrypt the
+   * reply, the same one-request-only identity discipline the request side
+   * already uses. `callback` above is still required by the base shape but
+   * is never used for navigation in this case.
+   */
+  response_channel?: {
+    kind: 'nostr';
+    requester_pubkey: string;
+  };
 }
 
 export type SignRequest =
