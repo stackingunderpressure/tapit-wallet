@@ -1,0 +1,159 @@
+import type { Wallet } from 'tapit-attest';
+import {
+  buildEvent,
+  verifyEvent,
+  type TransportEvent,
+} from '../transport/nostrEvent.ts';
+import type {
+  PublishResult,
+  Subscription,
+  Transport,
+  TransportEventHandler,
+} from '../transport/transport.ts';
+import type { PsbtCosignSignRequest } from './types.ts';
+
+// Cut B stage B3 (docs/integration-phase1-signin-and-bridge.md, DynastyTrust
+// repo) -- the Nostr half of the multi-member signing bridge. B2 delivers a
+// psbt-cosign request over a deeplink into a NEW TAB, which only works when
+// the signer and the requester share a browser. A circle member on their
+// own phone, in their own Tapit, needs the request to arrive without a link
+// being handed to them by hand -- this is that channel.
+//
+// Deliberately its own event kind (9576, the next free sibling after the
+// liveness channel's 9575) rather than riding TAPIT_ENVELOPE_KIND: a
+// psbt-cosign request is not an Attestation (no Merkle field tree, nothing
+// to hold or anchor), so shoehorning it into the envelope inbox would force
+// every envelope-inbox consumer to defensively type-check content it was
+// never meant to see. Mirrors encryptedInbox.ts's sendEnvelopeTo/
+// subscribeInbox shape exactly -- same NIP-44-to-one-recipient pattern,
+// same verify-then-decrypt-then-parse discipline, different payload type.
+//
+// This module ONLY moves the request and (later, once approveRequest grows
+// a non-redirect delivery path) the signed response across the wire. It
+// never signs anything itself -- signing still goes through
+// approveSignRequest -> signPsbtCosign, unchanged, with every rail from the
+// risk register ("no rogue signing," the attested-trail check, the
+// callback-verification gate) still enforced there, regardless of which
+// transport carried the request in.
+export const PSBT_COSIGN_REQUEST_KIND = 9576;
+
+/**
+ * Publish a psbt-cosign request, NIP-44-encrypted to the recipient's
+ * x-only pubkey, over the given transport. `sender` is normally an
+ * EPHEMERAL per-request identity (a fresh keypair minted just for this
+ * request), not the requester's own long-lived key -- DynastyTrust has
+ * no persistent Tapit identity of its own to sign as, and an ephemeral
+ * sender means a relay operator watching the wire learns nothing about
+ * which DynastyTrust account issued the request. The recipient does not
+ * need to trust the sender's identity to decide whether to sign; that
+ * trust lives entirely in the attested vault-membership trail
+ * (vaultTrail.ts), checked against the PSBT's own leaf scripts, not
+ * against who published the event.
+ */
+export interface SendPsbtCosignRequestResult {
+  event: TransportEvent;
+  publish: PublishResult;
+}
+
+export async function sendPsbtCosignRequestTo(
+  transport: Transport,
+  request: PsbtCosignSignRequest,
+  recipientPubkey: string,
+  sender: Wallet,
+): Promise<SendPsbtCosignRequestResult> {
+  const plaintext = JSON.stringify(request);
+  const ciphertext = sender.nip44EncryptTo(plaintext, recipientPubkey);
+  const event = await buildEvent({
+    pubkey: sender.publicKey,
+    sign: (digest) => sender.signDigest(digest),
+    kind: PSBT_COSIGN_REQUEST_KIND,
+    content: ciphertext,
+    tags: [['p', recipientPubkey]],
+  });
+  const publish = await transport.publish(event);
+  return { event, publish };
+}
+
+export interface InboxPsbtCosignRequest {
+  request: PsbtCosignSignRequest;
+  senderPubkey: string;
+  receivedAt: number;
+  eventId: string;
+}
+
+export type PsbtCosignRequestHandler = (item: InboxPsbtCosignRequest) => void;
+
+/**
+ * Subscribe to psbt-cosign requests addressed to the wallet's pubkey.
+ * Same shape discipline as subscribeInbox: every event is verified
+ * (signature + id match) before decrypt, and a tampered, mis-routed, or
+ * malformed event is silently dropped rather than surfaced -- a hostile
+ * relay gets no reaction to distinguish "wrong key" from "garbage" from
+ * "not a psbt-cosign event at all."
+ *
+ * Subscribes on every key this wallet has ever used, same reasoning as
+ * subscribeInbox/subscribeChatMessages: a requester who resolved this
+ * wallet's pubkey before a rotation still addresses the request to the
+ * pre-rotation key.
+ */
+export function subscribePsbtCosignRequests(
+  transport: Transport,
+  recipient: Wallet,
+  onRequest: PsbtCosignRequestHandler,
+  options: { since?: number } = {},
+): Subscription {
+  const handler: TransportEventHandler = (event) => {
+    void handleIncoming(event, recipient, onRequest);
+  };
+  return transport.subscribe(
+    {
+      kinds: [PSBT_COSIGN_REQUEST_KIND],
+      '#p': recipient.keyHistory,
+      ...(options.since !== undefined ? { since: options.since } : {}),
+    },
+    handler,
+  );
+}
+
+function isPsbtCosignSignRequest(v: unknown): v is PsbtCosignSignRequest {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return (
+    r.v === 1 &&
+    r.intent === 'psbt-cosign' &&
+    typeof r.origin === 'string' &&
+    typeof r.callback === 'string' &&
+    typeof r.psbt_hex === 'string' &&
+    r.psbt_hex.length > 0 &&
+    !!r.vault_context &&
+    typeof r.vault_context === 'object' &&
+    typeof (r.vault_context as Record<string, unknown>).vault_descriptor === 'string'
+  );
+}
+
+async function handleIncoming(
+  event: TransportEvent,
+  recipient: Wallet,
+  onRequest: PsbtCosignRequestHandler,
+): Promise<void> {
+  if (!(await verifyEvent(event))) return;
+  let plaintext: string;
+  try {
+    plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
+  } catch {
+    return;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(plaintext);
+  } catch {
+    return;
+  }
+  if (!isPsbtCosignSignRequest(parsed)) return;
+  onRequest({
+    request: parsed,
+    senderPubkey: event.pubkey,
+    receivedAt: event.created_at,
+    eventId: event.id,
+  });
+}
