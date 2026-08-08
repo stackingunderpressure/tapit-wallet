@@ -5,10 +5,14 @@ import {
   generateKeypair,
   buildProofOfLife,
   buildDuressFlag,
+  buildDuressClear,
   verifyProofOfLife,
   verifyDuressFlag,
+  verifyDuressClear,
   proofOfLifeDigestFor,
   duressFlagDigestFor,
+  duressClearDigestFor,
+  duressFlagId,
   livenessStateFor,
   groupTally,
   meetsGreenQuorum,
@@ -303,6 +307,175 @@ test('duressFlagDigestFor matches the internal digest (fake wallet signDigest)',
     now: within(0),
   });
   assert.equal(state, 'red');
+});
+
+// --- duress-clear: unanimous-except-subject reset ---------------------------
+
+test('a red flag unanimously cleared by every other group member stops dominating', () => {
+  const subj = generateKeypair();
+  const a = generateKeypair();
+  const b = generateKeypair();
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: a.privateKey, issuedAt });
+  const flagId = duressFlagId(flag);
+  const clearA = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: a.privateKey, issuedAt });
+  const clearB = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: b.privateKey, issuedAt });
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [a.publicKey, b.publicKey],
+    proofOfLife: null,
+    redFlags: [flag],
+    clears: [clearA, clearB],
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  assert.equal(state, 'no-report'); // fully cleared, no fresh heartbeat either
+});
+
+test('a red flag cleared by only SOME of the group still dominates', () => {
+  const subj = generateKeypair();
+  const a = generateKeypair();
+  const b = generateKeypair();
+  const c = generateKeypair();
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: a.privateKey, issuedAt });
+  const flagId = duressFlagId(flag);
+  const clearA = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: a.privateKey, issuedAt });
+  const clearB = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: b.privateKey, issuedAt });
+  // c never clears
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [a.publicKey, b.publicKey, c.publicKey],
+    proofOfLife: null,
+    redFlags: [flag],
+    clears: [clearA, clearB],
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  assert.equal(state, 'red');
+});
+
+test('the flagged subject clearing their own flag never counts, even if they are also in the group', () => {
+  const subj = generateKeypair();
+  const a = generateKeypair();
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: a.privateKey, issuedAt });
+  const flagId = duressFlagId(flag);
+  const selfClear = buildDuressClear({
+    subject: subj.publicKey,
+    flagId,
+    signerPrivateKey: subj.privateKey, // the subject clearing themselves
+    issuedAt,
+  });
+  const clearA = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: a.privateKey, issuedAt });
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [a.publicKey, subj.publicKey], // subject listed in their own group
+    proofOfLife: null,
+    redFlags: [flag],
+    clears: [selfClear, clearA], // only `a` is a REQUIRED (non-subject) clearer
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  assert.equal(state, 'no-report'); // requiredClearers = [a]; a alone is enough
+});
+
+test('a clear vote naming the WRONG flagId does not clear the real flag', () => {
+  const subj = generateKeypair();
+  const a = generateKeypair();
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: a.privateKey, issuedAt });
+  const wrongClear = buildDuressClear({
+    subject: subj.publicKey,
+    flagId: 'ab'.repeat(32), // does not match duressFlagId(flag)
+    signerPrivateKey: a.privateKey,
+    issuedAt,
+  });
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [a.publicKey],
+    proofOfLife: null,
+    redFlags: [flag],
+    clears: [wrongClear],
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  assert.equal(state, 'red');
+});
+
+test('a clear vote from a non-group peer cannot substitute for a real required clearer', () => {
+  const subj = generateKeypair();
+  const a = generateKeypair();
+  const c = generateKeypair(); // second REQUIRED clearer -- never votes
+  const rogue = generateKeypair(); // not in the group at all
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: a.privateKey, issuedAt });
+  const flagId = duressFlagId(flag);
+  const clearA = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: a.privateKey, issuedAt });
+  const clearRogue = buildDuressClear({ subject: subj.publicKey, flagId, signerPrivateKey: rogue.privateKey, issuedAt });
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [a.publicKey, c.publicKey],
+    proofOfLife: null,
+    redFlags: [flag],
+    clears: [clearA, clearRogue],
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  // c (a real required clearer) never voted; rogue's vote does not count
+  // toward the requirement because rogue is not in the group.
+  assert.equal(state, 'red');
+});
+
+test('an empty clears array (default) reproduces pre-clear behavior exactly', () => {
+  const subj = generateKeypair();
+  const peer = generateKeypair();
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: peer.privateKey, issuedAt });
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [peer.publicKey],
+    proofOfLife: null,
+    redFlags: [flag],
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  assert.equal(state, 'red');
+});
+
+test('duressClearDigestFor matches the internal digest (fake wallet signDigest)', () => {
+  const subj = generateKeypair();
+  const a = generateKeypair();
+  const issuedAt = new Date(T0).toISOString();
+  const flag = buildDuressFlag({ subject: subj.publicKey, signerPrivateKey: a.privateKey, issuedAt });
+  const flagId = duressFlagId(flag);
+  const base = { v: 1, kind: 'duress-clear', subject: subj.publicKey, flagId, clearedBy: a.publicKey, issuedAt };
+  const digest = duressClearDigestFor(base);
+  const signature = hex(schnorr.sign(digest, a.privateKey));
+  const clear = { ...base, signature };
+  assert.equal(verifyDuressClear(clear), true);
+  const state = livenessStateFor({
+    subject: subj.publicKey,
+    group: [a.publicKey],
+    proofOfLife: null,
+    redFlags: [flag],
+    clears: [clear],
+    ttlSeconds: TTL,
+    now: within(0),
+  });
+  assert.equal(state, 'no-report');
+});
+
+test('buildDuressClear rejects malformed input', () => {
+  const a = generateKeypair();
+  assert.throws(
+    () => buildDuressClear({ subject: 'short', flagId: 'ab'.repeat(32), signerPrivateKey: a.privateKey }),
+    /subject/,
+  );
+  assert.throws(
+    () => buildDuressClear({ subject: 'ab'.repeat(32), flagId: 'short', signerPrivateKey: a.privateKey }),
+    /flagId/,
+  );
 });
 
 // --- builder input validation ----------------------------------------------

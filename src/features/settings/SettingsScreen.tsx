@@ -21,6 +21,7 @@ import { OrgDeclarationSection } from './OrgDeclarationSection.tsx';
 import { AppearanceSection } from './AppearanceSection.tsx';
 import { QuickShareSection } from './QuickShareSection.tsx';
 import { PublicKeySection } from './PublicKeySection.tsx';
+import { CirclePhraseSection } from '../circle-phrase/CirclePhraseSection.tsx';
 
 function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
   const ok: string[] = [];
@@ -654,6 +655,8 @@ export function SettingsScreen() {
       </section>
 
       <PublicKeySection publicKey={wallet.publicKey} />
+
+      <CirclePhraseSection />
 
       <RotateKeySection wallet={wallet} save={save} refresh={refresh} />
 

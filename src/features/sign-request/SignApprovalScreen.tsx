@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { parsePsbt } from '@dynastytrust/bip341-psbt-signer';
 import { useWallet } from '../wallet-core/useWallet.ts';
@@ -9,6 +9,7 @@ import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
 import { findVaultTrail, requiresCallbackConfirmation } from './vaultTrail.ts';
 import type { SignRequest } from './types.ts';
+import { hasCirclePhrasePair, checkCirclePhrase, type PhraseCheckResult } from '../circle-phrase/circlePhrase.ts';
 
 type State =
   | { kind: 'ready'; request: SignRequest; callbackHost: string }
@@ -55,11 +56,53 @@ export function SignApprovalScreen() {
     }
   });
   const [error, setError] = useState<string | null>(null);
-  // Only meaningful for intent 'psbt-cosign'. Set true only after the
-  // operator affirms the out-of-band callback ritual actually happened —
+  // Only meaningful for intent 'psbt-cosign'. Set true only once the phrase
+  // gate below (or, when no phrase pair is on file, the plain checkbox
+  // fallback) confirms the out-of-band callback ritual actually happened —
   // approveSignRequest re-checks this is true whenever the spend requires
-  // it, so this checkbox is a real gate, not decoration.
+  // it, so this is a real gate, not decoration.
   const [calloutConfirmed, setCalloutConfirmed] = useState(false);
+
+  // Phone-callback phrase gate (2026-08-08 follow-up to the amount-tiered
+  // callback ritual). null while still checking whether this vault even has
+  // a phrase pair on file; true/false once known. A vault with no phrase
+  // pair falls back to the plain "I verified this by phone" checkbox below
+  // — the phrase gate is a strengthening of that ritual, never a dead end
+  // that blocks approval when nothing was ever delivered.
+  const vaultDescriptor =
+    state.kind === 'ready' && state.request.intent === 'psbt-cosign'
+      ? state.request.vault_context.vault_descriptor
+      : null;
+  const [phraseConfigured, setPhraseConfigured] = useState<boolean | null>(null);
+  const [phraseInput, setPhraseInput] = useState('');
+  const [phraseResult, setPhraseResult] = useState<PhraseCheckResult | null>(null);
+  const [phraseBusy, setPhraseBusy] = useState(false);
+
+  useEffect(() => {
+    if (!vaultDescriptor) return;
+    let cancelled = false;
+    setPhraseConfigured(null);
+    void hasCirclePhrasePair(vaultDescriptor).then((has) => {
+      if (!cancelled) setPhraseConfigured(has);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [vaultDescriptor]);
+
+  async function verifyPhrase() {
+    if (!vaultDescriptor || phraseInput.trim().length === 0) return;
+    setPhraseBusy(true);
+    try {
+      const result = await checkCirclePhrase(vaultDescriptor, phraseInput);
+      setPhraseResult(result);
+      setCalloutConfirmed(result === 'normal');
+    } finally {
+      // The entered phrase never lingers past the check that consumed it.
+      setPhraseInput('');
+      setPhraseBusy(false);
+    }
+  }
 
   // psbt-cosign gating (risk register: "no rogue signing" + the amount-
   // tiered callback ritual). Computed on every render from `holdings` so
@@ -187,7 +230,21 @@ export function SignApprovalScreen() {
         </div>
       )}
 
-      {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && (
+      {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseResult === 'duress' && (
+        <div className="mt-4 rounded-md border-2 border-red-400 bg-red-50 p-4">
+          <p className="text-sm font-bold text-red-900">
+            That was the duress phrase. Do not approve this request.
+          </p>
+          <p className="mt-2 text-xs text-red-900">
+            This wallet will not sign. Hang up if you're still on the call. Contact your other
+            circle members or the authorities right now, using a different channel than this
+            app. If your vault has a halt/pause control, use it — that stops every signature on
+            this vault until your circle sorts this out together.
+          </p>
+        </div>
+      )}
+
+      {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseResult !== 'duress' && (
         <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4">
           <p className="text-sm font-semibold text-ink">
             This spend requires a live check before you sign
@@ -198,15 +255,75 @@ export function SignApprovalScreen() {
             out-of-band method (not a reply inside this app) and confirm
             it's really them, calmly and not under duress, before signing.
           </p>
-          <label className="mt-3 flex items-start gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={calloutConfirmed}
-              onChange={(e) => setCalloutConfirmed(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>I verified this by phone (or our agreed method) just now.</span>
-          </label>
+
+          {phraseConfigured === null && (
+            <p className="mt-3 text-xs text-ink/60">Checking for a safety phrase on this vault…</p>
+          )}
+
+          {phraseConfigured === true && (
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-ink/80">
+                The phrase they just told you on the call
+              </label>
+              <div className="mt-1.5 flex gap-2">
+                <input
+                  type="text"
+                  value={phraseInput}
+                  onChange={(e) => {
+                    setPhraseInput(e.target.value);
+                    if (phraseResult) setPhraseResult(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void verifyPhrase();
+                  }}
+                  disabled={phraseBusy}
+                  placeholder="type the phrase"
+                  className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void verifyPhrase()}
+                  disabled={phraseBusy || phraseInput.trim().length === 0}
+                  className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium disabled:opacity-40"
+                >
+                  {phraseBusy ? 'Checking…' : 'Check'}
+                </button>
+              </div>
+              {phraseResult === 'normal' && (
+                <p className="mt-2 text-xs font-medium text-emerald-700">
+                  Phrase confirmed. You can approve below.
+                </p>
+              )}
+              {phraseResult === 'no-match' && (
+                <p className="mt-2 text-xs text-red-700">
+                  That doesn't match. Try again, or hang up and call back on a number you know is
+                  really theirs before trying again.
+                </p>
+              )}
+              {phraseResult === 'locked' && (
+                <p className="mt-2 text-xs text-red-700">
+                  Too many wrong tries — locked for a few minutes. Try again shortly.
+                </p>
+              )}
+            </div>
+          )}
+
+          {phraseConfigured === false && (
+            <>
+              <p className="mt-3 text-xs text-ink/60">
+                No safety phrase is set up for this vault yet — using plain confirmation instead.
+              </p>
+              <label className="mt-2 flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={calloutConfirmed}
+                  onChange={(e) => setCalloutConfirmed(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>I verified this by phone (or our agreed method) just now.</span>
+              </label>
+            </>
+          )}
         </div>
       )}
 

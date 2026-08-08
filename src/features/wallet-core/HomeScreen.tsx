@@ -9,6 +9,7 @@ import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBanner.tsx';
+import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
 import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
@@ -344,6 +345,7 @@ export function HomeScreen() {
       </header>
 
       <IncomingPsbtCosignBanner />
+      <CirclePhraseReceiver />
 
       {/* Backup health sits above the tabs — a warning must never be
           hidden behind a tab the operator might not be looking at. */}

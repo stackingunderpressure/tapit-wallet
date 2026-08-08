@@ -378,7 +378,11 @@ const BUDGETS = [
   // own public key -- the manual fallback every later deep-link automation
   // in the vault-key bridge plan is required to keep working alongside.
   // Measured 13.16KB gz. Bumped 13 -> 13.5KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 13_824, label: 'SettingsScreen' },
+  // 2026-08-08 phone-callback phrase gate: CirclePhraseSection (durable
+  // "which vaults have a safety phrase on file" status view) statically
+  // imports circlePhrase.ts's idb-backed listCirclePhrasePairs. Measured
+  // 13.83KB gz. Bumped 13.5 -> 14KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 14_336, label: 'SettingsScreen' },
   // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
   // DynastyTrust repo): the new psbt-cosign intent statically pulls in
   // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)
