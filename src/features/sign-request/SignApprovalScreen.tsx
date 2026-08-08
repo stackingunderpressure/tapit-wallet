@@ -255,10 +255,10 @@ export function SignApprovalScreen() {
             That was the duress phrase. Do not approve this request.
           </p>
           <p className="mt-2 text-xs text-red-900">
-            This wallet will not sign. Hang up if you're still on the call. Contact your other
-            circle members or the authorities right now, using a different channel than this
-            app. If your vault has a halt/pause control, use it — that stops every signature on
-            this vault until your circle sorts this out together.
+            This wallet will not sign. Hang up if you're still on the call. Contact the other
+            circle members for this vault, or the authorities, right now, using a different
+            channel than this app. If the vault has a halt/pause control, the owner should use
+            it now — that stops every signature on it until the circle sorts this out together.
           </p>
         </div>
       )}
@@ -269,7 +269,7 @@ export function SignApprovalScreen() {
             This spend requires a live check before you sign
           </p>
           <p className="mt-2 text-xs text-ink/80">
-            This amount is above your vault's threshold for extra
+            This spend is above this vault's threshold for extra
             verification. Contact the requester using your predetermined,
             out-of-band method (not a reply inside this app) and confirm
             it's really them, calmly and not under duress, before signing.
