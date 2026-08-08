@@ -9,6 +9,7 @@ import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBanner.tsx';
+import { IncomingVaultMembershipBanner } from '../sign-request/IncomingVaultMembershipBanner.tsx';
 import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
@@ -344,6 +345,7 @@ export function HomeScreen() {
         </div>
       </header>
 
+      <IncomingVaultMembershipBanner />
       <IncomingPsbtCosignBanner />
       <CirclePhraseReceiver />
 
