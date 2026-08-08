@@ -372,7 +372,13 @@ const BUDGETS = [
   // "still waiting on N connections" status line — the outbox import
   // edge + the extra status state/UI ride this chunk since RotateKeySection
   // is statically mounted here. Measured 12.77KB gz. Bumped 12.6 -> 13KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 13_312, label: 'SettingsScreen' },
+  // 2026-08-08 Cut C1 manual half (docs/integration-phase2-vault-key-bridge.md,
+  // DynastyTrust repo): PublicKeySection mounted statically under
+  // AdoptExistingKeySection adds the copy/QR-reveal panel for the wallet's
+  // own public key -- the manual fallback every later deep-link automation
+  // in the vault-key bridge plan is required to keep working alongside.
+  // Measured 13.16KB gz. Bumped 13 -> 13.5KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 13_824, label: 'SettingsScreen' },
   // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
   // DynastyTrust repo): the new psbt-cosign intent statically pulls in
   // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)
