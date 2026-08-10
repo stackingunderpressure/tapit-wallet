@@ -11,6 +11,7 @@ import type {
   TransportEventHandler,
 } from '../transport/transport.ts';
 import type { PsbtCosignSignRequest } from './types.ts';
+import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 
 // Cut B stage B3 (docs/integration-phase1-signin-and-bridge.md, DynastyTrust
 // repo) -- the Nostr half of the multi-member signing bridge. B2 delivers a
@@ -131,25 +132,55 @@ function isPsbtCosignSignRequest(v: unknown): v is PsbtCosignSignRequest {
   );
 }
 
+/** Diagnostic-only -- names which specific check failed. Never used to
+ *  gate real behavior; isPsbtCosignSignRequest above is the actual guard. */
+function describeSchemaFailure(v: unknown): string {
+  if (!v || typeof v !== 'object') return 'payload is not an object';
+  const r = v as Record<string, unknown>;
+  if (r.v !== 1) return `v=${JSON.stringify(r.v)} (expected 1)`;
+  if (r.intent !== 'psbt-cosign') return `intent=${JSON.stringify(r.intent)} (expected 'psbt-cosign')`;
+  if (typeof r.origin !== 'string') return 'origin missing/not a string';
+  if (typeof r.callback !== 'string') return 'callback missing/not a string';
+  if (typeof r.psbt_hex !== 'string' || r.psbt_hex.length === 0) return 'psbt_hex missing/empty';
+  if (!r.vault_context || typeof r.vault_context !== 'object') return 'vault_context missing/not an object';
+  if (typeof (r.vault_context as Record<string, unknown>).vault_descriptor !== 'string') {
+    return 'vault_context.vault_descriptor missing/not a string';
+  }
+  return 'unknown (guard and describe disagree)';
+}
+
 async function handleIncoming(
   event: TransportEvent,
   recipient: Wallet,
   onRequest: PsbtCosignRequestHandler,
 ): Promise<void> {
-  if (!(await verifyEvent(event))) return;
+  if (!(await verifyEvent(event))) {
+    void channelDiagnostics.record('psbt-cosign', 'verify_failed', `pubkey=${event.pubkey?.slice(0, 12)}`);
+    return;
+  }
   let plaintext: string;
   try {
     plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
-  } catch {
+  } catch (e) {
+    void channelDiagnostics.record(
+      'psbt-cosign',
+      'decrypt_failed',
+      `sender=${event.pubkey?.slice(0, 12)} err=${e instanceof Error ? e.message : String(e)}`,
+    );
     return;
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(plaintext);
-  } catch {
+  } catch (e) {
+    void channelDiagnostics.record('psbt-cosign', 'parse_failed', e instanceof Error ? e.message : String(e));
     return;
   }
-  if (!isPsbtCosignSignRequest(parsed)) return;
+  if (!isPsbtCosignSignRequest(parsed)) {
+    void channelDiagnostics.record('psbt-cosign', 'schema_failed', describeSchemaFailure(parsed));
+    return;
+  }
+  void channelDiagnostics.record('psbt-cosign', 'delivered');
   onRequest({
     request: parsed,
     senderPubkey: event.pubkey,

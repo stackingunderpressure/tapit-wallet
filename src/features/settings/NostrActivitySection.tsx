@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { transportActivity, type TransportActivityEntry } from '../transport/transportActivity.ts';
+import { channelDiagnostics, type ChannelDiagnosticEntry } from '../transport/channelDiagnostics.ts';
 
 // Plain-English label for the kind numbers an operator will actually see
 // here -- the raw integer means nothing to a non-technical reader trying
@@ -19,6 +20,14 @@ function kindLabel(kind: number): string {
   return KIND_LABELS[kind] ?? `kind ${kind}`;
 }
 
+const STAGE_LABELS: Record<ChannelDiagnosticEntry['stage'], string> = {
+  verify_failed: 'signature did not verify',
+  decrypt_failed: 'could not decrypt (wrong key?)',
+  parse_failed: 'not valid JSON after decrypt',
+  schema_failed: "decrypted but didn't match the expected shape",
+  delivered: 'delivered to the app',
+};
+
 // Operator, 2026-08-08: "I've never been able to receive a message...
 // nothing is coming through." This surfaces transportActivity.ts's wire-
 // level counter -- every event that actually reached a live subscription,
@@ -31,15 +40,21 @@ function kindLabel(kind: number): string {
 export function NostrActivitySection() {
   const [total, setTotal] = useState<number | null>(null);
   const [recent, setRecent] = useState<TransportActivityEntry[]>([]);
+  const [diagnostics, setDiagnostics] = useState<ChannelDiagnosticEntry[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    const load = () =>
+    const load = () => {
       void transportActivity.summary().then((s) => {
         if (cancelled) return;
         setTotal(s.totalReceived);
         setRecent(s.recent);
       });
+      void channelDiagnostics.recent().then((d) => {
+        if (cancelled) return;
+        setDiagnostics(d);
+      });
+    };
     load();
     // Live-ish without a real subscription: cheap poll while this
     // section is mounted, so watching this screen right after tapping
@@ -75,6 +90,28 @@ export function NostrActivitySection() {
             <div key={i} className="flex items-center justify-between text-xs text-muted">
               <span>{kindLabel(e.kind)}</span>
               <span>{new Date(e.receivedAt).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {diagnostics.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-ink/10 space-y-1.5">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted">
+            Spend-request decode attempts
+          </div>
+          <p className="text-xs text-muted">
+            A spend request can reach this device and still fail to become a banner -- this
+            shows exactly which step it failed at, so it's checkable instead of guessed at.
+          </p>
+          {diagnostics.slice(0, 6).map((d, i) => (
+            <div key={i} className="text-xs">
+              <div className="flex items-center justify-between">
+                <span className={d.stage === 'delivered' ? 'text-green-700' : 'text-red-700'}>
+                  {STAGE_LABELS[d.stage]}
+                </span>
+                <span className="text-muted">{new Date(d.at).toLocaleTimeString()}</span>
+              </div>
+              {d.detail && <div className="text-muted break-all">{d.detail}</div>}
             </div>
           ))}
         </div>
