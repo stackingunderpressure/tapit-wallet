@@ -432,7 +432,21 @@ const BUDGETS = [
 
   // QR feature carries the qrcode library — known heavy.
   { pattern: /^QrShow-.*\.js$/, gz: 15_000, label: 'QrShow (qrcode lib)' },
-  { pattern: /^QrScanModal-.*\.js$/, gz: 3_000, label: 'QrScanModal' },
+  // 2026-08-10 (operator: "Dynasty trust camera works for qr scan flow.
+  // Tap it should too"): QR decode switched from the native
+  // BarcodeDetector API to jsQR. The native API was never actually
+  // available on the operator's device — WebKit has never shipped it,
+  // despite this feature's own manifest previously (and wrongly) claiming
+  // "Safari 17+" support — so every camera-based QR scan silently failed
+  // over to a paste-only fallback on the operator's iPhone. jsQR is a
+  // real, non-trivial pure-JS QR decoder (Reed-Solomon error correction +
+  // binarizer + locator + decoder) and costs real bytes: measured
+  // ~48.5KB gz. This is already as split as it usefully can be — it's
+  // already its own on-demand chunk that only loads the moment the
+  // operator opens a QR-scan modal (ten call sites across the app), not
+  // eagerly bundled into any base chunk; a working camera scanner is
+  // worth this cost. Bumped 3 -> 52KB.
+  { pattern: /^QrScanModal-.*\.js$/, gz: 53_248, label: 'QrScanModal (jsQR decoder)' },
 
   // Shared chunks Vite hoists across multiple importers. Some of
   // these only appear when the import graph hoists them; others
