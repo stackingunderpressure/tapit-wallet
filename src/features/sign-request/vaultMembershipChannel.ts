@@ -125,16 +125,17 @@ async function handleIncoming(
   try {
     plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
   } catch (e) {
-    // See psbtCosignChannel.ts's matching branch for why addressedToMe
-    // is checked here -- same relay-over-delivery question applies to
-    // this channel's identical '#p': recipient.keyHistory filter.
-    const addressedToMe = recipient.keyHistory.some((k) =>
-      eventPTags(event).includes(k.toLowerCase()),
-    );
+    // See psbtCosignChannel.ts's matching branch for the full reasoning
+    // -- same '#p': recipient.keyHistory filter, same question of
+    // whether the matched key is the current active one or a retired
+    // one whose private material might not actually be held anymore.
+    const pTags = eventPTags(event);
+    const addressedToMe = recipient.keyHistory.some((k) => pTags.includes(k.toLowerCase()));
+    const matchedIsCurrentKey = pTags.includes(recipient.publicKey.toLowerCase());
     void channelDiagnostics.record(
       'vault-membership',
       'decrypt_failed',
-      `sender=${event.pubkey?.slice(0, 12)} addressedToMe=${addressedToMe} err=${e instanceof Error ? e.message : String(e)}`,
+      `sender=${event.pubkey?.slice(0, 12)} addressedToMe=${addressedToMe} matchedIsCurrentKey=${matchedIsCurrentKey} keyHistoryLen=${recipient.keyHistory.length} err=${e instanceof Error ? e.message : String(e)}`,
     );
     return;
   }
