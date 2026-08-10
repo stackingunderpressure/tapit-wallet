@@ -890,6 +890,19 @@ const BUDGETS = [
   // headroom for the circle-status polish still to come.
   { pattern: /^LivenessPanel-.*\.js$/, gz: 5_000, label: 'LivenessPanel' },
 
+  // 2026-08-10: the new Inbox screen (operator: "we need an inbox ... one
+  // spot where all of that is") mounts its own useInboxRouting() instance
+  // to route generic envelope arrivals to the same modals HomeScreen uses.
+  // Now that TWO entry points (HomeScreen and InboxScreen) import
+  // useInboxRouting.tsx, Vite pulls it out of HomeScreen's chunk into its
+  // own shared chunk instead of inlining it twice -- a net win (loaded
+  // once, cached across both screens) but it crossed the 3KB catch-all for
+  // the first time. Measured ~7.47KB gz (it owns six lazy modal imports'
+  // wiring, not their bodies). Already as split as it can usefully be —
+  // the modals themselves are already behind React.lazy.
+  { pattern: /^useInboxRouting-.*\.js$/, gz: 8_500, label: 'useInboxRouting (shared by Home + Inbox)' },
+  { pattern: /^InboxScreen-.*\.js$/, gz: 6_500, label: 'InboxScreen' },
+
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.

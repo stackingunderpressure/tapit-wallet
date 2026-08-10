@@ -49,6 +49,11 @@ const JoinScreen = lazy(() =>
     default: m.JoinScreen,
   })),
 );
+const InboxScreen = lazy(() =>
+  import('./features/inbox/InboxScreen.tsx').then((m) => ({
+    default: m.InboxScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -89,6 +94,7 @@ export function App() {
                   <Routes>
                     <Route path="/" element={<HomeScreen />} />
                     <Route path="/settings" element={<SettingsScreen />} />
+                    <Route path="/inbox" element={<InboxScreen />} />
                     <Route path="/entry/:digest" element={<JournalDetail />} />
                     <Route path="/sign" element={<SignApprovalScreen />} />
                     <Route path="/capture" element={<CaptureScreen />} />
