@@ -1,6 +1,7 @@
 import type { Wallet } from 'tapit-attest';
 import {
   buildEvent,
+  eventPTags,
   verifyEvent,
   type TransportEvent,
 } from '../transport/nostrEvent.ts';
@@ -162,10 +163,23 @@ async function handleIncoming(
   try {
     plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
   } catch (e) {
+    // Operator, 2026-08-10: "it has to be that Tapit is not doing
+    // something right once it receives it" -- the relay filter is
+    // '#p': recipient.keyHistory, but relay-side filtering is not
+    // something a client can verify from the outside. addressedToMe
+    // turns "wrong key?" into a checkable fact: true means this event's
+    // own p-tag really does match a key this wallet holds and the
+    // decrypt failure is a real crypto/data mismatch; false means the
+    // relay delivered an event that was never addressed to this wallet
+    // in the first place (someone else's traffic on the same shared
+    // public relay), which is not a bug in Tapit's decrypt path at all.
+    const addressedToMe = recipient.keyHistory.some((k) =>
+      eventPTags(event).includes(k.toLowerCase()),
+    );
     void channelDiagnostics.record(
       'psbt-cosign',
       'decrypt_failed',
-      `sender=${event.pubkey?.slice(0, 12)} err=${e instanceof Error ? e.message : String(e)}`,
+      `sender=${event.pubkey?.slice(0, 12)} addressedToMe=${addressedToMe} err=${e instanceof Error ? e.message : String(e)}`,
     );
     return;
   }

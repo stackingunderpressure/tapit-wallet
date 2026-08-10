@@ -1,5 +1,6 @@
 import type { Wallet } from 'tapit-attest';
 import {
+  eventPTags,
   verifyEvent,
   type TransportEvent,
 } from '../transport/nostrEvent.ts';
@@ -8,6 +9,7 @@ import type {
   Transport,
   TransportEventHandler,
 } from '../transport/transport.ts';
+import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 
 // Cut C3 (docs/build-map-and-cut-lists.md risk register, "no rogue
 // signing"; DynastyTrust repo circle-membership-delivery.ts) -- issuance,
@@ -90,25 +92,64 @@ export function subscribeVaultMembershipRequests(
   );
 }
 
+/** Diagnostic-only -- names which specific check failed. Never used to
+ *  gate real behavior; isVaultMembershipRequestPayload above is the
+ *  actual guard. */
+function describeSchemaFailure(v: unknown): string {
+  if (!v || typeof v !== 'object') return 'payload is not an object';
+  const r = v as Record<string, unknown>;
+  if (r.v !== 1) return `v=${JSON.stringify(r.v)} (expected 1)`;
+  if (typeof r.vault_descriptor !== 'string' || r.vault_descriptor.length === 0) {
+    return 'vault_descriptor missing/empty';
+  }
+  if (typeof r.vault_name !== 'string') return 'vault_name missing/not a string';
+  if (r.role !== 'founder' && r.role !== 'heir' && r.role !== 'protector') {
+    return `role=${JSON.stringify(r.role)} (expected founder/heir/protector)`;
+  }
+  if (!Array.isArray(r.leaf_scripts) || !r.leaf_scripts.every((s) => typeof s === 'string')) {
+    return 'leaf_scripts missing/not a string array';
+  }
+  return 'unknown (guard and describe disagree)';
+}
+
 async function handleIncoming(
   event: TransportEvent,
   recipient: Wallet,
   onRequest: VaultMembershipRequestHandler,
 ): Promise<void> {
-  if (!(await verifyEvent(event))) return;
+  if (!(await verifyEvent(event))) {
+    void channelDiagnostics.record('vault-membership', 'verify_failed', `pubkey=${event.pubkey?.slice(0, 12)}`);
+    return;
+  }
   let plaintext: string;
   try {
     plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
-  } catch {
+  } catch (e) {
+    // See psbtCosignChannel.ts's matching branch for why addressedToMe
+    // is checked here -- same relay-over-delivery question applies to
+    // this channel's identical '#p': recipient.keyHistory filter.
+    const addressedToMe = recipient.keyHistory.some((k) =>
+      eventPTags(event).includes(k.toLowerCase()),
+    );
+    void channelDiagnostics.record(
+      'vault-membership',
+      'decrypt_failed',
+      `sender=${event.pubkey?.slice(0, 12)} addressedToMe=${addressedToMe} err=${e instanceof Error ? e.message : String(e)}`,
+    );
     return;
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(plaintext);
-  } catch {
+  } catch (e) {
+    void channelDiagnostics.record('vault-membership', 'parse_failed', e instanceof Error ? e.message : String(e));
     return;
   }
-  if (!isVaultMembershipRequestPayload(parsed)) return;
+  if (!isVaultMembershipRequestPayload(parsed)) {
+    void channelDiagnostics.record('vault-membership', 'schema_failed', describeSchemaFailure(parsed));
+    return;
+  }
+  void channelDiagnostics.record('vault-membership', 'delivered');
   onRequest({
     request: parsed,
     senderPubkey: event.pubkey,

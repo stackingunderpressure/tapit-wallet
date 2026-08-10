@@ -22,11 +22,20 @@ function kindLabel(kind: number): string {
 
 const STAGE_LABELS: Record<ChannelDiagnosticEntry['stage'], string> = {
   verify_failed: 'signature did not verify',
-  decrypt_failed: 'could not decrypt (wrong key?)',
+  decrypt_failed: 'could not decrypt',
   parse_failed: 'not valid JSON after decrypt',
   schema_failed: "decrypted but didn't match the expected shape",
   delivered: 'delivered to the app',
 };
+
+const CHANNEL_LABELS: Record<string, string> = {
+  'psbt-cosign': 'spend request',
+  'vault-membership': 'vault invite',
+};
+
+function channelLabel(channel: string): string {
+  return CHANNEL_LABELS[channel] ?? channel;
+}
 
 // Operator, 2026-08-08: "I've never been able to receive a message...
 // nothing is coming through." This surfaces transportActivity.ts's wire-
@@ -97,17 +106,21 @@ export function NostrActivitySection() {
       {diagnostics.length > 0 && (
         <div className="mt-5 pt-4 border-t border-ink/10 space-y-1.5">
           <div className="text-xs font-medium uppercase tracking-wide text-muted">
-            Spend-request decode attempts
+            Decode attempts
           </div>
           <p className="text-xs text-muted">
-            A spend request can reach this device and still fail to become a banner -- this
-            shows exactly which step it failed at, so it's checkable instead of guessed at.
+            A spend request or vault invite can reach this device and still fail to become a
+            banner -- this shows exactly which step it failed at. On a decrypt failure,
+            "addressedToMe=true" means this event really was encrypted to a key this wallet
+            holds and the failure is real; "addressedToMe=false" means the event's own address
+            tag does not match any key this wallet has ever used -- someone else's traffic
+            reaching this device, not a decrypt bug.
           </p>
-          {diagnostics.slice(0, 6).map((d, i) => (
+          {diagnostics.slice(0, 8).map((d, i) => (
             <div key={i} className="text-xs">
               <div className="flex items-center justify-between">
                 <span className={d.stage === 'delivered' ? 'text-green-700' : 'text-red-700'}>
-                  {STAGE_LABELS[d.stage]}
+                  {channelLabel(d.channel)} -- {STAGE_LABELS[d.stage]}
                 </span>
                 <span className="text-muted">{new Date(d.at).toLocaleTimeString()}</span>
               </div>
