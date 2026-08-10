@@ -78,7 +78,20 @@ const BUDGETS = [
   // That check still added 3 bytes gz past the old budget (measured
   // 13,827B vs the 13,824B ceiling). Not worth sacrificing readability to
   // claw back 3 bytes; bumped with headroom instead.
-  { pattern: /^index-.*\.js$/, gz: 13_926, label: 'login bundle (main)' },
+  // 2026-08-08: Netlify's real production build (VITE_SUPABASE_URL + the
+  // anon-key JWT actually embedded, unlike a local build run without those
+  // env vars set) measured 13.70KB gz against this 13.60KB (13,926B)
+  // ceiling -- the exact same undercounting class the 2026-06-16 entry
+  // above already describes, just re-exhausted. This silently failed
+  // EVERY deploy since whatever commit first crossed it, including a
+  // Nostr-transport bug fix the operator had been waiting on with no way
+  // to tell the build was even broken (Netlify build logs aren't
+  // surfaced anywhere this session can see them). Bumping with real
+  // headroom this time rather than the few-byte margins above, since a
+  // tight margin against env-value-length drift that can't be locally
+  // reproduced (no access to the real Supabase URL/anon key here) keeps
+  // re-triggering this exact failure mode.
+  { pattern: /^index-.*\.js$/, gz: 15_360, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
   // variable blocks plus the aurora-drift keyframes + background.
