@@ -7,6 +7,7 @@ import type {
   TransportEventHandler,
 } from './transport.ts';
 import type { TransportEvent, TransportFilter } from './nostrEvent.ts';
+import { transportActivity } from './transportActivity.ts';
 
 // Minimal Nostr WebSocket client behind the Transport interface. Speaks
 // NIP-01 — the client sends JSON arrays, the relay sends them back:
@@ -320,6 +321,11 @@ export class NostrTransport implements Transport {
     if (typeof ev.id !== 'string') return;
     if (sub.seen.has(ev.id)) return;
     sub.seen.add(ev.id);
+    // Record BEFORE dispatch, at the wire level -- independent of whatever
+    // any given channel's decrypt/parse pipeline does with it next. See
+    // transportActivity.ts for why this exists one layer below every
+    // channel's own silent-drop-on-malformed handling.
+    void transportActivity.record(typeof ev.kind === 'number' ? ev.kind : -1, relayUrl);
     sub.onEvent(ev);
   }
 

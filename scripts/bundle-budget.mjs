@@ -395,7 +395,12 @@ const BUDGETS = [
   // "which vaults have a safety phrase on file" status view) statically
   // imports circlePhrase.ts's idb-backed listCirclePhrasePairs. Measured
   // 13.83KB gz. Bumped 13.5 -> 14KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 14_336, label: 'SettingsScreen' },
+  // 2026-08-08 NostrActivitySection (operator: "I've never been able to
+  // receive a message... nothing is coming through"): a wire-level
+  // received-event counter + recent list, statically mounted next to the
+  // "Stay reachable" toggle so the diagnostic sits where the network
+  // settings already are. Measured 14.11KB gz. Bumped 14.0 -> 14.5KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 14_848, label: 'SettingsScreen' },
   // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
   // DynastyTrust repo): the new psbt-cosign intent statically pulls in
   // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)

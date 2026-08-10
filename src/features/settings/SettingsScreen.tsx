@@ -22,6 +22,7 @@ import { AppearanceSection } from './AppearanceSection.tsx';
 import { QuickShareSection } from './QuickShareSection.tsx';
 import { PublicKeySection } from './PublicKeySection.tsx';
 import { CirclePhraseSection } from '../circle-phrase/CirclePhraseSection.tsx';
+import { NostrActivitySection } from './NostrActivitySection.tsx';
 
 function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
   const ok: string[] = [];
@@ -450,6 +451,8 @@ export function SettingsScreen() {
           )}
         </div>
       </section>
+
+      <NostrActivitySection />
 
       <OrgDeclarationSection
         wallet={wallet}
