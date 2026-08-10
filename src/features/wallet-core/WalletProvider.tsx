@@ -47,6 +47,7 @@ import { applyOnboardingBundle } from '../onboarding/applyOnboardingBundle.ts';
 import type { WalletConnection } from '../transport/connectWallet.ts';
 import type { InboxEnvelope } from '../transport/encryptedInbox.ts';
 import { useChatTransport } from '../messaging/useChatTransport.ts';
+import { useInboxEnvelopePersistence } from './useInboxEnvelopePersistence.ts';
 
 type Phase =
   | { kind: 'checking' }
@@ -295,11 +296,10 @@ export function WalletProvider({ children }: Props) {
     const wallet = phase.wallet;
     let conn: WalletConnection | null = null;
     let cancelled = false;
-    setInboxEnvelopes([]);
-    // Defensive guard: never call connectWallet with an empty relay
-    // set even if prefs.nostrRelays somehow slipped through empty.
-    // Operator bug 2026-05-30 — see the prefsStore.load recovery
-    // path comment for the race that introduced empty arrays.
+    // inboxEnvelopes NOT reset here — inboxEnvelopeStore persists it now.
+    // Defensive guard: never call connectWallet with an empty relay set
+    // even if prefs.nostrRelays slipped through empty (operator bug
+    // 2026-05-30 — see the prefsStore.load recovery path comment).
     const relays =
       prefs.nostrRelays.length > 0 ? prefs.nostrRelays : DEFAULT_RELAYS;
     const onEnvelope = createInboxEnvelopeHandler({
@@ -358,8 +358,7 @@ export function WalletProvider({ children }: Props) {
       }
       if (conn) conn.close();
       setTransport(null);
-      setInboxEnvelopes([]);
-      // chat threads NOT cleared on transport teardown — messagesStore persists.
+      // chat + inbox envelopes NOT cleared here — both persist to IDB.
       setRelayStatus(null);
     };
     // relaysKey is a stable string derived from prefs.nostrRelays;
@@ -630,6 +629,7 @@ export function WalletProvider({ children }: Props) {
     passphrase,
     holdings,
   });
+  useInboxEnvelopePersistence(ownerId ?? null, passphrase, inboxEnvelopes, setInboxEnvelopes, dismissedRef);
 
   // Compound peer-removal: drop the handshake envelope and clear the
   // chat thread with that peer in one go, then save+refresh once. The

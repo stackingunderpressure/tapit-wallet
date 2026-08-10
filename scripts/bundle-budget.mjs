@@ -224,7 +224,14 @@ const BUDGETS = [
   // its sender. Both the worker lifecycle hook and the outbox/ack
   // primitives live in their own files (transport chunk), so this is
   // just the wiring edge — measured ~290 bytes gz. Bumped 12.5 -> 13KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 13_312, label: 'WalletProvider' },
+  // 2026-08-10: inbox-envelope durability (operator: "it should be
+  // durable ... we should always see them till you delete them"). Wired
+  // useInboxEnvelopePersistence (load-on-unlock + debounce-save against
+  // the new inboxEnvelopeStore, mirroring useChatPersistence's existing
+  // pattern for chat) directly into the provider, the same way chat
+  // persistence already sits in its own file but gets called from here.
+  // Measured ~13.11KB gz. Bumped 13.0 -> 13.5KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 13_824, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
