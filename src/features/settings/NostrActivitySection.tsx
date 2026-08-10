@@ -110,11 +110,7 @@ export function NostrActivitySection() {
           </div>
           <p className="text-xs text-muted">
             A spend request or vault invite can reach this device and still fail to become a
-            banner -- this shows exactly which step it failed at. On a decrypt failure,
-            "addressedToMe=true" means this event really was encrypted to a key this wallet
-            holds and the failure is real; "addressedToMe=false" means the event's own address
-            tag does not match any key this wallet has ever used -- someone else's traffic
-            reaching this device, not a decrypt bug.
+            banner -- this shows exactly which step it failed at.
           </p>
           {diagnostics.slice(0, 8).map((d, i) => (
             <div key={i} className="text-xs">
@@ -125,6 +121,25 @@ export function NostrActivitySection() {
                 <span className="text-muted">{new Date(d.at).toLocaleTimeString()}</span>
               </div>
               {d.detail && <div className="text-muted break-all">{d.detail}</div>}
+              {d.keyMatch && !d.keyMatch.addressedToMe && (
+                <div className="mt-0.5 text-amber-700">
+                  This wasn't addressed to this wallet at all -- most likely someone else's
+                  traffic reaching this device over a shared relay, not a decrypt problem here.
+                </div>
+              )}
+              {d.keyMatch && d.keyMatch.addressedToMe && !d.keyMatch.matchedIsCurrentKey && (
+                <div className="mt-0.5 text-amber-700">
+                  Addressed to an older key this wallet has since rotated away from, not the
+                  current one -- the sender needs to re-copy this wallet's CURRENT public key
+                  from "Your public key" above and use that instead.
+                </div>
+              )}
+              {d.keyMatch && d.keyMatch.addressedToMe && d.keyMatch.matchedIsCurrentKey && (
+                <div className="mt-0.5 text-red-700">
+                  Addressed to this wallet's CURRENT key and still failed -- this is not a
+                  stale-key issue, it needs a closer look at the decrypt path itself.
+                </div>
+              )}
             </div>
           ))}
         </div>

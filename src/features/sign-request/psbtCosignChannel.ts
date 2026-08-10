@@ -163,25 +163,28 @@ async function handleIncoming(
   try {
     plaintext = recipient.nip44DecryptFromAnyKey(event.content, event.pubkey);
   } catch (e) {
-    // Operator, 2026-08-10 (round 2): addressedToMe came back true on
-    // every failure -- the event's own p-tag genuinely matches a public
-    // key in this wallet's keyHistory, ruling out relay over-delivery.
-    // The next open question: does the MATCHING entry correspond to
-    // this wallet's CURRENT active key, or an older (retired) one?
-    // nip44DecryptFromAnyKey tries the current private key first, then
-    // each retired keypair -- if keyHistory (public, derived from the
-    // succession chain) ever grows out of sync with the actual retired
-    // PRIVATE keys held (e.g. a snapshot that recorded a rotation but
-    // not the private material), a public match here would still fail
-    // to decrypt under any key actually tried. matchedIsCurrentKey=true
-    // rules that whole class of bug out; false points straight at it.
+    // Operator, 2026-08-10 (round 3): confirmed addressedToMe=true,
+    // matchedIsCurrentKey=false, repeatedly -- the request is genuinely
+    // addressed to an OLDER identity in this wallet's history, not the
+    // current one, and no key this wallet actually tries can open it.
+    // Ground truth from git history (37468e2, 2026-05-31): Wallet.rotate()
+    // discarded the retiring private key entirely until that fix landed;
+    // its own commit message says plainly "a key already rotated away
+    // BEFORE this fix was discarded at that time and is unrecoverable
+    // except by restoring a pre-rotation backup." A rotation done in the
+    // ~week window rotation was live before that fix (shipped 2026-05-24,
+    // fixed 2026-05-31) permanently lost that key's private half -- no
+    // code change can bring it back. keyMatch is now structured (not just
+    // embedded in `detail`) so NostrActivitySection can render the plain-
+    // language explanation instead of the raw facts.
     const pTags = eventPTags(event);
     const addressedToMe = recipient.keyHistory.some((k) => pTags.includes(k.toLowerCase()));
     const matchedIsCurrentKey = pTags.includes(recipient.publicKey.toLowerCase());
     void channelDiagnostics.record(
       'psbt-cosign',
       'decrypt_failed',
-      `sender=${event.pubkey?.slice(0, 12)} addressedToMe=${addressedToMe} matchedIsCurrentKey=${matchedIsCurrentKey} keyHistoryLen=${recipient.keyHistory.length} err=${e instanceof Error ? e.message : String(e)}`,
+      `sender=${event.pubkey?.slice(0, 12)} err=${e instanceof Error ? e.message : String(e)}`,
+      { addressedToMe, matchedIsCurrentKey },
     );
     return;
   }

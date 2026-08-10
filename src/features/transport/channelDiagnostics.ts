@@ -16,18 +16,39 @@ import { idb } from '../../shared/lib/idb.ts';
 
 export type ChannelStage = 'verify_failed' | 'decrypt_failed' | 'parse_failed' | 'schema_failed' | 'delivered';
 
+/**
+ * Structured facts about a decrypt_failed event's address match, set
+ * alongside the free-form `detail` string. Added 2026-08-10 once
+ * addressedToMe/matchedIsCurrentKey (embedded as plain text in `detail`
+ * up to that point) needed to drive an actual UI decision -- rendering
+ * a plain-language explanation -- rather than just being read by eye.
+ */
+export interface KeyMatchFacts {
+  /** Does the event's own p-tag match ANY key in this wallet's keyHistory? */
+  addressedToMe: boolean;
+  /** Does the matching key equal this wallet's CURRENT active key? False
+   *  means it matched an older identity in keyHistory instead. */
+  matchedIsCurrentKey: boolean;
+}
+
 export interface ChannelDiagnosticEntry {
   channel: string;
   stage: ChannelStage;
   detail: string | null;
   at: string;
+  keyMatch?: KeyMatchFacts;
 }
 
 const KEY = 'channel-diagnostics';
 const MAX_ENTRIES = 30;
 
 export const channelDiagnostics = {
-  async record(channel: string, stage: ChannelStage, detail?: string): Promise<void> {
+  async record(
+    channel: string,
+    stage: ChannelStage,
+    detail?: string,
+    keyMatch?: KeyMatchFacts,
+  ): Promise<void> {
     try {
       const current = (await idb.get<ChannelDiagnosticEntry[]>(KEY)) ?? [];
       const entry: ChannelDiagnosticEntry = {
@@ -35,6 +56,7 @@ export const channelDiagnostics = {
         stage,
         detail: detail ?? null,
         at: new Date().toISOString(),
+        ...(keyMatch ? { keyMatch } : {}),
       };
       await idb.put(KEY, [entry, ...current].slice(0, MAX_ENTRIES));
     } catch {
