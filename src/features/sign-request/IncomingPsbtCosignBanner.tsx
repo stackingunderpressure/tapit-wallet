@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { usePsbtCosignRequests } from './usePsbtCosignRequests.ts';
+import { usePsbtCosignRequests, type PsbtCosignRequestsState } from './usePsbtCosignRequests.ts';
 import type { PsbtCosignSignRequest } from './types.ts';
 
 // Cut B3 slice 2 -- this banner used to be receive-only ("prove the
@@ -14,8 +14,36 @@ function b64UrlEncode(json: unknown): string {
   return btoa(JSON.stringify(json)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+/**
+ * Mounted with no props (HomeScreen) -- owns its own
+ * usePsbtCosignRequests() subscription. Unchanged from before.
+ */
 export function IncomingPsbtCosignBanner() {
-  const { requests, dismiss } = usePsbtCosignRequests();
+  const state = usePsbtCosignRequests();
+  return <IncomingPsbtCosignBannerView state={state} />;
+}
+
+/**
+ * 2026-08-11 fix (operator: "Just received a spend request but didn't
+ * show in inbox"): InboxScreen.tsx calls usePsbtCosignRequests() itself
+ * to know whether to render "Nothing waiting," then ALSO mounted
+ * IncomingPsbtCosignBanner, which called the SAME hook a second time --
+ * two fully independent subscription instances, each running its own
+ * async load-persisted-set-then-subscribe chain on its own schedule.
+ * They could (and did) disagree about what had arrived, or about which
+ * one had actually finished subscribing yet, so the empty-state text
+ * and the real banner could show two different realities on the same
+ * screen at the same time. This is the pure presentational half, taking
+ * already-fetched state as a prop instead of calling the hook itself --
+ * a component can't call a hook conditionally (Rules of Hooks), so the
+ * only way to guarantee exactly ONE subscription on a screen that also
+ * needs the count for its own empty-state text is to split fetching
+ * from rendering like this. InboxScreen.tsx calls the hook once and
+ * passes the result here; the reviewer callback wires here rather than
+ * closing over the parent's `navigate`/`dismiss`.
+ */
+export function IncomingPsbtCosignBannerView({ state }: { state: PsbtCosignRequestsState }) {
+  const { requests, dismiss } = state;
   const navigate = useNavigate();
   if (requests.length === 0) return null;
 

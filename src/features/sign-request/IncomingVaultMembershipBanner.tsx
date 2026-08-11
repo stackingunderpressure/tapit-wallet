@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
-import { useVaultMembershipRequests } from './useVaultMembershipRequests.ts';
+import { useVaultMembershipRequests, type VaultMembershipRequestsState } from './useVaultMembershipRequests.ts';
 import { acceptVaultMembership } from './acceptVaultMembership.ts';
 import { sendVaultMembershipAckOverNostr } from './vaultMembershipAckChannel.ts';
 import type { InboxVaultMembershipRequest } from './vaultMembershipChannel.ts';
@@ -25,10 +25,32 @@ const ROLE_LABEL: Record<string, string> = {
 // -- there are none at this step, it's purely "will you be recorded as a
 // signer on this vault," the same kind of claim any other membership or
 // relationship attestation makes.
+//
+// Mounted with no props (HomeScreen) -- owns its own
+// useVaultMembershipRequests() subscription. Unchanged from before.
 export function IncomingVaultMembershipBanner() {
+  const state = useVaultMembershipRequests();
+  return <IncomingVaultMembershipBannerView state={state} />;
+}
+
+/**
+ * 2026-08-11 fix (operator: "Just received a spend request but didn't
+ * show in inbox" -- the identical bug also applied here): InboxScreen.tsx
+ * calls useVaultMembershipRequests() itself to know whether to render
+ * "Nothing waiting," then ALSO mounted IncomingVaultMembershipBanner,
+ * which called the SAME hook a second time -- two fully independent
+ * subscription instances that could disagree about what had arrived.
+ * This is the pure presentational half, taking already-fetched state as
+ * a prop instead of calling the hook itself (a component can't call a
+ * hook conditionally, so splitting fetch from render is the only way to
+ * guarantee exactly one subscription on a screen that also needs the
+ * count for its own empty-state text). InboxScreen.tsx calls the hook
+ * once and passes the result here.
+ */
+export function IncomingVaultMembershipBannerView({ state }: { state: VaultMembershipRequestsState }) {
   const { wallet, ownerId, save, transport } = useWallet();
   const worker = useAnchorWorker();
-  const { requests, dismiss } = useVaultMembershipRequests();
+  const { requests, dismiss } = state;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

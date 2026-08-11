@@ -7,8 +7,8 @@ import { useInboxRouting } from '../wallet-core/useInboxRouting.tsx';
 import { InboxPanel } from '../transport/InboxPanel.tsx';
 import { usePsbtCosignRequests } from '../sign-request/usePsbtCosignRequests.ts';
 import { useVaultMembershipRequests } from '../sign-request/useVaultMembershipRequests.ts';
-import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBanner.tsx';
-import { IncomingVaultMembershipBanner } from '../sign-request/IncomingVaultMembershipBanner.tsx';
+import { IncomingPsbtCosignBannerView } from '../sign-request/IncomingPsbtCosignBanner.tsx';
+import { IncomingVaultMembershipBannerView } from '../sign-request/IncomingVaultMembershipBanner.tsx';
 import { listCirclePhrasePairs } from '../circle-phrase/circlePhrase.ts';
 import { CirclePhraseSection } from '../circle-phrase/CirclePhraseSection.tsx';
 
@@ -66,12 +66,18 @@ export function InboxScreen() {
   );
   const { routeInbox, modals: inboxModals } = useInboxRouting(orgDeclaration);
 
-  // These two banners already carry their own live subscription and
-  // render nothing when empty -- called again here only to know WHETHER
-  // they'll render anything, so an empty category can say so instead of
-  // showing a bare header with nothing under it.
-  const { requests: spendRequests } = usePsbtCosignRequests();
-  const { requests: membershipRequests } = useVaultMembershipRequests();
+  // 2026-08-11 fix (operator: "Just received a spend request but didn't
+  // show in inbox"): this screen used to call these hooks itself for the
+  // empty-state count AND render IncomingPsbtCosignBanner/
+  // IncomingVaultMembershipBanner, which called the SAME hooks a second
+  // time internally -- two independent subscriptions per category that
+  // could disagree about what had arrived. Fetched exactly once here now;
+  // the *View components below render this same state instead of
+  // fetching their own.
+  const spendRequestsState = usePsbtCosignRequests();
+  const membershipRequestsState = useVaultMembershipRequests();
+  const { requests: spendRequests } = spendRequestsState;
+  const { requests: membershipRequests } = membershipRequestsState;
   const [phraseCount, setPhraseCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -184,7 +190,7 @@ export function InboxScreen() {
         <section className="mt-5">
           <div className="text-xs font-medium uppercase tracking-wide text-muted">Spend requests</div>
           {spendRequests.length === 0 && <p className="mt-2 text-sm text-muted">Nothing waiting.</p>}
-          <IncomingPsbtCosignBanner />
+          <IncomingPsbtCosignBannerView state={spendRequestsState} />
         </section>
       )}
 
@@ -192,7 +198,7 @@ export function InboxScreen() {
         <section className="mt-5">
           <div className="text-xs font-medium uppercase tracking-wide text-muted">Vault invites</div>
           {membershipRequests.length === 0 && <p className="mt-2 text-sm text-muted">Nothing waiting.</p>}
-          <IncomingVaultMembershipBanner />
+          <IncomingVaultMembershipBannerView state={membershipRequestsState} />
         </section>
       )}
 
