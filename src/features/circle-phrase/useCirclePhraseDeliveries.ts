@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
 import { storeCirclePhrasePair } from './circlePhrase.ts';
+import { sendCirclePhraseAckOverNostr } from './circlePhraseAckChannel.ts';
 import type { InboxCirclePhraseDelivery } from './circlePhraseChannel.ts';
 
 // Reads wallet/transport straight from WalletContext instead of being wired
@@ -38,6 +39,20 @@ export function useCirclePhraseDeliveries(): readonly string[] {
           duressPhrase: item.delivery.duress_phrase,
         }).then(() => {
           setSavedVaultNames((prev) => [...prev, item.delivery.vault_name || 'a vault']);
+          // 2026-08-11 (DynastyTrust operator: "message couldn't drop in
+          // that situation") -- confirm real receipt back to the sender
+          // now that the pair is actually stored, not merely that a
+          // relay accepted the original publish. Best-effort, matching
+          // the response-channel precedent (psbtCosignResponseChannel.ts,
+          // vaultMembershipAckChannel.ts): an older delivery with no
+          // response_channel, or no live transport right now, just sends
+          // no ack -- the stored pair itself is unaffected either way.
+          const requesterPubkey = item.delivery.response_channel?.requester_pubkey;
+          if (requesterPubkey && transport && wallet) {
+            void sendCirclePhraseAckOverNostr(transport, wallet, requesterPubkey).catch(() => {
+              // best-effort, see comment above
+            });
+          }
         });
       });
       subRef.current = sub;

@@ -22,6 +22,14 @@ export interface CirclePhraseDelivery {
   vault_name: string;
   normal_phrase: string;
   duress_phrase: string;
+  /** 2026-08-11 (DynastyTrust circle-phrase-delivery.ts follow-up, operator:
+   *  "message couldn't drop in that situation"): where to publish a real
+   *  receipt ack once this pair is successfully stored, so DynastyTrust's
+   *  Send card can show confirmed receipt rather than only relay-publish
+   *  success. Optional -- a delivery from before this field existed
+   *  simply gets no ack sent (useCirclePhraseDeliveries.ts no-ops when
+   *  it's absent), never a schema failure. */
+  response_channel?: { kind: 'nostr'; requester_pubkey: string };
 }
 
 export interface InboxCirclePhraseDelivery {
@@ -58,6 +66,12 @@ export function subscribeCirclePhraseDeliveries(
   );
 }
 
+function isValidResponseChannel(v: unknown): v is { kind: 'nostr'; requester_pubkey: string } {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return r.kind === 'nostr' && typeof r.requester_pubkey === 'string' && r.requester_pubkey.length > 0;
+}
+
 function isCirclePhraseDelivery(v: unknown): v is CirclePhraseDelivery {
   if (!v || typeof v !== 'object') return false;
   const r = v as Record<string, unknown>;
@@ -69,7 +83,8 @@ function isCirclePhraseDelivery(v: unknown): v is CirclePhraseDelivery {
     typeof r.normal_phrase === 'string' &&
     r.normal_phrase.length > 0 &&
     typeof r.duress_phrase === 'string' &&
-    r.duress_phrase.length > 0
+    r.duress_phrase.length > 0 &&
+    (r.response_channel === undefined || isValidResponseChannel(r.response_channel))
   );
 }
 
