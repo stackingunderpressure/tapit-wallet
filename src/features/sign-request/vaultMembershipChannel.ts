@@ -33,7 +33,17 @@ const CHANNEL_NAME = 'vault-membership';
 // defensively type-check content it was never meant to see.
 export const VAULT_MEMBERSHIP_REQUEST_KIND = 9578;
 
-export type VaultMembershipRole = 'founder' | 'heir' | 'protector';
+// 2026-08-11 fix: this used to be 'founder' | 'heir' | 'protector' only,
+// which meant a request naming any of DynastyTrust's other roles
+// (backup, consent, second_heir -- see circle-membership-delivery.ts's
+// VaultMembershipRole in the DynastyTrust repo) failed schema validation
+// below and was silently dropped before it ever reached a banner. Nothing
+// downstream (vaultTrail.ts's isVaultMembership/readVaultMembership/
+// findVaultTrail) has ever cared what the role string says -- it was
+// purely this schema guard narrowing what could arrive at all. Kept as a
+// named union rather than `string` so a genuinely unexpected role still
+// fails loudly instead of being silently accepted.
+export type VaultMembershipRole = 'founder' | 'heir' | 'protector' | 'backup' | 'consent' | 'second_heir';
 
 export interface VaultMembershipRequestPayload {
   v: 1;
@@ -61,7 +71,8 @@ function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershipReques
     typeof r.vault_descriptor === 'string' &&
     r.vault_descriptor.length > 0 &&
     typeof r.vault_name === 'string' &&
-    (r.role === 'founder' || r.role === 'heir' || r.role === 'protector') &&
+    (r.role === 'founder' || r.role === 'heir' || r.role === 'protector' ||
+     r.role === 'backup' || r.role === 'consent' || r.role === 'second_heir') &&
     Array.isArray(r.leaf_scripts) &&
     r.leaf_scripts.every((s) => typeof s === 'string') &&
     (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string')
@@ -106,8 +117,11 @@ function describeSchemaFailure(v: unknown): string {
     return 'vault_descriptor missing/empty';
   }
   if (typeof r.vault_name !== 'string') return 'vault_name missing/not a string';
-  if (r.role !== 'founder' && r.role !== 'heir' && r.role !== 'protector') {
-    return `role=${JSON.stringify(r.role)} (expected founder/heir/protector)`;
+  if (
+    r.role !== 'founder' && r.role !== 'heir' && r.role !== 'protector' &&
+    r.role !== 'backup' && r.role !== 'consent' && r.role !== 'second_heir'
+  ) {
+    return `role=${JSON.stringify(r.role)} (expected founder/heir/protector/backup/consent/second_heir)`;
   }
   if (!Array.isArray(r.leaf_scripts) || !r.leaf_scripts.every((s) => typeof s === 'string')) {
     return 'leaf_scripts missing/not a string array';

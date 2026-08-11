@@ -9,6 +9,9 @@ const ROLE_LABEL: Record<string, string> = {
   founder: 'founder',
   heir: 'heir',
   protector: 'protector',
+  backup: 'backup signer',
+  consent: 'consent signer',
+  second_heir: 'second inheritance heir',
 };
 
 // Cut C3's visible half. A vault owner (DynastyTrust) is asking this
