@@ -13,6 +13,9 @@ import type {
 } from '../transport/transport.ts';
 import type { PsbtCosignSignRequest } from './types.ts';
 import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
+import { processedChannelEventsStore } from '../storage/processedChannelEventsStore.ts';
+
+const CHANNEL_NAME = 'psbt-cosign';
 
 // Cut B stage B3 (docs/integration-phase1-signin-and-bridge.md, DynastyTrust
 // repo) -- the Nostr half of the multi-member signing bridge. B2 delivers a
@@ -155,8 +158,18 @@ async function handleIncoming(
   recipient: Wallet,
   onRequest: PsbtCosignRequestHandler,
 ): Promise<void> {
+  // 2026-08-11 fix: both channels subscribe with no `since` cutoff, so a
+  // relay re-serves its whole matching backlog on every fresh subscribe.
+  // An event already known to fail can never succeed on a retry -- Nostr
+  // events are immutable once signed -- so skip re-attempting verify/
+  // decrypt/parse (and re-logging it) entirely. See
+  // processedChannelEventsStore.ts's header for the full account.
+  if (await processedChannelEventsStore.isKnownFailure(recipient.identity, CHANNEL_NAME, event.id)) {
+    return;
+  }
   if (!(await verifyEvent(event))) {
     void channelDiagnostics.record('psbt-cosign', 'verify_failed', `pubkey=${event.pubkey?.slice(0, 12)}`);
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   let plaintext: string;
@@ -186,6 +199,7 @@ async function handleIncoming(
       `sender=${event.pubkey?.slice(0, 12)} err=${e instanceof Error ? e.message : String(e)}`,
       { addressedToMe, matchedIsCurrentKey },
     );
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   let parsed: unknown;
@@ -193,10 +207,12 @@ async function handleIncoming(
     parsed = JSON.parse(plaintext);
   } catch (e) {
     void channelDiagnostics.record('psbt-cosign', 'parse_failed', e instanceof Error ? e.message : String(e));
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   if (!isPsbtCosignSignRequest(parsed)) {
     void channelDiagnostics.record('psbt-cosign', 'schema_failed', describeSchemaFailure(parsed));
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   void channelDiagnostics.record('psbt-cosign', 'delivered');

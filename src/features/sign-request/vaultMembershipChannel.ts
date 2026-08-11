@@ -10,6 +10,9 @@ import type {
   TransportEventHandler,
 } from '../transport/transport.ts';
 import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
+import { processedChannelEventsStore } from '../storage/processedChannelEventsStore.ts';
+
+const CHANNEL_NAME = 'vault-membership';
 
 // Cut C3 (docs/build-map-and-cut-lists.md risk register, "no rogue
 // signing"; DynastyTrust repo circle-membership-delivery.ts) -- issuance,
@@ -117,8 +120,17 @@ async function handleIncoming(
   recipient: Wallet,
   onRequest: VaultMembershipRequestHandler,
 ): Promise<void> {
+  // 2026-08-11 fix: see psbtCosignChannel.ts's matching check and
+  // processedChannelEventsStore.ts's header -- both channels subscribe
+  // with no `since` cutoff, so a relay re-serves its whole matching
+  // backlog on every fresh subscribe, and an event already known to fail
+  // can never succeed on a retry.
+  if (await processedChannelEventsStore.isKnownFailure(recipient.identity, CHANNEL_NAME, event.id)) {
+    return;
+  }
   if (!(await verifyEvent(event))) {
     void channelDiagnostics.record('vault-membership', 'verify_failed', `pubkey=${event.pubkey?.slice(0, 12)}`);
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   let plaintext: string;
@@ -137,6 +149,7 @@ async function handleIncoming(
       `sender=${event.pubkey?.slice(0, 12)} err=${e instanceof Error ? e.message : String(e)}`,
       { addressedToMe, matchedIsCurrentKey },
     );
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   let parsed: unknown;
@@ -144,10 +157,12 @@ async function handleIncoming(
     parsed = JSON.parse(plaintext);
   } catch (e) {
     void channelDiagnostics.record('vault-membership', 'parse_failed', e instanceof Error ? e.message : String(e));
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   if (!isVaultMembershipRequestPayload(parsed)) {
     void channelDiagnostics.record('vault-membership', 'schema_failed', describeSchemaFailure(parsed));
+    void processedChannelEventsStore.markFailure(recipient.identity, CHANNEL_NAME, event.id);
     return;
   }
   void channelDiagnostics.record('vault-membership', 'delivered');
