@@ -52,6 +52,14 @@ export interface VaultMembershipRequestPayload {
   role: VaultMembershipRole;
   leaf_scripts: string[];
   high_value_threshold_sats?: string;
+  /** 2026-08-11 (DynastyTrust circle-membership-delivery.ts follow-up):
+   *  where to publish an accept/decline acknowledgment, so DynastyTrust's
+   *  "Circle membership" tab can show real, durable status instead of
+   *  only a send button. Optional -- a request from before this field
+   *  existed simply gets no ack sent (acceptVaultMembership.ts/
+   *  IncomingVaultMembershipBanner.tsx no-op when it's absent), never a
+   *  schema failure. */
+  response_channel?: { kind: 'nostr'; requester_pubkey: string };
 }
 
 export interface InboxVaultMembershipRequest {
@@ -62,6 +70,12 @@ export interface InboxVaultMembershipRequest {
 }
 
 export type VaultMembershipRequestHandler = (item: InboxVaultMembershipRequest) => void;
+
+function isValidResponseChannel(v: unknown): v is { kind: 'nostr'; requester_pubkey: string } {
+  if (!v || typeof v !== 'object') return false;
+  const r = v as Record<string, unknown>;
+  return r.kind === 'nostr' && typeof r.requester_pubkey === 'string' && r.requester_pubkey.length > 0;
+}
 
 function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershipRequestPayload {
   if (!v || typeof v !== 'object') return false;
@@ -75,7 +89,8 @@ function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershipReques
      r.role === 'backup' || r.role === 'consent' || r.role === 'second_heir') &&
     Array.isArray(r.leaf_scripts) &&
     r.leaf_scripts.every((s) => typeof s === 'string') &&
-    (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string')
+    (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string') &&
+    (r.response_channel === undefined || isValidResponseChannel(r.response_channel))
   );
 }
 
@@ -125,6 +140,9 @@ function describeSchemaFailure(v: unknown): string {
   }
   if (!Array.isArray(r.leaf_scripts) || !r.leaf_scripts.every((s) => typeof s === 'string')) {
     return 'leaf_scripts missing/not a string array';
+  }
+  if (r.response_channel !== undefined && !isValidResponseChannel(r.response_channel)) {
+    return 'response_channel present but malformed';
   }
   return 'unknown (guard and describe disagree)';
 }

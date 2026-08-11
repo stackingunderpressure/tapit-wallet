@@ -930,7 +930,15 @@ const BUDGETS = [
   // the first time. Measured ~7.47KB gz (it owns six lazy modal imports'
   // wiring, not their bodies). Already as split as it can usefully be —
   // the modals themselves are already behind React.lazy.
-  { pattern: /^useInboxRouting-.*\.js$/, gz: 8_500, label: 'useInboxRouting (shared by Home + Inbox)' },
+  //
+  // 2026-08-11: the "return roster" ack round trip (new
+  // vaultMembershipAckChannel.ts, response_channel field on
+  // VaultMembershipRequestPayload) pulled a few more bytes into
+  // IncomingVaultMembershipBanner.tsx's chunk graph, which this shared
+  // chunk transitively wires up. A few bytes past the prior 8.5KB
+  // budget; bumped 8.5 -> 8.7KiB rather than splitting further, since
+  // the modal wiring is already as lazy as it can usefully be.
+  { pattern: /^useInboxRouting-.*\.js$/, gz: 8_700, label: 'useInboxRouting (shared by Home + Inbox)' },
   { pattern: /^InboxScreen-.*\.js$/, gz: 6_500, label: 'InboxScreen' },
 
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so

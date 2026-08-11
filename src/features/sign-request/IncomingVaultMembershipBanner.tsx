@@ -3,6 +3,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { useVaultMembershipRequests } from './useVaultMembershipRequests.ts';
 import { acceptVaultMembership } from './acceptVaultMembership.ts';
+import { sendVaultMembershipAckOverNostr } from './vaultMembershipAckChannel.ts';
 import type { InboxVaultMembershipRequest } from './vaultMembershipChannel.ts';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -25,13 +26,31 @@ const ROLE_LABEL: Record<string, string> = {
 // signer on this vault," the same kind of claim any other membership or
 // relationship attestation makes.
 export function IncomingVaultMembershipBanner() {
-  const { wallet, ownerId, save } = useWallet();
+  const { wallet, ownerId, save, transport } = useWallet();
   const worker = useAnchorWorker();
   const { requests, dismiss } = useVaultMembershipRequests();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (requests.length === 0) return null;
+
+  // 2026-08-11 (DynastyTrust's "return roster" request): tells the
+  // vault owner's "Circle membership" tab a real decision was made,
+  // instead of the grant sitting at 'sent' forever with no signal
+  // either way. Best-effort -- an older request that predates
+  // response_channel, or a wallet with no live transport right now,
+  // simply sends no ack; the membership itself (held or not) is
+  // unaffected either way, and DynastyTrust's tab just keeps showing
+  // 'sent' until a later ack (if any) lands.
+  async function sendAck(item: InboxVaultMembershipRequest, decision: 'accepted' | 'declined') {
+    const requesterPubkey = item.request.response_channel?.requester_pubkey;
+    if (!requesterPubkey || !transport) return;
+    try {
+      await sendVaultMembershipAckOverNostr(transport, wallet, decision, requesterPubkey);
+    } catch {
+      // best-effort, see comment above
+    }
+  }
 
   async function accept(item: InboxVaultMembershipRequest) {
     setError(null);
@@ -47,6 +66,7 @@ export function IncomingVaultMembershipBanner() {
         worker,
       );
       dismiss(item.eventId);
+      void sendAck(item, 'accepted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not hold this membership.');
     } finally {
@@ -56,6 +76,7 @@ export function IncomingVaultMembershipBanner() {
 
   function decline(item: InboxVaultMembershipRequest) {
     dismiss(item.eventId);
+    void sendAck(item, 'declined');
   }
 
   return (
