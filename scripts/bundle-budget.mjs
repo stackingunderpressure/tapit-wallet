@@ -943,7 +943,15 @@ const BUDGETS = [
   // chunk transitively wires up. A few bytes past the prior 8.5KB
   // budget; bumped 8.5 -> 8.7KiB rather than splitting further, since
   // the modal wiring is already as lazy as it can usefully be.
-  { pattern: /^useInboxRouting-.*\.js$/, gz: 8_700, label: 'useInboxRouting (shared by Home + Inbox)' },
+  //
+  // 2026-08-11, later same session: requestHistoryStore.ts (the "keep
+  // past spend requests / vault invites until you delete them" fix) adds
+  // a persisted-history read/write path to both
+  // usePsbtCosignRequests.ts and useVaultMembershipRequests.ts, which
+  // this chunk shares with InboxScreen.tsx's new RequestHistoryList
+  // rendering. Measured 9,031 bytes gz; bumped 8.7 -> 9.0KiB with a
+  // little headroom rather than re-bumping again for rounding.
+  { pattern: /^useInboxRouting-.*\.js$/, gz: 9_200, label: 'useInboxRouting (shared by Home + Inbox)' },
   { pattern: /^InboxScreen-.*\.js$/, gz: 6_500, label: 'InboxScreen' },
 
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so

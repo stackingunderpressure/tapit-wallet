@@ -11,6 +11,7 @@ import { IncomingPsbtCosignBannerView } from '../sign-request/IncomingPsbtCosign
 import { IncomingVaultMembershipBannerView } from '../sign-request/IncomingVaultMembershipBanner.tsx';
 import { listCirclePhrasePairs } from '../circle-phrase/circlePhrase.ts';
 import { CirclePhraseSection } from '../circle-phrase/CirclePhraseSection.tsx';
+import type { RequestHistoryEntry, RequestHistoryStatus } from '../storage/requestHistoryStore.ts';
 
 // Operator, 2026-08-10: "We need an inbox. They're all incoming request
 // over Noster goes to and you can see if it's a text message from a beer
@@ -45,6 +46,60 @@ function shortKey(hex: string): string {
 
 function timeAgo(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toLocaleString();
+}
+
+const PSBT_STATUS_LABEL: Partial<Record<RequestHistoryStatus, string>> = { reviewed: 'Reviewed' };
+const MEMBERSHIP_STATUS_LABEL: Partial<Record<RequestHistoryStatus, string>> = {
+  accepted: 'Accepted',
+  declined: 'Declined',
+};
+
+/**
+ * 2026-08-11 (operator: "still not showing past things in the inbox") --
+ * the "till you delete it" history row, shared by Spend requests and
+ * Vault invites. Only ever shown for HANDLED entries (status !==
+ * 'pending') -- a still-pending item already renders in the live
+ * banner above; showing it twice would be confusing, not helpful.
+ */
+function RequestHistoryList({
+  history,
+  statusLabel,
+  onDelete,
+}: {
+  history: readonly RequestHistoryEntry[];
+  statusLabel: Partial<Record<RequestHistoryStatus, string>>;
+  onDelete: (id: string) => void;
+}) {
+  const past = history.filter((h) => h.status !== 'pending');
+  if (past.length === 0) return null;
+  return (
+    <ul className="mt-3 space-y-2">
+      {past.map((h) => (
+        <li
+          key={h.id}
+          className="flex items-center justify-between gap-2 rounded-lg border border-ink/10 bg-white px-3 py-2 text-sm"
+        >
+          <div className="min-w-0">
+            <div className="font-medium truncate">
+              {h.summary}
+              {h.detail ? ` -- ${h.detail}` : ''}
+            </div>
+            <div className="mt-0.5 text-xs text-muted">
+              {statusLabel[h.status] ?? h.status} -- {timeAgo(h.respondedAt ?? h.receivedAt)}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onDelete(h.id)}
+            className="shrink-0 min-h-11 flex items-center justify-center rounded-md border border-ink/15 px-3 text-xs font-medium hover:bg-ink/5"
+            aria-label="Delete from history"
+          >
+            Delete
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function InboxScreen() {
@@ -191,6 +246,11 @@ export function InboxScreen() {
           <div className="text-xs font-medium uppercase tracking-wide text-muted">Spend requests</div>
           {spendRequests.length === 0 && <p className="mt-2 text-sm text-muted">Nothing waiting.</p>}
           <IncomingPsbtCosignBannerView state={spendRequestsState} />
+          <RequestHistoryList
+            history={spendRequestsState.history}
+            statusLabel={PSBT_STATUS_LABEL}
+            onDelete={spendRequestsState.deleteHistoryEntry}
+          />
         </section>
       )}
 
@@ -199,6 +259,11 @@ export function InboxScreen() {
           <div className="text-xs font-medium uppercase tracking-wide text-muted">Vault invites</div>
           {membershipRequests.length === 0 && <p className="mt-2 text-sm text-muted">Nothing waiting.</p>}
           <IncomingVaultMembershipBannerView state={membershipRequestsState} />
+          <RequestHistoryList
+            history={membershipRequestsState.history}
+            statusLabel={MEMBERSHIP_STATUS_LABEL}
+            onDelete={membershipRequestsState.deleteHistoryEntry}
+          />
         </section>
       )}
 

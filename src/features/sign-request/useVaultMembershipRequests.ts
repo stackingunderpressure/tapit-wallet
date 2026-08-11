@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
 import { findVaultTrail } from './vaultTrail.ts';
 import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
+import { requestHistoryStore, type RequestHistoryEntry } from '../storage/requestHistoryStore.ts';
 import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 import type { InboxVaultMembershipRequest } from './vaultMembershipChannel.ts';
 
@@ -11,8 +12,17 @@ export interface VaultMembershipRequestsState {
    *  declined -- there is no server-side ack to wait for; the caller
    *  (the banner) drives dismissal directly. Also persists the
    *  vault+role as durably answered so a relay replay or a fresh
-   *  request for the same offer never resurfaces it. */
-  dismiss: (eventId: string) => void;
+   *  request for the same offer never resurfaces it. `outcome` records
+   *  which actually happened, for the history entry below. */
+  dismiss: (eventId: string, outcome: 'accepted' | 'declined') => void;
+  /** Every membership request ever seen, pending or handled, newest
+   *  first -- operator, 2026-08-11: "still not showing past things in
+   *  the inbox." Keyed by vault+role (not event id) so a resend of the
+   *  same offer updates the same row instead of duplicating it. */
+  history: readonly RequestHistoryEntry[];
+  /** Permanently remove one row from history -- the only thing that
+   *  should ever make a handled request disappear for good. */
+  deleteHistoryEntry: (id: string) => void;
 }
 
 const NAMESPACE = 'vault-membership';
@@ -47,6 +57,15 @@ const dismissKey = (vaultDescriptor: string, role: string) => `${vaultDescriptor
 // reconnect. Collapsed into one effect that awaits the load before ever
 // subscribing, so no event is handled until the persisted set is
 // actually populated.
+//
+// 2026-08-11 follow-up, same session (operator: "still not showing past
+// things in the inbox"): dismiss() used to only ever persist a bare
+// dismissed-KEY -- the request's actual content (vault name, role, when)
+// was thrown away the moment it was answered, with no way to ever see
+// it again, unlike Messages/Family & circle which already got a "keep
+// until you delete it" fix on 2026-08-10. requestHistoryStore.ts closes
+// that gap the same way; `dismiss` now takes the real outcome instead
+// of silently discarding it.
 export function useVaultMembershipRequests(): VaultMembershipRequestsState {
   const ctx = useContext(WalletContext);
   const transport = ctx?.transport ?? null;
@@ -54,18 +73,24 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
   const ownerId = ctx?.ownerId ?? null;
   const holdings = ctx?.holdings ?? [];
   const [requests, setRequests] = useState<readonly InboxVaultMembershipRequest[]>([]);
+  const [history, setHistory] = useState<readonly RequestHistoryEntry[]>([]);
   const subRef = useRef<{ close(): void } | null>(null);
   const dismissedRef = useRef<Set<string>>(new Set());
   const holdingsRef = useRef(holdings);
   holdingsRef.current = holdings;
+  const itemsRef = useRef<Map<string, InboxVaultMembershipRequest>>(new Map());
 
   useEffect(() => {
     if (!transport || !wallet || !ownerId) return;
     let cancelled = false;
     setRequests([]);
-    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
+    void Promise.all([
+      dismissedRequestsStore.load(ownerId, NAMESPACE),
+      requestHistoryStore.load(ownerId, NAMESPACE),
+    ]).then(([set, loadedHistory]) => {
       if (cancelled) return;
       dismissedRef.current = set;
+      setHistory(loadedHistory);
       return import('./vaultMembershipChannel.ts');
     }).then((mod) => {
       if (cancelled || !mod) return;
@@ -79,6 +104,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
         // memberships held" list -- it's exactly the second case, made
         // checkable and revocable instead of only inferable from here.
         const key = dismissKey(item.request.vault_descriptor, item.request.role);
+        itemsRef.current.set(key, item);
         if (dismissedRef.current.has(key)) {
           void channelDiagnostics.record(
             'vault-membership',
@@ -99,6 +125,16 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
           if (prev.some((r) => r.eventId === item.eventId)) return prev;
           return [...prev, item];
         });
+        void requestHistoryStore.upsert(ownerId, NAMESPACE, {
+          id: key,
+          summary: item.request.vault_name || 'A vault',
+          detail: item.request.role,
+          receivedAt: item.receivedAt,
+          status: 'pending',
+          respondedAt: null,
+        }).then((next) => {
+          if (!cancelled) setHistory(next);
+        });
       });
       subRef.current = sub;
     });
@@ -111,17 +147,31 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
     };
   }, [transport, wallet, ownerId]);
 
-  const dismiss = (eventId: string) => {
+  const dismiss = (eventId: string, outcome: 'accepted' | 'declined') => {
     setRequests((prev) => {
       const target = prev.find((r) => r.eventId === eventId);
       if (target && ownerId) {
         const key = dismissKey(target.request.vault_descriptor, target.request.role);
         dismissedRef.current.add(key);
         void dismissedRequestsStore.add(ownerId, NAMESPACE, key);
+        const item = itemsRef.current.get(key);
+        void requestHistoryStore.upsert(ownerId, NAMESPACE, {
+          id: key,
+          summary: item?.request.vault_name || 'A vault',
+          detail: item?.request.role ?? '',
+          receivedAt: item?.receivedAt ?? Math.floor(Date.now() / 1000),
+          status: outcome,
+          respondedAt: Math.floor(Date.now() / 1000),
+        }).then((next) => setHistory(next));
       }
       return prev.filter((r) => r.eventId !== eventId);
     });
   };
 
-  return { requests, dismiss };
+  const deleteHistoryEntry = (id: string) => {
+    if (!ownerId) return;
+    void requestHistoryStore.remove(ownerId, NAMESPACE, id).then((next) => setHistory(next));
+  };
+
+  return { requests, dismiss, history, deleteHistoryEntry };
 }

@@ -87,7 +87,7 @@ export function IncomingVaultMembershipBannerView({ state }: { state: VaultMembe
         },
         worker,
       );
-      dismiss(item.eventId);
+      dismiss(item.eventId, 'accepted');
       void sendAck(item, 'accepted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not hold this membership.');
@@ -97,7 +97,7 @@ export function IncomingVaultMembershipBannerView({ state }: { state: VaultMembe
   }
 
   function decline(item: InboxVaultMembershipRequest) {
-    dismiss(item.eventId);
+    dismiss(item.eventId, 'declined');
     void sendAck(item, 'declined');
   }
 
