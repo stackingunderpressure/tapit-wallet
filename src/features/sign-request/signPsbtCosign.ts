@@ -50,7 +50,7 @@ export function signPsbtCosign(
   const trail = findVaultTrail(
     holdings,
     request.vault_context.vault_descriptor,
-    wallet.publicKey,
+    wallet.keyHistory,
   );
   if (!trail) {
     throw new PsbtCosignError(

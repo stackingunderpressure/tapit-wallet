@@ -124,7 +124,7 @@ export function SignApprovalScreen() {
     | null = null;
   if (state.kind === 'ready' && state.request.intent === 'psbt-cosign') {
     const req = state.request;
-    const trail = findVaultTrail(holdings, req.vault_context.vault_descriptor, wallet.publicKey);
+    const trail = findVaultTrail(holdings, req.vault_context.vault_descriptor, wallet.keyHistory);
     if (!trail) {
       psbtCosignGate = { kind: 'no-trail' };
     } else {

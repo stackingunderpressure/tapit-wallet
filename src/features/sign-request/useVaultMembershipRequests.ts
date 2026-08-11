@@ -85,7 +85,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
           );
           return;
         }
-        if (findVaultTrail(holdingsRef.current, item.request.vault_descriptor, wallet.publicKey)) {
+        if (findVaultTrail(holdingsRef.current, item.request.vault_descriptor, wallet.keyHistory)) {
           void channelDiagnostics.record(
             'vault-membership',
             'suppressed',

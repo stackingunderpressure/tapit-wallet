@@ -97,6 +97,23 @@ describe('findVaultTrail', () => {
     const wallet = Wallet.generate();
     expect(findVaultTrail([], DESCRIPTOR, wallet.publicKey)).toBeNull();
   });
+
+  it('2026-08-11 fix: finds a membership signed by a since-rotated-away key when the current key history is passed', () => {
+    // Simulates a wallet that accepted a vault-membership BEFORE rotating:
+    // the attestation is permanently signed by the retired key, but the
+    // wallet's continuous identity now includes both keys in its history.
+    const retiredKey = Wallet.generate();
+    const att = membershipAttestation(retiredKey);
+    const currentKey = Wallet.generate();
+    // Old behavior (single current key only) would miss this -- proving
+    // the bug the fix closes.
+    expect(findVaultTrail([att], DESCRIPTOR, currentKey.publicKey)).toBeNull();
+    // Fixed behavior: passing the full key history (current + retired)
+    // finds it.
+    expect(
+      findVaultTrail([att], DESCRIPTOR, [currentKey.publicKey, retiredKey.publicKey]),
+    ).not.toBeNull();
+  });
 });
 
 describe('isKnownLeafScript', () => {

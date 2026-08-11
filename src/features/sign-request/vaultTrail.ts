@@ -96,20 +96,31 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
  * actually named as a signer at vault-creation time, not merely holding
  * a copy of someone else's membership. Returns null when no such trail
  * exists; the caller MUST refuse to sign in that case.
+ *
+ * `myKeys` is the wallet's full key history (current key plus every
+ * retired key), not just today's key. 2026-08-11 fix: this used to take
+ * a single `myPubkey` string, so a membership accepted BEFORE a key
+ * rotation stopped being recognized as "signed by me" the moment the
+ * wallet rotated -- the attestation's signature is fixed at whatever key
+ * signed it at accept time, but the caller's current key had moved on.
+ * Same failure class already fixed elsewhere in this codebase for the
+ * family tree and messaging (a rotated identity is still the same
+ * continuous owner; every "is this really me" check needs to look across
+ * the whole history, not just today).
  */
 export function findVaultTrail(
   holdings: readonly Attestation[],
   vaultDescriptor: string,
-  myPubkey: string,
+  myKeys: string | readonly string[],
 ): Attestation | null {
-  const me = myPubkey.toLowerCase();
+  const mine = new Set((typeof myKeys === 'string' ? [myKeys] : myKeys).map((k) => k.toLowerCase()));
   for (const att of holdings) {
     if (!isVaultMembership(att)) continue;
     const view = readVaultMembership(att);
     if (view.vaultDescriptor !== vaultDescriptor) continue;
     if (!verifyEnvelope(att).valid) continue;
     const signedByMe = (att.signatures ?? []).some(
-      (s) => s.signer.toLowerCase() === me,
+      (s) => mine.has(s.signer.toLowerCase()),
     );
     if (!signedByMe) continue;
     return att;
