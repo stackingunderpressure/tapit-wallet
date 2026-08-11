@@ -140,7 +140,12 @@ const BUDGETS = [
   // content scanner emits each into the single sheet; they are intrinsic to
   // the plain-English state presentation and cannot be code-split out. Measured
   // ~8.61KB gz, a handful of bytes past the prior budget. Bumped 8.6 -> 8.7KiB.
-  { pattern: /^index-.*\.css$/, gz: 8_909, label: 'css' },
+  // 2026-08-11: CirclePhraseReceiver.tsx's new dismiss button added a
+  // handful of new utility classes (relative, absolute, pr-10, the
+  // top/right positioning, hover:text-emerald-900) to the single
+  // Tailwind sheet -- intrinsic to the fix, not code-splittable out.
+  // A few bytes past the prior budget; bumped 8.7 -> 8.8KiB.
+  { pattern: /^index-.*\.css$/, gz: 9_011, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
