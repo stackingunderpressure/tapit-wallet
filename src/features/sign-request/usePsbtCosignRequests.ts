@@ -1,6 +1,23 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
+import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
 import type { InboxPsbtCosignRequest } from './psbtCosignChannel.ts';
+
+export interface PsbtCosignRequestsState {
+  requests: readonly InboxPsbtCosignRequest[];
+  /** Remove a request from view once the operator has opened it to
+   *  review (IncomingPsbtCosignBanner's "Review" button) or explicitly
+   *  declined it, and persist that so a relay replay or a remount never
+   *  brings it back looking unhandled. Operator, 2026-08-11: "Even after
+   *  doing the work the tab acts like its first time." Before this, a
+   *  psbt-cosign request was never removed from state at all -- Review
+   *  only navigated to /sign, it never called anything resembling
+   *  dismiss -- so it kept showing "1 incoming spend request" no matter
+   *  how many times it had already been opened and signed. */
+  dismiss: (eventId: string) => void;
+}
+
+const NAMESPACE = 'psbt-cosign';
 
 // Cut B stage B3, slice 1 -- "prove the pipe": subscribe to incoming
 // psbt-cosign requests over Nostr and hold them in state. Reads
@@ -9,19 +26,28 @@ import type { InboxPsbtCosignRequest } from './psbtCosignChannel.ts';
 // 800-line hard limit (per this repo's manifest doctrine), so this
 // composes as an independent consumer of the existing context rather
 // than growing that file by a single line.
-//
-// Deliberately receive-only for now: this does NOT sign, does NOT call
-// approveSignRequest, does NOT respond. That's the next slice, once the
-// pipe itself is proven to actually deliver a request from DynastyTrust
-// into a real Tapit inbox. Every rail from the risk register still
-// applies once signing is wired in -- nothing here weakens it, because
-// nothing here touches a key.
-export function usePsbtCosignRequests(): readonly InboxPsbtCosignRequest[] {
+export function usePsbtCosignRequests(): PsbtCosignRequestsState {
   const ctx = useContext(WalletContext);
   const transport = ctx?.transport ?? null;
   const wallet = ctx?.wallet ?? null;
+  const ownerId = ctx?.ownerId ?? null;
   const [requests, setRequests] = useState<readonly InboxPsbtCosignRequest[]>([]);
   const subRef = useRef<{ close(): void } | null>(null);
+  const dismissedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!ownerId) {
+      dismissedRef.current = new Set();
+      return;
+    }
+    let alive = true;
+    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
+      if (alive) dismissedRef.current = set;
+    });
+    return () => {
+      alive = false;
+    };
+  }, [ownerId]);
 
   useEffect(() => {
     if (!transport || !wallet) return;
@@ -30,6 +56,7 @@ export function usePsbtCosignRequests(): readonly InboxPsbtCosignRequest[] {
     void import('./psbtCosignChannel.ts').then(({ subscribePsbtCosignRequests }) => {
       if (cancelled) return;
       const sub = subscribePsbtCosignRequests(transport, wallet, (item) => {
+        if (dismissedRef.current.has(item.eventId)) return;
         setRequests((prev) => {
           if (prev.some((r) => r.eventId === item.eventId)) return prev;
           return [...prev, item];
@@ -46,5 +73,13 @@ export function usePsbtCosignRequests(): readonly InboxPsbtCosignRequest[] {
     };
   }, [transport, wallet]);
 
-  return requests;
+  const dismiss = (eventId: string) => {
+    if (ownerId) {
+      dismissedRef.current.add(eventId);
+      void dismissedRequestsStore.add(ownerId, NAMESPACE, eventId);
+    }
+    setRequests((prev) => prev.filter((r) => r.eventId !== eventId));
+  };
+
+  return { requests, dismiss };
 }

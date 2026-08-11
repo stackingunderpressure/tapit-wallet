@@ -70,7 +70,7 @@ export function InboxScreen() {
   // render nothing when empty -- called again here only to know WHETHER
   // they'll render anything, so an empty category can say so instead of
   // showing a bare header with nothing under it.
-  const spendRequests = usePsbtCosignRequests();
+  const { requests: spendRequests } = usePsbtCosignRequests();
   const { requests: membershipRequests } = useVaultMembershipRequests();
   const [phraseCount, setPhraseCount] = useState<number | null>(null);
   useEffect(() => {

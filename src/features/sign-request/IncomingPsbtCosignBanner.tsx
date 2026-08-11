@@ -15,15 +15,21 @@ function b64UrlEncode(json: unknown): string {
 }
 
 export function IncomingPsbtCosignBanner() {
-  const requests = usePsbtCosignRequests();
+  const { requests, dismiss } = usePsbtCosignRequests();
   const navigate = useNavigate();
   if (requests.length === 0) return null;
 
-  function review(senderPubkey: string, request: PsbtCosignSignRequest) {
+  function review(eventId: string, senderPubkey: string, request: PsbtCosignSignRequest) {
     const withResponseChannel: PsbtCosignSignRequest = {
       ...request,
       response_channel: { kind: 'nostr', requester_pubkey: senderPubkey },
     };
+    // Dismiss on open, not just on sign/decline -- the operator has now
+    // seen and is acting on this request; SignApprovalScreen owns every
+    // actual signing gate from here, this banner's only job was getting
+    // them there. Persisted so it stays gone even after a remount or a
+    // relay replay (operator: "acts like it's first time").
+    dismiss(eventId);
     navigate(`/sign?req=${b64UrlEncode(withResponseChannel)}`);
   }
 
@@ -48,7 +54,7 @@ export function IncomingPsbtCosignBanner() {
             </div>
             <button
               type="button"
-              onClick={() => review(r.senderPubkey, r.request)}
+              onClick={() => review(r.eventId, r.senderPubkey, r.request)}
               className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-paper text-xs font-medium"
             >
               Review
