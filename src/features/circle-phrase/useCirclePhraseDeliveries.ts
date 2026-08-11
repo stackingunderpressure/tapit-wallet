@@ -46,6 +46,18 @@ export interface CirclePhraseDeliveriesState {
 // permanent FAILURES, never successes), it's correct here to persist the
 // success case forever: once an event id is processed, replaying it can
 // never do anything different.
+//
+// 2026-08-11 follow-up, same session (operator: "Still saying safety
+// phrases received every time I open app so annoying") -- the first cut
+// of this fix had a real race: loading the persisted set from IDB
+// (dismissedRequestsStore.load, a real disk read) and opening the Nostr
+// subscription were two INDEPENDENT effects with no ordering between
+// them. A relay typically answers a backlog re-fetch fast enough to beat
+// the IDB read every single time, so every replayed event arrived while
+// processedRef was still its initial empty Set -- the persisted dedupe
+// existed but was consistently too late to matter. Fixed by collapsing
+// both into one effect that AWAITS the load before ever subscribing, so
+// no event can be handled until the persisted set is actually populated.
 export function useCirclePhraseDeliveries(): CirclePhraseDeliveriesState {
   const ctx = useContext(WalletContext);
   const transport = ctx?.transport ?? null;
@@ -56,24 +68,15 @@ export function useCirclePhraseDeliveries(): CirclePhraseDeliveriesState {
   const processedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!ownerId) {
-      processedRef.current = new Set();
-      return;
-    }
-    let alive = true;
-    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
-      if (alive) processedRef.current = set;
-    });
-    return () => {
-      alive = false;
-    };
-  }, [ownerId]);
-
-  useEffect(() => {
     if (!transport || !wallet || !ownerId) return;
     let cancelled = false;
-    void import('./circlePhraseChannel.ts').then(({ subscribeCirclePhraseDeliveries }) => {
+    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
       if (cancelled) return;
+      processedRef.current = set;
+      return import('./circlePhraseChannel.ts');
+    }).then((mod) => {
+      if (cancelled || !mod) return;
+      const { subscribeCirclePhraseDeliveries } = mod;
       const sub = subscribeCirclePhraseDeliveries(transport, wallet, (item: InboxCirclePhraseDelivery) => {
         if (processedRef.current.has(item.eventId)) return;
         processedRef.current.add(item.eventId);

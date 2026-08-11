@@ -27,6 +27,16 @@ const NAMESPACE = 'psbt-cosign';
 // 800-line hard limit (per this repo's manifest doctrine), so this
 // composes as an independent consumer of the existing context rather
 // than growing that file by a single line.
+//
+// 2026-08-11 fix (found while diagnosing the identical bug reported for
+// circle-phrase, "Still saying safety phrases received every time I
+// open app"): loading the persisted dismiss set and opening the Nostr
+// subscription used to be two INDEPENDENT effects with no ordering
+// between them -- a relay backlog replay routinely beats the IDB read,
+// so an already-reviewed/declined request could resurface looking
+// unhandled on a fast reconnect. Collapsed into one effect that awaits
+// the load before ever subscribing, so no event is handled until the
+// persisted set is actually populated.
 export function usePsbtCosignRequests(): PsbtCosignRequestsState {
   const ctx = useContext(WalletContext);
   const transport = ctx?.transport ?? null;
@@ -37,25 +47,16 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
   const dismissedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!ownerId) {
-      dismissedRef.current = new Set();
-      return;
-    }
-    let alive = true;
-    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
-      if (alive) dismissedRef.current = set;
-    });
-    return () => {
-      alive = false;
-    };
-  }, [ownerId]);
-
-  useEffect(() => {
-    if (!transport || !wallet) return;
+    if (!transport || !wallet || !ownerId) return;
     let cancelled = false;
     setRequests([]);
-    void import('./psbtCosignChannel.ts').then(({ subscribePsbtCosignRequests }) => {
+    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
       if (cancelled) return;
+      dismissedRef.current = set;
+      return import('./psbtCosignChannel.ts');
+    }).then((mod) => {
+      if (cancelled || !mod) return;
+      const { subscribePsbtCosignRequests } = mod;
       const sub = subscribePsbtCosignRequests(transport, wallet, (item) => {
         if (dismissedRef.current.has(item.eventId)) {
           // 2026-08-11, operator: "still not seeing in inbox or banner"
@@ -88,7 +89,7 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
         subRef.current = null;
       }
     };
-  }, [transport, wallet]);
+  }, [transport, wallet, ownerId]);
 
   const dismiss = (eventId: string) => {
     if (ownerId) {

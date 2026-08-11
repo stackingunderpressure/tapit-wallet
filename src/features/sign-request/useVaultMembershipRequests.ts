@@ -36,6 +36,17 @@ const dismissKey = (vaultDescriptor: string, role: string) => `${vaultDescriptor
 // EVERY dismissal (accept or decline) keyed by vault+role rather than
 // event id, since a relay resend or a fresh request for the same offer
 // can arrive under a new event id but is still "already answered."
+//
+// 2026-08-11 fix (found while diagnosing the identical bug reported for
+// circle-phrase, "Still saying safety phrases received every time I
+// open app"): loading the persisted dismiss set and opening the Nostr
+// subscription used to be two INDEPENDENT effects with no ordering
+// between them -- a relay backlog replay routinely beats the IDB read,
+// so a DECLINED request (findVaultTrail's holdings check only catches
+// the accepted case) could resurface looking unanswered on a fast
+// reconnect. Collapsed into one effect that awaits the load before ever
+// subscribing, so no event is handled until the persisted set is
+// actually populated.
 export function useVaultMembershipRequests(): VaultMembershipRequestsState {
   const ctx = useContext(WalletContext);
   const transport = ctx?.transport ?? null;
@@ -49,25 +60,16 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
   holdingsRef.current = holdings;
 
   useEffect(() => {
-    if (!ownerId) {
-      dismissedRef.current = new Set();
-      return;
-    }
-    let alive = true;
-    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
-      if (alive) dismissedRef.current = set;
-    });
-    return () => {
-      alive = false;
-    };
-  }, [ownerId]);
-
-  useEffect(() => {
-    if (!transport || !wallet) return;
+    if (!transport || !wallet || !ownerId) return;
     let cancelled = false;
     setRequests([]);
-    void import('./vaultMembershipChannel.ts').then(({ subscribeVaultMembershipRequests }) => {
+    void dismissedRequestsStore.load(ownerId, NAMESPACE).then((set) => {
       if (cancelled) return;
+      dismissedRef.current = set;
+      return import('./vaultMembershipChannel.ts');
+    }).then((mod) => {
+      if (cancelled || !mod) return;
+      const { subscribeVaultMembershipRequests } = mod;
       const sub = subscribeVaultMembershipRequests(transport, wallet, (item) => {
         // 2026-08-11, operator: "still not seeing in inbox or banner" --
         // vaultMembershipChannel.ts already logged 'delivered' for this
@@ -107,7 +109,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
         subRef.current = null;
       }
     };
-  }, [transport, wallet]);
+  }, [transport, wallet, ownerId]);
 
   const dismiss = (eventId: string) => {
     setRequests((prev) => {
