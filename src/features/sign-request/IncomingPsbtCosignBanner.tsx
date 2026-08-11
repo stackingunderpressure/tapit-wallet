@@ -55,7 +55,7 @@ export function IncomingPsbtCosignBanner() {
             <button
               type="button"
               onClick={() => review(r.eventId, r.senderPubkey, r.request)}
-              className="shrink-0 rounded-md bg-ink px-3 py-1.5 text-paper text-xs font-medium"
+              className="shrink-0 min-h-11 flex items-center justify-center rounded-md bg-ink px-4 text-paper text-xs font-medium"
             >
               Review
             </button>

@@ -102,7 +102,7 @@ export function IncomingVaultMembershipBanner() {
               type="button"
               onClick={() => void accept(item)}
               disabled={busyId === item.eventId}
-              className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
+              className="flex-1 min-h-11 flex items-center justify-center rounded-md bg-ink text-paper text-sm font-medium disabled:opacity-40"
             >
               {busyId === item.eventId ? 'Holding…' : 'Accept membership'}
             </button>
@@ -110,7 +110,7 @@ export function IncomingVaultMembershipBanner() {
               type="button"
               onClick={() => decline(item)}
               disabled={busyId === item.eventId}
-              className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
+              className="min-h-11 flex items-center justify-center rounded-md border border-ink/15 px-4 text-sm font-medium hover:bg-ink/5"
             >
               Decline
             </button>

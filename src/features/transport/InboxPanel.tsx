@@ -124,7 +124,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             <button
               type="button"
               onClick={() => onOpen(item.envelope, route.action, item.senderPubkey)}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${isFresh ? 'bg-fresh-accent-primary text-fresh-text-inverse' : 'bg-ink text-paper hover:bg-ink/90'}`}
+              className={`min-h-11 flex items-center justify-center rounded-md px-3 text-xs font-medium transition active:animate-fresh-press motion-reduce:active:animate-none ${isFresh ? 'bg-fresh-accent-primary text-fresh-text-inverse' : 'bg-ink text-paper hover:bg-ink/90'}`}
             >
               {route.label}
             </button>
@@ -132,7 +132,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
             <button
               type="button"
               onClick={onCopy}
-              className={`rounded-md px-3 py-2 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
+              className={`min-h-11 flex items-center justify-center rounded-md px-3 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
             >
               {copied ? 'Copied' : 'Copy'}
             </button>
@@ -140,7 +140,7 @@ function InboxRow({ item, senderLabel, onDismiss, onOpen }: RowProps) {
           <button
             type="button"
             onClick={() => onDismiss(item.eventId)}
-            className={`rounded-md px-3 py-2 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
+            className={`min-h-11 flex items-center justify-center rounded-md px-3 text-xs font-medium border ${isFresh ? 'border-fresh-surface-edge text-fresh-text-primary bg-fresh-surface-glass' : 'border-ink/15 hover:bg-ink/5'}`}
             aria-label="Dismiss"
           >
             Dismiss

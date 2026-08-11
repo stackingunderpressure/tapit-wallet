@@ -140,7 +140,7 @@ export function InboxScreen() {
             role="tab"
             aria-selected={category === c.id}
             onClick={() => setCategory(c.id)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium border transition ${
+            className={`shrink-0 min-h-11 flex items-center justify-center rounded-full px-4 text-xs font-medium border transition ${
               category === c.id
                 ? 'bg-ink text-paper border-ink'
                 : 'border-ink/15 text-muted hover:bg-ink/5'

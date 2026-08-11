@@ -25,7 +25,7 @@ export function CirclePhraseReceiver() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="absolute right-3 top-3 text-emerald-700/70 hover:text-emerald-900"
+        className="absolute right-0 top-0 w-11 h-11 flex items-center justify-center text-lg text-emerald-700/70 hover:text-emerald-900"
       >
         &times;
       </button>
