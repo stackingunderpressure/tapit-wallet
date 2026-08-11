@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
 import { findVaultTrail } from './vaultTrail.ts';
 import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
+import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 import type { InboxVaultMembershipRequest } from './vaultMembershipChannel.ts';
 
 export interface VaultMembershipRequestsState {
@@ -68,9 +69,28 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
     void import('./vaultMembershipChannel.ts').then(({ subscribeVaultMembershipRequests }) => {
       if (cancelled) return;
       const sub = subscribeVaultMembershipRequests(transport, wallet, (item) => {
+        // 2026-08-11, operator: "still not seeing in inbox or banner" --
+        // vaultMembershipChannel.ts already logged 'delivered' for this
+        // event; both reasons it can still never become a banner are
+        // recorded here, since neither is visible from the channel's own
+        // decrypt-stage log. See NostrActivitySection.tsx's new "Vault
+        // memberships held" list -- it's exactly the second case, made
+        // checkable and revocable instead of only inferable from here.
         const key = dismissKey(item.request.vault_descriptor, item.request.role);
-        if (dismissedRef.current.has(key)) return;
+        if (dismissedRef.current.has(key)) {
+          void channelDiagnostics.record(
+            'vault-membership',
+            'suppressed',
+            `vault=${item.request.vault_name} role=${item.request.role} already declined earlier for this vault+role`,
+          );
+          return;
+        }
         if (findVaultTrail(holdingsRef.current, item.request.vault_descriptor, wallet.publicKey)) {
+          void channelDiagnostics.record(
+            'vault-membership',
+            'suppressed',
+            `vault=${item.request.vault_name} role=${item.request.role} -- this wallet ALREADY holds an accepted membership for this vault (see "Vault memberships held" above to revoke it if that's stale)`,
+          );
           return;
         }
         setRequests((prev) => {

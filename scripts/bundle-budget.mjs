@@ -407,7 +407,16 @@ const BUDGETS = [
   // received-event counter + recent list, statically mounted next to the
   // "Stay reachable" toggle so the diagnostic sits where the network
   // settings already are. Measured 14.11KB gz. Bumped 14.0 -> 14.5KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 14_848, label: 'SettingsScreen' },
+  // 2026-08-11 (operator: "still not seeing in inbox or banner"):
+  // NostrActivitySection gained a "Vault memberships held" list (reads
+  // WalletContext.holdings, filters via vaultTrail.ts's isVaultMembership,
+  // revokes via wallet.unhold + tapit-attest's envelopeId) plus a new
+  // 'suppressed' diagnostic stage recorded by both request hooks -- a
+  // request can decrypt fine and still never become a banner (already
+  // dismissed, or this wallet already holds a membership for that vault),
+  // which used to be invisible from this screen entirely. Measured
+  // 14.89KB gz. Bumped 14.5 -> 15.25KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 15_616, label: 'SettingsScreen' },
   // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
   // DynastyTrust repo): the new psbt-cosign intent statically pulls in
   // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)

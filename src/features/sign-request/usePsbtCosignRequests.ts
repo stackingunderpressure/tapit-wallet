@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
 import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
+import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 import type { InboxPsbtCosignRequest } from './psbtCosignChannel.ts';
 
 export interface PsbtCosignRequestsState {
@@ -56,7 +57,23 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
     void import('./psbtCosignChannel.ts').then(({ subscribePsbtCosignRequests }) => {
       if (cancelled) return;
       const sub = subscribePsbtCosignRequests(transport, wallet, (item) => {
-        if (dismissedRef.current.has(item.eventId)) return;
+        if (dismissedRef.current.has(item.eventId)) {
+          // 2026-08-11, operator: "still not seeing in inbox or banner"
+          // -- psbtCosignChannel.ts already logged 'delivered' for this
+          // event; the reason it never becomes a banner is HERE, not a
+          // decrypt problem. Most likely cause: this is the same signed
+          // event (Nostr events are content-addressed, so a relay resend
+          // or DynastyTrust's outbox retry carries the identical id) as
+          // one already reviewed/declined earlier -- a genuinely new
+          // spend request needs a freshly built PSBT on DynastyTrust's
+          // side, not a resend of an old one.
+          void channelDiagnostics.record(
+            'psbt-cosign',
+            'suppressed',
+            `eventId=${item.eventId.slice(0, 12)} already dismissed (reviewed/declined earlier) -- this is the SAME signed request being redelivered, not a new one`,
+          );
+          return;
+        }
         setRequests((prev) => {
           if (prev.some((r) => r.eventId === item.eventId)) return prev;
           return [...prev, item];

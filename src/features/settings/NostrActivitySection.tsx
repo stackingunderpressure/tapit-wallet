@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { envelopeId, type Attestation } from 'tapit-attest';
+import { WalletContext } from '../wallet-core/WalletContext.ts';
 import { transportActivity, type TransportActivityEntry } from '../transport/transportActivity.ts';
 import { channelDiagnostics, type ChannelDiagnosticEntry } from '../transport/channelDiagnostics.ts';
+import { isVaultMembership, readVaultMembership } from '../sign-request/vaultTrail.ts';
 
 // Plain-English label for the kind numbers an operator will actually see
 // here -- the raw integer means nothing to a non-technical reader trying
@@ -26,6 +29,7 @@ const STAGE_LABELS: Record<ChannelDiagnosticEntry['stage'], string> = {
   parse_failed: 'not valid JSON after decrypt',
   schema_failed: "decrypted but didn't match the expected shape",
   delivered: 'delivered to the app',
+  suppressed: 'decrypted fine, but not shown as a banner',
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -47,9 +51,38 @@ function channelLabel(channel: string): string {
 // reachability); nonzero-but-nothing-shows-up-elsewhere means the problem
 // is downstream, in one specific channel's decrypt/parse/routing.
 export function NostrActivitySection() {
+  const ctx = useContext(WalletContext);
   const [total, setTotal] = useState<number | null>(null);
   const [recent, setRecent] = useState<TransportActivityEntry[]>([]);
   const [diagnostics, setDiagnostics] = useState<ChannelDiagnosticEntry[]>([]);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  // Operator, 2026-08-11: "still not seeing in inbox or banner." A vault
+  // invite that decrypts fine ("delivered to the app" above) can still
+  // never become a banner if this wallet ALREADY holds an accepted
+  // membership for that same vault -- useVaultMembershipRequests.ts's
+  // findVaultTrail check suppresses every future request for a vault it
+  // already has a trail for, by design (re-accepting would be pointless).
+  // There was previously no way to see -- let alone undo -- that: Cut
+  // C3's own manifest note named "no later revoke my membership
+  // affordance" as an explicit gap. This surfaces exactly what's held so
+  // a stale accept (e.g. from testing, before a key rotation) can be told
+  // apart from "nothing is actually wrong" and cleared if it's the cause.
+  const vaultMemberships = (ctx?.holdings ?? [])
+    .filter(isVaultMembership)
+    .map((att) => ({ att, view: readVaultMembership(att) }));
+
+  async function revoke(att: Attestation) {
+    if (!ctx) return;
+    const id = envelopeId(att);
+    setRevokingId(id);
+    try {
+      await ctx.wallet.unhold(id);
+      await ctx.refresh();
+    } finally {
+      setRevokingId(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -115,7 +148,15 @@ export function NostrActivitySection() {
           {diagnostics.slice(0, 8).map((d, i) => (
             <div key={i} className="text-xs">
               <div className="flex items-center justify-between">
-                <span className={d.stage === 'delivered' ? 'text-green-700' : 'text-red-700'}>
+                <span
+                  className={
+                    d.stage === 'delivered'
+                      ? 'text-green-700'
+                      : d.stage === 'suppressed'
+                        ? 'text-amber-700'
+                        : 'text-red-700'
+                  }
+                >
                   {channelLabel(d.channel)} -- {STAGE_LABELS[d.stage]}
                 </span>
                 <span className="text-muted">{new Date(d.at).toLocaleTimeString()}</span>
@@ -151,6 +192,43 @@ export function NostrActivitySection() {
           it -- check "Stay reachable" above is on, and confirm the sender's message
           actually reached at least one relay on their end.
         </p>
+      )}
+      {vaultMemberships.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-ink/10 space-y-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted">
+            Vault memberships held
+          </div>
+          <p className="text-xs text-muted">
+            A vault this wallet already holds an accepted membership for will never show a
+            new invite banner again -- that's by design, but it means a stale accept (from
+            testing, or from before a key rotation) can silently hide every future invite for
+            that same vault. Revoke here if one of these shouldn't still be held.
+          </p>
+          {vaultMemberships.map(({ att, view }) => {
+            const id = envelopeId(att);
+            return (
+              <div key={id} className="flex items-center justify-between gap-2 text-xs">
+                <div className="min-w-0">
+                  <div className="truncate">
+                    {view.vaultName || view.vaultDescriptor.slice(0, 24) + '…'}{' '}
+                    <span className="text-muted">({view.role})</span>
+                  </div>
+                  <div className="text-muted">
+                    accepted {new Date(att.issuedAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-red-700 underline disabled:opacity-50"
+                  disabled={revokingId === id}
+                  onClick={() => void revoke(att)}
+                >
+                  {revokingId === id ? 'Revoking…' : 'Revoke'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
     </section>
   );

@@ -14,7 +14,13 @@ import { idb } from '../../shared/lib/idb.ts';
  * instead of guessed at from source code alone.
  */
 
-export type ChannelStage = 'verify_failed' | 'decrypt_failed' | 'parse_failed' | 'schema_failed' | 'delivered';
+export type ChannelStage =
+  | 'verify_failed'
+  | 'decrypt_failed'
+  | 'parse_failed'
+  | 'schema_failed'
+  | 'delivered'
+  | 'suppressed';
 
 /**
  * Structured facts about a decrypt_failed event's address match, set
