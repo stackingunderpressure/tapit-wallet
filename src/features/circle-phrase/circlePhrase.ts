@@ -1,6 +1,8 @@
 import { pbkdf2 } from '@noble/hashes/pbkdf2';
 import { sha256 } from '@noble/hashes/sha256';
+import { encrypt, decrypt } from 'tapit-attest';
 import { idb } from '../../shared/lib/idb.ts';
+import { remoteCirclePhraseStore } from './remoteCirclePhraseStore.ts';
 
 // Local storage + verification for a Tapit Circle vault's phone-callback
 // phrase pair (docs/2026-08-callback-verification-and-amount-tiers.md and
@@ -239,4 +241,78 @@ export async function checkCirclePhrase(
   }
   await writeRegistry(registry);
   return 'no-match';
+}
+
+// -- Cloud sync -----------------------------------------------------
+//
+// 2026-08-13 addition (operator: "Anything that saved like that should
+// be saved into the supabase not just the local storage of that
+// browser... everything should be encrypted on the storage so that if
+// you switch browsers or phones or whatever you didn't lose anything").
+// Before this, the registry above lived ONLY in this browser's
+// IndexedDB -- a lost phone or a different browser genuinely lost
+// every phrase pair this wallet had ever received, no way back, which
+// is exactly the "terrible design" the operator flagged. Mirrors
+// mediaStore.ts / storage/remoteStore.ts's proven pattern rather than
+// inventing a new one: encrypt with tapit-attest's own encrypt()
+// (same primitive, same passphrase-derived key as the wallet blob and
+// media backups) before anything leaves the device, push the whole
+// registry as one ciphertext blob to Supabase (circle_phrase_backups,
+// RLS-scoped to the owner, same shape as wallet_blobs), and merge
+// remote back into local per-vault-entry on restore using each
+// entry's own receivedAt as the last-write-wins timestamp -- a whole-
+// blob overwrite would risk clobbering a locally-fresher entry for a
+// DIFFERENT vault just because the remote blob as a whole happened to
+// be newer in aggregate.
+//
+// Callers are expected to pass ownerId/passphrase from WalletContext
+// (both already held there for exactly this class of operation, same
+// as mediaStore's callers) and to treat failures as best-effort --
+// same non-blocking posture mediaStore.put uses for its own remote
+// mirror: local storage is authoritative and never depends on the
+// network succeeding.
+
+/** Encrypt the whole local registry and push it to Supabase, replacing
+ *  whatever was there before. Call after any local write worth
+ *  preserving (storeCirclePhrasePair). Throws on failure -- callers
+ *  should catch and log, not let a remote hiccup surface as a user-
+ *  facing error, matching mediaStore.put's posture. */
+export async function pushCirclePhraseBackup(ownerId: string, passphrase: string): Promise<void> {
+  const registry = await readRegistry();
+  const bytes = utf8(JSON.stringify(registry));
+  const blob = encrypt(bytes, passphrase);
+  await remoteCirclePhraseStore.put(ownerId, blob);
+}
+
+/** Pull the remote registry (if any), decrypt it, and merge it into
+ *  local storage -- per vault entry, keeping whichever side's
+ *  receivedAt is newer. A no-op if there is no remote backup yet, or
+ *  if the remote blob fails to decrypt (wrong passphrase for that
+ *  row, or corrupt data) -- either way, local storage is left exactly
+ *  as it was rather than risking a bad merge. Safe to call on every
+ *  wallet unlock; cheap when there is nothing new to merge in. */
+export async function restoreCirclePhraseBackup(ownerId: string, passphrase: string): Promise<void> {
+  const remoteBlob = await remoteCirclePhraseStore.get(ownerId);
+  if (!remoteBlob) return;
+
+  let remoteRegistry: Registry;
+  try {
+    const bytes = decrypt(remoteBlob, passphrase);
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (!parsed || typeof parsed !== 'object') return;
+    remoteRegistry = parsed as Registry;
+  } catch {
+    return;
+  }
+
+  const local = await readRegistry();
+  let changed = false;
+  for (const [key, remoteEntry] of Object.entries(remoteRegistry)) {
+    const localEntry = local[key];
+    if (!localEntry || Date.parse(remoteEntry.receivedAt) > Date.parse(localEntry.receivedAt)) {
+      local[key] = remoteEntry;
+      changed = true;
+    }
+  }
+  if (changed) await writeRegistry(local);
 }

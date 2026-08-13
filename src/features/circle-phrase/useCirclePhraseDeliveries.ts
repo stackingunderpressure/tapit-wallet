@@ -1,6 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
-import { storeCirclePhrasePair } from './circlePhrase.ts';
+import { storeCirclePhrasePair, pushCirclePhraseBackup, restoreCirclePhraseBackup } from './circlePhrase.ts';
 import { sendCirclePhraseAckOverNostr } from './circlePhraseAckChannel.ts';
 import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
 import type { InboxCirclePhraseDelivery } from './circlePhraseChannel.ts';
@@ -63,9 +63,24 @@ export function useCirclePhraseDeliveries(): CirclePhraseDeliveriesState {
   const transport = ctx?.transport ?? null;
   const wallet = ctx?.wallet ?? null;
   const ownerId = ctx?.ownerId ?? null;
+  const passphrase = ctx?.passphrase ?? null;
+  const cloudSync = ctx?.prefs?.cloudSync ?? false;
   const [savedVaultNames, setSavedVaultNames] = useState<readonly string[]>([]);
   const subRef = useRef<{ close(): void } | null>(null);
   const processedRef = useRef<Set<string>>(new Set());
+
+  // Pull any cloud-backed-up phrase pairs down on every unlock, merging
+  // them into local storage -- the "switched phones and lost every
+  // phrase pair" case (2026-08-13, operator: "if you switch browsers or
+  // phones or whatever you didn't lose anything"). Best-effort: a
+  // failure here just means this device stays on whatever it already
+  // has locally, same as mediaStore's remote-fallback posture.
+  useEffect(() => {
+    if (!ownerId || !passphrase || !cloudSync) return;
+    void restoreCirclePhraseBackup(ownerId, passphrase).catch((err) => {
+      console.warn('restoreCirclePhraseBackup failed; using local registry as-is', err);
+    });
+  }, [ownerId, passphrase, cloudSync]);
 
   useEffect(() => {
     if (!transport || !wallet || !ownerId) return;
@@ -88,6 +103,17 @@ export function useCirclePhraseDeliveries(): CirclePhraseDeliveriesState {
           duressPhrase: item.delivery.duress_phrase,
         }).then(() => {
           setSavedVaultNames((prev) => [...prev, item.delivery.vault_name || 'a vault']);
+          // 2026-08-13 (operator: "everything should be encrypted on the
+          // storage so that if you switch browsers or phones... you
+          // didn't lose anything") -- mirror the freshly-updated local
+          // registry to Supabase, encrypted, so a lost or switched device
+          // can pull it back. Best-effort; the stored local pair is
+          // already durable on this device regardless of the outcome.
+          if (ownerId && passphrase && cloudSync) {
+            void pushCirclePhraseBackup(ownerId, passphrase).catch((err) => {
+              console.warn('pushCirclePhraseBackup failed; local pair is still saved', err);
+            });
+          }
           // 2026-08-11 (DynastyTrust operator: "message couldn't drop in
           // that situation") -- confirm real receipt back to the sender
           // now that the pair is actually stored, not merely that a
@@ -113,7 +139,7 @@ export function useCirclePhraseDeliveries(): CirclePhraseDeliveriesState {
         subRef.current = null;
       }
     };
-  }, [transport, wallet, ownerId]);
+  }, [transport, wallet, ownerId, passphrase, cloudSync]);
 
   return { savedVaultNames, dismiss: () => setSavedVaultNames([]) };
 }
