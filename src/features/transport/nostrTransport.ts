@@ -7,6 +7,7 @@ import type {
   TransportEventHandler,
 } from './transport.ts';
 import type { TransportEvent, TransportFilter } from './nostrEvent.ts';
+import { transportActivity } from './transportActivity.ts';
 
 // Minimal Nostr WebSocket client behind the Transport interface. Speaks
 // NIP-01 — the client sends JSON arrays, the relay sends them back:
@@ -31,6 +32,11 @@ interface SubRecord {
   id: string;
   filter: TransportFilter;
   onEvent: TransportEventHandler;
+  /** Event ids already delivered to THIS subscription, so redelivery from
+   *  multiple relays dedupes without suppressing delivery to a DIFFERENT
+   *  (later, freshly-opened) subscription for the same logical listener --
+   *  see the class-level dedup bug note below. */
+  seen: Set<string>;
 }
 
 interface PendingPublish {
@@ -62,7 +68,6 @@ export interface NostrTransportOptions {
 export class NostrTransport implements Transport {
   private readonly relays: RelayConn[] = [];
   private readonly subs = new Map<string, SubRecord>();
-  private readonly seen = new Set<string>();
   private readonly pendingPublishes = new Map<string, PendingPublish>();
   private readonly statusHandlers = new Set<RelayStatusHandler>();
   private readonly WS: typeof WebSocket;
@@ -127,7 +132,7 @@ export class NostrTransport implements Transport {
   subscribe(filter: TransportFilter, onEvent: TransportEventHandler): Subscription {
     if (this.closed) throw new Error('transport is closed');
     const id = `tap-${this.nextSubId++}`;
-    const record: SubRecord = { id, filter, onEvent };
+    const record: SubRecord = { id, filter, onEvent, seen: new Set<string>() };
     this.subs.set(id, record);
     const frame = JSON.stringify(['REQ', id, filter]);
     for (const conn of this.relays) this.send(conn, frame);
@@ -273,6 +278,24 @@ export class NostrTransport implements Transport {
     conn.outbox.push(frame);
   }
 
+  // Dedup lives per-subscription (SubRecord.seen), not on the transport
+  // as a whole. A relay resends its stored backlog to EVERY fresh REQ,
+  // including one that logically replaces an earlier, now-closed
+  // subscription for the same feature (e.g. a screen that mounts/
+  // unmounts as the operator navigates away and back, while
+  // WalletProvider keeps this one NostrTransport instance alive for the
+  // whole app session). A transport-wide seen set marked an event
+  // delivered as soon as ANY subscription first saw it, so the next,
+  // freshly-opened subscription for that same listener silently never
+  // received it at all -- not delayed, not retried, just gone, with
+  // "the relay light is green" and nothing to show for it. This is why
+  // an incoming request could be missed even though publish->relay
+  // delivery was proven working end to end (operator report,
+  // 2026-08-08: "I've never been able to receive a message"). Keying
+  // dedup per-subscription still collapses the SAME event arriving from
+  // multiple relays into one delivery for the subscription that's
+  // actually listening -- the original, legitimate purpose -- without
+  // poisoning a later subscription that has never seen it before.
   private handleFrame(raw: string, relayUrl: string): void {
     let frame: unknown;
     try {
@@ -296,8 +319,13 @@ export class NostrTransport implements Transport {
     if (!sub) return;
     const ev = event as TransportEvent;
     if (typeof ev.id !== 'string') return;
-    if (this.seen.has(ev.id)) return;
-    this.seen.add(ev.id);
+    if (sub.seen.has(ev.id)) return;
+    sub.seen.add(ev.id);
+    // Record BEFORE dispatch, at the wire level -- independent of whatever
+    // any given channel's decrypt/parse pipeline does with it next. See
+    // transportActivity.ts for why this exists one layer below every
+    // channel's own silent-drop-on-malformed handling.
+    void transportActivity.record(typeof ev.kind === 'number' ? ev.kind : -1, relayUrl);
     sub.onEvent(ev);
   }
 

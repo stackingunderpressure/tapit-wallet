@@ -8,6 +8,9 @@ import { JournalTabBody } from './JournalTabBody.tsx';
 import { JournalTabRouter } from '../journal/JournalTabRouter.tsx';
 import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
+import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBanner.tsx';
+import { IncomingVaultMembershipBanner } from '../sign-request/IncomingVaultMembershipBanner.tsx';
+import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
 import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
@@ -130,9 +133,21 @@ function isCapture(att: Attestation): boolean {
   );
 }
 
+const VALID_TABS: readonly Tab[] = ['journal', 'identity', 'captured', 'people', 'family', 'lattice'];
+
+/** Reads a `?tab=` search param once on mount, e.g. `/?tab=people` from
+ *  the Inbox screen's "Messages" rows -- otherwise falls back to the
+ *  default 'journal' landing tab. Read once, not kept in sync with the
+ *  URL afterward: the tab strip below is the source of truth once the
+ *  operator starts clicking around. */
+function initialTabFromUrl(): Tab {
+  const raw = new URLSearchParams(window.location.search).get('tab');
+  return (VALID_TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'journal';
+}
+
 export function HomeScreen() {
   const { wallet, holdings, identity, prefs, save, inboxEnvelopes, dismissInboxEnvelope, relayStatus, resolvedTheme } = useWallet();
-  const [tab, setTab] = useState<Tab>('journal');
+  const [tab, setTab] = useState<Tab>(initialTabFromUrl);
   // Complete any invite the operator accepted from a /join link: once
   // the wallet is unlocked this consumes the sessionStorage-bridged
   // invite and remote-handshakes back to the founder. No-op when there
@@ -326,6 +341,13 @@ export function HomeScreen() {
         <div className="flex items-center gap-2">
           <NostrIndicator status={relayStatus} />
           <Link
+            to="/inbox"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="Inbox"
+          >
+            Inbox
+          </Link>
+          <Link
             to="/about"
             className="text-sm text-muted hover:text-ink"
             aria-label="Guide"
@@ -341,6 +363,10 @@ export function HomeScreen() {
           </Link>
         </div>
       </header>
+
+      <IncomingVaultMembershipBanner />
+      <IncomingPsbtCosignBanner />
+      <CirclePhraseReceiver />
 
       {/* Backup health sits above the tabs — a warning must never be
           hidden behind a tab the operator might not be looking at. */}

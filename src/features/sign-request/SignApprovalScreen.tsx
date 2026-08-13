@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { parsePsbt } from '@dynastytrust/bip341-psbt-signer';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
@@ -9,6 +9,7 @@ import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
 import { findVaultTrail, requiresCallbackConfirmation } from './vaultTrail.ts';
 import type { SignRequest } from './types.ts';
+import { hasCirclePhrasePair, checkCirclePhrase, type PhraseCheckResult } from '../circle-phrase/circlePhrase.ts';
 
 type State =
   | { kind: 'ready'; request: SignRequest; callbackHost: string }
@@ -22,8 +23,9 @@ type State =
 // toggle, no JSON dump.
 export function SignApprovalScreen() {
   const [params] = useSearchParams();
-  const { wallet, ownerId, save, holdings } = useWallet();
+  const { wallet, ownerId, save, holdings, transport } = useWallet();
   const worker = useAnchorWorker();
+  const navigate = useNavigate();
   const [state, setState] = useState<State>(() => {
     try {
       const request = parseSignRequest(params.get('req'));
@@ -55,11 +57,62 @@ export function SignApprovalScreen() {
     }
   });
   const [error, setError] = useState<string | null>(null);
-  // Only meaningful for intent 'psbt-cosign'. Set true only after the
-  // operator affirms the out-of-band callback ritual actually happened —
+  // Only meaningful for intent 'psbt-cosign'. Set true only once the phrase
+  // gate below (or, when no phrase pair is on file, the plain checkbox
+  // fallback) confirms the out-of-band callback ritual actually happened —
   // approveSignRequest re-checks this is true whenever the spend requires
-  // it, so this checkbox is a real gate, not decoration.
+  // it, so this is a real gate, not decoration.
   const [calloutConfirmed, setCalloutConfirmed] = useState(false);
+
+  // Phone-callback phrase gate (2026-08-08 follow-up to the amount-tiered
+  // callback ritual). null while still checking whether this vault even has
+  // a phrase pair on file; true/false once known. A vault with no phrase
+  // pair falls back to the plain "I verified this by phone" checkbox below
+  // — the phrase gate is a strengthening of that ritual, never a dead end
+  // that blocks approval when nothing was ever delivered.
+  const vaultDescriptor =
+    state.kind === 'ready' && state.request.intent === 'psbt-cosign'
+      ? state.request.vault_context.vault_descriptor
+      : null;
+  const [phraseConfigured, setPhraseConfigured] = useState<boolean | null>(null);
+  const [phraseInput, setPhraseInput] = useState('');
+  const [phraseResult, setPhraseResult] = useState<PhraseCheckResult | null>(null);
+  const [phraseBusy, setPhraseBusy] = useState(false);
+
+  useEffect(() => {
+    if (!vaultDescriptor) return;
+    let cancelled = false;
+    setPhraseConfigured(null);
+    void hasCirclePhrasePair(vaultDescriptor).then((has) => {
+      if (!cancelled) setPhraseConfigured(has);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [vaultDescriptor]);
+
+  async function verifyPhrase() {
+    if (!vaultDescriptor || phraseInput.trim().length === 0) return;
+    setPhraseBusy(true);
+    try {
+      const result = await checkCirclePhrase(vaultDescriptor, phraseInput);
+      setPhraseResult(result);
+      const confirmed = result === 'normal';
+      setCalloutConfirmed(confirmed);
+      if (confirmed) {
+        // The whole point of this cut: a correct code signs immediately,
+        // no separate Approve tap. doApprove takes the confirmation as a
+        // parameter rather than reading calloutConfirmed off state, which
+        // would still read false here (state hasn't re-rendered yet).
+        await doApprove(true);
+        return;
+      }
+    } finally {
+      // The entered phrase never lingers past the check that consumed it.
+      setPhraseInput('');
+      setPhraseBusy(false);
+    }
+  }
 
   // psbt-cosign gating (risk register: "no rogue signing" + the amount-
   // tiered callback ritual). Computed on every render from `holdings` so
@@ -71,7 +124,7 @@ export function SignApprovalScreen() {
     | null = null;
   if (state.kind === 'ready' && state.request.intent === 'psbt-cosign') {
     const req = state.request;
-    const trail = findVaultTrail(holdings, req.vault_context.vault_descriptor, wallet.publicKey);
+    const trail = findVaultTrail(holdings, req.vault_context.vault_descriptor, wallet.keyHistory);
     if (!trail) {
       psbtCosignGate = { kind: 'no-trail' };
     } else {
@@ -115,15 +168,21 @@ export function SignApprovalScreen() {
     );
   }
 
-  async function approve() {
+  // Split out of approve() (2026-08-08, operator: "get the rolling code
+  // and bam my transaction is signed in the background") so verifyPhrase
+  // can trigger signing the instant a correct phrase comes back, without
+  // waiting a render cycle for calloutConfirmed state to settle and
+  // without a separate manual Approve tap. Takes `confirmed` as a
+  // parameter rather than reading it off state for exactly that reason.
+  async function doApprove(confirmed: boolean) {
     if (state.kind !== 'ready') return;
     if (psbtCosignGate?.kind === 'no-trail') return;
-    if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed) return;
+    if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !confirmed) return;
     setError(null);
     setState({ kind: 'busy' });
     try {
       await save(); // make sure prior changes are persisted
-      await approveSignRequest(
+      const result = await approveSignRequest(
         wallet,
         ownerId,
         state.request,
@@ -131,18 +190,28 @@ export function SignApprovalScreen() {
           await save();
         },
         worker,
-        calloutConfirmed,
+        confirmed,
+        transport,
       );
-      // approveSignRequest navigates via window.location; component unmounts.
+      // A deeplink request navigates away via window.location and this
+      // component unmounts on its own. A Cut B3 slice 2 Nostr-delivered
+      // psbt-cosign response has nowhere to redirect to -- without this,
+      // the screen would sit on "Signing…" forever once it's actually done.
+      if (result.delivered === 'nostr') navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign.');
       setState({ kind: 'ready', request: state.request, callbackHost: state.callbackHost });
     }
   }
 
+  async function approve() {
+    await doApprove(calloutConfirmed);
+  }
+
   function decline() {
     if (state.kind !== 'ready') return;
-    declineSignRequest(state.request, 'user_declined');
+    const result = declineSignRequest(state.request, 'user_declined');
+    if (result.delivered === 'none') navigate('/');
   }
 
   if (state.kind === 'busy') {
@@ -166,10 +235,19 @@ export function SignApprovalScreen() {
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <RenderRequest request={state.request} />
         <div className="mt-3 rounded-md bg-ink/5 px-3 py-2 text-xs text-muted">
-          On approve you will be redirected to{' '}
-          <span className="font-mono">{state.callbackHost}</span>. The wallet
-          sends only the signed {state.request.intent === 'psbt-cosign' ? 'transaction' : 'envelope'};
-          your keys never leave this device.
+          {state.request.intent === 'psbt-cosign' && state.request.response_channel?.kind === 'nostr' ? (
+            <>
+              On approve the signed transaction goes straight back over the network to whoever
+              asked — nothing to redirect to, your keys never leave this device.
+            </>
+          ) : (
+            <>
+              On approve you will be redirected to{' '}
+              <span className="font-mono">{state.callbackHost}</span>. The wallet
+              sends only the signed {state.request.intent === 'psbt-cosign' ? 'transaction' : 'envelope'};
+              your keys never leave this device.
+            </>
+          )}
         </div>
       </section>
 
@@ -187,47 +265,131 @@ export function SignApprovalScreen() {
         </div>
       )}
 
-      {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && (
+      {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseResult === 'duress' && (
+        <div className="mt-4 rounded-md border-2 border-red-400 bg-red-50 p-4">
+          <p className="text-sm font-bold text-red-900">
+            That was the duress phrase. Do not approve this request.
+          </p>
+          <p className="mt-2 text-xs text-red-900">
+            This wallet will not sign. Hang up if you're still on the call. Contact the other
+            circle members for this vault, or the authorities, right now, using a different
+            channel than this app. If the vault has a halt/pause control, the owner should use
+            it now — that stops every signature on it until the circle sorts this out together.
+          </p>
+        </div>
+      )}
+
+      {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseResult !== 'duress' && (
         <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4">
           <p className="text-sm font-semibold text-ink">
             This spend requires a live check before you sign
           </p>
           <p className="mt-2 text-xs text-ink/80">
-            This amount is above your vault's threshold for extra
+            This spend is above this vault's threshold for extra
             verification. Contact the requester using your predetermined,
             out-of-band method (not a reply inside this app) and confirm
             it's really them, calmly and not under duress, before signing.
           </p>
-          <label className="mt-3 flex items-start gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={calloutConfirmed}
-              onChange={(e) => setCalloutConfirmed(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>I verified this by phone (or our agreed method) just now.</span>
-          </label>
+
+          {phraseConfigured === null && (
+            <p className="mt-3 text-xs text-ink/60">Checking for a safety phrase on this vault…</p>
+          )}
+
+          {phraseConfigured === true && (
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-ink/80">
+                The phrase they just told you on the call
+              </label>
+              <div className="mt-1.5 flex gap-2">
+                <input
+                  type="text"
+                  value={phraseInput}
+                  onChange={(e) => {
+                    setPhraseInput(e.target.value);
+                    if (phraseResult) setPhraseResult(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void verifyPhrase();
+                  }}
+                  disabled={phraseBusy}
+                  placeholder="type the phrase"
+                  className="flex-1 rounded-md border border-ink/15 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void verifyPhrase()}
+                  disabled={phraseBusy || phraseInput.trim().length === 0}
+                  className="rounded-md bg-ink px-4 py-2 text-paper text-sm font-medium disabled:opacity-40"
+                >
+                  {phraseBusy ? 'Confirming…' : 'Confirm & sign'}
+                </button>
+              </div>
+              {phraseResult === 'normal' && (
+                <p className="mt-2 text-xs font-medium text-emerald-700">
+                  Phrase confirmed — signing now…
+                </p>
+              )}
+              {phraseResult === 'no-match' && (
+                <p className="mt-2 text-xs text-red-700">
+                  That doesn't match. Try again, or hang up and call back on a number you know is
+                  really theirs before trying again.
+                </p>
+              )}
+              {phraseResult === 'locked' && (
+                <p className="mt-2 text-xs text-red-700">
+                  Too many wrong tries — locked for a few minutes. Try again shortly.
+                </p>
+              )}
+            </div>
+          )}
+
+          {phraseConfigured === false && (
+            <>
+              <p className="mt-3 text-xs text-ink/60">
+                No safety phrase is set up for this vault yet — using plain confirmation instead.
+              </p>
+              <label className="mt-2 flex items-start gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={calloutConfirmed}
+                  onChange={(e) => setCalloutConfirmed(e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>I verified this by phone (or our agreed method) just now.</span>
+              </label>
+            </>
+          )}
         </div>
       )}
 
       <div className="mt-4 space-y-2">
-        <button
-          type="button"
-          onClick={approve}
-          disabled={
-            psbtCosignGate?.kind === 'no-trail' ||
-            (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed)
-          }
-          className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40"
-        >
-          {state.request.intent === 'cosign-existing'
-            ? 'Approve — co-sign this'
-            : state.request.intent === 'sign-in'
-              ? 'Approve — sign in'
-              : state.request.intent === 'psbt-cosign'
-                ? 'Approve — sign this transaction'
-                : 'Approve — sign this'}
-        </button>
+        {/* 2026-08-08: when a phrase pair is on file for a callback-gated
+            psbt-cosign request, entering the right phrase already signs
+            (verifyPhrase -> doApprove(true), the "bam" the operator asked
+            for) -- a second manual Approve button here would just be a
+            redundant, confusing extra tap for the one case this cut exists
+            to collapse. Every other case (sign-in, cosign-existing, a
+            plain attest, or the no-phrase-pair checkbox fallback) keeps
+            the explicit button unchanged. */}
+        {!(psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseConfigured === true) && (
+          <button
+            type="button"
+            onClick={approve}
+            disabled={
+              psbtCosignGate?.kind === 'no-trail' ||
+              (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed)
+            }
+            className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40"
+          >
+            {state.request.intent === 'cosign-existing'
+              ? 'Approve — co-sign this'
+              : state.request.intent === 'sign-in'
+                ? 'Approve — sign in'
+                : state.request.intent === 'psbt-cosign'
+                  ? 'Approve — sign this transaction'
+                  : 'Approve — sign this'}
+          </button>
+        )}
         <button
           type="button"
           onClick={decline}

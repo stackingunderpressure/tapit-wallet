@@ -78,7 +78,20 @@ const BUDGETS = [
   // That check still added 3 bytes gz past the old budget (measured
   // 13,827B vs the 13,824B ceiling). Not worth sacrificing readability to
   // claw back 3 bytes; bumped with headroom instead.
-  { pattern: /^index-.*\.js$/, gz: 13_926, label: 'login bundle (main)' },
+  // 2026-08-08: Netlify's real production build (VITE_SUPABASE_URL + the
+  // anon-key JWT actually embedded, unlike a local build run without those
+  // env vars set) measured 13.70KB gz against this 13.60KB (13,926B)
+  // ceiling -- the exact same undercounting class the 2026-06-16 entry
+  // above already describes, just re-exhausted. This silently failed
+  // EVERY deploy since whatever commit first crossed it, including a
+  // Nostr-transport bug fix the operator had been waiting on with no way
+  // to tell the build was even broken (Netlify build logs aren't
+  // surfaced anywhere this session can see them). Bumping with real
+  // headroom this time rather than the few-byte margins above, since a
+  // tight margin against env-value-length drift that can't be locally
+  // reproduced (no access to the real Supabase URL/anon key here) keeps
+  // re-triggering this exact failure mode.
+  { pattern: /^index-.*\.js$/, gz: 15_360, label: 'login bundle (main)' },
   // CSS — single sheet, mostly Tailwind. ~3KB pre-Fresh; the Fresh
   // roadmap (Cuts 1-2) added the :root + [data-theme='fresh']
   // variable blocks plus the aurora-drift keyframes + background.
@@ -127,7 +140,12 @@ const BUDGETS = [
   // content scanner emits each into the single sheet; they are intrinsic to
   // the plain-English state presentation and cannot be code-split out. Measured
   // ~8.61KB gz, a handful of bytes past the prior budget. Bumped 8.6 -> 8.7KiB.
-  { pattern: /^index-.*\.css$/, gz: 8_909, label: 'css' },
+  // 2026-08-11: CirclePhraseReceiver.tsx's new dismiss button added a
+  // handful of new utility classes (relative, absolute, pr-10, the
+  // top/right positioning, hover:text-emerald-900) to the single
+  // Tailwind sheet -- intrinsic to the fix, not code-splittable out.
+  // A few bytes past the prior budget; bumped 8.7 -> 8.8KiB.
+  { pattern: /^index-.*\.css$/, gz: 9_011, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
@@ -211,7 +229,14 @@ const BUDGETS = [
   // its sender. Both the worker lifecycle hook and the outbox/ack
   // primitives live in their own files (transport chunk), so this is
   // just the wiring edge — measured ~290 bytes gz. Bumped 12.5 -> 13KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 13_312, label: 'WalletProvider' },
+  // 2026-08-10: inbox-envelope durability (operator: "it should be
+  // durable ... we should always see them till you delete them"). Wired
+  // useInboxEnvelopePersistence (load-on-unlock + debounce-save against
+  // the new inboxEnvelopeStore, mirroring useChatPersistence's existing
+  // pattern for chat) directly into the provider, the same way chat
+  // persistence already sits in its own file but gets called from here.
+  // Measured ~13.11KB gz. Bumped 13.0 -> 13.5KB.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 13_824, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
@@ -372,7 +397,31 @@ const BUDGETS = [
   // "still waiting on N connections" status line — the outbox import
   // edge + the extra status state/UI ride this chunk since RotateKeySection
   // is statically mounted here. Measured 12.77KB gz. Bumped 12.6 -> 13KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 13_312, label: 'SettingsScreen' },
+  // 2026-08-08 Cut C1 manual half (docs/integration-phase2-vault-key-bridge.md,
+  // DynastyTrust repo): PublicKeySection mounted statically under
+  // AdoptExistingKeySection adds the copy/QR-reveal panel for the wallet's
+  // own public key -- the manual fallback every later deep-link automation
+  // in the vault-key bridge plan is required to keep working alongside.
+  // Measured 13.16KB gz. Bumped 13 -> 13.5KB.
+  // 2026-08-08 phone-callback phrase gate: CirclePhraseSection (durable
+  // "which vaults have a safety phrase on file" status view) statically
+  // imports circlePhrase.ts's idb-backed listCirclePhrasePairs. Measured
+  // 13.83KB gz. Bumped 13.5 -> 14KB.
+  // 2026-08-08 NostrActivitySection (operator: "I've never been able to
+  // receive a message... nothing is coming through"): a wire-level
+  // received-event counter + recent list, statically mounted next to the
+  // "Stay reachable" toggle so the diagnostic sits where the network
+  // settings already are. Measured 14.11KB gz. Bumped 14.0 -> 14.5KB.
+  // 2026-08-11 (operator: "still not seeing in inbox or banner"):
+  // NostrActivitySection gained a "Vault memberships held" list (reads
+  // WalletContext.holdings, filters via vaultTrail.ts's isVaultMembership,
+  // revokes via wallet.unhold + tapit-attest's envelopeId) plus a new
+  // 'suppressed' diagnostic stage recorded by both request hooks -- a
+  // request can decrypt fine and still never become a banner (already
+  // dismissed, or this wallet already holds a membership for that vault),
+  // which used to be invisible from this screen entirely. Measured
+  // 14.89KB gz. Bumped 14.5 -> 15.25KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 15_616, label: 'SettingsScreen' },
   // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
   // DynastyTrust repo): the new psbt-cosign intent statically pulls in
   // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)
@@ -397,7 +446,21 @@ const BUDGETS = [
 
   // QR feature carries the qrcode library — known heavy.
   { pattern: /^QrShow-.*\.js$/, gz: 15_000, label: 'QrShow (qrcode lib)' },
-  { pattern: /^QrScanModal-.*\.js$/, gz: 3_000, label: 'QrScanModal' },
+  // 2026-08-10 (operator: "Dynasty trust camera works for qr scan flow.
+  // Tap it should too"): QR decode switched from the native
+  // BarcodeDetector API to jsQR. The native API was never actually
+  // available on the operator's device — WebKit has never shipped it,
+  // despite this feature's own manifest previously (and wrongly) claiming
+  // "Safari 17+" support — so every camera-based QR scan silently failed
+  // over to a paste-only fallback on the operator's iPhone. jsQR is a
+  // real, non-trivial pure-JS QR decoder (Reed-Solomon error correction +
+  // binarizer + locator + decoder) and costs real bytes: measured
+  // ~48.5KB gz. This is already as split as it usefully can be — it's
+  // already its own on-demand chunk that only loads the moment the
+  // operator opens a QR-scan modal (ten call sites across the app), not
+  // eagerly bundled into any base chunk; a working camera scanner is
+  // worth this cost. Bumped 3 -> 52KB.
+  { pattern: /^QrScanModal-.*\.js$/, gz: 53_248, label: 'QrScanModal (jsQR decoder)' },
 
   // Shared chunks Vite hoists across multiple importers. Some of
   // these only appear when the import graph hoists them; others
@@ -861,6 +924,35 @@ const BUDGETS = [
   // is the right move (option 2). Measured ~3.97KB gz; budget set with
   // headroom for the circle-status polish still to come.
   { pattern: /^LivenessPanel-.*\.js$/, gz: 5_000, label: 'LivenessPanel' },
+
+  // 2026-08-10: the new Inbox screen (operator: "we need an inbox ... one
+  // spot where all of that is") mounts its own useInboxRouting() instance
+  // to route generic envelope arrivals to the same modals HomeScreen uses.
+  // Now that TWO entry points (HomeScreen and InboxScreen) import
+  // useInboxRouting.tsx, Vite pulls it out of HomeScreen's chunk into its
+  // own shared chunk instead of inlining it twice -- a net win (loaded
+  // once, cached across both screens) but it crossed the 3KB catch-all for
+  // the first time. Measured ~7.47KB gz (it owns six lazy modal imports'
+  // wiring, not their bodies). Already as split as it can usefully be —
+  // the modals themselves are already behind React.lazy.
+  //
+  // 2026-08-11: the "return roster" ack round trip (new
+  // vaultMembershipAckChannel.ts, response_channel field on
+  // VaultMembershipRequestPayload) pulled a few more bytes into
+  // IncomingVaultMembershipBanner.tsx's chunk graph, which this shared
+  // chunk transitively wires up. A few bytes past the prior 8.5KB
+  // budget; bumped 8.5 -> 8.7KiB rather than splitting further, since
+  // the modal wiring is already as lazy as it can usefully be.
+  //
+  // 2026-08-11, later same session: requestHistoryStore.ts (the "keep
+  // past spend requests / vault invites until you delete them" fix) adds
+  // a persisted-history read/write path to both
+  // usePsbtCosignRequests.ts and useVaultMembershipRequests.ts, which
+  // this chunk shares with InboxScreen.tsx's new RequestHistoryList
+  // rendering. Measured 9,031 bytes gz; bumped 8.7 -> 9.0KiB with a
+  // little headroom rather than re-bumping again for rounding.
+  { pattern: /^useInboxRouting-.*\.js$/, gz: 9_200, label: 'useInboxRouting (shared by Home + Inbox)' },
+  { pattern: /^InboxScreen-.*\.js$/, gz: 6_500, label: 'InboxScreen' },
 
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately

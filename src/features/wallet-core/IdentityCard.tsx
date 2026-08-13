@@ -45,11 +45,18 @@ function formatBirthday(iso: string): string {
 // as "Your identity" after a rotation would be semantically wrong.
 export function IdentityCard({ identity, activeKey, displayName, birthday, location }: Props) {
   const [copied, setCopied] = useState(false);
+  const [activeCopied, setActiveCopied] = useState(false);
 
   async function copy() {
     await navigator.clipboard.writeText(identity);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function copyActive() {
+    await navigator.clipboard.writeText(activeKey);
+    setActiveCopied(true);
+    setTimeout(() => setActiveCopied(false), 1500);
   }
 
   const rotated = identity !== activeKey;
@@ -71,8 +78,15 @@ export function IdentityCard({ identity, activeKey, displayName, birthday, locat
         onClick={copy}
         className="mt-3 text-sm text-accent hover:underline"
       >
-        {copied ? 'Copied' : 'Copy full key'}
+        {copied ? 'Copied' : 'Copy identity key'}
       </button>
+      {rotated && (
+        <p className="mt-1 text-xs text-muted">
+          This is your stable identity, not what you're signing with right now — an app
+          that wants to message or send something TO you (like a Bitcoin vault wanting you
+          as a signer) needs your key from "Currently signing with" below instead.
+        </p>
+      )}
       {(birthday || location) && (
         <dl className="mt-3 space-y-1 text-sm">
           {birthday && (
@@ -97,10 +111,19 @@ export function IdentityCard({ identity, activeKey, displayName, birthday, locat
           <div className="mt-2">
             <IdentityChip pubkey={activeKey} name={displayName || 'You'} size="md" />
           </div>
+          <button
+            type="button"
+            onClick={copyActive}
+            className="mt-2 text-sm text-accent hover:underline"
+          >
+            {activeCopied ? 'Copied' : 'Copy signing key'}
+          </button>
           <p className="mt-2 text-xs text-muted">
-            The succession chain in Settings → Rotate wallet key binds your
-            previous key to this one. Verifiers walk it back to your
-            identity automatically.
+            Give THIS key to an app that needs to encrypt something to you directly — an
+            older, already-rotated-away-from key can't decrypt anything new, even though
+            it's still part of your identity history. The succession chain in Settings →
+            Rotate wallet key binds your previous key to this one; verifiers walk it back
+            to your identity automatically.
           </p>
         </div>
       )}

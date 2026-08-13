@@ -510,6 +510,48 @@ describe('NostrTransport wire-protocol shape', () => {
     expect(seen[0]!.id).toBe(event.id);
     transport.close();
   });
+
+  it('a fresh subscription still receives an event a PRIOR, now-closed subscription already saw (regression, operator 2026-08-08: "I\'ve never been able to receive a message")', async () => {
+    // Mirrors real app usage: WalletProvider keeps ONE NostrTransport
+    // instance alive for the whole session, while a feature screen (e.g.
+    // the psbt-cosign banner on HomeScreen) mounts/unmounts its own
+    // subscription as the operator navigates away and back. A relay
+    // resends its backlog to every fresh REQ, including a replacement
+    // subscription for the same listener -- dedup must not be keyed
+    // globally across the transport, or that backlogged event is lost
+    // forever the moment the operator ever navigates away before seeing it.
+    const fake = makeFakeWS();
+    const transport = new NostrTransport({
+      relays: ['wss://relay.example'],
+      webSocketImpl: fake.WS,
+    });
+    fake.ready();
+    const wallet = Wallet.generate();
+    const event = await buildEvent({
+      pubkey: wallet.publicKey,
+      sign: (d) => wallet.signDigest(d),
+      kind: 1,
+      content: 'inbound',
+    });
+
+    const firstSeen: TransportEvent[] = [];
+    const firstSub = transport.subscribe({}, (e) => { firstSeen.push(e); });
+    fake.deliver(['EVENT', 'tap-1', event]);
+    expect(firstSeen).toHaveLength(1);
+
+    // Screen unmounts (navigate away), then remounts (navigate back) --
+    // a brand-new subscription against the SAME transport instance.
+    firstSub.close();
+    const secondSeen: TransportEvent[] = [];
+    transport.subscribe({}, (e) => { secondSeen.push(e); });
+    // The relay resends its backlog to the new REQ -- same event id,
+    // new subscription id.
+    fake.deliver(['EVENT', 'tap-2', event]);
+    expect(secondSeen).toHaveLength(1);
+    expect(secondSeen[0]!.id).toBe(event.id);
+
+    transport.close();
+  });
 });
 
 describe('NostrTransport delivery acks (5c-iii-a)', () => {

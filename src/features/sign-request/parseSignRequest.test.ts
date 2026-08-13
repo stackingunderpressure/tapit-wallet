@@ -311,4 +311,100 @@ describe('parseSignRequest — psbt-cosign', () => {
       ),
     ).toBe('invalid_request');
   });
+
+  // Cut B3 slice 2 — response_channel is how a Nostr-delivered request
+  // (as opposed to a same-tab deeplink) tells approveSignRequest where to
+  // publish the signed PSBT back to, since there is no page to redirect to.
+  describe('response_channel', () => {
+    const REQUESTER_PUBKEY = 'ab'.repeat(32);
+
+    it('parses a well-formed response_channel', () => {
+      const parsed = parseSignRequest(
+        encode({
+          v: 1,
+          intent: 'psbt-cosign',
+          origin: 'DynastyTrust',
+          callback: 'https://dynastytrust.family/vaults',
+          psbt_hex: VALID_PSBT_HEX,
+          vault_context: { vault_descriptor: 'tr_multileaf(...)' },
+          response_channel: { kind: 'nostr', requester_pubkey: REQUESTER_PUBKEY },
+        }),
+      );
+      expect(parsed.intent).toBe('psbt-cosign');
+      if (parsed.intent === 'psbt-cosign') {
+        expect(parsed.response_channel).toEqual({ kind: 'nostr', requester_pubkey: REQUESTER_PUBKEY });
+      }
+    });
+
+    it('is absent (not just undefined-but-present) when the request never had one — the B2 deeplink shape is untouched', () => {
+      const parsed = parseSignRequest(
+        encode({
+          v: 1,
+          intent: 'psbt-cosign',
+          origin: 'DynastyTrust',
+          callback: 'https://dynastytrust.family/vaults',
+          psbt_hex: VALID_PSBT_HEX,
+          vault_context: { vault_descriptor: 'tr_multileaf(...)' },
+        }),
+      );
+      expect(parsed.intent).toBe('psbt-cosign');
+      if (parsed.intent === 'psbt-cosign') {
+        expect('response_channel' in parsed).toBe(false);
+      }
+    });
+
+    it('rejects a response_channel with an unknown kind', () => {
+      expect(
+        caughtCode(() =>
+          parseSignRequest(
+            encode({
+              v: 1,
+              intent: 'psbt-cosign',
+              origin: 'X',
+              callback: 'https://a.test/cb',
+              psbt_hex: VALID_PSBT_HEX,
+              vault_context: { vault_descriptor: 'v' },
+              response_channel: { kind: 'carrier-pigeon', requester_pubkey: REQUESTER_PUBKEY },
+            }),
+          ),
+        ),
+      ).toBe('invalid_request');
+    });
+
+    it('rejects a response_channel with a malformed pubkey', () => {
+      expect(
+        caughtCode(() =>
+          parseSignRequest(
+            encode({
+              v: 1,
+              intent: 'psbt-cosign',
+              origin: 'X',
+              callback: 'https://a.test/cb',
+              psbt_hex: VALID_PSBT_HEX,
+              vault_context: { vault_descriptor: 'v' },
+              response_channel: { kind: 'nostr', requester_pubkey: 'not-hex' },
+            }),
+          ),
+        ),
+      ).toBe('invalid_request');
+    });
+
+    it('rejects a non-object response_channel', () => {
+      expect(
+        caughtCode(() =>
+          parseSignRequest(
+            encode({
+              v: 1,
+              intent: 'psbt-cosign',
+              origin: 'X',
+              callback: 'https://a.test/cb',
+              psbt_hex: VALID_PSBT_HEX,
+              vault_context: { vault_descriptor: 'v' },
+              response_channel: 'nostr',
+            }),
+          ),
+        ),
+      ).toBe('invalid_request');
+    });
+  });
 });

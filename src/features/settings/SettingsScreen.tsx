@@ -20,6 +20,9 @@ import { findOwnOrgDeclaration } from '../connections/createOrganization.ts';
 import { OrgDeclarationSection } from './OrgDeclarationSection.tsx';
 import { AppearanceSection } from './AppearanceSection.tsx';
 import { QuickShareSection } from './QuickShareSection.tsx';
+import { PublicKeySection } from './PublicKeySection.tsx';
+import { CirclePhraseSection } from '../circle-phrase/CirclePhraseSection.tsx';
+import { NostrActivitySection } from './NostrActivitySection.tsx';
 
 function parseRelayLines(text: string): { ok: string[]; bad: string[] } {
   const ok: string[] = [];
@@ -449,6 +452,8 @@ export function SettingsScreen() {
         </div>
       </section>
 
+      <NostrActivitySection />
+
       <OrgDeclarationSection
         wallet={wallet}
         ownerId={ownerId}
@@ -651,6 +656,10 @@ export function SettingsScreen() {
           )}
         </div>
       </section>
+
+      <PublicKeySection publicKey={wallet.publicKey} />
+
+      <CirclePhraseSection />
 
       <RotateKeySection wallet={wallet} save={save} refresh={refresh} />
 

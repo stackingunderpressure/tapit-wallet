@@ -1,4 +1,3 @@
-import { parsePsbt, toHex } from '@dynastytrust/bip341-psbt-signer';
 import type { SignRequest } from './types.ts';
 
 interface Props {
@@ -70,59 +69,31 @@ export function RenderRequest({ request }: Props) {
 
   // psbt-cosign — Cut B, the DynastyTrust signing bridge. This is NOT an
   // attestation; it's a real Bitcoin tapscript signature over a real
-  // spend. Everything security-relevant shown here (amount, destination,
-  // whether there's a timelock) is read straight out of psbt_hex's own
-  // bytes, never from vault_context's requester-supplied label — the
-  // banner shows the meaning, and the meaning has to be the true one.
-  // parsePsbt already succeeded (parseSignRequest validated it before
-  // this screen could render), so this re-parse cannot throw here.
+  // spend. 2026-08-08 (operator: "only thing my helper sees is hey tom
+  // wants to spend call him check on him get the rolling code") —
+  // amount, destination, and timelock detail deliberately are NOT shown
+  // here anymore. The circle member's job is verifying the PERSON over a
+  // live call, not auditing the transaction; showing dollar amounts here
+  // just gives a stranger something to talk their way past. The real
+  // security boundary hasn't moved an inch: signPsbtCosign.ts still
+  // independently checks the request's tapscript leaf against the
+  // attested vault-membership trail before it will sign anything,
+  // regardless of what this screen displays or doesn't.
   if (request.intent === 'psbt-cosign') {
-    const parsed = parsePsbt(request.psbt_hex);
-    const totalOut = parsed.tx.outputs.reduce((sum, o) => sum + o.amount, 0n);
-    const hasTimelock = parsed.tx.locktime > 0;
     return (
       <div className="rounded-md border border-ink/15 bg-paper p-4">
         <p className="text-sm">
-          <span className="font-medium">{request.origin}</span> is asking you
-          to sign a Bitcoin vault transaction
+          <span className="font-medium">{request.origin}</span> wants to
+          spend from{' '}
           {request.vault_context.vault_name
-            ? ` for "${request.vault_context.vault_name}"`
-            : ''}
+            ? `"${request.vault_context.vault_name}"`
+            : 'their vault'}
           .
         </p>
         <div className="mt-3 rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
-          This moves real Bitcoin. Everything below is read directly from the
-          transaction itself, not from what the requester claims.
-        </div>
-        <div className="mt-3 text-xs uppercase tracking-wide text-muted">
-          Sending (verified from the transaction)
-        </div>
-        <div className="mt-1 text-sm font-medium">
-          {totalOut.toLocaleString()} sats total, {parsed.tx.outputs.length}{' '}
-          output{parsed.tx.outputs.length === 1 ? '' : 's'}
-        </div>
-        <dl className="mt-1 space-y-1">
-          {parsed.tx.outputs.map((o, i) => (
-            <div key={i} className="text-sm">
-              <span className="text-muted">{o.amount.toLocaleString()} sats to script: </span>
-              <span className="font-mono break-all text-xs">{toHex(o.scriptPubkey)}</span>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-3 text-xs uppercase tracking-wide text-muted">
-          Timelock
-        </div>
-        <div className="mt-1 text-sm">
-          {hasTimelock
-            ? `This transaction cannot confirm before block height ${parsed.tx.locktime} — a timelocked path (e.g. recovery or inheritance).`
-            : 'No timelock — this is an immediate spend.'}
-        </div>
-        <div className="mt-3 text-xs text-muted">
-          Vault (as claimed by the requester, not independently verifiable
-          from the transaction bytes alone):{' '}
-          <span className="font-mono break-all">
-            {request.vault_context.vault_descriptor}
-          </span>
+          Call them on a number you know is really theirs. If it's really
+          them, calm, and not under duress, they'll read you a code — enter
+          it below and this wallet takes care of the rest.
         </div>
       </div>
     );

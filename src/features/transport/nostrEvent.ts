@@ -117,6 +117,26 @@ export async function buildEvent(input: BuildEventInput): Promise<TransportEvent
 }
 
 /**
+ * Every value of this event's 'p' tags, lowercased. A relay is
+ * supposed to only deliver events whose 'p' tag matches a subscribed
+ * pubkey, but relay-side filtering is not something a client can
+ * verify from the outside — a busy shared public relay (this app's
+ * default relay set is the same handful of large public relays every
+ * other Nostr client uses, not app-scoped infrastructure) could, in
+ * principle, over-deliver. Comparing this against recipient.keyHistory
+ * turns "decrypt failed, wrong key?" into a checkable fact: was this
+ * event even addressed to this wallet in the first place, or is it
+ * someone else's traffic that reached this device's subscription.
+ */
+export function eventPTags(event: TransportEvent): string[] {
+  const out: string[] = [];
+  for (const t of event.tags) {
+    if (t[0] === 'p' && typeof t[1] === 'string') out.push(t[1].toLowerCase());
+  }
+  return out;
+}
+
+/**
  * Verify a Nostr event: the id matches the canonical hash AND the
  * signature verifies under the pubkey. Returns false on any failure,
  * never throws. A relay can deliver garbage; the wallet must drop it.

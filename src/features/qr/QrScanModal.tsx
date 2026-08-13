@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createQrDetector, isBarcodeDetectorSupported } from './barcodeDetector.ts';
+import { decodeQrFromSource } from './qrDecode.ts';
 
 interface Props {
   onScanned: (text: string) => void;
@@ -7,67 +7,41 @@ interface Props {
   /** Force a starting mode. 'paste' skips the camera spin-up so a
    *  caller who already knows the operator can't or won't use the
    *  camera (desktop, denied permission, fallback button) lands
-   *  directly on the paste affordances. Default is platform-aware:
-   *  iOS PWA standalone → paste; otherwise camera. */
+   *  directly on the paste affordances. Default is 'camera' -- jsQR
+   *  works on every browser getUserMedia works on, so there is no
+   *  platform this needs to pre-emptively route around. */
   initialMode?: 'camera' | 'paste';
 }
 
 type State =
   | { kind: 'paste' }
-  | { kind: 'unsupported' }
   | { kind: 'starting' }
   | { kind: 'scanning' }
   | { kind: 'error'; detail: string };
 
-// iOS PWA in standalone (installed-to-home-screen) mode has known
-// gaps in camera + BarcodeDetector access — the API may be present
-// but getUserMedia fails or detect() returns nothing, with no clean
-// way to feature-detect the difference. Best UX is to default to
-// paste mode in that environment so the operator gets a working
-// path immediately rather than chasing a camera prompt that won't
-// fire. Detection is conservative: standalone display-mode plus an
-// iPhone/iPad user-agent. Other PWA platforms (Android) work fine.
-function isIosPwaStandalone(): boolean {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-    return false;
-  }
-  const standalone =
-    window.matchMedia?.('(display-mode: standalone)').matches ?? false;
-  // iOS Safari also exposes the legacy navigator.standalone flag for
-  // home-screen apps — catch both shapes.
-  const legacyIosStandalone =
-    (navigator as unknown as { standalone?: boolean }).standalone === true;
-  const isApple = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  return isApple && (standalone || legacyIosStandalone);
-}
-
 function initialState(initialMode?: 'camera' | 'paste'): State {
-  // Caller-forced paste mode wins over platform detection — the
-  // HandshakeModal exposes a "📋 Paste their identity instead"
-  // entry that wants to skip the camera spin-up unconditionally.
+  // Caller-forced paste mode wins — the HandshakeModal exposes a
+  // "📋 Paste their identity instead" entry that wants to skip the
+  // camera spin-up unconditionally.
   if (initialMode === 'paste') return { kind: 'paste' };
-  if (isIosPwaStandalone()) return { kind: 'paste' };
-  if (!isBarcodeDetectorSupported()) return { kind: 'unsupported' };
   return { kind: 'starting' };
 }
 
-// Modal that opens the device camera and looks for QR codes via the
-// native BarcodeDetector API. On a hit, calls onScanned with the
-// decoded text and the parent closes the modal + populates its
-// textarea. On unsupported browsers (Firefox), or on iPhone PWA
-// standalone mode where camera + BarcodeDetector are unreliable,
-// shows a paste field PLUS a Pick-image-from-Photos button that
-// decodes the QR out of a static image — the static-image
-// BarcodeDetector path works in PWA standalone where the live
-// video path does not, so the iPhone-installed operator's
-// workflow becomes Camera app → take photo → return to wallet →
-// Pick image → choose. No round-trip through the clipboard. The
-// "Or paste text" escape hatch from every other state stays as
-// the universal-last-resort.
+// Modal that opens the device camera and looks for QR codes by decoding
+// video frames with jsQR (see qrDecode.ts for why -- the native
+// BarcodeDetector API this used to depend on is a Chromium-only
+// interface WebKit has never shipped, so camera scanning silently never
+// worked on Safari/iPhone; jsQR decodes raw pixels itself and has no
+// such gap). On a hit, calls onScanned with the decoded text and the
+// parent closes the modal + populates its textarea. getUserMedia
+// failures (camera denied, no camera, etc.) fall through to a paste
+// field plus a Pick-image-from-Photos button that decodes a QR out of a
+// static image via the same jsQR path. The "Or paste text" escape hatch
+// from every state stays as the universal last resort.
 //
 // The video stream is stopped on unmount; the detect-loop uses
-// requestAnimationFrame and a cancelled flag so a slow detector
-// can't keep running after the user closes.
+// requestAnimationFrame and a cancelled flag so a slow decode can't
+// keep running after the user closes.
 export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -117,13 +91,10 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
 
   useEffect(() => {
     if (state.kind !== 'starting') return;
-    const detector = createQrDetector();
-    if (!detector) {
-      setState({ kind: 'unsupported' });
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setState({ kind: 'error', detail: "This browser doesn't support camera access." });
       return;
     }
-    // Capture in a non-null local so the closure typing is stable.
-    const qr = detector;
     let cancelled = false;
     let stream: MediaStream | null = null;
     let rafId: number | null = null;
@@ -144,22 +115,19 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
         await video.play();
         setState({ kind: 'scanning' });
 
-        const tick = async () => {
+        const tick = () => {
           if (cancelled) return;
-          try {
-            const codes = await qr.detect(video);
-            if (codes.length > 0 && codes[0]) {
-              const value = codes[0].rawValue;
+          if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            const value = decodeQrFromSource(video, video.videoWidth, video.videoHeight);
+            if (value !== null) {
               cancelled = true;
               onScanned(value);
               return;
             }
-          } catch {
-            // Skip a frame; some detectors throw intermittently.
           }
-          rafId = requestAnimationFrame(() => void tick());
+          rafId = requestAnimationFrame(tick);
         };
-        void tick();
+        tick();
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : 'camera failed to start';
@@ -186,27 +154,20 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
     setPicking(true);
     const url = URL.createObjectURL(file);
     try {
-      const detector = createQrDetector();
-      if (!detector) {
-        setPickError(
-          'QR decoding is not supported on this browser. Use the paste field below instead.',
-        );
-        return;
-      }
       const img = new Image();
       img.src = url;
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
         img.onerror = () => reject(new Error('Could not load the chosen image.'));
       });
-      const codes = await detector.detect(img);
-      if (codes.length === 0 || !codes[0]) {
+      const value = decodeQrFromSource(img, img.naturalWidth, img.naturalHeight);
+      if (value === null) {
         setPickError(
           'No QR code detected in this image. Try a clearer photo (good lighting, the QR fills most of the frame, no glare).',
         );
         return;
       }
-      onScanned(codes[0].rawValue);
+      onScanned(value);
     } catch (err) {
       setPickError(err instanceof Error ? err.message : 'Could not decode the image.');
     } finally {
@@ -214,9 +175,6 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
       URL.revokeObjectURL(url);
     }
   }
-
-  const cameraEverPossible =
-    !isIosPwaStandalone() && isBarcodeDetectorSupported();
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
@@ -232,24 +190,7 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
           </button>
         </div>
 
-        {state.kind === 'unsupported' && (
-          <p className="mt-3 text-sm text-muted">
-            QR scanning isn't supported on this browser. Paste the QR contents
-            below instead — open your iPhone's Camera app on the other phone,
-            point it at the QR, and tap the link or text it picks up to copy.
-          </p>
-        )}
-
-        {state.kind === 'paste' && isIosPwaStandalone() && (
-          <p className="mt-3 text-sm text-muted">
-            On iPhone, the installed wallet can't open the camera directly.
-            Easiest workaround: open the iPhone <span className="font-medium">Camera</span> app
-            on the other phone, point it at the QR, tap the notification to
-            copy the text, then paste it here.
-          </p>
-        )}
-
-        {state.kind === 'paste' && !isIosPwaStandalone() && (
+        {state.kind === 'paste' && (
           <p className="mt-3 text-sm text-muted">
             Paste the QR contents below.
           </p>
@@ -285,9 +226,7 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
           </p>
         )}
 
-        {(state.kind === 'paste' ||
-          state.kind === 'unsupported' ||
-          state.kind === 'error') && (
+        {(state.kind === 'paste' || state.kind === 'error') && (
           <>
             <input
               ref={fileInputRef}
@@ -321,14 +260,14 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={picking || !isBarcodeDetectorSupported()}
+              disabled={picking}
               className="mt-3 w-full rounded-md bg-accent py-2.5 text-paper text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
             >
               {picking ? 'Decoding image…' : '📷 Pick a photo of the QR'}
             </button>
             <p className="mt-1.5 text-xs text-muted">
-              Take a photo of the QR with your iPhone Camera app, then come
-              back here and pick it from Photos. The wallet decodes the
+              Take a photo of the QR with your camera app, then come back
+              here and pick it from your photos. The wallet decodes the
               image directly — no need to copy text.
             </p>
             {pickError && (
@@ -357,15 +296,13 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
               >
                 Use this
               </button>
-              {cameraEverPossible && (
-                <button
-                  type="button"
-                  onClick={() => setState({ kind: 'starting' })}
-                  className="rounded-md border border-ink/15 bg-white py-2 text-sm"
-                >
-                  Try camera
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setState({ kind: 'starting' })}
+                className="rounded-md border border-ink/15 bg-white py-2 text-sm"
+              >
+                Try camera
+              </button>
             </div>
           </>
         )}

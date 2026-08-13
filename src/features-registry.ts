@@ -25,6 +25,8 @@ import { manifest as familyTree } from './features/family-tree/manifest.ts';
 import { manifest as friendsTrees } from './features/friends-trees/manifest.ts';
 import { manifest as education } from './features/education/manifest.ts';
 import { manifest as liveness } from './features/liveness/manifest.ts';
+import { manifest as circlePhrase } from './features/circle-phrase/manifest.ts';
+import { manifest as inbox } from './features/inbox/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online.
@@ -60,6 +62,8 @@ export const features: readonly FeatureManifest[] = [
   friendsTrees,
   education,
   liveness,
+  circlePhrase,
+  inbox,
   persona,
   snapshotBuilder,
   suggestedQuestions,
