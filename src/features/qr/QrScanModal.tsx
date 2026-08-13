@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { decodeQrFromSource } from './qrDecode.ts';
-import { isIosPwaStandalone } from '../../shared/lib/platform.ts';
 
 interface Props {
   onScanned: (text: string) => void;
@@ -18,25 +17,19 @@ type State =
   | { kind: 'paste' }
   | { kind: 'starting' }
   | { kind: 'scanning' }
-  | { kind: 'error'; detail: string }
-  | { kind: 'standalone' };
+  | { kind: 'error'; detail: string };
 
 function initialState(initialMode?: 'camera' | 'paste'): State {
   // Caller-forced paste mode wins — the HandshakeModal exposes a
   // "📋 Paste their identity instead" entry that wants to skip the
-  // camera spin-up unconditionally.
+  // camera spin-up unconditionally. Otherwise ALWAYS attempt the live
+  // scanner, on every platform including an installed iOS PWA
+  // (operator, 2026-08-13: "you have to do the barcode scanner not the
+  // camera" -- a single still photo is not an acceptable substitute for
+  // live point-and-scan, even where getUserMedia is known to be less
+  // reliable). If the attempt genuinely fails, the 'error' state below
+  // offers clipboard/manual paste -- never a photo-decode fallback.
   if (initialMode === 'paste') return { kind: 'paste' };
-  // Installed iOS PWA: don't even attempt the live getUserMedia path.
-  // It's not that jsQR can't decode a frame once it has one -- this is
-  // a lower-level WebKit limitation of the standalone browsing context
-  // itself, separate from (and not fixed by) which decoder reads the
-  // stream; see isIosPwaStandalone's own doc comment and
-  // CameraCaptureModal.tsx, which hits the identical wall. Skipping the
-  // attempt outright means the operator sees a clear explanation
-  // instead of a permission prompt that may never fire, or a camera
-  // that starts and then silently goes nowhere. "Try camera" below
-  // still lets them attempt it anyway.
-  if (isIosPwaStandalone()) return { kind: 'standalone' };
   return { kind: 'starting' };
 }
 
@@ -47,21 +40,19 @@ function initialState(initialMode?: 'camera' | 'paste'): State {
 // worked on Safari/iPhone; jsQR decodes raw pixels itself and has no
 // such gap). On a hit, calls onScanned with the decoded text and the
 // parent closes the modal + populates its textarea. getUserMedia
-// failures (camera denied, no camera, etc.) fall through to a paste
-// field plus a Pick-image-from-Photos button that decodes a QR out of a
-// static image via the same jsQR path. The "Or paste text" escape hatch
-// from every state stays as the universal last resort.
+// failures (camera denied, no camera, an installed iOS PWA where the
+// live path can't start, etc.) fall through to clipboard/manual paste --
+// deliberately NOT a photo-capture-and-decode fallback; the live scanner
+// is always what gets attempted, on every platform, and "Try camera"
+// lets the operator retry it from the paste screen at any time.
 //
 // The video stream is stopped on unmount; the detect-loop uses
 // requestAnimationFrame and a cancelled flag so a slow decode can't
 // keep running after the user closes.
 export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<State>(() => initialState(initialMode));
   const [pasted, setPasted] = useState('');
-  const [pickError, setPickError] = useState<string | null>(null);
-  const [picking, setPicking] = useState(false);
   // Clipboard-paste affordance — primary friction-killer when the
   // camera is not in play. Operator: "Anything we can do to make it
   // feel like there's not a giant text blob that we're copying
@@ -162,33 +153,6 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
     onScanned(trimmed);
   }
 
-  async function pickImage(file: File) {
-    setPickError(null);
-    setPicking(true);
-    const url = URL.createObjectURL(file);
-    try {
-      const img = new Image();
-      img.src = url;
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Could not load the chosen image.'));
-      });
-      const value = decodeQrFromSource(img, img.naturalWidth, img.naturalHeight);
-      if (value === null) {
-        setPickError(
-          'No QR code detected in this image. Try a clearer photo (good lighting, the QR fills most of the frame, no glare).',
-        );
-        return;
-      }
-      onScanned(value);
-    } catch (err) {
-      setPickError(err instanceof Error ? err.message : 'Could not decode the image.');
-    } finally {
-      setPicking(false);
-      URL.revokeObjectURL(url);
-    }
-  }
-
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
       <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -218,22 +182,7 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
             <p className="text-sm text-red-600">Camera error: {state.detail}</p>
             <p className="mt-2 text-xs text-muted">
               Allow camera permission in your browser and reopen this screen,
-              or use the options below.
-            </p>
-          </div>
-        )}
-
-        {state.kind === 'standalone' && (
-          <div className="mt-3">
-            <p className="text-sm text-amber-700">
-              The camera preview isn't reliable in the installed app on
-              iPhone.
-            </p>
-            <p className="mt-2 text-xs text-muted">
-              Tap "Pick a photo of the QR" below — it opens your iPhone
-              camera directly and reads the code from the photo. Opening
-              this wallet in Safari instead of from the home screen also
-              works, if you'd rather use the live preview.
+              or use the paste option below.
             </p>
           </div>
         )}
@@ -254,26 +203,8 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
           </p>
         )}
 
-        {(state.kind === 'paste' || state.kind === 'error' || state.kind === 'standalone') && (
+        {(state.kind === 'paste' || state.kind === 'error') && (
           <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              // `capture` opens the native camera directly on iOS/Android
-              // instead of the photo library -- the reliable path in an
-              // installed iOS PWA where live getUserMedia is not (see
-              // isIosPwaStandalone). Still just a normal file input
-              // everywhere else; picking an existing photo instead is one
-              // tap away in whatever picker the OS shows.
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void pickImage(file);
-                e.target.value = '';
-              }}
-            />
             <button
               type="button"
               onClick={() => void pasteFromClipboard()}
@@ -290,25 +221,6 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
             {clipboardError && (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 {clipboardError}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={picking}
-              className="mt-3 w-full rounded-md bg-accent py-2.5 text-paper text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
-            >
-              {picking ? 'Decoding image…' : '📷 Take a photo of the QR'}
-            </button>
-            <p className="mt-1.5 text-xs text-muted">
-              Opens your camera directly. Line up the QR code and take the
-              photo — the wallet decodes it immediately, no need to copy
-              text. (If your device shows a photo picker instead, pick an
-              existing photo of the QR the same way.)
-            </p>
-            {pickError && (
-              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                {pickError}
               </div>
             )}
 
