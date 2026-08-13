@@ -41,6 +41,17 @@ export function CirclePhraseSection() {
             className="rounded-lg border border-ink/10 bg-paper px-3 py-2 text-sm"
           >
             <div className="font-medium">{p.vaultName || shortDescriptor(p.vaultDescriptor)}</div>
+            {/* Shown even when a name is present, not just as its fallback
+                (2026-08-13, operator: "I feel like it needs to know and
+                coordinate all that the proper way" -- several vaults can
+                share or reuse a similar name, especially test/draft ones,
+                so the name alone isn't enough to confirm "this is really
+                the vault DynastyTrust is showing me" -- the descriptor is
+                the actual identity that matters, and this lets the
+                operator eyeball-compare it directly instead of guessing). */}
+            <div className="mt-0.5 font-mono text-xs text-muted/80">
+              {shortDescriptor(p.vaultDescriptor)}
+            </div>
             <div className="mt-0.5 text-xs text-muted">
               Received {new Date(p.receivedAt).toLocaleDateString()}
               {p.locked ? ' — locked after too many wrong guesses, try again shortly' : ''}
