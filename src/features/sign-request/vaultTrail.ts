@@ -129,6 +129,58 @@ export function findVaultTrail(
 }
 
 /**
+ * Why findVaultTrail came back empty, for the "Cannot sign — this wallet
+ * does not recognize this vault" screen (2026-08-13, operator: "Something
+ * not matching up it will not recognize it and sign. Same message as
+ * before" -- a plain "no trail" refusal gave no way to tell apart four
+ * genuinely different situations that all produce the identical error:
+ * never accepted anything for this vault at all, holding a membership for
+ * a STALE version of it (the vault recompiled -- a new descriptor -- after
+ * the membership was accepted, which invalidates it by design), holding
+ * the right membership but signed by a key this wallet no longer
+ * recognizes as its own (e.g. accepted on a different device/browser
+ * origin, which has entirely separate storage even for "the same app"),
+ * or a held record that fails its own signature check. Read-only --
+ * changes nothing about what findVaultTrail refuses to sign, it only
+ * explains the refusal.
+ */
+export interface VaultTrailDiagnosis {
+  reason: 'none_held' | 'descriptor_mismatch' | 'not_signed_by_me' | 'invalid_signature';
+  /** descriptor_mismatch only: the distinct vault descriptor(s) this
+   *  wallet DOES hold a membership for, so the mismatch is checkable
+   *  against what this request is actually asking for. */
+  heldDescriptors?: string[];
+}
+
+export function diagnoseVaultTrail(
+  holdings: readonly Attestation[],
+  vaultDescriptor: string,
+  myKeys: string | readonly string[],
+): VaultTrailDiagnosis {
+  const mine = new Set((typeof myKeys === 'string' ? [myKeys] : myKeys).map((k) => k.toLowerCase()));
+  const memberships = holdings.filter(isVaultMembership);
+  if (memberships.length === 0) return { reason: 'none_held' };
+
+  const matching = memberships.filter((att) => readVaultMembership(att).vaultDescriptor === vaultDescriptor);
+  if (matching.length === 0) {
+    const heldDescriptors = [...new Set(memberships.map((att) => readVaultMembership(att).vaultDescriptor))];
+    return { reason: 'descriptor_mismatch', heldDescriptors };
+  }
+
+  // A trail findVaultTrail would itself have accepted -- unreachable in
+  // practice, since callers only reach for a diagnosis after findVaultTrail
+  // already returned null on these exact same inputs, but report the
+  // closest honest reason rather than assume the caller held up its end.
+  const validAndMine = matching.some(
+    (att) => verifyEnvelope(att).valid && (att.signatures ?? []).some((s) => mine.has(s.signer.toLowerCase())),
+  );
+  if (validAndMine) return { reason: 'not_signed_by_me' };
+
+  const anyValid = matching.some((att) => verifyEnvelope(att).valid);
+  return anyValid ? { reason: 'not_signed_by_me' } : { reason: 'invalid_signature' };
+}
+
+/**
  * True when a tapscript leaf's script bytes (hex) are one this wallet was
  * told about when the vault was created. The gate that stops Tapit from
  * signing an arbitrary script merely because the request's vault label

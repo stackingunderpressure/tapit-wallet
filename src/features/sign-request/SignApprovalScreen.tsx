@@ -7,7 +7,7 @@ import { parseSignRequest, SignRequestError } from './parseSignRequest.ts';
 import { RenderRequest } from './renderRequest.tsx';
 import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
-import { findVaultTrail, requiresCallbackConfirmation } from './vaultTrail.ts';
+import { findVaultTrail, requiresCallbackConfirmation, diagnoseVaultTrail, type VaultTrailDiagnosis } from './vaultTrail.ts';
 import type { SignRequest } from './types.ts';
 import { hasCirclePhrasePair, checkCirclePhrase, type PhraseCheckResult } from '../circle-phrase/circlePhrase.ts';
 
@@ -15,6 +15,29 @@ type State =
   | { kind: 'ready'; request: SignRequest; callbackHost: string }
   | { kind: 'invalid'; code: string; detail: string; callback?: string }
   | { kind: 'busy' };
+
+// Short enough to eyeball-compare on a phone without dumping the whole
+// descriptor -- just enough of both ends to tell "these are obviously
+// different" from "these look the same but aren't" (a one-character
+// difference would still be visible at the edges most of the time).
+function shortDescriptor(d: string): string {
+  return d.length <= 40 ? d : `${d.slice(0, 24)}…${d.slice(-12)}`;
+}
+
+function noTrailExplanation(diagnosis: VaultTrailDiagnosis): string {
+  switch (diagnosis.reason) {
+    case 'none_held':
+      return "This wallet has never accepted a membership request for any vault -- there's nothing on file to check against.";
+    case 'descriptor_mismatch':
+      return diagnosis.heldDescriptors && diagnosis.heldDescriptors.length > 0
+        ? `This wallet holds membership for a different version of this vault (its descriptor changed, likely from a recompile since you last accepted). Held: ${diagnosis.heldDescriptors.map(shortDescriptor).join(', ')}.`
+        : 'This wallet holds membership for a different version of this vault (its descriptor changed, likely from a recompile since you last accepted).';
+    case 'not_signed_by_me':
+      return "This wallet holds a membership record for this exact vault, but it isn't signed by any key this wallet currently recognizes as its own -- likely accepted on a different device or browser, which has entirely separate storage even for the same app.";
+    case 'invalid_signature':
+      return 'This wallet holds a membership record for this vault, but it failed its own signature check -- the record may be corrupted.';
+  }
+}
 
 // The screen IS the product (DESIGN.md §9). Render the requesting
 // origin (claimed) and the callback URL's host (actual destination)
@@ -119,14 +142,17 @@ export function SignApprovalScreen() {
   // it reflects the trail the wallet actually has right now, not a stale
   // snapshot from when the screen first mounted.
   let psbtCosignGate:
-    | { kind: 'no-trail' }
+    | { kind: 'no-trail'; diagnosis: VaultTrailDiagnosis }
     | { kind: 'ok'; requiresCallback: boolean; totalOutSats: bigint }
     | null = null;
   if (state.kind === 'ready' && state.request.intent === 'psbt-cosign') {
     const req = state.request;
     const trail = findVaultTrail(holdings, req.vault_context.vault_descriptor, wallet.keyHistory);
     if (!trail) {
-      psbtCosignGate = { kind: 'no-trail' };
+      psbtCosignGate = {
+        kind: 'no-trail',
+        diagnosis: diagnoseVaultTrail(holdings, req.vault_context.vault_descriptor, wallet.keyHistory),
+      };
     } else {
       const parsed = parsePsbt(req.psbt_hex);
       const totalOutSats = parsed.tx.outputs.reduce((sum, o) => sum + o.amount, 0n);
@@ -257,10 +283,11 @@ export function SignApprovalScreen() {
             Cannot sign — this wallet does not recognize this vault.
           </p>
           <p className="mt-2 text-xs text-red-800">
-            No verified vault-membership record for this vault is held by
-            this wallet. Approving is disabled. If you believe you should be
-            a signer on this vault, the vault owner needs to re-issue your
-            membership.
+            {noTrailExplanation(psbtCosignGate.diagnosis)}
+          </p>
+          <p className="mt-2 text-xs text-red-800">
+            Approving is disabled. If you believe you should be a signer on
+            this vault, the vault owner needs to re-issue your membership.
           </p>
         </div>
       )}

@@ -6,6 +6,7 @@ import {
   findVaultTrail,
   isKnownLeafScript,
   requiresCallbackConfirmation,
+  diagnoseVaultTrail,
 } from './vaultTrail.ts';
 
 const DESCRIPTOR = 'tr_multileaf(...)';
@@ -128,6 +129,46 @@ describe('isKnownLeafScript', () => {
     const wallet = Wallet.generate();
     const att = membershipAttestation(wallet);
     expect(isKnownLeafScript(att, 'deadbeef')).toBe(false);
+  });
+});
+
+describe('diagnoseVaultTrail', () => {
+  it('reports none_held on empty holdings', () => {
+    const wallet = Wallet.generate();
+    expect(diagnoseVaultTrail([], DESCRIPTOR, wallet.publicKey)).toEqual({ reason: 'none_held' });
+  });
+
+  it('reports descriptor_mismatch and lists the held descriptor(s) -- the recompiled-vault case', () => {
+    const wallet = Wallet.generate();
+    const staleDescriptor = 'tr_multileaf(old-version)';
+    const att = membershipAttestation(wallet, { vaultDescriptor: staleDescriptor });
+    const diagnosis = diagnoseVaultTrail([att], DESCRIPTOR, wallet.publicKey);
+    expect(diagnosis.reason).toBe('descriptor_mismatch');
+    expect(diagnosis.heldDescriptors).toEqual([staleDescriptor]);
+  });
+
+  it('reports not_signed_by_me when the descriptor matches but the signer is someone else', () => {
+    const issuer = Wallet.generate();
+    const me = Wallet.generate();
+    const att = membershipAttestation(issuer);
+    // Sanity check this is genuinely the "no trail" case first.
+    expect(findVaultTrail([att], DESCRIPTOR, me.publicKey)).toBeNull();
+    expect(diagnoseVaultTrail([att], DESCRIPTOR, me.publicKey)).toEqual({ reason: 'not_signed_by_me' });
+  });
+
+  it('reports invalid_signature for a held, descriptor-matching record that fails its own signature check', () => {
+    const wallet = Wallet.generate();
+    const att = membershipAttestation(wallet);
+    // Corrupt the signature bytes only -- claim/fields stay intact (so
+    // isVaultMembership/readVaultMembership still parse it as this vault's
+    // membership) but verifyEnvelope's digest check now fails, simulating
+    // a corrupted or hand-edited held record.
+    const tampered = {
+      ...att,
+      signatures: att.signatures.map((s) => ({ ...s, sig: '00'.repeat(64) })),
+    };
+    expect(findVaultTrail([tampered], DESCRIPTOR, wallet.publicKey)).toBeNull();
+    expect(diagnoseVaultTrail([tampered], DESCRIPTOR, wallet.publicKey)).toEqual({ reason: 'invalid_signature' });
   });
 });
 
