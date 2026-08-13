@@ -149,6 +149,47 @@ export async function hasCirclePhrasePair(vaultDescriptor: string): Promise<bool
   return registryKeyFor(vaultDescriptor) in registry;
 }
 
+export interface CirclePhraseDiagnosis {
+  status: 'configured' | 'not_configured' | 'stale';
+  /** stale only: this wallet holds a phrase pair for a vault with the
+   *  SAME name as the one this request names, just under a different
+   *  descriptor -- almost certainly the same vault, recompiled since
+   *  the phrase pair was received (the exact same staleness class
+   *  vaultTrail.ts's diagnoseVaultTrail handles for membership
+   *  attestations -- see that file's header for the full mechanism).
+   *  Callers should tell the human this plainly rather than silently
+   *  falling back to "no phrase configured," which would quietly
+   *  downgrade a spend that was actually supposed to require the
+   *  phone-verification phrase down to a plain checkbox with no
+   *  explanation. */
+  staleVaultName?: string;
+}
+
+/**
+ * Like hasCirclePhrasePair, but distinguishes "genuinely never received
+ * a phrase pair for this vault" from "holds a phrase pair for a vault
+ * of this exact name, just not reachable under this exact descriptor" --
+ * 2026-08-13 fix, operator: "it shows it on one side set up, but it's
+ * not showing it on the top side set up" -- hasCirclePhrasePair keys its
+ * lookup by a hash of the vault descriptor (registryKeyFor), so a vault
+ * recompile (a new descriptor) makes an already-received phrase pair
+ * silently unreachable even though DynastyTrust's own delivery record
+ * still shows it as confirmed. The caller was previously treating that
+ * as indistinguishable from "never configured" and defaulting straight
+ * to the plain checkbox -- a real, silent security downgrade on a spend
+ * that was supposed to require the phrase ritual.
+ */
+export async function diagnoseCirclePhrase(
+  vaultDescriptor: string,
+  vaultName: string,
+): Promise<CirclePhraseDiagnosis> {
+  if (await hasCirclePhrasePair(vaultDescriptor)) return { status: 'configured' };
+  const all = await listCirclePhrasePairs();
+  const stale = all.find((p) => p.vaultName === vaultName);
+  if (stale) return { status: 'stale', staleVaultName: stale.vaultName };
+  return { status: 'not_configured' };
+}
+
 export type PhraseCheckResult = 'normal' | 'duress' | 'no-match' | 'not-configured' | 'locked';
 
 /**

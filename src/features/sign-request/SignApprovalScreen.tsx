@@ -9,7 +9,7 @@ import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
 import { findVaultTrail, requiresCallbackConfirmation, diagnoseVaultTrail, type VaultTrailDiagnosis } from './vaultTrail.ts';
 import type { SignRequest } from './types.ts';
-import { hasCirclePhrasePair, checkCirclePhrase, type PhraseCheckResult } from '../circle-phrase/circlePhrase.ts';
+import { diagnoseCirclePhrase, checkCirclePhrase, type PhraseCheckResult, type CirclePhraseDiagnosis } from '../circle-phrase/circlePhrase.ts';
 
 type State =
   | { kind: 'ready'; request: SignRequest; callbackHost: string }
@@ -97,22 +97,27 @@ export function SignApprovalScreen() {
     state.kind === 'ready' && state.request.intent === 'psbt-cosign'
       ? state.request.vault_context.vault_descriptor
       : null;
-  const [phraseConfigured, setPhraseConfigured] = useState<boolean | null>(null);
+  const vaultName =
+    state.kind === 'ready' && state.request.intent === 'psbt-cosign'
+      ? (state.request.vault_context.vault_name ?? '')
+      : null;
+  const [phraseDiagnosis, setPhraseDiagnosis] = useState<CirclePhraseDiagnosis | null>(null);
+  const phraseConfigured = phraseDiagnosis === null ? null : phraseDiagnosis.status === 'configured';
   const [phraseInput, setPhraseInput] = useState('');
   const [phraseResult, setPhraseResult] = useState<PhraseCheckResult | null>(null);
   const [phraseBusy, setPhraseBusy] = useState(false);
 
   useEffect(() => {
-    if (!vaultDescriptor) return;
+    if (!vaultDescriptor || vaultName === null) return;
     let cancelled = false;
-    setPhraseConfigured(null);
-    void hasCirclePhrasePair(vaultDescriptor).then((has) => {
-      if (!cancelled) setPhraseConfigured(has);
+    setPhraseDiagnosis(null);
+    void diagnoseCirclePhrase(vaultDescriptor, vaultName).then((d) => {
+      if (!cancelled) setPhraseDiagnosis(d);
     });
     return () => {
       cancelled = true;
     };
-  }, [vaultDescriptor]);
+  }, [vaultDescriptor, vaultName]);
 
   async function verifyPhrase() {
     if (!vaultDescriptor || phraseInput.trim().length === 0) return;
@@ -370,11 +375,22 @@ export function SignApprovalScreen() {
             </div>
           )}
 
+          {phraseDiagnosis?.status === 'stale' && (
+            <p className="mt-3 rounded-md border border-amber-400 bg-amber-100 px-3 py-2 text-xs text-amber-900">
+              This wallet has a safety phrase on file for a vault named
+              &quot;{phraseDiagnosis.staleVaultName}&quot;, but it doesn&apos;t match this
+              request&apos;s current vault — the vault was most likely recompiled since the
+              phrase was set up. Ask the owner to resend it. Using plain confirmation for now.
+            </p>
+          )}
+
           {phraseConfigured === false && (
             <>
-              <p className="mt-3 text-xs text-ink/60">
-                No safety phrase is set up for this vault yet — using plain confirmation instead.
-              </p>
+              {phraseDiagnosis?.status === 'not_configured' && (
+                <p className="mt-3 text-xs text-ink/60">
+                  No safety phrase is set up for this vault yet — using plain confirmation instead.
+                </p>
+              )}
               <label className="mt-2 flex items-start gap-2 text-sm cursor-pointer">
                 <input
                   type="checkbox"
