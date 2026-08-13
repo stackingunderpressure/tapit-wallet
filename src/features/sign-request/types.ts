@@ -80,9 +80,16 @@ export interface SignInSignRequest extends SignRequestBase {
  * intent 'psbt-cosign' — Cut B (docs/build-map-and-cut-lists.md DT-4;
  * docs/integration-phase1-signin-and-bridge.md B1, DynastyTrust repo).
  * A DynastyTrust vault-spend PSBT is signed by a key that lives in Tapit.
- * This is NOT an attestation — it is a Bitcoin tapscript signature, and
- * the wallet treats it with the weight that implies. `psbt_hex` is the
- * PSBT to add this wallet's signature to; `vault_context` is the
+ * The signature itself is NOT an attestation and the grant carries no
+ * envelope for it — it is a Bitcoin tapscript signature, and the wallet
+ * treats it with the weight that implies. Every successful signature
+ * DOES additionally produce its own separate, self-signed 'journal'
+ * attestation recording that the signing happened (approveRequest.ts's
+ * recordSignedTransactionJournalEntry) — a permanent record of the
+ * event, not a redefinition of the tapscript signature itself, built
+ * only from what's independently verifiable in `psbt_hex` (inputs,
+ * output amounts/scripts), never from `vault_context`'s claims.
+ * `psbt_hex` is the PSBT to add this wallet's signature to; `vault_context` is the
  * requester's OWN description of which vault this is, used only to
  * locate a matching held vault-membership attestation (vaultTrail.ts)
  * and to label the banner — never trusted for the amount, destination,

@@ -1,10 +1,107 @@
 import type { Attestation, SignInAttestation, Wallet } from 'tapit-attest';
-import { envelopeId, signInDigestFor } from 'tapit-attest';
+import { envelopeId, signInDigestFor, journalAttestation } from 'tapit-attest';
+import { parsePsbt, toHex } from '@dynastytrust/bip341-psbt-signer';
 import type { SignRequest, SignGrant } from './types.ts';
 import { coSignEnvelope } from './coSignEnvelope.ts';
 import { signPsbtCosign } from './signPsbtCosign.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
+
+// Transaction ids are the 32-byte double-SHA256 of the serialized
+// unsigned tx, but the wire format (and this PSBT parser) carries them
+// in internal byte order -- the reverse of the hex string a block
+// explorer shows. Reverse before hex-encoding so a journal entry's
+// txid is actually pasteable into an explorer, not a red herring.
+function displayTxid(internalOrderBytes: Uint8Array): string {
+  return toHex(Uint8Array.from(internalOrderBytes).reverse());
+}
+
+/**
+ * Pure: build the journal-attestation `fields` for a signed-transaction
+ * record from a psbt-cosign request. Split out from
+ * recordSignedTransactionJournalEntry so the PSBT parsing, txid byte-
+ * order handling, and field shape are unit-testable directly, the same
+ * "pure builder, side-effecting wrapper" split coSignEnvelope.ts and
+ * createJournalEntry.ts each already use in this codebase.
+ *
+ * Grounded only in what's independently verifiable from the PSBT
+ * itself -- input outpoints and output amounts/scripts -- rather than
+ * `vault_context`'s claims (never trusted for anything else in this
+ * flow either) or a guessed spending path, since a wrong claim baked
+ * into a permanent signed record is worse than an honestly plain one.
+ * Built from `request.psbt_hex` (the ORIGINAL request, not the
+ * wallet's own signed-hex output) since both carry the identical
+ * unsigned transaction and inputs/outputs are all this entry needs; a
+ * signature adds no new inputs, outputs, or amounts.
+ */
+export function buildSignedTransactionJournalFields(
+  request: Extract<SignRequest, { intent: 'psbt-cosign' }>,
+): Record<string, string> {
+  const parsed = parsePsbt(request.psbt_hex);
+  const inputs = parsed.tx.inputs.map(i => ({
+    txid: displayTxid(i.txid),
+    vout: i.vout,
+  }));
+  const outputs = parsed.tx.outputs.map(o => ({
+    amount_sats: o.amount.toString(),
+    scriptpubkey_hex: toHex(o.scriptPubkey),
+  }));
+  const totalOutSats = parsed.tx.outputs.reduce((sum, o) => sum + o.amount, 0n);
+  const vaultLabel = request.vault_context.vault_name ?? request.vault_context.vault_descriptor;
+
+  const fields: Record<string, string> = {
+    text: `Signed a Bitcoin transaction for ${vaultLabel} — ${outputs.length} output${outputs.length === 1 ? '' : 's'}, ${totalOutSats.toString()} sats total.`,
+    category: 'Bitcoin',
+    source: 'psbt-cosign-signature',
+    written_at: new Date().toISOString(),
+    vault_descriptor: request.vault_context.vault_descriptor,
+    input_count: String(inputs.length),
+    output_count: String(outputs.length),
+    total_out_sats: totalOutSats.toString(),
+    inputs: JSON.stringify(inputs),
+    outputs: JSON.stringify(outputs),
+  };
+  if (request.vault_context.vault_name) fields.vault_name = request.vault_context.vault_name;
+  return fields;
+}
+
+/**
+ * Record that this wallet signed a Bitcoin transaction, as a
+ * self-signed 'journal' attestation held alongside the wallet's other
+ * records -- distinct from, and in addition to, the tapscript
+ * signature itself. Failure here is logged and swallowed, never
+ * allowed to block handing the already-produced signature back to the
+ * requester -- the signature is the thing that matters; this is
+ * bookkeeping about it.
+ */
+async function recordSignedTransactionJournalEntry(
+  wallet: Wallet,
+  ownerId: string,
+  request: Extract<SignRequest, { intent: 'psbt-cosign' }>,
+  saveWallet: () => Promise<void>,
+  worker: WorkerHandle | null,
+): Promise<void> {
+  try {
+    const fields = buildSignedTransactionJournalFields(request);
+    const draft = journalAttestation({ subject: wallet.publicKey, tier: 'routine', fields });
+    const signedEntry = wallet.sign(draft);
+    await wallet.hold(signedEntry);
+    await saveWallet();
+
+    const digestHex = envelopeId(signedEntry);
+    await anchorQueue.upsert(ownerId, {
+      digestHex,
+      state: 'queued',
+      anchor: null,
+      attempts: 0,
+      last_attempt: null,
+      last_error: null,
+    });
+    if (worker) void worker.kick();
+  } catch (err) {
+    console.error('Failed to record signed-transaction journal entry', err);
+  }
+}
 
 // Honor the request — for 'attest' build and sign a new attestation; for
 // 'cosign-existing' add this wallet's signature to the supplied envelope —
@@ -63,15 +160,21 @@ export async function approveSignRequest(
     return;
   }
 
-  // intent 'psbt-cosign' — Cut B, the DynastyTrust signing bridge. This is
-  // a real Bitcoin tapscript signature, not an attestation: no envelope,
-  // no hold, no anchoring. signPsbtCosign re-verifies the attested trail
-  // and the callback gate itself — never trust that the UI already
-  // checked it, since this is the actual last line of defense against
-  // signing something it shouldn't (risk register: "no rogue signing").
+  // intent 'psbt-cosign' — Cut B, the DynastyTrust signing bridge. The
+  // tapscript signature itself is not an attestation and the grant below
+  // carries no envelope for it, same as before. signPsbtCosign re-verifies
+  // the attested trail and the callback gate itself — never trust that the
+  // UI already checked it, since this is the actual last line of defense
+  // against signing something it shouldn't (risk register: "no rogue
+  // signing"). Separately, every successful signature now also gets its
+  // own held + anchored 'journal' attestation recording that it happened
+  // (recordSignedTransactionJournalEntry, above) — a permanent record OF
+  // the signing event, distinct from the ephemeral grant that carries the
+  // signature itself back to the requester.
   if (request.intent === 'psbt-cosign') {
     const holdings = await wallet.holdings();
     const signedHex = signPsbtCosign(wallet, holdings, request, calloutConfirmed);
+    await recordSignedTransactionJournalEntry(wallet, ownerId, request, saveWallet, worker);
     const grant: SignGrant = {
       v: 1,
       ...(request.nonce ? { nonce: request.nonce } : {}),
