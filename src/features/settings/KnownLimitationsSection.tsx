@@ -23,14 +23,13 @@ export function KnownLimitationsSection() {
           <p className="mt-1 text-xs text-muted">
             When the wallet is installed to your iPhone home screen, Safari's
             standalone mode restricts the live-video camera path in ways the
-            wallet can't work around. The scanner detects this and offers
-            two alternatives that DO work in standalone mode: a Pick-a-photo
-            button that decodes a QR out of any image you've taken with your
-            iPhone Camera app (workflow becomes Camera → take photo of QR →
-            return to wallet → Pick a photo → choose; the wallet reads the
-            QR directly from the image, no copy-paste needed), and a paste
-            field as the universal fallback. Camera scanning works normally
-            in regular Safari tabs and on Android.
+            wallet can't work around. The scanner detects this up front and
+            skips straight to two alternatives that DO work in standalone
+            mode: a "Take a photo of the QR" button that opens your iPhone
+            camera directly and decodes the code from the photo in one step
+            (no copy-paste, no switching apps), and a paste field as the
+            universal fallback. Camera scanning works normally in regular
+            Safari tabs and on Android.
           </p>
         </div>
 

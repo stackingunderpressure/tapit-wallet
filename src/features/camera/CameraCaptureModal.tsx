@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { isIosPwaStandalone } from '../../shared/lib/platform.ts';
 
 // Reusable in-app camera. Opens a live getUserMedia preview with a front/back
 // toggle and a shutter that captures the current frame to a JPEG File, handed
@@ -31,21 +32,6 @@ function hasLiveCamera(): boolean {
     !!navigator.mediaDevices &&
     typeof navigator.mediaDevices.getUserMedia === 'function'
   );
-}
-
-// Installed iOS PWA (home-screen standalone) has unreliable live getUserMedia;
-// the native capture input is the dependable path there. Mirrors the
-// conservative detection QrScanModal uses.
-function isIosPwaStandalone(): boolean {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-    return false;
-  }
-  const standalone =
-    window.matchMedia?.('(display-mode: standalone)').matches ?? false;
-  const legacyIosStandalone =
-    (navigator as unknown as { standalone?: boolean }).standalone === true;
-  const isApple = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-  return isApple && (standalone || legacyIosStandalone);
 }
 
 export function CameraCaptureModal({ onCapture, onClose, title }: Props) {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { decodeQrFromSource } from './qrDecode.ts';
+import { isIosPwaStandalone } from '../../shared/lib/platform.ts';
 
 interface Props {
   onScanned: (text: string) => void;
@@ -17,13 +18,25 @@ type State =
   | { kind: 'paste' }
   | { kind: 'starting' }
   | { kind: 'scanning' }
-  | { kind: 'error'; detail: string };
+  | { kind: 'error'; detail: string }
+  | { kind: 'standalone' };
 
 function initialState(initialMode?: 'camera' | 'paste'): State {
   // Caller-forced paste mode wins — the HandshakeModal exposes a
   // "📋 Paste their identity instead" entry that wants to skip the
   // camera spin-up unconditionally.
   if (initialMode === 'paste') return { kind: 'paste' };
+  // Installed iOS PWA: don't even attempt the live getUserMedia path.
+  // It's not that jsQR can't decode a frame once it has one -- this is
+  // a lower-level WebKit limitation of the standalone browsing context
+  // itself, separate from (and not fixed by) which decoder reads the
+  // stream; see isIosPwaStandalone's own doc comment and
+  // CameraCaptureModal.tsx, which hits the identical wall. Skipping the
+  // attempt outright means the operator sees a clear explanation
+  // instead of a permission prompt that may never fire, or a camera
+  // that starts and then silently goes nowhere. "Try camera" below
+  // still lets them attempt it anyway.
+  if (isIosPwaStandalone()) return { kind: 'standalone' };
   return { kind: 'starting' };
 }
 
@@ -205,7 +218,22 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
             <p className="text-sm text-red-600">Camera error: {state.detail}</p>
             <p className="mt-2 text-xs text-muted">
               Allow camera permission in your browser and reopen this screen,
-              or use the paste option below.
+              or use the options below.
+            </p>
+          </div>
+        )}
+
+        {state.kind === 'standalone' && (
+          <div className="mt-3">
+            <p className="text-sm text-amber-700">
+              The camera preview isn't reliable in the installed app on
+              iPhone.
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Tap "Pick a photo of the QR" below — it opens your iPhone
+              camera directly and reads the code from the photo. Opening
+              this wallet in Safari instead of from the home screen also
+              works, if you'd rather use the live preview.
             </p>
           </div>
         )}
@@ -226,12 +254,19 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
           </p>
         )}
 
-        {(state.kind === 'paste' || state.kind === 'error') && (
+        {(state.kind === 'paste' || state.kind === 'error' || state.kind === 'standalone') && (
           <>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              // `capture` opens the native camera directly on iOS/Android
+              // instead of the photo library -- the reliable path in an
+              // installed iOS PWA where live getUserMedia is not (see
+              // isIosPwaStandalone). Still just a normal file input
+              // everywhere else; picking an existing photo instead is one
+              // tap away in whatever picker the OS shows.
+              capture="environment"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -263,12 +298,13 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
               disabled={picking}
               className="mt-3 w-full rounded-md bg-accent py-2.5 text-paper text-sm font-medium hover:bg-accent/90 disabled:opacity-40"
             >
-              {picking ? 'Decoding image…' : '📷 Pick a photo of the QR'}
+              {picking ? 'Decoding image…' : '📷 Take a photo of the QR'}
             </button>
             <p className="mt-1.5 text-xs text-muted">
-              Take a photo of the QR with your camera app, then come back
-              here and pick it from your photos. The wallet decodes the
-              image directly — no need to copy text.
+              Opens your camera directly. Line up the QR code and take the
+              photo — the wallet decodes it immediately, no need to copy
+              text. (If your device shows a photo picker instead, pick an
+              existing photo of the QR the same way.)
             </p>
             {pickError && (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
