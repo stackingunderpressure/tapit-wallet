@@ -4,7 +4,7 @@
   "description": "Your sovereign identity wallet.",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#f7f6f1",
   "theme_color": "#f7f6f1",
   "orientation": "portrait",
