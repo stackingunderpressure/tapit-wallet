@@ -78,23 +78,6 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
   const dismissedRef = useRef<Set<string>>(new Set());
   const itemsRef = useRef<Map<string, InboxPsbtCosignRequest>>(new Map());
 
-  // Pull any cloud-backed-up dismiss/history state down on every unlock,
-  // BEFORE subscribing -- 2026-08-14, operator: "They are all old... we
-  // can anticipate it would happen again" (a fresh sign-in with local
-  // IndexedDB emptied had nothing to check a relay's backlog replay
-  // against, so every already-reviewed request flooded back). Best-
-  // effort; a failure here just means this device relies on whatever
-  // it already has locally, same posture as circle-phrase's own mirror.
-  useEffect(() => {
-    if (!ownerId || !passphrase || !cloudSync) return;
-    void Promise.all([
-      restoreDismissedRequestsBackup(ownerId, passphrase),
-      restoreRequestHistoryBackup(ownerId, passphrase),
-    ]).catch((err) => {
-      console.warn('restoreDismissedRequestsBackup/restoreRequestHistoryBackup failed', err);
-    });
-  }, [ownerId, passphrase, cloudSync]);
-
   // Mirror the freshly-updated local state to Supabase, encrypted,
   // after every write below -- best-effort, matching every other
   // cloud-backed store in this app; the stored local state is already
@@ -113,15 +96,39 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
     if (!transport || !wallet || !ownerId) return;
     let cancelled = false;
     setRequests([]);
-    void Promise.all([
-      dismissedRequestsStore.load(ownerId, NAMESPACE),
-      requestHistoryStore.load(ownerId, NAMESPACE),
-    ]).then(([set, loadedHistory]) => {
+    void (async () => {
+      // 2026-08-14 fix, round 2 (operator: "they still came back" after
+      // the table + Cloud Sync toggle were both confirmed correct) --
+      // restoring the cloud backup used to be a SEPARATE effect from
+      // this one, with no ordering between them. A network round-trip
+      // to Supabase is reliably slower than a local IndexedDB read, so
+      // this effect's own dismissedRequestsStore.load below almost
+      // always won the race and captured the still-empty (freshly
+      // wiped) local set into dismissedRef BEFORE the restore's write
+      // ever landed -- the exact same "two independent effects, no
+      // ordering" bug already diagnosed and fixed once for this same
+      // load-then-subscribe sequence on 2026-08-11. Restore is now
+      // awaited, in this effect, before the local load runs, so the
+      // local read always sees whatever the cloud mirror restored.
+      if (ownerId && passphrase && cloudSync) {
+        try {
+          await Promise.all([
+            restoreDismissedRequestsBackup(ownerId, passphrase),
+            restoreRequestHistoryBackup(ownerId, passphrase),
+          ]);
+        } catch (err) {
+          console.warn('restoreDismissedRequestsBackup/restoreRequestHistoryBackup failed', err);
+        }
+      }
+      if (cancelled) return;
+      const [set, loadedHistory] = await Promise.all([
+        dismissedRequestsStore.load(ownerId, NAMESPACE),
+        requestHistoryStore.load(ownerId, NAMESPACE),
+      ]);
       if (cancelled) return;
       dismissedRef.current = set;
       setHistory(loadedHistory);
-      return import('./psbtCosignChannel.ts');
-    }).then((mod) => {
+      const mod = await import('./psbtCosignChannel.ts');
       if (cancelled || !mod) return;
       const { subscribePsbtCosignRequests } = mod;
       const sub = subscribePsbtCosignRequests(transport, wallet, (item) => {
@@ -160,7 +167,7 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
         });
       });
       subRef.current = sub;
-    });
+    })();
     return () => {
       cancelled = true;
       if (subRef.current) {

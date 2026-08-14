@@ -91,20 +91,6 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
   holdingsRef.current = holdings;
   const itemsRef = useRef<Map<string, InboxVaultMembershipRequest>>(new Map());
 
-  // Pull any cloud-backed-up dismiss/history state down on every unlock,
-  // BEFORE subscribing -- same 2026-08-14 fix as usePsbtCosignRequests.ts,
-  // same reasoning: a fresh sign-in with local IndexedDB emptied had
-  // nothing to check a relay's backlog replay against.
-  useEffect(() => {
-    if (!ownerId || !passphrase || !cloudSync) return;
-    void Promise.all([
-      restoreDismissedRequestsBackup(ownerId, passphrase),
-      restoreRequestHistoryBackup(ownerId, passphrase),
-    ]).catch((err) => {
-      console.warn('restoreDismissedRequestsBackup/restoreRequestHistoryBackup failed', err);
-    });
-  }, [ownerId, passphrase, cloudSync]);
-
   // Mirror the freshly-updated local state to Supabase, encrypted,
   // after every write below -- best-effort, matching usePsbtCosignRequests.ts.
   const pushBackups = useCallback(() => {
@@ -121,15 +107,36 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
     if (!transport || !wallet || !ownerId) return;
     let cancelled = false;
     setRequests([]);
-    void Promise.all([
-      dismissedRequestsStore.load(ownerId, NAMESPACE),
-      requestHistoryStore.load(ownerId, NAMESPACE),
-    ]).then(([set, loadedHistory]) => {
+    void (async () => {
+      // 2026-08-14 fix, round 2 (operator: "they still came back" after
+      // the table + Cloud Sync toggle were both confirmed correct) --
+      // same fix as usePsbtCosignRequests.ts's identical effect: restore
+      // used to run in a SEPARATE effect with no ordering against this
+      // one's local load, and a Supabase round-trip is reliably slower
+      // than a local IndexedDB read, so the local load below almost
+      // always won the race and captured the still-empty (freshly wiped)
+      // local set before restore's write ever landed. Restore is now
+      // awaited here, before the local load, so the load always sees
+      // whatever the cloud mirror just restored.
+      if (ownerId && passphrase && cloudSync) {
+        try {
+          await Promise.all([
+            restoreDismissedRequestsBackup(ownerId, passphrase),
+            restoreRequestHistoryBackup(ownerId, passphrase),
+          ]);
+        } catch (err) {
+          console.warn('restoreDismissedRequestsBackup/restoreRequestHistoryBackup failed', err);
+        }
+      }
+      if (cancelled) return;
+      const [set, loadedHistory] = await Promise.all([
+        dismissedRequestsStore.load(ownerId, NAMESPACE),
+        requestHistoryStore.load(ownerId, NAMESPACE),
+      ]);
       if (cancelled) return;
       dismissedRef.current = set;
       setHistory(loadedHistory);
-      return import('./vaultMembershipChannel.ts');
-    }).then((mod) => {
+      const mod = await import('./vaultMembershipChannel.ts');
       if (cancelled || !mod) return;
       const { subscribeVaultMembershipRequests } = mod;
       const sub = subscribeVaultMembershipRequests(transport, wallet, (item) => {
@@ -175,7 +182,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
         });
       });
       subRef.current = sub;
-    });
+    })();
     return () => {
       cancelled = true;
       if (subRef.current) {
