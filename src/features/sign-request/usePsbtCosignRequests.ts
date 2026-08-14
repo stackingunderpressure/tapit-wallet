@@ -1,7 +1,16 @@
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
-import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
-import { requestHistoryStore, type RequestHistoryEntry } from '../storage/requestHistoryStore.ts';
+import {
+  dismissedRequestsStore,
+  pushDismissedRequestsBackup,
+  restoreDismissedRequestsBackup,
+} from '../storage/dismissedRequestsStore.ts';
+import {
+  requestHistoryStore,
+  pushRequestHistoryBackup,
+  restoreRequestHistoryBackup,
+  type RequestHistoryEntry,
+} from '../storage/requestHistoryStore.ts';
 import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 import type { InboxPsbtCosignRequest } from './psbtCosignChannel.ts';
 
@@ -61,11 +70,44 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
   const transport = ctx?.transport ?? null;
   const wallet = ctx?.wallet ?? null;
   const ownerId = ctx?.ownerId ?? null;
+  const passphrase = ctx?.passphrase ?? null;
+  const cloudSync = ctx?.prefs?.cloudSync ?? false;
   const [requests, setRequests] = useState<readonly InboxPsbtCosignRequest[]>([]);
   const [history, setHistory] = useState<readonly RequestHistoryEntry[]>([]);
   const subRef = useRef<{ close(): void } | null>(null);
   const dismissedRef = useRef<Set<string>>(new Set());
   const itemsRef = useRef<Map<string, InboxPsbtCosignRequest>>(new Map());
+
+  // Pull any cloud-backed-up dismiss/history state down on every unlock,
+  // BEFORE subscribing -- 2026-08-14, operator: "They are all old... we
+  // can anticipate it would happen again" (a fresh sign-in with local
+  // IndexedDB emptied had nothing to check a relay's backlog replay
+  // against, so every already-reviewed request flooded back). Best-
+  // effort; a failure here just means this device relies on whatever
+  // it already has locally, same posture as circle-phrase's own mirror.
+  useEffect(() => {
+    if (!ownerId || !passphrase || !cloudSync) return;
+    void Promise.all([
+      restoreDismissedRequestsBackup(ownerId, passphrase),
+      restoreRequestHistoryBackup(ownerId, passphrase),
+    ]).catch((err) => {
+      console.warn('restoreDismissedRequestsBackup/restoreRequestHistoryBackup failed', err);
+    });
+  }, [ownerId, passphrase, cloudSync]);
+
+  // Mirror the freshly-updated local state to Supabase, encrypted,
+  // after every write below -- best-effort, matching every other
+  // cloud-backed store in this app; the stored local state is already
+  // durable on this device regardless of the outcome.
+  const pushBackups = useCallback(() => {
+    if (!ownerId || !passphrase || !cloudSync) return;
+    void pushDismissedRequestsBackup(ownerId, passphrase).catch((err) => {
+      console.warn('pushDismissedRequestsBackup failed; local state is still saved', err);
+    });
+    void pushRequestHistoryBackup(ownerId, passphrase).catch((err) => {
+      console.warn('pushRequestHistoryBackup failed; local state is still saved', err);
+    });
+  }, [ownerId, passphrase, cloudSync]);
 
   useEffect(() => {
     if (!transport || !wallet || !ownerId) return;
@@ -114,6 +156,7 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
           respondedAt: null,
         }).then((next) => {
           if (!cancelled) setHistory(next);
+          pushBackups();
         });
       });
       subRef.current = sub;
@@ -125,7 +168,7 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
         subRef.current = null;
       }
     };
-  }, [transport, wallet, ownerId]);
+  }, [transport, wallet, ownerId, passphrase, cloudSync, pushBackups]);
 
   const dismiss = (eventId: string) => {
     if (ownerId) {
@@ -139,14 +182,20 @@ export function usePsbtCosignRequests(): PsbtCosignRequestsState {
         receivedAt: item?.receivedAt ?? Math.floor(Date.now() / 1000),
         status: 'reviewed',
         respondedAt: Math.floor(Date.now() / 1000),
-      }).then((next) => setHistory(next));
+      }).then((next) => {
+        setHistory(next);
+        pushBackups();
+      });
     }
     setRequests((prev) => prev.filter((r) => r.eventId !== eventId));
   };
 
   const deleteHistoryEntry = (id: string) => {
     if (!ownerId) return;
-    void requestHistoryStore.remove(ownerId, NAMESPACE, id).then((next) => setHistory(next));
+    void requestHistoryStore.remove(ownerId, NAMESPACE, id).then((next) => {
+      setHistory(next);
+      pushBackups();
+    });
   };
 
   return { requests, dismiss, history, deleteHistoryEntry };

@@ -1,4 +1,11 @@
+import { encrypt, decrypt } from 'tapit-attest';
 import { idb } from '../../shared/lib/idb.ts';
+import { remoteRequestStateStore } from './remoteRequestStateStore.ts';
+
+// Same namespace list dismissedRequestsStore.ts's backup functions
+// use -- see that file for why one shared list beats every call site
+// naming its own.
+const ALL_NAMESPACES = ['psbt-cosign', 'vault-membership'] as const;
 
 // Persisted history for incoming spend requests and vault-membership
 // requests -- operator (2026-08-11, after force-quitting to confirm a
@@ -68,3 +75,40 @@ export const requestHistoryStore = {
     return next;
   },
 };
+
+// Cloud mirror -- same 2026-08-14 fix as dismissedRequestsStore.ts's
+// backup functions, same reasoning. Pushes/restores every namespace
+// this store is used under in one pass, best-effort throughout.
+export async function pushRequestHistoryBackup(ownerId: string, passphrase: string): Promise<void> {
+  for (const namespace of ALL_NAMESPACES) {
+    const entries = await requestHistoryStore.load(ownerId, namespace);
+    const bytes = new TextEncoder().encode(JSON.stringify(entries));
+    const blob = encrypt(bytes, passphrase);
+    await remoteRequestStateStore.put(ownerId, `request-history:${namespace}`, blob);
+  }
+}
+
+export async function restoreRequestHistoryBackup(ownerId: string, passphrase: string): Promise<void> {
+  for (const namespace of ALL_NAMESPACES) {
+    const remoteBlob = await remoteRequestStateStore.get(ownerId, `request-history:${namespace}`);
+    if (!remoteBlob) continue;
+    try {
+      const bytes = decrypt(remoteBlob, passphrase);
+      const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+      if (!Array.isArray(parsed)) continue;
+      const local = await requestHistoryStore.load(ownerId, namespace);
+      const localIds = new Set(local.map((e) => e.id));
+      // Entries that already exist locally stay as-is -- this session's
+      // own state is treated as fresher than a cloud snapshot. Only
+      // entries genuinely missing locally (a wiped device, a fresh
+      // sign-in with empty IndexedDB) get pulled back in.
+      const missing = (parsed as RequestHistoryEntry[]).filter((e) => !localIds.has(e.id));
+      if (missing.length === 0) continue;
+      const merged = [...local, ...missing];
+      merged.sort((a, b) => b.receivedAt - a.receivedAt);
+      await idb.put(KEY(ownerId, namespace), merged.slice(0, MAX_ENTRIES));
+    } catch {
+      // best-effort -- a malformed or undecryptable remote blob leaves local state as-is
+    }
+  }
+}

@@ -951,7 +951,15 @@ const BUDGETS = [
   // this chunk shares with InboxScreen.tsx's new RequestHistoryList
   // rendering. Measured 9,031 bytes gz; bumped 8.7 -> 9.0KiB with a
   // little headroom rather than re-bumping again for rounding.
-  { pattern: /^useInboxRouting-.*\.js$/, gz: 9_200, label: 'useInboxRouting (shared by Home + Inbox)' },
+  //
+  // 2026-08-14 (operator: "They are all old... we can anticipate it
+  // would happen again"): the request-state cloud-backup fix adds
+  // remoteRequestStateStore.ts plus push/restore functions to both
+  // dismissedRequestsStore.ts and requestHistoryStore.ts, wired into the
+  // same two hooks this chunk already shared. Actual build output shows
+  // 9.68KB gz; bumped 9.2 -> 10.0KiB with a little real headroom instead
+  // of shaving it to the byte again.
+  { pattern: /^useInboxRouting-.*\.js$/, gz: 10_000, label: 'useInboxRouting (shared by Home + Inbox)' },
   { pattern: /^InboxScreen-.*\.js$/, gz: 6_500, label: 'InboxScreen' },
 
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so

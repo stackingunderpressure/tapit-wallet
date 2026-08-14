@@ -1,4 +1,13 @@
+import { encrypt, decrypt } from 'tapit-attest';
 import { idb } from '../../shared/lib/idb.ts';
+import { remoteRequestStateStore } from './remoteRequestStateStore.ts';
+
+// Every namespace either store in this file is used under today --
+// see usePsbtCosignRequests.ts and useVaultMembershipRequests.ts.
+// pushRequestStateBackup/restoreRequestStateBackup below sync all of
+// them in one pass rather than making every call site name a
+// namespace list of its own.
+const ALL_NAMESPACES = ['psbt-cosign', 'vault-membership'] as const;
 
 // Persistent "don't ask me again" record for incoming psbt-cosign and
 // vault-membership REQUESTS -- distinct from dismissedInboxStore.ts,
@@ -44,3 +53,43 @@ export const dismissedRequestsStore = {
     return current;
   },
 };
+
+// Cloud mirror (2026-08-14, operator: "They are all old... we can
+// anticipate it would happen again" -- a fresh sign-in with local
+// IndexedDB data gone left this store with nothing to check a relay's
+// routine backlog replay against, so every already-reviewed request
+// flooded back looking unhandled). Pushes/restores every namespace
+// this store is used under in one pass. Best-effort throughout,
+// matching every other cloud mirror in this app -- local storage
+// stays authoritative and fully functional offline either way.
+export async function pushDismissedRequestsBackup(ownerId: string, passphrase: string): Promise<void> {
+  for (const namespace of ALL_NAMESPACES) {
+    const set = await dismissedRequestsStore.load(ownerId, namespace);
+    const bytes = new TextEncoder().encode(JSON.stringify([...set]));
+    const blob = encrypt(bytes, passphrase);
+    await remoteRequestStateStore.put(ownerId, `dismissed-requests:${namespace}`, blob);
+  }
+}
+
+export async function restoreDismissedRequestsBackup(ownerId: string, passphrase: string): Promise<void> {
+  for (const namespace of ALL_NAMESPACES) {
+    const remoteBlob = await remoteRequestStateStore.get(ownerId, `dismissed-requests:${namespace}`);
+    if (!remoteBlob) continue;
+    try {
+      const bytes = decrypt(remoteBlob, passphrase);
+      const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+      if (!Array.isArray(parsed)) continue;
+      const local = await dismissedRequestsStore.load(ownerId, namespace);
+      let changed = false;
+      for (const key of parsed) {
+        if (typeof key === 'string' && !local.has(key)) {
+          local.add(key);
+          changed = true;
+        }
+      }
+      if (changed) await idb.put(KEY(ownerId, namespace), [...local]);
+    } catch {
+      // best-effort -- a malformed or undecryptable remote blob leaves local state as-is
+    }
+  }
+}
