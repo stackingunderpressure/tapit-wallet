@@ -52,6 +52,24 @@ function initialState(initialMode?: 'camera' | 'paste'): State {
 export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<State>(() => initialState(initialMode));
+  // Every caller passes onScanned as a plain function, freshly recreated on
+  // each of the PARENT's own re-renders (none of them memoize it with
+  // useCallback). The camera-acquisition effect below used to list onScanned
+  // in its dependency array, so any unrelated parent re-render while the
+  // camera was already live -- a context value ticking, a subscription
+  // firing, anything upstream -- tore the effect down mid-scan: every
+  // MediaStreamTrack got stopped, the effect's own `state.kind !== 'starting'`
+  // guard then refused to restart it, and a stopped track renders as a solid
+  // black frame in the <video> element. That is the operator's 2026-08-14
+  // report verbatim: "black not scanning" -- not a permission or platform
+  // problem, the camera had already started fine and then got silently
+  // killed by React. Routing every call through this ref instead means the
+  // effect only ever depends on state.kind, so once the stream is live
+  // nothing but the modal actually closing tears it down again.
+  const onScannedRef = useRef(onScanned);
+  useEffect(() => {
+    onScannedRef.current = onScanned;
+  }, [onScanned]);
   const [pasted, setPasted] = useState('');
   // Clipboard-paste affordance — primary friction-killer when the
   // camera is not in play. Operator: "Anything we can do to make it
@@ -125,7 +143,7 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
             const value = decodeQrFromSource(video, video.videoWidth, video.videoHeight);
             if (value !== null) {
               cancelled = true;
-              onScanned(value);
+              onScannedRef.current(value);
               return;
             }
           }
@@ -145,7 +163,7 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
       if (rafId !== null) cancelAnimationFrame(rafId);
       if (stream) stream.getTracks().forEach((t) => t.stop());
     };
-  }, [state.kind, onScanned]);
+  }, [state.kind]);
 
   function submitPaste() {
     const trimmed = pasted.trim();
