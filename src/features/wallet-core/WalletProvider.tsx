@@ -160,22 +160,10 @@ export function WalletProvider({ children }: Props) {
     };
   }, [ownerId]);
 
-  // Load the operator's permanently-dismissed inbox envelopeIds into
-  // the live ref so the inbox handler suppresses relay replays of them
-  // from the first arrival. Re-runs on owner change; clears to empty
-  // when signed out so one account's dismissals never leak to another.
+  // Sign-out reset only (2026-08-15) -- populating dismissedRef moved into
+  // the transport effect + useInboxEnvelopePersistence below (see those).
   useEffect(() => {
-    if (!ownerId) {
-      dismissedRef.current = new Set();
-      return;
-    }
-    let alive = true;
-    void dismissedInboxStore.load(ownerId).then((set) => {
-      if (alive) dismissedRef.current = set;
-    });
-    return () => {
-      alive = false;
-    };
+    if (!ownerId) dismissedRef.current = new Set();
   }, [ownerId]);
 
   // Fresh-onboarding bundle consumer. Runs once when the provider
@@ -311,7 +299,19 @@ export function WalletProvider({ children }: Props) {
       setHoldings,
       sendEnvelope: (peer, envelope) => sendEnvelopeRef.current(peer, envelope),
     });
-    void import('../transport/connectWallet.ts').then(({ connectWallet }) => {
+    void (async () => {
+      // 2026-08-15 (operator: "messages spamming Home Screen every open")
+      // -- same relay-beats-IDB-read race already fixed for psbt-cosign/
+      // vault-membership on 2026-08-11, never applied here. Awaited first.
+      if (ownerId) {
+        try {
+          dismissedRef.current = await dismissedInboxStore.load(ownerId);
+        } catch {
+          // best-effort -- backlog replay just sees an empty set
+        }
+      }
+      if (cancelled) return;
+      const { connectWallet } = await import('../transport/connectWallet.ts');
       if (cancelled) return;
       conn = connectWallet(wallet, { relays, onEnvelope });
       const transport = conn.transport;
@@ -349,7 +349,7 @@ export function WalletProvider({ children }: Props) {
           // Best-effort — profile re-publishes on the next connect.
         }
       })();
-    });
+    })();
     return () => {
       cancelled = true;
       if (statusUnsubRef.current) {
