@@ -58,18 +58,46 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
   // in its dependency array, so any unrelated parent re-render while the
   // camera was already live -- a context value ticking, a subscription
   // firing, anything upstream -- tore the effect down mid-scan: every
-  // MediaStreamTrack got stopped, the effect's own `state.kind !== 'starting'`
-  // guard then refused to restart it, and a stopped track renders as a solid
+  // MediaStreamTrack got stopped, and a stopped track renders as a solid
   // black frame in the <video> element. That is the operator's 2026-08-14
-  // report verbatim: "black not scanning" -- not a permission or platform
-  // problem, the camera had already started fine and then got silently
-  // killed by React. Routing every call through this ref instead means the
-  // effect only ever depends on state.kind, so once the stream is live
-  // nothing but the modal actually closing tears it down again.
+  // report verbatim: "black not scanning". Routing every call through this
+  // ref means a parent re-render no longer touches the acquisition effect's
+  // dependencies at all (see the `attempt` state below for the other half
+  // of this fix -- the effect's OWN success path used to do the same thing
+  // to itself).
   const onScannedRef = useRef(onScanned);
   useEffect(() => {
     onScannedRef.current = onScanned;
   }, [onScanned]);
+  // Separate retry trigger from the state machine. The acquisition effect
+  // below sets state.kind to 'scanning' once the stream is live -- if that
+  // effect also DEPENDED on state.kind (as it used to), that very setState
+  // call would change its own dependency and force React to re-run it:
+  // cleanup fires first (stopping every MediaStreamTrack), then the new run
+  // hits the state.kind !== 'starting' guard and bails without restarting.
+  // The camera starts, gets a frame, and tears itself down before ever
+  // painting one -- 100% reproducible, not intermittent, and indistinguishable
+  // from a permissions failure ("asked for permission but still black
+  // screen"). attempt only changes when something explicitly wants a fresh
+  // acquisition (mount, or the Try camera button), so setState('scanning')
+  // no longer retriggers anything.
+  const [attempt, setAttempt] = useState<number>(() => (initialMode === 'paste' ? -1 : 0));
+  const streamRef = useRef<MediaStream | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const cancelledRef = useRef(false);
+
+  function stopCamera() {
+    cancelledRef.current = true;
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }
+
   const [pasted, setPasted] = useState('');
   // Clipboard-paste affordance — primary friction-killer when the
   // camera is not in play. Operator: "Anything we can do to make it
@@ -112,25 +140,24 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
   }
 
   useEffect(() => {
-    if (state.kind !== 'starting') return;
+    if (attempt < 0) return; // forced paste mode -- never auto-start
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setState({ kind: 'error', detail: "This browser doesn't support camera access." });
       return;
     }
-    let cancelled = false;
-    let stream: MediaStream | null = null;
-    let rafId: number | null = null;
+    cancelledRef.current = false;
 
     async function start() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
           audio: false,
         });
-        if (cancelled) {
+        if (cancelledRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+        streamRef.current = stream;
         const video = videoRef.current;
         if (!video) return;
         video.srcObject = stream;
@@ -138,20 +165,20 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
         setState({ kind: 'scanning' });
 
         const tick = () => {
-          if (cancelled) return;
+          if (cancelledRef.current) return;
           if (video.readyState === video.HAVE_ENOUGH_DATA) {
             const value = decodeQrFromSource(video, video.videoWidth, video.videoHeight);
             if (value !== null) {
-              cancelled = true;
+              cancelledRef.current = true;
               onScannedRef.current(value);
               return;
             }
           }
-          rafId = requestAnimationFrame(tick);
+          rafIdRef.current = requestAnimationFrame(tick);
         };
         tick();
       } catch (err) {
-        if (cancelled) return;
+        if (cancelledRef.current) return;
         const msg = err instanceof Error ? err.message : 'camera failed to start';
         setState({ kind: 'error', detail: msg });
       }
@@ -159,11 +186,9 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
     void start();
 
     return () => {
-      cancelled = true;
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      if (stream) stream.getTracks().forEach((t) => t.stop());
+      stopCamera();
     };
-  }, [state.kind]);
+  }, [attempt]);
 
   function submitPaste() {
     const trimmed = pasted.trim();
@@ -264,7 +289,10 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() => setState({ kind: 'starting' })}
+                onClick={() => {
+                  setState({ kind: 'starting' });
+                  setAttempt((a) => a + 1);
+                }}
                 className="rounded-md border border-ink/15 bg-white py-2 text-sm"
               >
                 Try camera
@@ -276,7 +304,10 @@ export function QrScanModal({ onScanned, onClose, initialMode }: Props) {
         {(state.kind === 'scanning' || state.kind === 'starting') && (
           <button
             type="button"
-            onClick={() => setState({ kind: 'paste' })}
+            onClick={() => {
+              stopCamera();
+              setState({ kind: 'paste' });
+            }}
             className="mt-3 w-full text-xs text-muted hover:text-ink underline-offset-2 hover:underline"
           >
             Or paste the text instead
