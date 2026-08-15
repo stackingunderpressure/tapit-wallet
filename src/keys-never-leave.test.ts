@@ -20,6 +20,15 @@ import { fileURLToPath } from 'node:url';
 //      something convenient" leak — web storage is plaintext and
 //      survives the session.
 //
+// 2026-08-15 security audit: this originally only walked src/ — but
+// the actual #keypair/#retiredKeypairs fields it exists to protect
+// live in tapit-attest/src/core/wallet.ts, a SIBLING directory (the
+// chassis-inherited tapit-attest/ package, consumed as a file:
+// dependency per CLAUDE.md) one level up from here. A manual audit
+// found that package clean, but nothing was catching a future
+// regression there automatically — the highest-value target sat
+// outside the guardrail's own reach. Now walks both.
+//
 // What it does NOT catch — documented gaps, not silent ones:
 //   - "Transmits": a fetch / Supabase call that puts a raw secret
 //     on the wire. This is hard to mechanize without heavy false
@@ -40,6 +49,7 @@ import { fileURLToPath } from 'node:url';
 // pass a secret-named token, not every line that mentions one.
 
 const here = dirname(fileURLToPath(import.meta.url));
+const attestSrc = join(here, '..', 'tapit-attest', 'src');
 
 // Identifiers that name secret material the wallet must never log
 // or persist to plaintext web storage.
@@ -99,9 +109,15 @@ function scan(content: string, rel: string): Finding[] {
 describe('keys-never-leave guardrail (CLAUDE_ROOT.md non-negotiable #1)', () => {
   it('no source file logs or web-stores a secret-named value', () => {
     const findings: Finding[] = [];
-    for (const file of walkSource(here)) {
-      const content = readFileSync(file, 'utf-8');
-      findings.push(...scan(content, relative(here, file)));
+    const roots = [
+      { dir: here, label: 'src' },
+      { dir: attestSrc, label: 'tapit-attest/src' },
+    ];
+    for (const { dir, label } of roots) {
+      for (const file of walkSource(dir)) {
+        const content = readFileSync(file, 'utf-8');
+        findings.push(...scan(content, join(label, relative(dir, file))));
+      }
     }
     expect(
       findings,
