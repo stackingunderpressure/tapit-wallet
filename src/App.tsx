@@ -54,6 +54,11 @@ const InboxScreen = lazy(() =>
     default: m.InboxScreen,
   })),
 );
+const MyVaultsScreen = lazy(() =>
+  import('./features/sign-request/MyVaultsScreen.tsx').then((m) => ({
+    default: m.MyVaultsScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -95,6 +100,7 @@ export function App() {
                     <Route path="/" element={<HomeScreen />} />
                     <Route path="/settings" element={<SettingsScreen />} />
                     <Route path="/inbox" element={<InboxScreen />} />
+                    <Route path="/vaults" element={<MyVaultsScreen />} />
                     <Route path="/entry/:digest" element={<JournalDetail />} />
                     <Route path="/sign" element={<SignApprovalScreen />} />
                     <Route path="/capture" element={<CaptureScreen />} />

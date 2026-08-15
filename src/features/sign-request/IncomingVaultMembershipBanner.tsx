@@ -4,6 +4,7 @@ import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
 import { useVaultMembershipRequests, type VaultMembershipRequestsState } from './useVaultMembershipRequests.ts';
 import { acceptVaultMembership } from './acceptVaultMembership.ts';
 import { sendVaultMembershipAckOverNostr } from './vaultMembershipAckChannel.ts';
+import { vaultMembershipChannelStore } from './vaultMembershipChannelStore.ts';
 import type { InboxVaultMembershipRequest } from './vaultMembershipChannel.ts';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -89,6 +90,13 @@ export function IncomingVaultMembershipBannerView({ state }: { state: VaultMembe
       );
       dismiss(item.eventId, 'accepted');
       void sendAck(item, 'accepted');
+      // So a later Leave action (My Vaults screen) still knows who to
+      // notify -- see vaultMembershipChannelStore.ts's header for why
+      // this can't just be recovered from the original request later.
+      const requesterPubkey = item.request.response_channel?.requester_pubkey;
+      if (requesterPubkey) {
+        void vaultMembershipChannelStore.save(ownerId, item.request.vault_descriptor, requesterPubkey);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not hold this membership.');
     } finally {

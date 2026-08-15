@@ -4,6 +4,7 @@ import { WalletContext } from '../wallet-core/WalletContext.ts';
 import { transportActivity, type TransportActivityEntry } from '../transport/transportActivity.ts';
 import { channelDiagnostics, type ChannelDiagnosticEntry } from '../transport/channelDiagnostics.ts';
 import { isVaultMembership, readVaultMembership } from '../sign-request/vaultTrail.ts';
+import { leaveVaultMembership } from '../sign-request/leaveVaultMembership.ts';
 
 // Plain-English label for the kind numbers an operator will actually see
 // here -- the raw integer means nothing to a non-technical reader trying
@@ -72,12 +73,19 @@ export function NostrActivitySection() {
     .filter(isVaultMembership)
     .map((att) => ({ att, view: readVaultMembership(att) }));
 
+  // 2026-08-15 fix (operator: "when you disengage from it and you want to
+  // delete yourself from it, it would notify Dynasty Trust that you have
+  // a trustee that's disconnected"): this used to be a local-only unhold
+  // -- DynastyTrust's "Circle membership" tab kept showing "Accepted"
+  // forever with no way to learn the member actually walked away.
+  // leaveVaultMembership.ts adds the notify half; the local removal is
+  // unchanged.
   async function revoke(att: Attestation) {
     if (!ctx) return;
     const id = envelopeId(att);
     setRevokingId(id);
     try {
-      await ctx.wallet.unhold(id);
+      await leaveVaultMembership(ctx.wallet, ctx.ownerId, ctx.transport, att);
       await ctx.refresh();
     } finally {
       setRevokingId(null);
@@ -202,7 +210,8 @@ export function NostrActivitySection() {
             A vault this wallet already holds an accepted membership for will never show a
             new invite banner again -- that's by design, but it means a stale accept (from
             testing, or from before a key rotation) can silently hide every future invite for
-            that same vault. Revoke here if one of these shouldn't still be held.
+            that same vault. Leave here if one of these shouldn't still be held -- this also
+            notifies the vault so it can flag you as disconnected there.
           </p>
           {vaultMemberships.map(({ att, view }) => {
             const id = envelopeId(att);
@@ -223,7 +232,7 @@ export function NostrActivitySection() {
                   disabled={revokingId === id}
                   onClick={() => void revoke(att)}
                 >
-                  {revokingId === id ? 'Revoking…' : 'Revoke'}
+                  {revokingId === id ? 'Leaving…' : 'Leave'}
                 </button>
               </div>
             );

@@ -348,6 +348,13 @@ export function HomeScreen() {
             Inbox
           </Link>
           <Link
+            to="/vaults"
+            className="text-sm text-muted hover:text-ink"
+            aria-label="My Vaults"
+          >
+            Vaults
+          </Link>
+          <Link
             to="/about"
             className="text-sm text-muted hover:text-ink"
             aria-label="Guide"

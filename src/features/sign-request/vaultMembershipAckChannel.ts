@@ -27,7 +27,9 @@ export const VAULT_MEMBERSHIP_ACK_KIND = 9580;
 
 export interface VaultMembershipAckPayload {
   v: 1;
-  decision: 'accepted' | 'declined';
+  // 'left' (2026-08-15) is a member's own wallet walking back an earlier
+  // 'accepted' -- see leaveVaultMembership.ts.
+  decision: 'accepted' | 'declined' | 'left';
 }
 
 /**
@@ -41,7 +43,7 @@ export interface VaultMembershipAckPayload {
 export async function sendVaultMembershipAckOverNostr(
   transport: Transport,
   sender: Wallet,
-  decision: 'accepted' | 'declined',
+  decision: 'accepted' | 'declined' | 'left',
   requesterPubkey: string,
 ): Promise<PublishResult> {
   const payload: VaultMembershipAckPayload = { v: 1, decision };
