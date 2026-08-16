@@ -19,8 +19,20 @@ import { idb } from '../../shared/lib/idb.ts';
  * dismissedRequestsStore.ts's pushDismissedRequestsBackup): losing this
  * on a fresh sign-in only means a later Leave action can't notify
  * DynastyTrust over Nostr, not that leaving silently fails or that any
- * security property is affected -- vaultTrail.ts's local 'left' marking
- * (leftVaultsStore.ts) still works and is what actually gates signing.
+ * security property is affected -- what actually gates signing is
+ * leaveVaultMembership.ts's wallet.unhold() call, which removes the
+ * membership attestation findVaultTrail (vaultTrail.ts) requires before
+ * signPsbtCosign will sign anything for that vault, regardless of
+ * whether this store has an entry.
+ *
+ * (Correction, 2026-08-17: this comment used to name a leftVaultsStore.ts
+ * as the thing gating signing -- no such file was ever built, this was
+ * stale/aspirational text. leaveVaultMembership.ts's own header now
+ * documents the real fix for the companion problem that file was meant
+ * to solve: unholding alone stops SIGNING but does nothing to stop a
+ * replayed or re-sent invite from resurfacing as a fresh Accept/Decline
+ * prompt, which is now handled by writing a dismissedRequestsStore
+ * entry instead.)
  */
 const KEY = (ownerId: string) => `vault-membership-channel:${ownerId}`;
 

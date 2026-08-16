@@ -35,6 +35,7 @@ export const manifest: FeatureManifest = {
     'src/features/sign-request/vaultMembershipAckChannel.ts',
     'src/features/sign-request/vaultMembershipChannelStore.ts',
     'src/features/sign-request/leaveVaultMembership.ts',
+    'src/features/sign-request/leaveVaultMembership.test.ts',
     'src/features/sign-request/MyVaultsScreen.tsx',
     'tapit-attest/src/core/sign-in.ts',
     'tapit-attest/src/core/wallet.ts',

@@ -34,8 +34,8 @@ export interface VaultMembershipRequestsState {
   deleteHistoryEntry: (id: string) => void;
 }
 
-const NAMESPACE = 'vault-membership';
-const dismissKey = (vaultDescriptor: string, role: string) => `${vaultDescriptor}::${role}`;
+export const NAMESPACE = 'vault-membership';
+export const dismissKey = (vaultDescriptor: string, role: string) => `${vaultDescriptor}::${role}`;
 
 // Mirrors usePsbtCosignRequests.ts's wiring (reads wallet/transport
 // straight from WalletContext instead of growing WalletProvider.tsx,
