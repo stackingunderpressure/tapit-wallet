@@ -102,7 +102,18 @@ function RequestHistoryList({
   );
 }
 
-export function InboxScreen() {
+/**
+ * The Inbox content, with no page wrapper or header — meant to be
+ * embedded directly (2026-08-16, operator: "graduate the inbox down
+ * to the tabs" once Captured/Family/Keychain moved out to Settings
+ * and freed up room in the main tab strip). InboxScreen below wraps
+ * this in its own page chrome for the standalone /inbox route, which
+ * stays live for any existing deep link; HomeScreen's Inbox tab
+ * renders this directly, the same way FamilyTabBody/PeopleTabBody are
+ * bodies-only components meant to sit inside HomeScreen's own header
+ * and tab strip.
+ */
+export function InboxTabBody() {
   const {
     wallet,
     holdings,
@@ -110,9 +121,7 @@ export function InboxScreen() {
     inboxEnvelopes,
     dismissInboxEnvelope,
     chatThreadsByPeer,
-    resolvedTheme,
   } = useWallet();
-  const isFresh = resolvedTheme === 'fresh';
   const [category, setCategory] = useState<CategoryId>('all');
 
   const orgDeclaration = useMemo(
@@ -181,13 +190,7 @@ export function InboxScreen() {
   const showPhrases = category === 'all' || category === 'phrases';
 
   return (
-    <div className={`min-h-screen p-5 max-w-md mx-auto pb-16 ${isFresh ? 'bg-fresh-surface-base' : ''}`}>
-      <header className="flex items-center justify-between gap-2 py-2">
-        <h1 className="text-lg font-semibold">Inbox</h1>
-        <Link to="/" className="text-sm text-muted hover:text-ink">
-          Back
-        </Link>
-      </header>
+    <>
       <p className="text-sm text-muted">
         Everything sent to this wallet over Nostr, in one place -- messages, spend requests,
         vault invites, family and circle arrivals, and safety phrases.
@@ -294,6 +297,25 @@ export function InboxScreen() {
       )}
 
       {inboxModals}
+    </>
+  );
+}
+
+/** The standalone /inbox route -- page chrome around InboxTabBody, kept
+ *  live for any existing deep link even now that Inbox is also a main
+ *  HomeScreen tab. */
+export function InboxScreen() {
+  const { resolvedTheme } = useWallet();
+  const isFresh = resolvedTheme === 'fresh';
+  return (
+    <div className={`min-h-screen p-5 max-w-md mx-auto pb-16 ${isFresh ? 'bg-fresh-surface-base' : ''}`}>
+      <header className="flex items-center justify-between gap-2 py-2">
+        <h1 className="text-lg font-semibold">Inbox</h1>
+        <Link to="/" className="text-sm text-muted hover:text-ink">
+          Back
+        </Link>
+      </header>
+      <InboxTabBody />
     </div>
   );
 }

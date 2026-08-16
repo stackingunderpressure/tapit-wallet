@@ -22,6 +22,7 @@ import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
 import { NostrIndicator } from '../transport/NostrIndicator.tsx';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { FamilyTabBody } from './FamilyTabBody.tsx';
+import { HomeTabStrip } from './HomeTabStrip.tsx';
 import { ConnectCard } from '../connections/ConnectCard.tsx';
 import { useAcceptPendingInvite } from '../connections/useAcceptPendingInvite.ts';
 import { OrgIdentitySections } from './OrgIdentitySections.tsx';
@@ -94,6 +95,17 @@ const KeychainTab = lazy(() =>
     default: m.KeychainTab,
   })),
 );
+// Inbox — graduated from a header link into a main tab (2026-08-16,
+// operator: "graduate the inbox down to those tabs, it's probably good
+// now that the other ones are out of the way") once Captured/Family/
+// Keychain moved out to Settings and freed up room in the strip.
+// InboxTabBody is the same content the standalone /inbox route renders
+// (see InboxScreen.tsx), lazy-loaded here the same way KeychainTab is.
+const InboxTabBody = lazy(() =>
+  import('../inbox/InboxScreen.tsx').then((m) => ({
+    default: m.InboxTabBody,
+  })),
+);
 import { isPresenceEvent, readPresence } from '../presence/createPresence.ts';
 import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promoteToJournalPrefill.ts';
 import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
@@ -108,15 +120,24 @@ import { useSecretPieceHeartbeat } from '../recovery/useSecretPieceHeartbeat.ts'
 // Journal is the diary, Identity the founding card plus memberships,
 // Captured the capture-bridge entries, People the Mycelium
 // handshakes (Phase 5a).
-type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'family' | 'lattice';
+//
+// Captured/Family/Keychain moved out of the visible strip into
+// Settings (2026-08-16, operator: "stub the captured until a later
+// date... hide it into the settings somewhere... out of sight out of
+// mind, it's still there... if we ever wanna bring that back to the
+// main tab, I will"). Their render blocks below are untouched --
+// still reachable via Settings' links to `/?tab=captured` etc., which
+// initialTabFromUrl already supports -- only the visible TABS strip
+// shrank. VALID_TABS keeps every real tab id so those deep links still
+// validate. Inbox took one of the freed slots, graduated in from what
+// used to be a header-only link.
+type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'family' | 'lattice' | 'inbox';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'identity', label: 'Identity' },
-  { id: 'captured', label: 'Captured' },
   { id: 'people', label: 'People' },
-  { id: 'family', label: 'Family' },
-  { id: 'lattice', label: 'Keychain' },
+  { id: 'inbox', label: 'Inbox' },
 ];
 
 // A capture (Phase 4.5 capture bridge) is a journal-kind
@@ -133,7 +154,7 @@ function isCapture(att: Attestation): boolean {
   );
 }
 
-const VALID_TABS: readonly Tab[] = ['journal', 'identity', 'captured', 'people', 'family', 'lattice'];
+const VALID_TABS: readonly Tab[] = ['journal', 'identity', 'captured', 'people', 'family', 'lattice', 'inbox'];
 
 /** Reads a `?tab=` search param once on mount, e.g. `/?tab=people` from
  *  the Inbox screen's "Messages" rows -- otherwise falls back to the
@@ -340,13 +361,6 @@ export function HomeScreen() {
         </h1>
         <div className="flex items-center gap-2">
           <NostrIndicator status={relayStatus} />
-          <Link
-            to="/inbox"
-            className="text-sm text-muted hover:text-ink"
-            aria-label="Inbox"
-          >
-            Inbox
-          </Link>
           <Link
             to="/vaults"
             className="text-sm text-muted hover:text-ink"
@@ -663,6 +677,20 @@ export function HomeScreen() {
         </Suspense>
       )}
 
+      {tab === 'inbox' && (
+        <Suspense
+          fallback={
+            <div className="mt-5 rounded-2xl border border-ink/10 bg-white px-4 py-6 text-center text-sm text-muted">
+              Loading your inbox…
+            </div>
+          }
+        >
+          <div className="mt-5">
+            <InboxTabBody />
+          </div>
+        </Suspense>
+      )}
+
       {tab === 'journal' && (
         <JournalTabBody
           composerOpen={composerOpen}
@@ -751,44 +779,7 @@ export function HomeScreen() {
         <Suspense fallback={null}><FreshComposeFAB onCompose={() => setComposerOpen(true)} onWitnessSign={() => setWitnessOpen(true)} /></Suspense>
       )}
 
-      {/* Tabs live at the bottom as a fixed bar — sticky-always per
-          operator directive. Mobile-app shape: header pinned top,
-          tab strip pinned bottom, content scrolls between. The bar
-          itself centers on max-w-md so the strip matches the page
-          column width on wider viewports. */}
-      <nav
-        className={`fixed bottom-0 left-0 right-0 z-30 ${
-          resolvedTheme === 'fresh'
-            ? 'bg-fresh-surface-base/85 backdrop-blur-xl border-t border-fresh-surface-edge'
-            : 'bg-paper/95 backdrop-blur border-t border-ink/10'
-        }`}
-      >
-        <div
-          className="max-w-md mx-auto px-5 pt-4 pb-8 flex rounded-none gap-1"
-          role="tablist"
-        >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex-1 rounded-lg py-3 text-sm font-medium transition ${
-                resolvedTheme === 'fresh'
-                  ? tab === t.id
-                    ? 'bg-fresh-accent-secondary/20 text-fresh-text-primary ring-1 ring-fresh-accent-secondary/40'
-                    : 'text-fresh-text-tertiary'
-                  : tab === t.id
-                    ? 'bg-white text-ink shadow-sm'
-                    : 'text-muted'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+      <HomeTabStrip tabs={TABS} active={tab} onSelect={setTab} resolvedTheme={resolvedTheme} />
     </div>
   );
 }

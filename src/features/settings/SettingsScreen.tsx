@@ -247,6 +247,34 @@ export function SettingsScreen() {
         </Link>
       </section>
 
+      <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+        <div className="font-medium">More</div>
+        <p className="mt-1 text-sm text-muted">
+          Moved out of the main tabs to keep things simple -- still here, just
+          one tap away instead of always on screen.
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          <Link
+            to="/?tab=captured"
+            className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
+          >
+            Captured
+          </Link>
+          <Link
+            to="/?tab=family"
+            className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
+          >
+            Family
+          </Link>
+          <Link
+            to="/?tab=lattice"
+            className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
+          >
+            Keychain
+          </Link>
+        </div>
+      </section>
+
       <AppearanceSection prefs={prefs} updatePrefs={updatePrefs} />
 
       {resolvedTheme === 'fresh' && (
