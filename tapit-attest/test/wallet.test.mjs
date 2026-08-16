@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { schnorr } from '@noble/curves/secp256k1';
 import { Wallet, MemoryStore, verifyEnvelope, generateKeypair, envelopeId } from '../dist/index.js';
 
 test('a generated wallet has matching identity and active key', () => {
@@ -116,6 +117,35 @@ test('key rotation preserves identity and verifies as a chain', () => {
   w.rotate();
   assert.equal(w.verifyKeyHistory(), true);
   assert.equal(w.identity, genesis);
+});
+
+test('signDigestAs signs with the active key when asked for it', () => {
+  const w = Wallet.generate();
+  const digest = new Uint8Array(32).fill(7);
+  const sig = w.signDigestAs(w.publicKey, digest);
+  assert.equal(schnorr.verify(sig, digest, w.publicKey), true);
+});
+
+test('signDigestAs signs with a RETIRED key after rotation, and rejects an unknown key', () => {
+  const w = Wallet.generate();
+  const retiredKey = w.publicKey;
+  w.rotate();
+  assert.notEqual(w.publicKey, retiredKey);
+
+  const digest = new Uint8Array(32).fill(9);
+  const sig = w.signDigestAs(retiredKey, digest);
+  assert.equal(schnorr.verify(sig, digest, retiredKey), true);
+
+  // Still works for the new active key too.
+  const activeSig = w.signDigestAs(w.publicKey, digest);
+  assert.equal(schnorr.verify(activeSig, digest, w.publicKey), true);
+
+  // A key this wallet never held is refused outright.
+  const stranger = Wallet.generate();
+  assert.throws(
+    () => w.signDigestAs(stranger.publicKey, digest),
+    /not the active key or any retired key/,
+  );
 });
 
 test('a wallet round-trips through an encrypted backup', async () => {

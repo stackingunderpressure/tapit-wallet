@@ -37,6 +37,7 @@ export const manifest: FeatureManifest = {
     'src/features/sign-request/leaveVaultMembership.ts',
     'src/features/sign-request/MyVaultsScreen.tsx',
     'tapit-attest/src/core/sign-in.ts',
+    'tapit-attest/src/core/wallet.ts',
   ],
   depends_on: ['wallet-core', 'storage', 'anchoring', 'cosigning', 'circle-phrase'],
   pause_safe: false,

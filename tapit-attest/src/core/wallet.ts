@@ -179,6 +179,37 @@ export class Wallet {
     return signDigestPrimitive(digest, this.#keypair.privateKey);
   }
 
+  /**
+   * Sign an arbitrary 32-byte digest with a SPECIFIC key from this
+   * wallet's history — the active key or any retired one — chosen by
+   * the caller rather than assumed to be "whatever is active right
+   * now". Exists for the same reason nip44DecryptFromAnyKey exists:
+   * a peer (or, concretely, an already-compiled Bitcoin Taproot leaf
+   * script) can name a pre-rotation key long after the wallet has
+   * moved on, and that key's signing authority didn't expire just
+   * because a newer key became active — rotate() retains every
+   * retired private key precisely so this remains possible. Throws if
+   * publicKey matches neither the active key nor any retired one.
+   * Same D-03 posture as every other signing method here: the private
+   * key is looked up and used internally, never returned or exposed —
+   * only the resulting signature crosses the method boundary.
+   */
+  signDigestAs(publicKey: string, digest: Uint8Array): string {
+    const target = publicKey.toLowerCase();
+    if (this.#keypair.publicKey.toLowerCase() === target) {
+      return signDigestPrimitive(digest, this.#keypair.privateKey);
+    }
+    const retired = this.#retiredKeypairs.find(
+      (k) => k.publicKey.toLowerCase() === target,
+    );
+    if (retired) {
+      return signDigestPrimitive(digest, retired.privateKey);
+    }
+    throw new Error(
+      'signDigestAs: publicKey is not the active key or any retired key in this wallet',
+    );
+  }
+
   // --- peer encryption (NIP-44 v2) ---
 
   /**

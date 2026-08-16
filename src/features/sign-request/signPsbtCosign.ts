@@ -68,8 +68,17 @@ export function signPsbtCosign(
     );
   }
 
-  const myXOnly = wallet.publicKey.toLowerCase();
-  const myXOnlyBytes = fromHex(wallet.publicKey);
+  // Every key this wallet has ever held, not just the active one. A
+  // vault-membership leaf script is baked in permanently at whichever
+  // key was active the day this wallet joined; rotating afterward must
+  // not strand that leaf unsignable when the wallet still holds the
+  // retired private key that authorizes it (2026-08-16, operator: "no
+  // security reason it can't still authorize a signing with the old
+  // key that was logged at vault joining... if you still have the
+  // passphrase that encrypts it" — the retired key is already retained
+  // encrypted at rest for exactly this kind of use, same as it always
+  // was for decrypting old NIP-44 messages).
+  const myKeys = wallet.keyHistory.map((k) => k.toLowerCase());
   let signedAny = false;
 
   for (let i = 0; i < parsed.inputs.length; i++) {
@@ -77,21 +86,25 @@ export function signPsbtCosign(
     if (!inp || !inp.tapLeafScript) continue;
     for (const leaf of inp.tapLeafScript) {
       const scriptHex = toHex(leaf.script);
-      // Our key must actually appear in the script AND the script must be
-      // one this wallet was told about at vault-creation time — the
-      // vault_descriptor label alone is never sufficient.
-      if (!scriptHex.toLowerCase().includes(myXOnly)) continue;
+      const scriptHexLower = scriptHex.toLowerCase();
+      // Some key this wallet has ever held must actually appear in the
+      // script AND the script must be one this wallet was told about
+      // at vault-creation time — the vault_descriptor label alone is
+      // never sufficient.
+      const matchedKey = myKeys.find((k) => scriptHexLower.includes(k));
+      if (!matchedKey) continue;
       if (!isKnownLeafScript(trail, scriptHex)) continue;
 
       const leafHash = tapLeafHash(leaf.script, leaf.leafVersion);
       const sighash = tapscriptSighash(parsed, i, leafHash, 0x00);
-      const sig = fromHex(wallet.signDigest(sighash));
+      const sig = fromHex(wallet.signDigestAs(matchedKey, sighash));
+      const matchedKeyBytes = fromHex(matchedKey);
 
       if (!inp.tapScriptSigs) inp.tapScriptSigs = [];
       inp.tapScriptSigs = inp.tapScriptSigs.filter(
-        (s) => !(toHex(s.pubkey) === myXOnly && toHex(s.leafHash) === toHex(leafHash)),
+        (s) => !(toHex(s.pubkey) === matchedKey && toHex(s.leafHash) === toHex(leafHash)),
       );
-      inp.tapScriptSigs.push({ pubkey: myXOnlyBytes, leafHash, sig });
+      inp.tapScriptSigs.push({ pubkey: matchedKeyBytes, leafHash, sig });
       signedAny = true;
     }
   }

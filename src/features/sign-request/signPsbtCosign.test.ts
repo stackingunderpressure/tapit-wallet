@@ -175,6 +175,36 @@ describe('signPsbtCosign', () => {
     expect(schnorr.verify(sig.sig, expectedSighash, fromHex(wallet.publicKey))).toBe(true);
   });
 
+  it('still signs a leaf naming a PRE-ROTATION key, using that retired key, after the wallet has since rotated', () => {
+    const wallet = Wallet.generate();
+    const originalKey = wallet.publicKey;
+    // The vault leaf is compiled with the key active at join time, and the
+    // membership trail is signed under that same key.
+    const { psbtHex, script, leafVersion } = buildFixturePsbt(originalKey);
+    const trail = membershipAttestation(wallet, toHex(script));
+
+    // The wallet moves on to a new active key, as if the operator rotated
+    // in Settings well after joining the vault. The leaf script (already
+    // compiled on-chain) still names the old key — signPsbtCosign must
+    // still be able to produce a valid signature for it.
+    wallet.rotate();
+    expect(wallet.publicKey).not.toBe(originalKey);
+
+    const signedHex = signPsbtCosign(wallet, [trail], baseRequest(psbtHex), true);
+    const reparsed = parsePsbt(signedHex);
+    const sigs = reparsed.inputs[0]?.tapScriptSigs ?? [];
+    expect(sigs.length).toBe(1);
+    const [sig] = sigs;
+    if (!sig) throw new Error('unreachable — length checked above');
+    // Attached under the OLD key, the one the leaf script actually names —
+    // not the wallet's new active key, which the script knows nothing about.
+    expect(toHex(sig.pubkey)).toBe(originalKey.toLowerCase());
+
+    const leafHash = tapLeafHash(script, leafVersion);
+    const expectedSighash = tapscriptSighash(parsePsbt(psbtHex), 0, leafHash, 0x00);
+    expect(schnorr.verify(sig.sig, expectedSighash, fromHex(originalKey))).toBe(true);
+  });
+
   it('below the declared threshold, no callback confirmation is required', () => {
     const wallet = Wallet.generate();
     const { psbtHex, script } = buildFixturePsbt(wallet.publicKey);
