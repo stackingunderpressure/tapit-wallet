@@ -85,6 +85,24 @@ function requireSignInChallenge(value: unknown): SignInChallenge {
   };
 }
 
+/** Shared by the sign-in and psbt-cosign branches -- both accept the same
+ *  optional {kind:'nostr', requester_pubkey} shape for a Nostr-delivered
+ *  response instead of a callback redirect. */
+function parseResponseChannel(r: Record<string, unknown>): { kind: 'nostr'; requester_pubkey: string } | undefined {
+  if (r.response_channel === undefined) return undefined;
+  if (!r.response_channel || typeof r.response_channel !== 'object') {
+    throw new SignRequestError('invalid_request', 'response_channel must be an object');
+  }
+  const rc = r.response_channel as Record<string, unknown>;
+  if (rc.kind !== 'nostr' || !isHexBytes(rc.requester_pubkey, 32)) {
+    throw new SignRequestError(
+      'invalid_request',
+      'response_channel must be {kind:"nostr", requester_pubkey: 32-byte hex}',
+    );
+  }
+  return { kind: 'nostr', requester_pubkey: rc.requester_pubkey };
+}
+
 function requireOriginAndCallback(r: Record<string, unknown>): {
   origin: string;
   callback: string;
@@ -136,7 +154,8 @@ export function parseSignRequest(raw: string | null): SignRequest {
   // so a malformed challenge is declined before the user is ever asked.
   if (r.intent === 'sign-in') {
     const challenge = requireSignInChallenge(r.challenge);
-    return { v: 1, intent: 'sign-in', challenge, ...base };
+    const responseChannel = parseResponseChannel(r);
+    return { v: 1, intent: 'sign-in', challenge, ...(responseChannel ? { response_channel: responseChannel } : {}), ...base };
   }
 
   // intent 'cosign-existing' — the requester hands over an already-signed
@@ -193,20 +212,7 @@ export function parseSignRequest(raw: string | null): SignRequest {
         'vault_context.vault_descriptor must be a non-empty string',
       );
     }
-    let responseChannel: { kind: 'nostr'; requester_pubkey: string } | undefined;
-    if (r.response_channel !== undefined) {
-      if (!r.response_channel || typeof r.response_channel !== 'object') {
-        throw new SignRequestError('invalid_request', 'response_channel must be an object');
-      }
-      const rc = r.response_channel as Record<string, unknown>;
-      if (rc.kind !== 'nostr' || !isHexBytes(rc.requester_pubkey, 32)) {
-        throw new SignRequestError(
-          'invalid_request',
-          'response_channel must be {kind:"nostr", requester_pubkey: 32-byte hex}',
-        );
-      }
-      responseChannel = { kind: 'nostr', requester_pubkey: rc.requester_pubkey };
-    }
+    const responseChannel = parseResponseChannel(r);
     return {
       v: 1,
       intent: 'psbt-cosign',

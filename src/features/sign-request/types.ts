@@ -74,6 +74,25 @@ export interface SignInSignRequest extends SignRequestBase {
   intent: 'sign-in';
   /** The verifier-issued, single-use challenge to answer. */
   challenge: SignInChallenge;
+  /**
+   * Present only when this request arrived via a QR/connect flow (the
+   * verifier displays request as a QR instead of navigating this device
+   * to it) rather than a same-tab deeplink. When set, approveRequest
+   * publishes the signed grant back over Nostr to `requester_pubkey`
+   * instead of redirecting to `callback` -- there is no page to redirect
+   * to when the request was scanned from a different device than the
+   * one that will end up signed in. `requester_pubkey` is the EPHEMERAL
+   * pubkey the verifier minted for this one request (DynastyTrust's
+   * wallet-signin.ts's startTapitConnectRequest); mirrors
+   * PsbtCosignSignRequest.response_channel exactly, same shape, same
+   * one-request-only reply-key discipline on the sender's side.
+   * `callback` above is still required by the base shape but is never
+   * used for navigation in this case.
+   */
+  response_channel?: {
+    kind: 'nostr';
+    requester_pubkey: string;
+  };
 }
 
 /**

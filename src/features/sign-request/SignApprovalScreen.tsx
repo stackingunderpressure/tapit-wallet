@@ -266,10 +266,12 @@ export function SignApprovalScreen() {
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <RenderRequest request={state.request} />
         <div className="mt-3 rounded-md bg-ink/5 px-3 py-2 text-xs text-muted">
-          {state.request.intent === 'psbt-cosign' && state.request.response_channel?.kind === 'nostr' ? (
+          {(state.request.intent === 'psbt-cosign' || state.request.intent === 'sign-in') &&
+          state.request.response_channel?.kind === 'nostr' ? (
             <>
-              On approve the signed transaction goes straight back over the network to whoever
-              asked — nothing to redirect to, your keys never leave this device.
+              On approve the signed {state.request.intent === 'sign-in' ? 'proof' : 'transaction'} goes
+              straight back over the network to whoever asked — nothing to redirect to, your keys
+              never leave this device.
             </>
           ) : (
             <>

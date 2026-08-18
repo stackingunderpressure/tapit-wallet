@@ -5,6 +5,7 @@ import type { SignRequest, SignGrant } from './types.ts';
 import { coSignEnvelope } from './coSignEnvelope.ts';
 import { signPsbtCosign } from './signPsbtCosign.ts';
 import { sendPsbtCosignResponseOverNostr } from './psbtCosignResponseChannel.ts';
+import { sendSignInResponseOverNostr } from './signInResponseChannel.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { Transport } from '../transport/transport.ts';
@@ -139,10 +140,11 @@ export async function approveSignRequest(
    */
   calloutConfirmed = false,
   /**
-   * Only consulted for intent 'psbt-cosign' when the request carries a
-   * response_channel — needed to publish the signed PSBT back over Nostr.
-   * Null is fine for every other intent and for a deeplink-delivered
-   * psbt-cosign request (no response_channel means the old redirect path).
+   * Only consulted when the request carries a response_channel (intent
+   * 'sign-in' or 'psbt-cosign') — needed to publish the signed grant back
+   * over Nostr. Null is fine for every other intent and for a
+   * deeplink-delivered request with no response_channel (the old redirect
+   * path).
    */
   transport: Transport | null = null,
 ): Promise<ApproveResult> {
@@ -164,6 +166,24 @@ export async function approveSignRequest(
     };
     const signature = wallet.signDigest(signInDigestFor(base));
     const signIn: SignInAttestation = { ...base, signature };
+
+    // A request scanned from a QR (DynastyTrust's connect flow) has no
+    // page on THIS device to redirect -- the tab that will end up signed
+    // in is wherever the QR was shown, not here. Publish back over Nostr
+    // to the ephemeral reply channel instead, same as psbt-cosign's own
+    // response_channel branch below.
+    if (request.response_channel?.kind === 'nostr') {
+      if (transport) {
+        await sendSignInResponseOverNostr(
+          transport,
+          wallet,
+          signIn,
+          request.nonce,
+          request.response_channel.requester_pubkey,
+        );
+      }
+      return { delivered: 'nostr' };
+    }
 
     const grant: SignGrant = {
       v: 1,
