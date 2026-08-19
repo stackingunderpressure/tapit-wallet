@@ -155,7 +155,11 @@ describe('approveSignRequest — psbt-cosign response routing', () => {
       wallet, 'owner-1', baseRequest(psbtHex), async () => {}, null, true, transport,
     );
 
-    expect(result).toEqual({ delivered: 'redirect' });
+    expect(result.delivered).toBe('redirect');
+    // 2026-08-20: result.url gives SignApprovalScreen a manual fallback
+    // link in case the automatic assignment below gets blocked (mobile
+    // Safari, notably) -- it must be the exact same URL just navigated to.
+    expect(result).toEqual({ delivered: 'redirect', url: window.location.href });
     expect(window.location.href).toContain('https://dynastytrust.family/vaults');
     expect(window.location.href).toContain('grant=');
     expect(transport.published).toHaveLength(0);

@@ -14,7 +14,12 @@ import { diagnoseCirclePhrase, checkCirclePhrase, type PhraseCheckResult, type C
 type State =
   | { kind: 'ready'; request: SignRequest; callbackHost: string }
   | { kind: 'invalid'; code: string; detail: string; callback?: string }
-  | { kind: 'busy' };
+  // redirectUrl is set only once approveSignRequest resolves with a
+  // 'redirect' result -- see that type's own comment for why a manual
+  // fallback link matters here, not just the automatic window.location.href
+  // assignment.
+  | { kind: 'busy'; redirectUrl?: string }
+  | { kind: 'done'; message: string };
 
 // Short enough to eyeball-compare on a phone without dumping the whole
 // descriptor -- just enough of both ends to tell "these are obviously
@@ -224,11 +229,29 @@ export function SignApprovalScreen() {
         confirmed,
         transport,
       );
-      // A deeplink request navigates away via window.location and this
-      // component unmounts on its own. A Cut B3 slice 2 Nostr-delivered
-      // psbt-cosign response has nowhere to redirect to -- without this,
-      // the screen would sit on "Signing…" forever once it's actually done.
-      if (result.delivered === 'nostr') navigate('/');
+      if (result.delivered === 'nostr') {
+        // Nostr-delivered requests never leave this screen at all -- there
+        // is no redirect, no second device to look at, nothing but this
+        // tab to tell the operator whether it worked. Show a real
+        // confirmation instead of silently landing back on Home (operator,
+        // 2026-08-20: "drops it right there... leaves you at tapit with no
+        // confirmation. Need message banners that confirm signed").
+        const message =
+          state.request.intent === 'sign-in'
+            ? `Signed in to ${state.request.origin}. You can go back to that app now.`
+            : state.request.intent === 'psbt-cosign'
+              ? 'Transaction signed and sent back.'
+              : 'Sent.';
+        setState({ kind: 'done', message });
+        return;
+      }
+      // 'redirect' -- window.location.href was already set inside
+      // approveSignRequest. Keep the busy screen up but now with a manual
+      // fallback link (result.url), in case the browser blocked or
+      // deprioritized that automatic navigation (see ApproveResult's own
+      // comment) -- without this the operator was left staring at
+      // "Signing…" forever with zero way forward or explanation.
+      setState({ kind: 'busy', redirectUrl: result.url });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign.');
       setState({ kind: 'ready', request: state.request, callbackHost: state.callbackHost });
@@ -247,8 +270,41 @@ export function SignApprovalScreen() {
 
   if (state.kind === 'busy') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
-        Signing…
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-muted text-sm">Signing…</p>
+        {state.redirectUrl && (
+          <div className="max-w-xs">
+            <p className="text-xs text-muted">
+              Signed. If this page doesn&apos;t move on its own in a moment, tap below.
+            </p>
+            <a
+              href={state.redirectUrl}
+              className="mt-3 inline-block rounded-md bg-ink px-5 py-3 text-paper text-sm font-medium"
+            >
+              Continue
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (state.kind === 'done') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700">
+          ✓
+        </div>
+        <p className="text-base font-medium text-ink" role="status">
+          {state.message}
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="mt-2 rounded-md bg-ink px-5 py-3 text-paper text-sm font-medium"
+        >
+          Done
+        </button>
       </div>
     );
   }

@@ -122,7 +122,21 @@ async function recordSignedTransactionJournalEntry(
 // was already set, the component is about to unmount) or whether it needs
 // to navigate the operator back to Home itself ('nostr' — the result was
 // published over Nostr instead, there is nowhere to redirect to).
-export type ApproveResult = { delivered: 'redirect' } | { delivered: 'nostr' };
+//
+// 'redirect' carries the exact URL window.location.href was just set to
+// (2026-08-20, operator: "you sign the sign in request but drops it right
+// there... leaves you at tapit with no confirmation") -- the assignment
+// above happens several `await`s removed from the original tap that
+// started approve(), and some mobile browsers (notably iOS Safari, which
+// the operator is "mostly on" per this feature's own standing doctrine)
+// deprioritize or block a location change that isn't directly inside a
+// user-gesture handler. When that happens the auto-redirect silently
+// never fires and the operator is left staring at "Signing…" forever
+// with zero explanation. SignApprovalScreen uses this url to render a
+// manual "Continue" link as a fallback -- a tap on THAT link is a fresh
+// user gesture, so it is never subject to the same block even if the
+// automatic assignment was.
+export type ApproveResult = { delivered: 'redirect'; url: string } | { delivered: 'nostr' };
 
 export async function approveSignRequest(
   wallet: Wallet,
@@ -204,7 +218,7 @@ export async function approveSignRequest(
     const url = new URL(request.callback);
     url.searchParams.set('grant', btoa(JSON.stringify(grant)));
     window.location.href = url.toString();
-    return { delivered: 'redirect' };
+    return { delivered: 'redirect', url: url.toString() };
   }
 
   // intent 'psbt-cosign' — Cut B, the DynastyTrust signing bridge. The
@@ -262,7 +276,7 @@ export async function approveSignRequest(
     const url = new URL(request.callback);
     url.searchParams.set('grant', btoa(JSON.stringify(grant)));
     window.location.href = url.toString();
-    return { delivered: 'redirect' };
+    return { delivered: 'redirect', url: url.toString() };
   }
 
   let signed: Attestation;
@@ -303,5 +317,5 @@ export async function approveSignRequest(
   const url = new URL(request.callback);
   url.searchParams.set('grant', btoa(JSON.stringify(grant)));
   window.location.href = url.toString();
-  return { delivered: 'redirect' };
+  return { delivered: 'redirect', url: url.toString() };
 }
