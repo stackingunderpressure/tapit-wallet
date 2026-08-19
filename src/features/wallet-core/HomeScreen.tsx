@@ -10,6 +10,7 @@ import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBanner.tsx';
 import { IncomingVaultMembershipBanner } from '../sign-request/IncomingVaultMembershipBanner.tsx';
+import { IncomingSignInBanner } from '../sign-request/IncomingSignInBanner.tsx';
 import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
@@ -387,6 +388,7 @@ export function HomeScreen() {
 
       <IncomingVaultMembershipBanner />
       <IncomingPsbtCosignBanner />
+      <IncomingSignInBanner />
       <CirclePhraseReceiver />
 
       {/* Backup health sits above the tabs — a warning must never be
