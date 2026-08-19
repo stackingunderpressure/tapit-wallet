@@ -200,7 +200,12 @@ describe('approveSignRequest — psbt-cosign response routing', () => {
     expect(payload.psbt_hex.length).toBeGreaterThan(0);
   });
 
-  it('with a response_channel but no transport passed, still returns delivered:"nostr" without throwing', async () => {
+  it('with a response_channel but no transport passed, throws instead of falsely claiming delivery', async () => {
+    // 2026-08-20 fix: this used to resolve {delivered:'nostr'} without
+    // ever publishing anything when "Stay reachable" was off -- the
+    // operator saw success locally while DynastyTrust received nothing,
+    // with no error anywhere to explain why. Now it throws so the
+    // approve() catch block in SignApprovalScreen surfaces a real error.
     const wallet = Wallet.generate();
     const { psbtHex, script } = buildFixturePsbt(wallet.publicKey);
     const trail = membershipAttestation(wallet, toHex(script));
@@ -211,8 +216,9 @@ describe('approveSignRequest — psbt-cosign response routing', () => {
       response_channel: { kind: 'nostr', requester_pubkey: '11'.repeat(32) },
     };
 
-    const result = await approveSignRequest(wallet, 'owner-1', request, async () => {}, null, true, null);
-    expect(result).toEqual({ delivered: 'nostr' });
+    await expect(
+      approveSignRequest(wallet, 'owner-1', request, async () => {}, null, true, null),
+    ).rejects.toThrow(/not connected to the network/i);
   });
 });
 

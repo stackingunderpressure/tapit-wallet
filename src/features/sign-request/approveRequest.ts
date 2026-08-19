@@ -173,15 +173,26 @@ export async function approveSignRequest(
     // to the ephemeral reply channel instead, same as psbt-cosign's own
     // response_channel branch below.
     if (request.response_channel?.kind === 'nostr') {
-      if (transport) {
-        await sendSignInResponseOverNostr(
-          transport,
-          wallet,
-          signIn,
-          request.nonce,
-          request.response_channel.requester_pubkey,
+      if (!transport) {
+        // 2026-08-20 (operator: "Dynasty still not received correctly no
+        // evidence it's getting it") -- this branch used to silently skip
+        // the actual publish and still return {delivered:'nostr'} as if
+        // it had gone out, because "Stay reachable" (Settings) was off, so
+        // `transport` was null. The screen showed success and navigated
+        // home; the requester received nothing and had no way to know
+        // why. Throwing here surfaces a real error through doApprove's
+        // existing catch block instead of a false success.
+        throw new Error(
+          'Not connected to the network -- turn on "Stay reachable" in Settings, then try again.',
         );
       }
+      await sendSignInResponseOverNostr(
+        transport,
+        wallet,
+        signIn,
+        request.nonce,
+        request.response_channel.requester_pubkey,
+      );
       return { delivered: 'nostr' };
     }
 
@@ -223,14 +234,23 @@ export async function approveSignRequest(
     // psbtCosignResponseChannel.ts's header for why that's not a new
     // privacy leak here).
     if (request.response_channel?.kind === 'nostr') {
-      if (transport) {
-        await sendPsbtCosignResponseOverNostr(
-          transport,
-          wallet,
-          signedHex,
-          request.response_channel.requester_pubkey,
+      if (!transport) {
+        // Same fix as the sign-in branch above -- this used to silently
+        // skip the publish and still claim {delivered:'nostr'} when
+        // "Stay reachable" was off. The signature is already signed +
+        // journaled locally by this point (recordSignedTransactionJournalEntry
+        // above), so nothing about the local record is lost -- only the
+        // delivery back to the requester failed, and now says so.
+        throw new Error(
+          'Signed locally, but not connected to the network -- turn on "Stay reachable" in Settings, then try again to send it.',
         );
       }
+      await sendPsbtCosignResponseOverNostr(
+        transport,
+        wallet,
+        signedHex,
+        request.response_channel.requester_pubkey,
+      );
       return { delivered: 'nostr' };
     }
 
