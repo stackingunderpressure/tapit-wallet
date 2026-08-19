@@ -2,14 +2,24 @@ import { useNavigate } from 'react-router-dom';
 import { useSignInRequests, type SignInRequestsState } from './useSignInRequests.ts';
 import type { SignInSignRequest } from './types.ts';
 
-// Mirrors IncomingPsbtCosignBanner.tsx exactly: Review hands the request
-// to the SAME SignApprovalScreen a deeplink request uses, so it inherits
-// every gate that screen already enforces (the same intent 'sign-in'
-// branch approveRequest.ts has answered over Nostr since the QR-connect
-// flow shipped), just delivered without a page reload. The only field
-// added here is response_channel, telling approveSignRequest to publish
-// the signed grant back over Nostr instead of trying to redirect a
-// browser tab that was never opened by a click.
+// Mirrors IncomingPsbtCosignBanner.tsx's Review-hands-off-to-
+// SignApprovalScreen shape, but NOT its response_channel construction:
+// IncomingPsbtCosignBannerView is correct to build response_channel from
+// the event's senderPubkey because DynastyTrust's tapit-nostr-cosign.ts
+// deliberately reuses ONE ephemeral keypair as both the request's sender
+// identity and its reply address (see that file's own header comment).
+// tapit-signin-request-delivery.ts does NOT do that for this channel: it
+// mints a throwaway ephemeral keypair purely to sign+send the event, and
+// a SEPARATE replyPublicKey (the one subscribeSignInResponses actually
+// listens on) embedded in the payload's own response_channel field. So
+// request.response_channel already carries the right pubkey the moment
+// it arrives here; overwriting it with senderPubkey (as this file did
+// until 2026-08-20, copied from the psbt-cosign banner without checking
+// whether the assumption still held) addressed every signed response to
+// a one-time signing key nobody -- not even DynastyTrust -- was listening
+// on, so the sign-in completed in this wallet but silently vanished
+// before DynastyTrust ever saw it. Fixed by trusting the request's own
+// response_channel outright instead of reconstructing one.
 function b64UrlEncode(json: unknown): string {
   return btoa(JSON.stringify(json)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -32,16 +42,12 @@ export function IncomingSignInBannerView({ state }: { state: SignInRequestsState
   const navigate = useNavigate();
   if (requests.length === 0) return null;
 
-  function review(eventId: string, senderPubkey: string, request: SignInSignRequest) {
-    const withResponseChannel: SignInSignRequest = {
-      ...request,
-      response_channel: { kind: 'nostr', requester_pubkey: senderPubkey },
-    };
-    // Dismiss on open, not just on approve/decline -- SignApprovalScreen
-    // owns every actual approval gate from here, this banner's only job
-    // was getting the operator there.
+  function review(eventId: string, request: SignInSignRequest) {
+    // request.response_channel is already the correct reply address --
+    // see the header comment above for why this must NOT be rebuilt from
+    // the event's senderPubkey the way the psbt-cosign banner does.
     dismiss(eventId);
-    navigate(`/sign?req=${b64UrlEncode(withResponseChannel)}`);
+    navigate(`/sign?req=${b64UrlEncode(request)}`);
   }
 
   return (
@@ -62,7 +68,7 @@ export function IncomingSignInBannerView({ state }: { state: SignInRequestsState
             </div>
             <button
               type="button"
-              onClick={() => review(r.eventId, r.senderPubkey, r.request)}
+              onClick={() => review(r.eventId, r.request)}
               className="shrink-0 min-h-11 flex items-center justify-center rounded-md bg-ink px-4 text-paper text-xs font-medium"
             >
               Review
