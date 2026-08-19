@@ -7,8 +7,10 @@ import { useInboxRouting } from '../wallet-core/useInboxRouting.tsx';
 import { InboxPanel } from '../transport/InboxPanel.tsx';
 import { usePsbtCosignRequests } from '../sign-request/usePsbtCosignRequests.ts';
 import { useVaultMembershipRequests } from '../sign-request/useVaultMembershipRequests.ts';
+import { useSignInRequests } from '../sign-request/useSignInRequests.ts';
 import { IncomingPsbtCosignBannerView } from '../sign-request/IncomingPsbtCosignBanner.tsx';
 import { IncomingVaultMembershipBannerView } from '../sign-request/IncomingVaultMembershipBanner.tsx';
+import { IncomingSignInBannerView } from '../sign-request/IncomingSignInBanner.tsx';
 import { listCirclePhrasePairs } from '../circle-phrase/circlePhrase.ts';
 import { CirclePhraseSection } from '../circle-phrase/CirclePhraseSection.tsx';
 import type { RequestHistoryEntry, RequestHistoryStatus } from '../storage/requestHistoryStore.ts';
@@ -28,13 +30,14 @@ import type { RequestHistoryEntry, RequestHistoryStatus } from '../storage/reque
 // look regardless of which Nostr-delivered thing actually arrived. Nothing
 // here opens a new subscription that did not already exist somewhere in
 // the app; it composes the existing hooks and components.
-type CategoryId = 'all' | 'messages' | 'requests' | 'invites' | 'circle' | 'phrases';
+type CategoryId = 'all' | 'messages' | 'requests' | 'invites' | 'signins' | 'circle' | 'phrases';
 
 const CATEGORIES: { id: CategoryId; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'messages', label: 'Messages' },
   { id: 'requests', label: 'Spend requests' },
   { id: 'invites', label: 'Vault invites' },
+  { id: 'signins', label: 'Sign-ins' },
   { id: 'circle', label: 'Family & circle' },
   { id: 'phrases', label: 'Safety phrases' },
 ];
@@ -53,6 +56,7 @@ const MEMBERSHIP_STATUS_LABEL: Partial<Record<RequestHistoryStatus, string>> = {
   accepted: 'Accepted',
   declined: 'Declined',
 };
+const SIGNIN_STATUS_LABEL: Partial<Record<RequestHistoryStatus, string>> = { reviewed: 'Reviewed' };
 
 /**
  * 2026-08-11 (operator: "still not showing past things in the inbox") --
@@ -140,8 +144,10 @@ export function InboxTabBody() {
   // fetching their own.
   const spendRequestsState = usePsbtCosignRequests();
   const membershipRequestsState = useVaultMembershipRequests();
+  const signInRequestsState = useSignInRequests();
   const { requests: spendRequests } = spendRequestsState;
   const { requests: membershipRequests } = membershipRequestsState;
+  const { requests: signInRequests } = signInRequestsState;
   const [phraseCount, setPhraseCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -186,6 +192,7 @@ export function InboxTabBody() {
   const showMessages = category === 'all' || category === 'messages';
   const showRequests = category === 'all' || category === 'requests';
   const showInvites = category === 'all' || category === 'invites';
+  const showSignIns = category === 'all' || category === 'signins';
   const showCircle = category === 'all' || category === 'circle';
   const showPhrases = category === 'all' || category === 'phrases';
 
@@ -266,6 +273,19 @@ export function InboxTabBody() {
             history={membershipRequestsState.history}
             statusLabel={MEMBERSHIP_STATUS_LABEL}
             onDelete={membershipRequestsState.deleteHistoryEntry}
+          />
+        </section>
+      )}
+
+      {showSignIns && (
+        <section className="mt-5">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted">Sign-ins</div>
+          {signInRequests.length === 0 && <p className="mt-2 text-sm text-muted">Nothing waiting.</p>}
+          <IncomingSignInBannerView state={signInRequestsState} />
+          <RequestHistoryList
+            history={signInRequestsState.history}
+            statusLabel={SIGNIN_STATUS_LABEL}
+            onDelete={signInRequestsState.deleteHistoryEntry}
           />
         </section>
       )}
