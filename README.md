@@ -62,6 +62,11 @@ math tell the truth, and let the stake be a credibility signal rather than a
 gate. Anyone plays free; weight scales with what you're willing to put behind
 your word.
 
+`TRUST_FRAMEWORK.md` is the forkable playbook for the other half of that
+thesis: how a town, a church, or any small group forms its own signature and
+starts vouching for its own people — no group key, no permission, just
+accreted signatures anyone can verify.
+
 ## Build and test
 
 Requires Node >= 20.
