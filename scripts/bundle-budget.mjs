@@ -236,7 +236,11 @@ const BUDGETS = [
   // pattern for chat) directly into the provider, the same way chat
   // persistence already sits in its own file but gets called from here.
   // Measured ~13.11KB gz. Bumped 13.0 -> 13.5KB.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 13_824, label: 'WalletProvider' },
+  // 2026-09-03 bump (13.5 -> 14KB): re-chunk artifact from stubbing genealogy.
+  // Removing family-tree/friends-trees dropped their lazy chunks, and Rollup
+  // re-grouped a shared module into the WalletProvider chunk (~0.34KB gz).
+  // Net bundle shrank; this is chunk-boundary drift, not WalletProvider growth.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 14_336, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence
