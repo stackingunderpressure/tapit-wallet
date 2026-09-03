@@ -124,11 +124,22 @@ A revealed chain is valid iff **all** hold, all-or-nothing:
 
 ## Open items
 
-- **OPEN — the oracle.** A signed price oracle is now a load-bearing dependency.
-  Decide: run our own transparent oracle (small service signing price rounds on
-  a cadence, pubkey published, rounds public) vs. adopt an existing DLC/Nostr
-  price oracle. Either way its pubkey and cadence must be public and its rounds
-  independently checkable. This is the biggest unbuilt piece.
+- **RESOLVED + BUILT — the oracle (2026-09-03).** Research found NO reliable
+  public Nostr-native BTC/USD oracle in 2026 (NIP-88 is stalled/unmerged with no
+  live publisher; Suredbits is dead), so the operator chose **our own tiny signed
+  round**. Built: `netlify/functions/price-oracle.mts` fetches a real exchange
+  price (Coinbase, Kraken fallback) and signs a canonical round with the oracle's
+  BIP340 key (`ARENA_ORACLE_PRIVATE_KEY`, Netlify-env secret, never committed);
+  `src/features/arena/priceRound.ts` verifies a round in-browser with the SAME
+  tapit-attest Schnorr primitives (no new crypto), and `priceRoundCanonical.ts`
+  single-sources the exact signed bytes so signer and verifier can't drift
+  (pinned by a test). The output is Nostr-event-shaped so a real NIP-88 oracle
+  drops in later with no client change. Wired into ArenaScreen behind
+  `VITE_ARENA_ORACLE_URL` + `VITE_ARENA_ORACLE_PUBKEY` (absent → the manual price
+  path stays); a verified round stamps `oracle_pubkey/sig/round/time/source` into
+  the move so the price is re-verifiable. STILL OWED: generate the oracle key,
+  set the secret in Netlify, publish the pubkey, deploy, and smoke the endpoint —
+  the function is unsmoked from the build sandbox.
 - **OPEN — the charity address.** Pick the open-source charity and its
   verifiable donation address; publish it so the genesis recipient is
   common knowledge.

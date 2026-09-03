@@ -15,6 +15,15 @@
   # The wallet requires Node 20+ per package.json engines.
   NODE_VERSION = "20"
 
+# Serverless functions. Currently just the Beat the HODL price oracle
+# (netlify/functions/price-oracle.mts), a v2 function routed at
+# /api/price-oracle that signs a BTC/USD round with the oracle key held
+# in the ARENA_ORACLE_PRIVATE_KEY env secret (never committed). esbuild
+# bundles the shared canonical module it imports from src/.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # SPA fallback. The wallet is a single-page React app with
 # client-side routes: /, /login, /auth/callback, /settings,
 # /entry/:digest, /sign, /verify. Without this rewrite, a user

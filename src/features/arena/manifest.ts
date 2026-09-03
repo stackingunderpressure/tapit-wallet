@@ -14,9 +14,15 @@ export const manifest: FeatureManifest = {
     'src/features/arena/arenaChain.ts',
     'src/features/arena/arenaChain.test.ts',
     'src/features/arena/ArenaScreen.tsx',
+    'src/features/arena/priceRound.ts',
+    'src/features/arena/priceRound.test.ts',
+    'src/features/arena/priceRoundCanonical.ts',
     'src/features/arena/manifest.ts',
     'src/App.tsx',
     'src/features/settings/SettingsScreen.tsx',
+    'src/shared/lib/env.ts',
+    'netlify/functions/price-oracle.mts',
+    'netlify.toml',
   ],
   depends_on: ['move-chain', 'transport', 'wallet-core', 'anchoring'],
   pause_safe: true,
@@ -29,8 +35,11 @@ export const manifest: FeatureManifest = {
     'PRICE is entered by hand and stamped price_source=manual; the signed ' +
     'price oracle (ARENA_SPEC.md) replaces the input with a verified round ' +
     '— research 2026-09-03 found NO reliable public Nostr oracle, so the ' +
-    'likely path is a tiny self-signed Nostr-shaped round verified with ' +
-    "@noble. (2) GENESIS here is a local start move; the real genesis is a " +
+    'oracle is NOW BUILT as a tiny self-signed Nostr-shaped round verified ' +
+    'with tapit-attest Schnorr (priceRound.ts + netlify/functions/' +
+    'price-oracle; wired behind VITE_ARENA_ORACLE_URL/PUBKEY; owed: key + ' +
+    "Netlify secret + publish pubkey + deploy + smoke). (2) GENESIS here is " +
+    'a local start move; the real genesis is a ' +
     'public on-chain donation to an open-source charity whose txid roots ' +
     'the trail (charity_txid is an optional field so the flow is playable ' +
     'now). The live per-move Bitcoin anchor IS wired (anchorQueue, same ' +

@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@dynastytrust/bip341-psbt-signer": "file:./bip341-psbt-signer",
+    "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.7.2",
     "@supabase/supabase-js": "^2.45.0",
     "@types/qrcode": "^1.5.6",

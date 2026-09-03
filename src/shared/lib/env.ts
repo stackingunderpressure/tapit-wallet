@@ -22,3 +22,16 @@ export function env(): Env {
   cached = { supabaseUrl: url, supabaseAnonKey: key };
   return cached;
 }
+
+/**
+ * The Beat the HODL price oracle, if one is configured. Optional — the
+ * arena works with a hand-entered price when this is absent, and only
+ * offers a verified "fetch signed price" when both the endpoint and the
+ * oracle's public key are set. Never throws: returns null when unset.
+ */
+export function arenaOracle(): { url: string; pubkey: string } | null {
+  const url = import.meta.env.VITE_ARENA_ORACLE_URL;
+  const pubkey = import.meta.env.VITE_ARENA_ORACLE_PUBKEY;
+  if (!url || !pubkey) return null;
+  return { url, pubkey };
+}

@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { envelopeId, type Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
+import { arenaOracle } from '../../shared/lib/env.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import { verifyMoveChain } from '../move-chain/moveChain.ts';
 import { readWholeCoinMoves, simulateWholeCoin } from '../move-chain/truthScore.ts';
+import { fetchSignedRound, type SignedPriceRound } from './priceRound.ts';
 import {
   DEFAULT_FRICTION_PCT,
   buildGenesisDraft,
@@ -53,7 +55,9 @@ export function ArenaScreen() {
     publishPublicNote,
   } = useWallet();
 
+  const oracle = useMemo(() => arenaOracle(), []);
   const [price, setPrice] = useState('');
+  const [round, setRound] = useState<SignedPriceRound | null>(null);
   const [charityTx, setCharityTx] = useState('');
   const [stake, setStake] = useState('');
   const [frictionStr, setFrictionStr] = useState(String(DEFAULT_FRICTION_PCT));
@@ -121,9 +125,21 @@ export function ArenaScreen() {
       setNote('Run started — you hold one whole coin.');
     });
 
+  const fetchPrice = () =>
+    run(async () => {
+      if (!oracle) throw new Error('No price oracle configured.');
+      const r = await fetchSignedRound(oracle.url, oracle.pubkey);
+      setPrice(String(r.price));
+      setRound(r);
+      setNote(`Signed price ${fmtUsd(r.price)} from ${r.source}, verified against the oracle key.`);
+    });
+
   const makeSwitch = () =>
     run(async () => {
       if (!priceValid) throw new Error('Enter a price above zero first.');
+      // Only stamp the oracle round if it actually matches the price being
+      // acted on; a hand-edited price falls back to a manual stamp.
+      const oracleRound = round && round.price === priceNum ? round : undefined;
       const draft = buildSwitchDraft(wallet.identity, {
         side,
         price: priceNum,
@@ -131,6 +147,7 @@ export function ArenaScreen() {
         prevHash: headLink(chain),
         priceTime: new Date().toISOString(),
         priceSource: 'manual',
+        round: oracleRound,
       });
       const signed = wallet.attest(draft);
       await wallet.hold(signed);
@@ -241,17 +258,36 @@ export function ArenaScreen() {
               Current price
             </label>
             <p className="text-xs text-muted mb-2">
-              Entered by hand for now — the signed price oracle replaces this with a
-              verified reading.
+              {oracle
+                ? 'Fetch a signed price from the oracle, or type one by hand.'
+                : 'Entered by hand for now — a signed price oracle replaces this with a verified reading.'}
             </p>
             <input
               id="arena-price"
               inputMode="decimal"
               value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                setRound(null);
+              }}
               placeholder="e.g. 70000"
               className="w-full rounded-md border border-ink/15 px-3 py-2 text-sm"
             />
+            {oracle && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={fetchPrice}
+                className="mt-2 w-full rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
+              >
+                Fetch signed price
+              </button>
+            )}
+            {round && round.price === priceNum && (
+              <div className="mt-2 text-xs text-accent">
+                ✓ oracle-signed price — this move will carry the proof
+              </div>
+            )}
             <button
               type="button"
               disabled={busy || !priceValid}

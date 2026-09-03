@@ -6,6 +6,7 @@ import {
   readMoveMeta,
 } from '../move-chain/moveChain.ts';
 import { readWholeCoinMoves, simulateWholeCoin } from '../move-chain/truthScore.ts';
+import type { SignedPriceRound } from './priceRound.ts';
 
 // arenaChain — the arena-specific glue over the generic move-chain
 // primitive for "Beat the HODL Machine". A run is a move chain whose
@@ -42,6 +43,14 @@ export interface SwitchOpts {
   priceTime?: string;
   /** where the price came from — 'manual' until the signed oracle is wired. */
   priceSource?: string;
+  /**
+   * The verified signed oracle round this price came from, if any. When
+   * present its full fields + signature are stamped into the move so a
+   * later verifier can re-check the oracle's Schnorr signature over
+   * {price, time, source, round} against the oracle pubkey — the price is
+   * then proven real, not just asserted.
+   */
+  round?: SignedPriceRound;
 }
 
 /** Shape the genesis "start" move. Hand to wallet.attest, then hold + anchor. */
@@ -68,6 +77,16 @@ export function buildSwitchDraft(subject: string, o: SwitchOpts): DraftInput {
   };
   if (o.priceTime) payload.price_time = o.priceTime;
   if (o.priceSource) payload.price_source = o.priceSource;
+  // A verified oracle round: stamp the full signed datum so anyone can
+  // re-verify the oracle's signature over the price later.
+  if (o.round) {
+    payload.price_source = 'oracle';
+    payload.oracle_pubkey = o.round.pubkey;
+    payload.oracle_sig = o.round.sig;
+    payload.oracle_round = o.round.round;
+    payload.oracle_time = o.round.time;
+    payload.oracle_source = o.round.source;
+  }
   return buildMoveDraftInput({ subject, payload, seq: o.seq, prevHash: o.prevHash });
 }
 
