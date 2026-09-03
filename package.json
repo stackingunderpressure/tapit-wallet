@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "license": "MIT",
   "description": "Sovereign identity wallet — keypair holder + Merkle holder of signed attestations.",
   "scripts": {
     "dev": "vite",
