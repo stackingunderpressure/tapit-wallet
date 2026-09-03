@@ -30,12 +30,12 @@ import { manifest as circlePhrase } from './features/circle-phrase/manifest.ts';
 import { manifest as inbox } from './features/inbox/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
-// session brings the bot online.
+// session brings the bot online. Trimmed 2026-09-03 (wallet-wide gut
+// check): snapshot-builder, suggested-questions, temporal, and sign-in
+// were removed as inert bot scaffolding with zero importers. persona
+// stays because its types.ts is the frontend half of the PFOR-027
+// cross-repo parity contract with supabase/functions/_shared/persona.ts.
 import { manifest as persona } from './features/persona/manifest.ts';
-import { manifest as snapshotBuilder } from './features/snapshot-builder/manifest.ts';
-import { manifest as suggestedQuestions } from './features/suggested-questions/manifest.ts';
-import { manifest as temporal } from './features/temporal/manifest.ts';
-import { manifest as signIn } from './features/sign-in/manifest.ts';
 
 export const features: readonly FeatureManifest[] = [
   auth,
@@ -67,8 +67,4 @@ export const features: readonly FeatureManifest[] = [
   circlePhrase,
   inbox,
   persona,
-  snapshotBuilder,
-  suggestedQuestions,
-  temporal,
-  signIn,
 ];
