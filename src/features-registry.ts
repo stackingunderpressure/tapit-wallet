@@ -26,6 +26,7 @@ import { manifest as friendsTrees } from './features/friends-trees/manifest.ts';
 import { manifest as education } from './features/education/manifest.ts';
 import { manifest as liveness } from './features/liveness/manifest.ts';
 import { manifest as moveChain } from './features/move-chain/manifest.ts';
+import { manifest as arena } from './features/arena/manifest.ts';
 import { manifest as circlePhrase } from './features/circle-phrase/manifest.ts';
 import { manifest as inbox } from './features/inbox/manifest.ts';
 
@@ -64,6 +65,7 @@ export const features: readonly FeatureManifest[] = [
   education,
   liveness,
   moveChain,
+  arena,
   circlePhrase,
   inbox,
   persona,

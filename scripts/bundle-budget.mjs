@@ -447,6 +447,10 @@ const BUDGETS = [
   { pattern: /^VerifyProofScreen-.*\.js$/, gz: 6_042, label: 'VerifyProofScreen' },
   // Capture bridge screen (Phase 4.5) — kept minimal; ~1.4KB gz today.
   { pattern: /^CaptureScreen-.*\.js$/, gz: 2_000, label: 'CaptureScreen' },
+  // The Beat the HODL arena prototype (standalone /arena route). Its own
+  // lazy chunk: the scoreboard UI + arenaChain glue over the already-loaded
+  // move-chain engine.
+  { pattern: /^ArenaScreen-.*\.js$/, gz: 6_144, label: 'ArenaScreen (Beat the HODL arena)' },
 
   // QR feature carries the qrcode library — known heavy.
   { pattern: /^QrShow-.*\.js$/, gz: 15_000, label: 'QrShow (qrcode lib)' },

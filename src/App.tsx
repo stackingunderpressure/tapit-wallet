@@ -59,6 +59,11 @@ const MyVaultsScreen = lazy(() =>
     default: m.MyVaultsScreen,
   })),
 );
+const ArenaScreen = lazy(() =>
+  import('./features/arena/ArenaScreen.tsx').then((m) => ({
+    default: m.ArenaScreen,
+  })),
+);
 
 const Pending = (
   <div className="min-h-screen flex items-center justify-center p-6 text-muted text-sm">
@@ -104,6 +109,7 @@ export function App() {
                     <Route path="/entry/:digest" element={<JournalDetail />} />
                     <Route path="/sign" element={<SignApprovalScreen />} />
                     <Route path="/capture" element={<CaptureScreen />} />
+                    <Route path="/arena" element={<ArenaScreen />} />
                   </Routes>
                 </WalletProvider>
               </Suspense>
