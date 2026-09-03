@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
 import type { Wallet } from 'tapit-attest';
+import { ExplainChip } from '../education/ExplainChip.tsx';
 import { PassphraseCommitWarnings } from './PassphraseCommitWarnings.tsx';
 import { SignOutEscape } from './SignOutEscape.tsx';
 
@@ -122,6 +123,9 @@ export function PassphrasePrompt({ onSubmit, onImport, ownerId, onRecovered }: P
           managers are fine for backup, but the passphrase needs to live in
           your head first, not just in an autofill box.
         </p>
+        <div className="mt-3">
+          <ExplainChip concept="keys-custody" label="Why is there no reset?" />
+        </div>
         <label className="mt-6 block">
           <span className="text-sm font-medium">Passphrase</span>
           <input

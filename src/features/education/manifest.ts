@@ -18,10 +18,13 @@ export const manifest: FeatureManifest = {
     'src/features/education/literacy.test.ts',
     'src/features/education/ExplainChip.tsx',
     'src/features/education/manifest.ts',
+    'src/features/wallet-core/PassphrasePrompt.tsx',
+    'src/features/connections/ConnectCard.tsx',
+    'src/features/recovery/CohortEditorModal.tsx',
   ],
   depends_on: ['recovery'],
   pause_safe: true,
-  removal_safe: true,
+  removal_safe: false,
   monetizable: false,
   notes:
     'Pure UI + content cut — touches no keys, no signing, no spends. The ' +
@@ -30,8 +33,13 @@ export const manifest: FeatureManifest = {
     'reference (hence depends_on: recovery), keeping one source of truth ' +
     'for those two strings. explainThreshold output is already jargon-clean ' +
     "(the word 'threshold' never appears in its rendered string), so no " +
-    'lesson needed jargonGuarded: false. ExplainChip is intentionally NOT ' +
-    'mounted into any existing screen this cut; wiring it into the live ' +
-    'flows (recovery, verify, connections) is a later cut to keep this ' +
-    "cut's blast radius to the new folder plus the registry line.",
+    'lesson needed jargonGuarded: false. MOUNTED 2026-09-03 (wallet-wide ' +
+    'gut-check follow-through): ExplainChip is now wired into three live ' +
+    'sovereignty moments so literacy-through-use is true rather than ' +
+    'aspirational -- keys-custody on the first-login PassphrasePrompt, ' +
+    'web-of-trust on the ConnectCard, and recovery-cohort on the ' +
+    'CohortEditorModal. removal_safe flipped to false because those three ' +
+    'screens now import ExplainChip. Remaining unmounted concepts ' +
+    '(anchor-proof, verify-on-bitcoin, witness-cosign, threshold, ' +
+    'leak-vs-loss) are the next drop-ins as those flows are touched.',
 };

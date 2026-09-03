@@ -9,6 +9,7 @@ import {
 } from './createCohort.ts';
 import { circleTrust, circleTrustWarning } from './circleTrust.ts';
 import { DistributeSharesModal } from './DistributeSharesModal.tsx';
+import { ExplainChip } from '../education/ExplainChip.tsx';
 
 interface Props {
   onClose: () => void;
@@ -131,6 +132,9 @@ export function CohortEditorModal({ onClose }: Props) {
           none of them can see anything of yours on their own. It only
           works when enough of them help together.
         </p>
+        <div className="mt-2">
+          <ExplainChip concept="recovery-cohort" />
+        </div>
 
         {candidates.length === 0 ? (
           <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">

@@ -1,3 +1,4 @@
+import { ExplainChip } from '../education/ExplainChip.tsx';
 import { InviteShareButton } from './InviteShareButton.tsx';
 
 interface Props {
@@ -46,6 +47,9 @@ export function ConnectCard({
         whichever's easiest right now. All three do the same thing: you
         both end up holding a signed record that you're connected.
       </p>
+      <div className="mt-2">
+        <ExplainChip concept="web-of-trust" />
+      </div>
       <button
         type="button"
         onClick={onNewHandshake}

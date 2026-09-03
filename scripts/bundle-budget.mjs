@@ -583,6 +583,13 @@ const BUDGETS = [
   // + front/back toggle + shutter, degrading to the native capture input on
   // iOS PWA. Small: no decode libs, just stream lifecycle + a canvas grab.
   { pattern: /^CameraCaptureModal-.*\.js$/, gz: 3_000, label: 'CameraCaptureModal' },
+  // 2026-09-03 — education mounted (gut-check follow-through). ExplainChip +
+  // the literacy.ts teaching catalog split into one shared chunk (~3.68KB gz)
+  // once three screens (PassphrasePrompt, ConnectCard, CohortEditorModal) use
+  // it. A single shared chunk beats duplicating the catalog into each
+  // consumer's chunk; it stays out of the first-login path (only loads when a
+  // screen carrying an ExplainChip renders).
+  { pattern: /^ExplainChip-.*\.js$/, gz: 4_096, label: 'ExplainChip (education catalog)' },
   // 2026-06-03 SharedSecretModal — the family "safe word" create/recover
   // UI, React.lazy from the SharedSecretSection launcher on the Identity
   // tab. Carries the split/combine form + the encoded-share list with a
