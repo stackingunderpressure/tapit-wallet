@@ -40,7 +40,9 @@ export interface RoundResult {
 export interface TruthResult {
   /** the HODL ball — one whole coin, frozen. */
   hodlCoins: number;
-  /** your coin count now, marked to the current price if you're in cash. */
+  /** your realized coin count: the coin amount while holding it, or the coins
+   *  locked at the sell price (one fee paid) while in cash. Only a trade moves
+   *  it — never the live price. */
   coinsNow: number;
   /** 'btc' = holding the coin; 'cash' = sold, waiting to buy back. */
   holding: 'btc' | 'cash';
@@ -81,7 +83,6 @@ function replayCoins(
   moves: readonly WholeCoinMove[],
   startCoins: number,
   f: number,
-  currentPrice: number,
 ): {
   coins: number;
   cashUsd: number;
@@ -128,8 +129,15 @@ function replayCoins(
     }
   }
 
+  // Your coin count is your REALIZED position, and it only moves when you
+  // trade — never when the live price wanders. Holding the coin, it's the coin
+  // amount. Holding cash, it's the coins you locked in at the price you sold
+  // at (cashUsd / sellPrice), which equals coins × (1 − f): the one fee you
+  // actually paid on the sell, and nothing more. The live price does not mark
+  // this to market — that truth lives in minBuyBackToBeatHodl (the price you'd
+  // need to buy back at) and only becomes real coins when you actually buy.
   const coinsNow =
-    holding === 'btc' ? coins : currentPrice > 0 ? (cashUsd * (1 - f)) / currentPrice : 0;
+    holding === 'btc' ? coins : open && open.sellPrice > 0 ? cashUsd / open.sellPrice : 0;
   const openSell = holding === 'cash' && open ? { sellPrice: open.sellPrice, cashUsd } : null;
   return { coins, cashUsd, holding, rounds, openSell, wellFormed, coinsNow };
 }
@@ -149,8 +157,8 @@ export function simulateWholeCoin(moves: readonly WholeCoinMove[], opts: TruthOp
   const currentPrice =
     typeof opts.currentPrice === 'number' && opts.currentPrice > 0 ? opts.currentPrice : lastPrice;
 
-  const real = replayCoins(moves, startCoins, f, currentPrice);
-  const shadow = replayCoins(moves, startCoins, 0, currentPrice);
+  const real = replayCoins(moves, startCoins, f);
+  const shadow = replayCoins(moves, startCoins, 0);
 
   const hodlCoins = startCoins;
   const edgeCoins = real.coinsNow - hodlCoins;

@@ -54,14 +54,46 @@ describe('simulateWholeCoin — friction is real and visible', () => {
 });
 
 describe('simulateWholeCoin — an open sell (holding cash)', () => {
-  it('marks to the current price and says how low it must drop to win', () => {
+  it('locks the coin count at the sell — the live price does not move it', () => {
     const r = simulateWholeCoin([sell(100_000)], { currentPrice: 90_000 });
     expect(r.holding).toBe('cash');
     expect(r.openSell).toEqual({ sellPrice: 100_000, cashUsd: 100_000 });
-    // buying back at 90k now would give 100000/90000 = 1.111 coins
-    expect(r.coinsNow).toBeCloseTo(1.1111, 4);
+    // No friction here, so you locked exactly 1.0 coin at the sell — NOT
+    // 100000/90000 marked to the live 90k price. The count is your realized
+    // position, not a mark-to-market.
+    expect(r.coinsNow).toBeCloseTo(1, 10);
     // must buy back below 100k to beat the ball (no friction here)
     expect(r.minBuyBackToBeatHodl).toBeCloseTo(100_000, 6);
+  });
+
+  it('a single sell paying one fee reads 0.99, and the live price never moves it', () => {
+    // The operator's exact report: after ONE sell all I've paid is one fee,
+    // so I hold 0.99 of a coin, and it must NOT change as the price wanders.
+    const atSell = simulateWholeCoin([sell(80_000)], {
+      frictionPctPerLeg: 1,
+      currentPrice: 80_000,
+    });
+    expect(atSell.holding).toBe('cash');
+    expect(atSell.coinsNow).toBeCloseTo(0.99, 10); // one fee, not two
+    expect(atSell.edgeCoins).toBeCloseTo(-0.01, 10);
+
+    // Same chain, wildly different live prices — the count is identical.
+    const priceUp = simulateWholeCoin([sell(80_000)], {
+      frictionPctPerLeg: 1,
+      currentPrice: 200_000,
+    });
+    const priceDown = simulateWholeCoin([sell(80_000)], {
+      frictionPctPerLeg: 1,
+      currentPrice: 40_000,
+    });
+    expect(priceUp.coinsNow).toBeCloseTo(0.99, 10);
+    expect(priceDown.coinsNow).toBeCloseTo(0.99, 10);
+    // Buying back actually moves it: cheaper buy → more coins than 0.99.
+    const boughtBack = simulateWholeCoin([sell(80_000), buy(40_000)], {
+      frictionPctPerLeg: 1,
+    });
+    expect(boughtBack.holding).toBe('btc');
+    expect(boughtBack.coinsNow).toBeGreaterThan(0.99);
   });
 
   it('the beat-HODL threshold accounts for friction', () => {
