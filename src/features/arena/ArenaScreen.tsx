@@ -84,6 +84,8 @@ export function ArenaScreen() {
   const [note, setNote] = useState<string | null>(null);
   // The Nostr note held for preview; null when no preview is open.
   const [previewText, setPreviewText] = useState<string | null>(null);
+  // "How this stays honest" explainer, collapsed by default.
+  const [showHow, setShowHow] = useState(false);
 
   const chain = useMemo(
     () => findArenaChain(holdings, wallet.identity),
@@ -263,6 +265,50 @@ export function ArenaScreen() {
           HODL ball, fixed at 1.0. The stamps show your choice; the math shows the
           truth.
         </p>
+
+        {/* How this stays honest — donation legitimacy + tamper-evident trail */}
+        <button
+          type="button"
+          onClick={() => setShowHow((v) => !v)}
+          aria-expanded={showHow}
+          className="mt-3 flex w-full items-center justify-between rounded-xl border border-ink/15 bg-ink/[0.03] px-4 py-2.5 text-left text-sm font-medium hover:bg-ink/[0.05]"
+        >
+          <span>How this stays honest</span>
+          <span className={`text-muted transition-transform ${showHow ? 'rotate-90' : ''}`} aria-hidden>
+            ›
+          </span>
+        </button>
+        {showHow && (
+          <div className="mt-2 space-y-3 rounded-xl border border-ink/10 bg-white p-4 text-sm shadow-sm">
+            <div>
+              <div className="font-semibold">The donation is the root, not a deposit</div>
+              <p className="mt-1 text-muted">
+                A run starts with a real, public donation to an open-source
+                charity — a paid, timestamped act anyone can look up on-chain.
+                Those sats are a gift; they may already be spent, and that's
+                fine. It is not money you're risking or getting back. It is the
+                honest, public <strong>start of the trail</strong>: putting real
+                value on a public act, next to a public price and a timestamp, is
+                what separates a verifiable claim from an unverifiable brag. The
+                more you're willing to stake in the open, the more the world can
+                take the claim seriously.
+              </p>
+            </div>
+            <div>
+              <div className="font-semibold">The trail can't be faked or backdated</div>
+              <p className="mt-1 text-muted">
+                Every move — each sell and buy — is a signed attestation, chained
+                to the one before it by your key's signature, a strict sequence
+                number, and the previous move's hash, then timestamped to Bitcoin.
+                So the sequence can't be reordered, slipped into, or backdated:
+                nobody can go back and invent a winning trade after the fact. The
+                stamps prove <strong>when</strong> and <strong>at what price</strong>{' '}
+                you chose; the math proves the result. It's honest because it's
+                tamper-evident, not because anyone is asked to trust you.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Chart — WealthStrategy Stones style */}
         <section

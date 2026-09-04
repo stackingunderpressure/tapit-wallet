@@ -466,7 +466,10 @@ const BUDGETS = [
   // blood-red behind color: the extra scoreboard block and the preview panel
   // (buildShareText, confirm/cancel) ride this chunk. Measured ~6.5KB gz,
   // right at the prior edge. Bumped 6.5 -> 7.0KB.
-  { pattern: /^ArenaScreen-.*\.js$/, gz: 7_168, label: 'ArenaScreen (Beat the HODL arena)' },
+  // 2026-09-04 "How this stays honest" collapsible explainer (donation-legitimacy
+  // + tamper-evident-trail copy) added to the arena. Measured ~7.2KB gz.
+  // Bumped 7.0 -> 7.5KB.
+  { pattern: /^ArenaScreen-.*\.js$/, gz: 7_680, label: 'ArenaScreen (Beat the HODL arena)' },
   // The TradingView lightweight-charts candle chart for the arena (copied from
   // WealthStrategy's Stones lab). Deferred — its own lazy chunk that loads only
   // when the /arena chart renders, so it never touches initial or main load.
