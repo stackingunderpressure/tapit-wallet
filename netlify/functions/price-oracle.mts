@@ -1,6 +1,21 @@
 import { schnorr } from '@noble/curves/secp256k1';
+import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { roundDigest } from '../../src/features/arena/priceRoundCanonical.ts';
+
+// Canonical round digest — INLINED here (kept byte-identical to
+// src/features/arena/priceRoundCanonical.ts, which the client test pins) so
+// this function bundles with zero cross-directory imports; Netlify's esbuild
+// function bundler can choke on a ../../src import, which silently breaks the
+// deployed endpoint. If the canonical shape ever changes, change both.
+function roundDigest(f: {
+  price: number;
+  time: number;
+  source: string;
+  round: number;
+}): Uint8Array {
+  const canonical = JSON.stringify([0, 'price-round', f.round, f.time, f.source, f.price]);
+  return sha256(new TextEncoder().encode(canonical));
+}
 
 // The tiny signed price oracle for Beat the HODL (ARENA_SPEC.md, oracle
 // decision = "our own tiny signed round", 2026-09-03). It fetches a real

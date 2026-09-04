@@ -451,6 +451,10 @@ const BUDGETS = [
   // lazy chunk: the scoreboard UI + arenaChain glue over the already-loaded
   // move-chain engine.
   { pattern: /^ArenaScreen-.*\.js$/, gz: 6_144, label: 'ArenaScreen (Beat the HODL arena)' },
+  // The TradingView lightweight-charts candle chart for the arena (copied from
+  // WealthStrategy's Stones lab). Deferred — its own lazy chunk that loads only
+  // when the /arena chart renders, so it never touches initial or main load.
+  { pattern: /^ArenaChart-.*\.js$/, gz: 57_344, label: 'ArenaChart (lightweight-charts candle chart)' },
 
   // QR feature carries the qrcode library — known heavy.
   { pattern: /^QrShow-.*\.js$/, gz: 15_000, label: 'QrShow (qrcode lib)' },
