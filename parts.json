@@ -1,7 +1,0 @@
-{
-  "_doc": "Parts this app inherits from the _chassis/ parts library. Discovery decides this list. bootstrap-project copies ONLY these parts into the spawn; an unknown name fails the spawn. See appcommander/frank-skeletons/_chassis/PARTS.json for available parts and _chassis/README.md for how it works. The universal comms kit (dispatch scripts) arrives separately and is not listed here.",
-  "parts": [
-    "attestation",
-    "assistant-bot"
-  ]
-}

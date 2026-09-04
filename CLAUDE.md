@@ -72,8 +72,8 @@ This is the operator's brand discipline, now a standing rule: the product is 100
 - The wallet is a standalone app. Its own repo. Autonomous.
 - It holds the keys; other apps connect to it (the Layer 2
   inter-app signing pathway) — they never hold keys themselves.
-- Four layers (see `project-memory/.../projects/tapit-wallet/`
-  and AppCommander's `TAPIT_WALLET_SPEC.md`): Layer 1 the Wallet
+- Four layers (see AppCommander's `TAPIT_WALLET_SPEC.md` and the
+  consolidated project memory now kept in AppCommander): Layer 1 the Wallet
   core object (built, in `tapit-attest`); Layer 2 the inter-app
   connection pathway; Layer 3 the Mycelium peer network; Layer 4
   the frictionless surface + wallet bot.
@@ -299,28 +299,18 @@ fails otherwise.
 
 ---
 
-### Doctrine Quintet — Read These First
+### Doctrine Quintet — where it lives now
 
-Before doing real work in this repo, read the five doctrine
-documents that travel with every spawned project. They are the
-condensed founding ideas that make AppCommander-spawned projects
-cohere across the fleet:
-
-- `project-memory/foreman-memory/core/THE_THESIS.md` — why
-  AppCommander exists; the operator's three-principle frame
-  (context-switching anchor, new-project inheritance, time-saving)
-- `project-memory/foreman-memory/core/MYCELIUM.md` — the
-  network spec; how Hearths talk to one another and to Bench apps
-- `project-memory/foreman-memory/core/HEARTH_SPEC.md` — what a
-  Hearth is, what it owns, append-as-decided governance
-- `project-memory/foreman-memory/core/HEARTWOOD.md` — governance
-  doctrine for federated communities and judge-weight reputation
-- `project-memory/foreman-memory/core/SATOSHI.md` — Bitcoin
-  financial substrate; recipe-anchoring, sat-denominated stakes
-
-If you are a Carpenter session opening this repo for the first time,
-read these BEFORE you write code. They are the lens that makes the
-specific work make sense.
+The five fleet doctrine documents (THE_THESIS, MYCELIUM, HEARTH_SPEC,
+HEARTWOOD, SATOSHI) — the condensed founding ideas that make
+AppCommander-spawned projects cohere — used to be copied into this repo
+under `project-memory/foreman-memory/core/`. As of 2026-09-04 this repo was
+stripped light for the sovereign-download work, and those fleet docs now live
+in AppCommander, not here. Read them there. This repo's own product essence,
+durable decisions, and the sovereign two-version north-star are summed up in
+AppCommander at
+`project-memory/foreman-memory/projects/tapit-wallet/CONSOLIDATED_MEMORY.md`;
+the full pre-strip history is in this repo's git log.
 
 ### CHAT-REPLY FORMAT — One-Block Rule (PFOR-018)
 
@@ -378,9 +368,10 @@ prose, not a replacement for it.
 ### LIVING-IDEAS DOCTRINE — Nothing Gets Lost
 
 Every meaningful idea the operator surfaces — in chat, voice,
-dispatch comms, any conversation — gets logged into
-`project-memory/foreman-memory/core/ideas.md` (or the appropriate
-project ideas file) and is then RESURFACED back to the operator at
+dispatch comms, any conversation — gets logged into this project's
+ideas memory (now kept in AppCommander at
+`project-memory/foreman-memory/projects/tapit-wallet/`, alongside the
+consolidated memory) and is then RESURFACED back to the operator at
 appropriate moments so the idea matures, refines, or gets honestly
 pruned. Capture rule: when the operator names a use case, connects
 existing pieces to a new domain, suggests a feature or product or
