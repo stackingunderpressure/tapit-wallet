@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
+import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { findOwnOrgDeclaration } from '../connections/createOrganization.ts';
 import { CategoryGroup } from './CategoryGroup.tsx';
 import { CloudBackupSection } from './CloudBackupSection.tsx';
@@ -56,7 +57,21 @@ export function SettingsScreen() {
       </header>
 
       <section className="mt-6 rounded-2xl bg-accent/[0.06] border border-accent/30 p-5">
-        <div className="font-medium">Sovereignty</div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-medium">Sovereignty</div>
+          {isSovereign() && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 border border-accent/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" />
+              Sovereign build
+            </span>
+          )}
+        </div>
+        {isSovereign() && (
+          <p className="mt-2 text-xs text-accent">
+            You are running the sovereign build — the package that runs in your
+            own environment. You are responsible for your own data.
+          </p>
+        )}
         <p className="mt-1 text-sm text-muted">
           Every lever below moves the wallet toward sovereign — turn off cloud
           backup to keep your encrypted wallet only on this device, point
