@@ -107,12 +107,6 @@ export function SettingsScreen() {
             >
               Keychain
             </Link>
-            <Link
-              to="/arena"
-              className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
-            >
-              Beat the HODL (prototype)
-            </Link>
           </div>
         </section>
       </CategoryGroup>

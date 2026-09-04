@@ -96,12 +96,12 @@ const KeychainTab = lazy(() =>
     default: m.KeychainTab,
   })),
 );
-// Inbox — graduated from a header link into a main tab (2026-08-16,
-// operator: "graduate the inbox down to those tabs, it's probably good
-// now that the other ones are out of the way") once Captured/Family/
-// Keychain moved out to Settings and freed up room in the strip.
-// InboxTabBody is the same content the standalone /inbox route renders
-// (see InboxScreen.tsx), lazy-loaded here the same way KeychainTab is.
+// Inbox — a main tab (2026-08-16). InboxTabBody is the same content the
+// standalone /inbox route renders, lazy-loaded like KeychainTab.
+// Beat the HODL arena — a main bottom tab (2026-09-04); /arena redirects here.
+const ArenaTabBody = lazy(() =>
+  import('../arena/ArenaScreen.tsx').then((m) => ({ default: m.ArenaTabBody })),
+);
 const InboxTabBody = lazy(() =>
   import('../inbox/InboxScreen.tsx').then((m) => ({
     default: m.InboxTabBody,
@@ -132,13 +132,14 @@ import { useSecretPieceHeartbeat } from '../recovery/useSecretPieceHeartbeat.ts'
 // shrank. VALID_TABS keeps every real tab id so those deep links still
 // validate. Inbox took one of the freed slots, graduated in from what
 // used to be a header-only link.
-type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'family' | 'lattice' | 'inbox';
+type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'family' | 'lattice' | 'inbox' | 'arena';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'identity', label: 'Identity' },
   { id: 'people', label: 'People' },
   { id: 'inbox', label: 'Inbox' },
+  { id: 'arena', label: 'Arena' },
 ];
 
 // A capture (Phase 4.5 capture bridge) is a journal-kind
@@ -155,7 +156,7 @@ function isCapture(att: Attestation): boolean {
   );
 }
 
-const VALID_TABS: readonly Tab[] = ['journal', 'identity', 'captured', 'people', 'family', 'lattice', 'inbox'];
+const VALID_TABS: readonly Tab[] = ['journal', 'identity', 'captured', 'people', 'family', 'lattice', 'inbox', 'arena'];
 
 /** Reads a `?tab=` search param once on mount, e.g. `/?tab=people` from
  *  the Inbox screen's "Messages" rows -- otherwise falls back to the
@@ -693,6 +694,17 @@ export function HomeScreen() {
         </Suspense>
       )}
 
+      {tab === 'arena' && (
+        <Suspense
+          fallback={
+            <div className="mt-5 rounded-2xl border border-ink/10 bg-white px-4 py-6 text-center text-sm text-muted">
+              Loading the arena…
+            </div>
+          }
+        >
+          <ArenaTabBody />
+        </Suspense>
+      )}
       {tab === 'journal' && (
         <JournalTabBody
           composerOpen={composerOpen}

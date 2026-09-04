@@ -9,7 +9,8 @@ export const manifest: FeatureManifest = {
     'buy-all-back at a price, and the tested truth scorer races your coin ' +
     'count against the HODL ball fixed at 1.0 after friction. Each move is ' +
     'a real signed move-chain attestation, held and queued for a Bitcoin ' +
-    'anchor. Reachable at /arena via the Settings > More launcher.',
+    'anchor. A main bottom-nav tab ("Arena") as of 2026-09-04; /arena ' +
+    'redirects to /?tab=arena for old links.',
   touches: [
     'src/features/arena/arenaChain.ts',
     'src/features/arena/arenaChain.test.ts',
@@ -22,6 +23,7 @@ export const manifest: FeatureManifest = {
     'src/features/arena/priceRoundCanonical.ts',
     'src/features/arena/manifest.ts',
     'src/App.tsx',
+    'src/features/wallet-core/HomeScreen.tsx',
     'src/features/settings/SettingsScreen.tsx',
     'src/shared/lib/env.ts',
     'netlify/functions/price-oracle.mts',

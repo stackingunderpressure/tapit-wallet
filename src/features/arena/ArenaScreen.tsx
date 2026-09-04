@@ -1,5 +1,4 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { envelopeId, type Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { arenaOracle } from '../../shared/lib/env.ts';
@@ -55,7 +54,7 @@ function fmtSatsSigned(coins: number): string {
   return (coins >= 0 ? '+' : '') + fmtSats(coins);
 }
 
-export function ArenaScreen() {
+export function ArenaTabBody() {
   const {
     wallet,
     ownerId,
@@ -250,16 +249,11 @@ export function ArenaScreen() {
   const ahead = score.edgeCoins > 0;
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <div className="max-w-md mx-auto p-5">
-        <header className="flex items-center justify-between mb-4">
-          <Link to="/" className="text-sm text-muted hover:text-ink">
-            ← Back
-          </Link>
-          <span className="text-xs text-muted">prototype</span>
-        </header>
-
+    <div className="mt-5 pb-24">
+      <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Beat the HODL Machine</h1>
+        <span className="text-xs text-muted">prototype</span>
+      </div>
         <p className="mt-1 text-sm text-muted">
           Hold one whole coin. Sell all, buy all back. Your coin count races the
           HODL ball, fixed at 1.0. The stamps show your choice; the math shows the
@@ -570,7 +564,6 @@ export function ArenaScreen() {
             {err ?? note}
           </div>
         )}
-      </div>
     </div>
   );
 }
