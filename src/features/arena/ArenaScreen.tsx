@@ -145,15 +145,23 @@ export function ArenaScreen() {
   // proof); otherwise it's the live candle close.
   const act = () =>
     run(async () => {
-      let usePrice: number;
+      const market = lastClose && lastClose > 0 ? lastClose : null;
+      let usePrice: number | null = market;
       let usedRound: SignedPriceRound | undefined;
+      // The oracle is a BEST-EFFORT proof layer: if it's configured and
+      // reachable, execute at its signed, verified price; if it's unset or
+      // failing, fall back to the live market price so a move NEVER breaks.
       if (oracle) {
-        const r = await fetchSignedRound(oracle.url, oracle.pubkey);
-        usePrice = r.price;
-        usedRound = r;
-      } else {
-        if (!lastClose || lastClose <= 0) throw new Error('No live price yet — one moment.');
-        usePrice = lastClose;
+        try {
+          const r = await fetchSignedRound(oracle.url, oracle.pubkey);
+          usePrice = r.price;
+          usedRound = r;
+        } catch {
+          usedRound = undefined; // oracle down — quietly use the market price
+        }
+      }
+      if (!usePrice || usePrice <= 0) {
+        throw new Error('No live price yet — give the chart a second to load.');
       }
       const draft = buildSwitchDraft(wallet.identity, {
         side,
@@ -161,7 +169,7 @@ export function ArenaScreen() {
         seq: nextSeq(chain),
         prevHash: headLink(chain),
         priceTime: new Date().toISOString(),
-        priceSource: oracle ? 'oracle' : 'market',
+        priceSource: usedRound ? 'oracle' : 'market',
         round: usedRound,
       });
       const signed = wallet.attest(draft);
