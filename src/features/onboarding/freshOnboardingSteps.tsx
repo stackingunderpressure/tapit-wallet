@@ -13,101 +13,15 @@ function SplashStep() {
   return (
     <div className="pt-12 text-center">
       <h1 className="text-fresh-hero font-fresh-display leading-[1.02] text-fresh-text-primary">
-        What just happened
+        Your identity,
         <br />
-        to you?
+        held by you.
       </h1>
       <p className="mt-6 text-sm text-fresh-text-secondary">
-        Tap to begin. We'll hold the record — you keep the key.
+        A wallet that holds your own keys and the signed records of your life.
+        Tap to set it up.
       </p>
     </div>
-  );
-}
-
-function ComposeStep(props: {
-  text: string;
-  onTextChange: (v: string) => void;
-  attachment: File | null;
-  attachmentBusy: boolean;
-  onPickAttachment: (f: File | null) => void;
-  onClearAttachment: () => void;
-  photoRef: React.RefObject<HTMLInputElement>;
-  onSubmit: (e: React.FormEvent) => void;
-  error: string | null;
-}) {
-  return (
-    <form onSubmit={props.onSubmit}>
-      <h1 className="text-fresh-display font-fresh-display text-fresh-text-primary">
-        Something to remember.
-      </h1>
-      <p className="mt-3 text-sm text-fresh-text-secondary">
-        Type a sentence about today, snap a photo, or both. It isn't signed
-        yet — we'll make it real together.
-      </p>
-      <label className="mt-6 block">
-        <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">
-          What happened
-        </span>
-        <textarea
-          rows={4}
-          autoFocus
-          value={props.text}
-          onChange={(e) => props.onTextChange(e.target.value)}
-          className="mt-2 w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-3 text-base text-fresh-text-primary backdrop-blur-xl placeholder:text-fresh-text-tertiary focus:border-fresh-accent-primary focus:outline-none focus:ring-2 focus:ring-fresh-accent-primary/30"
-          placeholder="Write it in your own words."
-        />
-      </label>
-      <input
-        ref={props.photoRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(e) => props.onPickAttachment(e.target.files?.[0] ?? null)}
-      />
-      <div className="mt-3">
-        {!props.attachment && !props.attachmentBusy && (
-          <button
-            type="button"
-            onClick={() => props.photoRef.current?.click()}
-            className="w-full rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass py-3 text-sm font-medium text-fresh-text-primary backdrop-blur-xl transition hover:bg-fresh-surface-raised"
-          >
-            📷 Add a photo (optional)
-          </button>
-        )}
-        {props.attachmentBusy && (
-          <p className="text-xs text-fresh-text-secondary">Reading photo…</p>
-        )}
-        {props.attachment && !props.attachmentBusy && (
-          <div className="flex items-center justify-between rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 py-2 backdrop-blur-xl">
-            <p className="truncate text-xs text-fresh-text-secondary">
-              ✓ {props.attachment.name} —{' '}
-              {Math.round(props.attachment.size / 1024)} KB
-            </p>
-            <button
-              type="button"
-              onClick={props.onClearAttachment}
-              className="ml-2 shrink-0 text-xs text-fresh-text-tertiary hover:text-fresh-text-primary"
-            >
-              Remove
-            </button>
-          </div>
-        )}
-      </div>
-      <button
-        type="submit"
-        className="mt-6 w-full rounded-2xl bg-fresh-accent-primary py-3.5 font-medium text-fresh-text-inverse shadow-[0_8px_30px_-8px_rgba(192,252,77,0.6)] transition active:animate-fresh-press motion-reduce:active:animate-none"
-      >
-        Continue
-      </button>
-      {props.error && (
-        <p className="mt-3 text-sm text-fresh-accent-danger" role="alert">
-          {props.error}
-        </p>
-      )}
-      <p className="mt-4 text-center text-xs text-fresh-text-tertiary">
-        You can leave both empty — your wallet will still get set up.
-      </p>
-    </form>
   );
 }
 
@@ -117,7 +31,7 @@ function NameStep(props: {
   birthday: string;
   onBirthdayChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
-  onBack: () => void;
+  onBack?: () => void;
   error: string | null;
 }) {
   return (
@@ -165,13 +79,15 @@ function NameStep(props: {
         >
           Continue
         </button>
-        <button
-          type="button"
-          onClick={props.onBack}
-          className="rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 text-sm text-fresh-text-primary backdrop-blur-xl"
-        >
-          Back
-        </button>
+        {props.onBack && (
+          <button
+            type="button"
+            onClick={props.onBack}
+            className="rounded-2xl border border-fresh-surface-edge bg-fresh-surface-glass px-4 text-sm text-fresh-text-primary backdrop-blur-xl"
+          >
+            Back
+          </button>
+        )}
       </div>
       {props.error && (
         <p className="mt-3 text-sm text-fresh-accent-danger" role="alert">
@@ -368,8 +284,7 @@ function CodeStep(props: {
         <span className="font-medium text-fresh-text-primary">
           {props.email}
         </span>
-        . Drop it below — when you do, your first entry gets signed and your
-        wallet is real.
+        . Drop it below — when you do, your wallet is created.
       </p>
       <label className="mt-8 block">
         <span className="text-xs uppercase tracking-[0.18em] text-fresh-text-tertiary">
@@ -394,7 +309,7 @@ function CodeStep(props: {
         disabled={props.busy || props.code.trim().length === 0}
         className="mt-6 w-full rounded-2xl bg-fresh-accent-primary py-3.5 font-medium text-fresh-text-inverse shadow-[0_8px_30px_-8px_rgba(192,252,77,0.6)] transition active:animate-fresh-press disabled:opacity-40 disabled:shadow-none motion-reduce:active:animate-none"
       >
-        {props.busy ? 'Signing you in…' : 'Verify & sign my first entry'}
+        {props.busy ? 'Signing you in…' : 'Verify & create my wallet'}
       </button>
       {props.error && (
         <p className="mt-3 text-sm text-fresh-accent-danger" role="alert">
@@ -555,7 +470,6 @@ function ImportEnterStep(props: {
 
 export {
   SplashStep,
-  ComposeStep,
   NameStep,
   PassphraseStep,
   EmailStep,

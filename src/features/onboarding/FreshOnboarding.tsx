@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../shared/lib/supabase.ts';
-import { normalizeImage } from '../journal/normalizeImage.ts';
 import {
   clearPendingOnboarding,
   setPendingOnboarding,
@@ -11,7 +10,6 @@ import { parseNostrPrivateKey } from '../wallet-core/parseNostrPrivateKey.ts';
 import { publicKeyFromPrivate } from 'tapit-attest';
 import {
   SplashStep,
-  ComposeStep,
   NameStep,
   PassphraseStep,
   EmailStep,
@@ -20,15 +18,17 @@ import {
   ImportEnterStep,
 } from './freshOnboardingSteps.tsx';
 
-// The Fresh compose-before-login state machine. Replaces the
-// sign-in form FreshLoginShell painted in Cut 2 with the
-// 90-second flow the brief specified — splash, compose, name,
-// passphrase, recovery primer, email, code. Volatile bundle
-// (text + attachment + name + passphrase) lives in component
-// state until the operator submits the OTP code; at that moment
-// the bundle moves to a module-level holder so WalletProvider
-// can pick it up on first mount and run the post-sign-in
-// identity-plus-first-entry ceremony.
+// The Fresh onboarding state machine. Replaces the sign-in form
+// FreshLoginShell painted in Cut 2 with a short, plain flow —
+// splash, name, passphrase, one safety screen, email, code.
+// Composing a first journal entry was REMOVED from sign-up on
+// 2026-09-04 (operator: the journal doorway read corny) — a new
+// person writes their first entry from the home screen once
+// they're in, not before they even have a wallet. The volatile
+// bundle (name + passphrase) lives in component state until the
+// operator submits the OTP code; at that moment the bundle moves
+// to a module-level holder so WalletProvider can pick it up on
+// first mount and mint the identity, then show the recovery key.
 //
 // Renders only when the device-level theme is fresh AND the
 // session is signed-out. Loading and signed-in cases stay in
@@ -37,7 +37,6 @@ import {
 
 type Step =
   | 'splash'
-  | 'compose'
   | 'name'
   | 'passphrase'
   | 'passphrase-warn'
@@ -52,7 +51,7 @@ const SPLASH_MS = 3000;
 export function FreshOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>('splash');
-  // 'onboard' = the compose-first new-user flow (default). 'signin' =
+  // 'onboard' = the new-user setup flow (default). 'signin' =
   // a RETURNING operator who already has a wallet and just needs to
   // re-authenticate (session expired, new device, signed out). Before
   // this, the only sign-in path was walking the entire new-user
@@ -78,9 +77,6 @@ export function FreshOnboarding() {
   // unmount when the user navigates away mid-flow; cleared
   // explicitly when a sign-in attempt errors and the operator
   // backs out.
-  const [text, setText] = useState('');
-  const [attachment, setAttachment] = useState<File | null>(null);
-  const [attachmentBusy, setAttachmentBusy] = useState(false);
   const [displayName, setDisplayName] = useState('');
   // Optional ISO date (YYYY-MM-DD). Empty string = operator
   // declined; the leaf is omitted from the identity attestation
@@ -104,7 +100,6 @@ export function FreshOnboarding() {
   const [importKeyInput, setImportKeyInput] = useState('');
   const [importedPrivateKeyHex, setImportedPrivateKeyHex] = useState<string | null>(null);
 
-  const photoRef = useRef<HTMLInputElement>(null);
   const splashTimer = useRef<number | null>(null);
 
   // Splash auto-advances after 3 seconds. A tap on the splash
@@ -112,10 +107,7 @@ export function FreshOnboarding() {
   // do not want to wait. Cleared on unmount and on manual skip.
   useEffect(() => {
     if (step !== 'splash') return;
-    splashTimer.current = window.setTimeout(
-      () => setStep('compose'),
-      SPLASH_MS,
-    );
+    splashTimer.current = window.setTimeout(() => setStep('name'), SPLASH_MS);
     return () => {
       if (splashTimer.current !== null) {
         window.clearTimeout(splashTimer.current);
@@ -139,34 +131,6 @@ export function FreshOnboarding() {
       window.clearTimeout(splashTimer.current);
       splashTimer.current = null;
     }
-    setStep('compose');
-  }
-
-  async function onPickAttachment(file: File | null) {
-    if (!file) {
-      setAttachment(null);
-      return;
-    }
-    setError(null);
-    setAttachmentBusy(true);
-    try {
-      const normalized = await normalizeImage(file);
-      setAttachment(normalized);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? `Could not read photo: ${err.message}`
-          : 'Could not read photo on this device.',
-      );
-      setAttachment(null);
-    } finally {
-      setAttachmentBusy(false);
-    }
-  }
-
-  function submitCompose(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
     setStep('name');
   }
 
@@ -246,8 +210,10 @@ export function FreshOnboarding() {
       // session flips signed-in and reads the bundle on its first
       // useEffect run.
       setPendingOnboarding({
-        text,
-        attachment,
+        // The first journal entry is written from the home screen after
+        // sign-up now, not captured here — so the bundle carries no entry.
+        text: '',
+        attachment: null,
         displayName: displayName.trim(),
         birthday: birthday.trim() || undefined,
         passphrase,
@@ -302,43 +268,18 @@ export function FreshOnboarding() {
               Sign in
             </button>
           </p>
-        </>
-      )}
-
-      {step === 'compose' && (
-        <>
-          <ComposeStep
-            text={text}
-            onTextChange={setText}
-            attachment={attachment}
-            attachmentBusy={attachmentBusy}
-            onPickAttachment={onPickAttachment}
-            onClearAttachment={() => setAttachment(null)}
-            photoRef={photoRef}
-            onSubmit={submitCompose}
-            error={error}
-          />
-          <p className="mt-6 text-center text-xs text-fresh-text-tertiary">
-            Already have an account in another app?{' '}
+          <p className="mt-3 text-center text-xs text-fresh-text-tertiary">
+            Bringing an account from another app?{' '}
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setError(null);
                 setStep('import-disclose');
               }}
               className="font-medium text-fresh-accent-primary underline transition hover:text-fresh-text-primary"
             >
               Import it
-            </button>
-          </p>
-          <p className="mt-2 text-center text-xs text-fresh-text-tertiary">
-            Already have a Tapit wallet?{' '}
-            <button
-              type="button"
-              onClick={enterSignIn}
-              className="font-medium text-fresh-accent-primary underline transition hover:text-fresh-text-primary"
-            >
-              Sign in
             </button>
           </p>
         </>
@@ -354,7 +295,7 @@ export function FreshOnboarding() {
             setError(null);
             setImportedPrivateKeyHex(null);
             setImportKeyInput('');
-            setStep('compose');
+            setStep('name');
           }}
         />
       )}
@@ -390,7 +331,6 @@ export function FreshOnboarding() {
           birthday={birthday}
           onBirthdayChange={setBirthday}
           onSubmit={submitName}
-          onBack={() => setStep('compose')}
           error={error}
         />
       )}

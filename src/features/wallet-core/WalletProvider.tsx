@@ -167,16 +167,12 @@ export function WalletProvider({ children }: Props) {
   }, [ownerId]);
 
   // Fresh-onboarding bundle consumer. Runs once when the provider
-  // enters the onboarding-setup phase. Consumes the volatile bundle
-  // FreshOnboarding stashed, generates the wallet under the
-  // captured passphrase, signs the founding identity attestation
-  // with the captured display name + founding declaration, signs
-  // the first journal entry from the captured text/attachment (if
-  // any), and lands the operator in the unlocked phase with the
-  // home screen rendered. The ranRef guard ensures StrictMode's
-  // double-invocation cannot run the ceremony twice; the consume
-  // call clears the holder so a later remount cannot pick up a
-  // stale bundle either.
+  // enters the onboarding-setup phase: consumes the volatile bundle
+  // FreshOnboarding stashed, generates the wallet under the captured
+  // passphrase, signs the founding identity attestation, and lands the
+  // operator in the unlocked phase. The ranRef guard stops StrictMode's
+  // double-invocation running it twice; consume clears the holder so a
+  // remount cannot pick up a stale bundle.
   const onboardingRanRef = useRef(false);
   useEffect(() => {
     if (phase.kind !== 'onboarding-setup') return;
@@ -225,6 +221,10 @@ export function WalletProvider({ children }: Props) {
         setPassphrase(bundle.passphrase);
         setHoldings(await wallet.holdings());
         setPrefs(loadedPrefs);
+        // Fire the SecureWalletPrompt recovery-key reveal for Fresh too
+        // (2026-09-04) — Fresh used to skip it, leaving cloud backup as the
+        // only safety net.
+        setJustCreatedIdentity(true);
         setPhase({ kind: 'unlocked', wallet });
       } catch (err) {
         console.error('onboarding setup failed', err);
