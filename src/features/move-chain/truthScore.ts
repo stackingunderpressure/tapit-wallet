@@ -40,12 +40,12 @@ export interface RoundResult {
 export interface TruthResult {
   /** the HODL ball — one whole coin, frozen. */
   hodlCoins: number;
-  /** your live buying power in coins: the coin amount while holding it, or —
-   *  while in cash — what that cash is worth at the current price (cashUsd /
-   *  currentPrice). The sell fee is already paid; the buy-back fee lands only
-   *  when the buy leg actually executes, so this is not pre-charged. It marks
-   *  to market, so when the price runs up against you your buying power falls;
-   *  when the price dips it rises. */
+  /** your live REALIZABLE buying power in coins: the coin amount while holding
+   *  it, or — while in cash — what that cash would net buying back right now
+   *  AFTER the buy-back fee, (cashUsd × (1 − f)) / currentPrice. Both legs'
+   *  fees are visible, so it never shows buying power you can't actually walk
+   *  away with. It marks to market: the price runs up against you, it falls;
+   *  the price dips, it rises. */
   coinsNow: number;
   /** 'btc' = holding the coin; 'cash' = sold, waiting to buy back. */
   holding: 'btc' | 'cash';
@@ -133,16 +133,19 @@ function replayCoins(
     }
   }
 
-  // Your coin count is your live BUYING POWER, and fees hit only when a leg
-  // actually executes — never a phantom charge on an unrealized position.
-  // Holding the coin, it's the coin amount. Holding cash, it's what that cash
-  // is worth in coins at the current price, cashUsd / currentPrice: the sell
-  // fee is already paid (it reduced cashUsd), and the buy-back fee is NOT
-  // deducted here because you haven't bought yet — it lands at execution when
-  // the buy leg runs (coinsAfter applies (1 − f) there). So right after a sell
-  // at par this reads 0.99 (one fee), and it marks to market — the price runs
-  // up against you, buying power falls; the price dips, it rises.
-  const coinsNow = holding === 'btc' ? coins : currentPrice > 0 ? cashUsd / currentPrice : 0;
+  // Your coin count is your live REALIZABLE buying power — what you'd actually
+  // walk away with if you closed right now. Holding the coin, it's the coin
+  // amount. Holding cash, it's what that cash would net buying back at the
+  // current price AFTER the buy-back fee: (cashUsd × (1 − f)) / currentPrice.
+  // Both legs' fees are visible — the sell fee already reduced cashUsd, and the
+  // buy-back fee is deducted here too, because you cannot keep a coin you have
+  // not paid to buy. It's honest by never showing buying power you can't
+  // actually walk away with, and it marks to market: the price runs up against
+  // you, it falls; the price dips, it rises. So right after a sell at par it
+  // reads ~0.9801 (both fees on a full round trip), and it only crosses back
+  // above 1.0 once the price drops under minBuyBackToBeatHodl.
+  const coinsNow =
+    holding === 'btc' ? coins : currentPrice > 0 ? (cashUsd * (1 - f)) / currentPrice : 0;
   const openSell = holding === 'cash' && open ? { sellPrice: open.sellPrice, cashUsd } : null;
   return { coins, cashUsd, holding, rounds, openSell, wellFormed, coinsNow };
 }
