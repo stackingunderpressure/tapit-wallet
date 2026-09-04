@@ -42,6 +42,18 @@ function fmtUsd(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return '—';
   return '$' + Math.round(n).toLocaleString();
 }
+// Sats view, copied from WealthStrategy's Stones scoreboard: 1 coin =
+// 100,000,000 sats, shown as a big tangible integer so "how far behind HODL"
+// reads as a concrete number, not a fraction.
+const SATS = 100_000_000;
+function fmtSats(coins: number): string {
+  if (!Number.isFinite(coins)) return '—';
+  return Math.round(coins * SATS).toLocaleString() + ' sats';
+}
+function fmtSatsSigned(coins: number): string {
+  if (!Number.isFinite(coins)) return '—';
+  return (coins >= 0 ? '+' : '') + fmtSats(coins);
+}
 
 export function ArenaScreen() {
   const {
@@ -319,10 +331,40 @@ export function ArenaScreen() {
               <div className="text-[10px] text-muted mt-0.5">to beat</div>
             </div>
           </div>
-          <div className={`mt-3 text-sm font-medium ${ahead ? 'text-accent' : 'text-muted'}`}>
-            {score.edgeCoins >= 0 ? '+' : ''}
-            {fmtCoins(score.edgeCoins)} coins ({score.edgePct >= 0 ? '+' : ''}
-            {score.edgePct.toFixed(2)}%) vs holding
+          {/* You vs HODL, in sats — the WealthStrategy Stones view */}
+          <div className="mt-4 rounded-xl border border-ink/10 bg-ink/[0.02] p-4 text-center">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              {ahead ? 'You are ahead of HODL' : score.edgeCoins < 0 ? 'You are behind HODL' : 'Dead even with HODL'}
+            </div>
+            <div
+              className={`mt-1 font-mono text-2xl font-black tabular-nums ${
+                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-600' : 'text-muted'
+              }`}
+            >
+              {fmtSatsSigned(score.edgeCoins)}
+            </div>
+            <div
+              className={`text-sm font-bold ${
+                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-600' : 'text-muted'
+              }`}
+            >
+              {score.edgePct >= 0 ? '+' : ''}
+              {score.edgePct.toFixed(2)}%
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-lg bg-white border border-ink/10 px-2 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted">You now</div>
+                <div className="mt-0.5 font-mono text-xs font-semibold tabular-nums">
+                  {fmtSats(score.coinsNow)}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border border-ink/10 px-2 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted">HODL frozen</div>
+                <div className="mt-0.5 font-mono text-xs font-semibold tabular-nums text-muted">
+                  {fmtSats(score.hodlCoins)}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
             <div>

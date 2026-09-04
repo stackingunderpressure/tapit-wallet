@@ -145,7 +145,11 @@ const BUDGETS = [
   // top/right positioning, hover:text-emerald-900) to the single
   // Tailwind sheet -- intrinsic to the fix, not code-splittable out.
   // A few bytes past the prior budget; bumped 8.7 -> 8.8KiB.
-  { pattern: /^index-.*\.css$/, gz: 9_011, label: 'css' },
+  // 2026-09-04 arena sats scoreboard (the WealthStrategy "how many sats behind
+  // HODL" view): the new sats-edge block added the emerald/red edge-color
+  // utilities (text-emerald-600, bg-ink/[0.02], the two white stat boxes) to
+  // the single Tailwind sheet. A few bytes past; bumped 8.8 -> 9.0KiB.
+  { pattern: /^index-.*\.css$/, gz: 9_216, label: 'css' },
 
   // Wallet-domain post-auth chunks (route-level + heavy modals).
   // 5c-i-ζ added sendEnvelope + a transport ref to WalletProvider;
