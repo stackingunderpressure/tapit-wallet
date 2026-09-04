@@ -189,9 +189,17 @@ export function InboxTabBody() {
     return rows.sort((a, b) => b.lastTs - a.lastTs);
   }, [chatThreadsByPeer, peerNames]);
 
+  // DynastyTrust visibility gate: the Vault invites bucket (and its filter
+  // chip) only appears once this wallet has actually seen a vault invite --
+  // pending now, or handled in the past. A wallet that has never been
+  // offered a vault never sees the concept surfaced here; the invite banner
+  // is how a first invite arrives, and that flips this true.
+  const hasVaultActivity =
+    membershipRequests.length > 0 || membershipRequestsState.history.length > 0;
+
   const showMessages = category === 'all' || category === 'messages';
   const showRequests = category === 'all' || category === 'requests';
-  const showInvites = category === 'all' || category === 'invites';
+  const showInvites = hasVaultActivity && (category === 'all' || category === 'invites');
   const showSignIns = category === 'all' || category === 'signins';
   const showCircle = category === 'all' || category === 'circle';
   const showPhrases = category === 'all' || category === 'phrases';
@@ -204,7 +212,7 @@ export function InboxTabBody() {
       </p>
 
       <div className="mt-4 -mx-5 px-5 flex gap-2 overflow-x-auto" role="tablist">
-        {CATEGORIES.map((c) => (
+        {CATEGORIES.filter((c) => c.id !== 'invites' || hasVaultActivity).map((c) => (
           <button
             key={c.id}
             type="button"
