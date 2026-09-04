@@ -449,8 +449,9 @@ const BUDGETS = [
   { pattern: /^CaptureScreen-.*\.js$/, gz: 2_000, label: 'CaptureScreen' },
   // The Beat the HODL arena prototype (standalone /arena route). Its own
   // lazy chunk: the scoreboard UI + arenaChain glue over the already-loaded
-  // move-chain engine.
-  { pattern: /^ArenaScreen-.*\.js$/, gz: 6_144, label: 'ArenaScreen (Beat the HODL arena)' },
+  // move-chain engine. Bumped to 6.5KB when the live-price refresh (auto-poll
+  // + tap-to-refresh button) landed.
+  { pattern: /^ArenaScreen-.*\.js$/, gz: 6_656, label: 'ArenaScreen (Beat the HODL arena)' },
   // The TradingView lightweight-charts candle chart for the arena (copied from
   // WealthStrategy's Stones lab). Deferred — its own lazy chunk that loads only
   // when the /arena chart renders, so it never touches initial or main load.

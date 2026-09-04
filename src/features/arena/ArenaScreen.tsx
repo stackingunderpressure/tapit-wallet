@@ -60,7 +60,11 @@ export function ArenaScreen() {
   const friction = DEFAULT_FRICTION_PCT; // 1%/leg = 2% round trip, applied silently
 
   const [interval, setInterval] = useState<CandleInterval>('4h');
-  const { candles, lastClose, loading } = useBtcCandles(interval);
+  // Poll the candle feed every 30s so the live price keeps moving on its own;
+  // reload() is the manual tap-to-refresh.
+  const { candles, lastClose, loading, reload } = useBtcCandles(interval, undefined, {
+    refreshMs: 30_000,
+  });
   const [charityTx, setCharityTx] = useState('');
   const [stake, setStake] = useState('');
   const [busy, setBusy] = useState(false);
@@ -250,22 +254,35 @@ export function ArenaScreen() {
                 {fmtUsd(lastClose)}
               </div>
             </div>
-            <div className="flex gap-1">
-              {INTERVALS.map((iv) => (
-                <button
-                  key={iv}
-                  type="button"
-                  onClick={() => setInterval(iv)}
-                  className="rounded px-2 py-1 text-[11px] font-semibold"
-                  style={
-                    interval === iv
-                      ? { background: `${ORANGE}22`, color: ORANGE, border: `1px solid ${ORANGE}55` }
-                      : { color: '#8b949e', border: '1px solid #1c2840' }
-                  }
-                >
-                  {iv}
-                </button>
-              ))}
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="flex gap-1">
+                {INTERVALS.map((iv) => (
+                  <button
+                    key={iv}
+                    type="button"
+                    onClick={() => setInterval(iv)}
+                    className="rounded px-2 py-1 text-[11px] font-semibold"
+                    style={
+                      interval === iv
+                        ? { background: `${ORANGE}22`, color: ORANGE, border: `1px solid ${ORANGE}55` }
+                        : { color: '#8b949e', border: '1px solid #1c2840' }
+                    }
+                  >
+                    {iv}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={reload}
+                disabled={loading}
+                aria-label="Refresh price"
+                className="flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold disabled:opacity-50"
+                style={{ color: '#8b949e', border: '1px solid #1c2840' }}
+              >
+                <span className={loading ? 'inline-block animate-spin' : 'inline-block'}>↻</span>
+                {loading ? 'Refreshing' : 'Refresh'}
+              </button>
             </div>
           </div>
           {candles.length > 0 ? (

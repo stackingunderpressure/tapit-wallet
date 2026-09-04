@@ -7,7 +7,7 @@
  * Errors are swallowed — callers degrade gracefully on an empty series (the
  * tab then falls back to the daily price line rather than fabricating candles).
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // The candle feed endpoint (netlify/functions/btc-candles.mts). Copied from
 // WealthStrategy's Stones lab; here it's a plain path instead of a config map.
@@ -49,10 +49,12 @@ function parseCandle(c: Partial<Candle> & { close?: number }): Candle | null {
   return { ts, open, high, low, close };
 }
 
-async function fetchOnce(interval: CandleInterval, limit?: number): Promise<Payload> {
+async function fetchOnce(interval: CandleInterval, limit?: number, force = false): Promise<Payload> {
   const key = keyOf(interval, limit);
   const hit = cache.get(key);
-  if (hit && hit.candles.length > 0 && Date.now() - hit.fetchedAt < SESSION_TTL_MS) return hit;
+  // A forced fetch (manual refresh / poll tick) bypasses the freshness cache so
+  // the live price actually moves; a normal read still reuses a fresh payload.
+  if (!force && hit && hit.candles.length > 0 && Date.now() - hit.fetchedAt < SESSION_TTL_MS) return hit;
   const pending = inFlight.get(key);
   if (pending) return pending;
 
@@ -100,8 +102,16 @@ async function fetchOnce(interval: CandleInterval, limit?: number): Promise<Payl
 export function useBtcCandles(
   interval: CandleInterval,
   limit?: number,
-): { candles: Candle[]; lastClose: number | null; source: string; loading: boolean } {
+  opts?: { refreshMs?: number },
+): {
+  candles: Candle[];
+  lastClose: number | null;
+  source: string;
+  loading: boolean;
+  reload: () => void;
+} {
   const key = keyOf(interval, limit);
+  const refreshMs = opts?.refreshMs;
   const [state, setState] = useState<{ candles: Candle[]; lastClose: number | null; source: string }>(
     () => {
       const hit = cache.get(key);
@@ -111,25 +121,44 @@ export function useBtcCandles(
     },
   );
   const [loading, setLoading] = useState<boolean>(() => !cache.get(key));
+  // Bumped by the refresh button and the poll tick; any value > 0 forces a
+  // fresh fetch past the module cache.
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     let cancelled = false;
+    const force = reloadKey > 0;
     const hit = cache.get(key);
-    if (hit && Date.now() - hit.fetchedAt < SESSION_TTL_MS) {
+    if (!force && hit && Date.now() - hit.fetchedAt < SESSION_TTL_MS) {
       setState({ candles: hit.candles, lastClose: hit.lastClose, source: hit.source });
       setLoading(false);
       return;
     }
     setLoading(true);
-    fetchOnce(interval, limit).then((p) => {
+    fetchOnce(interval, limit, force).then((p) => {
       if (cancelled) return;
-      setState({ candles: p.candles, lastClose: p.lastClose, source: p.source });
+      // On a forced refresh keep the old series if the fetch came back empty
+      // (a transient upstream miss) so the chart never blanks mid-play.
+      setState((prev) =>
+        force && p.candles.length === 0
+          ? prev
+          : { candles: p.candles, lastClose: p.lastClose, source: p.source },
+      );
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [key, interval, limit]);
+  }, [key, interval, limit, reloadKey]);
 
-  return { candles: state.candles, lastClose: state.lastClose, source: state.source, loading };
+  // Auto-refresh: tick the reload key on the caller's cadence so the live
+  // price keeps moving without a tap. Skipped when refreshMs is unset/zero.
+  useEffect(() => {
+    if (!refreshMs || refreshMs <= 0) return;
+    const id = window.setInterval(() => setReloadKey((k) => k + 1), refreshMs);
+    return () => window.clearInterval(id);
+  }, [refreshMs]);
+
+  return { candles: state.candles, lastClose: state.lastClose, source: state.source, loading, reload };
 }
