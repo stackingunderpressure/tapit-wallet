@@ -462,7 +462,11 @@ const BUDGETS = [
   // lazy chunk: the scoreboard UI + arenaChain glue over the already-loaded
   // move-chain engine. Bumped to 6.5KB when the live-price refresh (auto-poll
   // + tap-to-refresh button) landed.
-  { pattern: /^ArenaScreen-.*\.js$/, gz: 6_656, label: 'ArenaScreen (Beat the HODL arena)' },
+  // 2026-09-04 sats scoreboard + Nostr publish preview/confirm card + the
+  // blood-red behind color: the extra scoreboard block and the preview panel
+  // (buildShareText, confirm/cancel) ride this chunk. Measured ~6.5KB gz,
+  // right at the prior edge. Bumped 6.5 -> 7.0KB.
+  { pattern: /^ArenaScreen-.*\.js$/, gz: 7_168, label: 'ArenaScreen (Beat the HODL arena)' },
   // The TradingView lightweight-charts candle chart for the arena (copied from
   // WealthStrategy's Stones lab). Deferred — its own lazy chunk that loads only
   // when the /arena chart renders, so it never touches initial or main load.

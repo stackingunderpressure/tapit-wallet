@@ -362,14 +362,14 @@ export function ArenaScreen() {
             </div>
             <div
               className={`mt-1 font-mono text-2xl font-black tabular-nums ${
-                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-600' : 'text-muted'
+                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-700' : 'text-muted'
               }`}
             >
               {fmtSatsSigned(score.edgeCoins)}
             </div>
             <div
               className={`text-sm font-bold ${
-                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-600' : 'text-muted'
+                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-700' : 'text-muted'
               }`}
             >
               {score.edgePct >= 0 ? '+' : ''}
