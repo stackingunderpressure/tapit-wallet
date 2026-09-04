@@ -425,7 +425,14 @@ const BUDGETS = [
   // dismissed, or this wallet already holds a membership for that vault),
   // which used to be invisible from this screen entirely. Measured
   // 14.89KB gz. Bumped 14.5 -> 15.25KB.
-  { pattern: /^SettingsScreen-.*\.js$/, gz: 15_616, label: 'SettingsScreen' },
+  // 2026-09-04 settings gut-check (operator: "it's a hot mess... re-organize
+  // behind categories"): the 17 flat sections are now grouped into collapsible
+  // CategoryGroup accordions with an Advanced group; four big inline blocks
+  // (cloud backup, auto-lock, reachability+relays, local backup, cohort) were
+  // extracted to their own section files, but the accordion primitive +
+  // category subtitles + the extra static imports ride this chunk. Measured
+  // 15.36KB gz. Bumped 15.25 -> 15.75KB.
+  { pattern: /^SettingsScreen-.*\.js$/, gz: 16_128, label: 'SettingsScreen' },
   // 2026-08-06 Cut B stage B1 (docs/integration-phase1-signin-and-bridge.md,
   // DynastyTrust repo): the new psbt-cosign intent statically pulls in
   // @dynastytrust/bip341-psbt-signer (PSBT parse/serialize + BIP341 sighash)
