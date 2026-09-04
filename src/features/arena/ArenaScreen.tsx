@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import { envelopeId, type Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { arenaOracle } from '../../shared/lib/env.ts';
@@ -56,6 +56,35 @@ function fmtSats(coins: number): string {
 function fmtSatsSigned(coins: number): string {
   if (!Number.isFinite(coins)) return '—';
   return (coins >= 0 ? '+' : '') + fmtSats(coins);
+}
+
+// A centered pop-up over the whole screen (not a bottom-of-page section)
+// for the game's confirmations — matches the app's other modals
+// (fixed backdrop + centered card). Tapping the backdrop dismisses via
+// onDismiss; pass undefined to disable dismiss while busy.
+function ArenaModal({
+  onDismiss,
+  children,
+}: {
+  onDismiss?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      onClick={onDismiss}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl border border-accent/40 bg-white p-5 shadow-xl"
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export function ArenaTabBody() {
@@ -556,7 +585,7 @@ export function ArenaTabBody() {
             </button>
             {/* Deliberate-action gate — an accidental tap must not log a move */}
             {confirmingTrade && (
-              <section className="mt-3 rounded-2xl bg-white border border-accent/40 p-5 shadow-sm">
+              <ArenaModal onDismiss={busy ? undefined : () => setConfirmingTrade(false)}>
                 <div className="font-medium">
                   {side === 'sell' ? 'Sell the whole coin?' : 'Buy the whole coin back?'}
                 </div>
@@ -587,7 +616,7 @@ export function ArenaTabBody() {
                     Cancel
                   </button>
                 </div>
-              </section>
+              </ArenaModal>
             )}
           </>
         ) : (
@@ -646,7 +675,7 @@ export function ArenaTabBody() {
 
         {/* Preview & confirm — see exactly what goes to the relays first */}
         {previewText != null && (
-          <section className="mt-3 rounded-2xl bg-white border border-accent/40 p-5 shadow-sm">
+          <ArenaModal onDismiss={busy ? undefined : () => setPreviewText(null)}>
             <div className="font-medium">Preview — this is what you'll post</div>
             <p className="mt-1 text-sm text-muted">
               A public Nostr note, signed by your key and sent to your relays.
@@ -673,7 +702,7 @@ export function ArenaTabBody() {
                 Cancel
               </button>
             </div>
-          </section>
+          </ArenaModal>
         )}
 
         {(err || note) && (
