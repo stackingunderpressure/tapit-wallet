@@ -393,9 +393,9 @@ function RecoveryPaths() {
 
       <p className="mt-5 text-xs leading-relaxed text-muted">
         Recovery actions appear on the lock screen when there's a stored
-        wallet to recover into — sign in first, then "Lost your passphrase?"
-        plus "Or use your written-down recovery key" both appear below the
-        passphrase prompt.
+        wallet to recover into — sign in first, then "Forgot your
+        passphrase?" plus "Or use your written-down recovery key" both appear
+        below the passphrase prompt.
       </p>
     </section>
   );
