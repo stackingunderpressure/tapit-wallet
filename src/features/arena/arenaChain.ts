@@ -24,8 +24,16 @@ import type { SignedPriceRound } from './priceRound.ts';
 /** The tag every arena move carries, so the run is findable in holdings. */
 export const ARENA_GAME = 'beat-the-hodl' as const;
 
-/** Friction charged on every leg by default (percent). Pessimistic per spec. */
-export const DEFAULT_FRICTION_PCT = 0.5;
+/**
+ * Friction charged on EVERY leg (percent). Fixed at 2% and not user-lowerable
+ * on purpose: a sell-all then buy-all-back is two legs, and each real leg pays
+ * an exchange/withdrawal fee, the bid-ask spread, and slippage moving size. Two
+ * percent per leg (~4% round trip) is deliberately pessimistic so the game can
+ * never flatter you — if you beat the HODL ball after 2% a leg, you beat it for
+ * real. Letting a player dial their own friction down would let them
+ * manufacture a fake win, which defeats the whole point.
+ */
+export const DEFAULT_FRICTION_PCT = 2;
 
 export interface GenesisOpts {
   /** The charity donation txid that roots the trail (optional in the prototype). */

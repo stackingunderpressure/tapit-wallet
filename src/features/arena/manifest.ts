@@ -23,6 +23,7 @@ export const manifest: FeatureManifest = {
     'src/shared/lib/env.ts',
     'netlify/functions/price-oracle.mts',
     'netlify.toml',
+    'scripts/arena-oracle-keygen.mjs',
   ],
   depends_on: ['move-chain', 'transport', 'wallet-core', 'anchoring'],
   pause_safe: true,

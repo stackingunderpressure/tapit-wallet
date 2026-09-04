@@ -40,16 +40,40 @@ export function verifyPriceRound(r: SignedPriceRound, expectedPubkey?: string): 
   }
 }
 
-/** Fetch the latest signed round from the oracle and verify it before use. */
+/** How old (seconds) a signed round may be before we refuse it. */
+export const MAX_ROUND_AGE_SECONDS = 120;
+
+/**
+ * A round is fresh if its timestamp is within `maxAgeSeconds` of now and not
+ * in the future. Rejecting stale rounds is what stops a player from replaying
+ * an OLD favourable signed price — the price must be the market right now.
+ */
+export function isRoundFresh(
+  r: SignedPriceRound,
+  nowSeconds: number = Math.floor(Date.now() / 1000),
+  maxAgeSeconds: number = MAX_ROUND_AGE_SECONDS,
+): boolean {
+  const age = nowSeconds - r.time;
+  return age >= -30 && age <= maxAgeSeconds;
+}
+
+/**
+ * Fetch the latest signed round from the oracle, verify its signature against
+ * the expected oracle key, and reject it if stale. Throws on any failure so a
+ * bad or replayed price can never reach a move.
+ */
 export async function fetchSignedRound(
   url: string,
   expectedPubkey?: string,
 ): Promise<SignedPriceRound> {
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
+  const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' });
   if (!res.ok) throw new Error(`Oracle returned ${res.status}`);
   const r = (await res.json()) as SignedPriceRound;
   if (!verifyPriceRound(r, expectedPubkey)) {
     throw new Error('Oracle signature did not verify — not using this price.');
+  }
+  if (!isRoundFresh(r)) {
+    throw new Error('Oracle price is stale — refusing a price older than two minutes.');
   }
   return r;
 }

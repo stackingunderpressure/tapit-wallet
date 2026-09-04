@@ -26,22 +26,66 @@ const CORS: Record<string, string> = {
   'content-type': 'application/json',
 };
 
+const ok = (p: number): boolean => Number.isFinite(p) && p > 0;
+
+async function coinbase(): Promise<number> {
+  const r = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');
+  const j = (await r.json()) as { data?: { amount?: string } };
+  return Number(j?.data?.amount);
+}
+async function kraken(): Promise<number> {
+  const r = await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD');
+  const j = (await r.json()) as { result?: { XXBTZUSD?: { c?: string[] } } };
+  return Number(j?.result?.XXBTZUSD?.c?.[0]);
+}
+async function bitstamp(): Promise<number> {
+  const r = await fetch('https://www.bitstamp.net/api/v2/ticker/btcusd/');
+  const j = (await r.json()) as { last?: string };
+  return Number(j?.last);
+}
+
+function median(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
+}
+
+/**
+ * BTC/USD as the MEDIAN of several independent exchanges, so no single feed
+ * (a glitch, an outage, a manipulated book) can move the number the game
+ * signs. Sources that fail or return junk are dropped; we require at least
+ * two agreeing feeds, and reject if the min and max disagree by more than 2%
+ * (a sign something is wrong). The signed `source` names which feeds counted.
+ */
 async function fetchBtcUsd(): Promise<{ price: number; source: string }> {
-  try {
-    const r = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');
-    if (r.ok) {
-      const j = (await r.json()) as { data?: { amount?: string } };
-      const p = Number(j?.data?.amount);
-      if (Number.isFinite(p) && p > 0) return { price: p, source: 'coinbase' };
-    }
-  } catch {
-    /* fall through to the backup feed */
-  }
-  const r2 = await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD');
-  const j2 = (await r2.json()) as { result?: { XXBTZUSD?: { c?: string[] } } };
-  const p2 = Number(j2?.result?.XXBTZUSD?.c?.[0]);
-  if (!Number.isFinite(p2) || p2 <= 0) throw new Error('no price from any feed');
-  return { price: p2, source: 'kraken' };
+  const feeds: { name: string; fn: () => Promise<number> }[] = [
+    { name: 'coinbase', fn: coinbase },
+    { name: 'kraken', fn: kraken },
+    { name: 'bitstamp', fn: bitstamp },
+  ];
+  const got: { name: string; price: number }[] = [];
+  await Promise.all(
+    feeds.map(async (f) => {
+      try {
+        const p = await f.fn();
+        if (ok(p)) got.push({ name: f.name, price: p });
+      } catch {
+        /* drop this feed */
+      }
+    }),
+  );
+  if (got.length < 2) throw new Error('need at least two agreeing price feeds');
+  const prices = got.map((g) => g.price);
+  const lo = Math.min(...prices);
+  const hi = Math.max(...prices);
+  if ((hi - lo) / lo > 0.02) throw new Error('price feeds disagree too much');
+  return {
+    price: median(prices),
+    source: got
+      .map((g) => g.name)
+      .sort()
+      .join('+'),
+  };
 }
 
 export default async (req: Request): Promise<Response> => {

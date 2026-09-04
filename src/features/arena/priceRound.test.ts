@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { generateKeypair } from 'tapit-attest';
 import { canonicalRoundString, type PriceRoundFields } from './priceRoundCanonical.ts';
-import { signPriceRound, verifyPriceRound } from './priceRound.ts';
+import { signPriceRound, verifyPriceRound, isRoundFresh } from './priceRound.ts';
 
 const FIELDS: PriceRoundFields = {
   price: 63251.5,
@@ -53,5 +53,14 @@ describe('priceRound', () => {
     expect(verifyPriceRound({ ...signed, price: Number.NaN })).toBe(false);
     // a wrong-but-well-formed signature never passes
     expect(verifyPriceRound({ ...signed, sig: 'ab'.repeat(32) })).toBe(false);
+  });
+
+  it('freshness: a recent round is fresh, a stale one is not', () => {
+    const now = 1_756_900_200;
+    const kp = generateKeypair();
+    const signed = signPriceRound({ ...FIELDS, time: now - 10 }, kp.privateKey);
+    expect(isRoundFresh(signed, now)).toBe(true); // 10s old
+    expect(isRoundFresh({ ...signed, time: now - 300 }, now)).toBe(false); // 5 min old
+    expect(isRoundFresh({ ...signed, time: now + 300 }, now)).toBe(false); // far future
   });
 });
