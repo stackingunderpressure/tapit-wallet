@@ -1,5 +1,4 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
 import { IdentityCard } from './IdentityCard.tsx';
@@ -15,12 +14,8 @@ import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx'
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
 import { FamilyIdentitySections } from './FamilyIdentitySections.tsx';
-
-// Lazy-loaded so the vouching-circle substrate (candidate finder
-// helper + section UI) only ships when the operator opens the
-// Identity tab. Matches the bundle-budget discipline used for the
-// Bitcoin tab and ImportNostrIdentityPrompt.
-import { NostrIndicator } from '../transport/NostrIndicator.tsx';
+import { HomeHeader } from './HomeHeader.tsx';
+import { isVaultMembership } from '../sign-request/vaultTrail.ts';
 import { PeopleTabBody } from './PeopleTabBody.tsx';
 import { FamilyTabBody } from './FamilyTabBody.tsx';
 import { HomeTabStrip } from './HomeTabStrip.tsx';
@@ -348,44 +343,13 @@ export function HomeScreen() {
     [holdings, wallet.identity, identity],
   );
 
+  // DynastyTrust visibility gate: no vault surface shows until this wallet
+  // actually holds a vault membership (accepted an invite). See HomeHeader.
+  const hasVaultMembership = useMemo(() => holdings.some(isVaultMembership), [holdings]);
+
   return (
     <div className="min-h-screen p-5 max-w-md mx-auto pb-32">
-      <header
-        className={`sticky top-0 z-30 -mx-5 px-5 flex items-center justify-between py-2 gap-2 ${
-          resolvedTheme === 'fresh'
-            ? 'bg-fresh-surface-base/85 backdrop-blur-xl border-b border-fresh-surface-edge'
-            : 'bg-paper/95 backdrop-blur border-b border-ink/10'
-        }`}
-      >
-        <h1 className="text-lg font-semibold flex items-center gap-2">
-          {resolvedTheme === 'fresh' && <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-fresh-accent-secondary shadow-[0_0_14px_rgba(167,139,250,0.7)]" />}
-          Tapit Wallet
-        </h1>
-        <div className="flex items-center gap-2">
-          <NostrIndicator status={relayStatus} />
-          <Link
-            to="/vaults"
-            className="text-sm text-muted hover:text-ink"
-            aria-label="My Vaults"
-          >
-            Vaults
-          </Link>
-          <Link
-            to="/about"
-            className="text-sm text-muted hover:text-ink"
-            aria-label="Guide"
-          >
-            Guide
-          </Link>
-          <Link
-            to="/settings"
-            className="text-sm text-muted hover:text-ink"
-            aria-label="Settings"
-          >
-            Settings
-          </Link>
-        </div>
-      </header>
+      <HomeHeader resolvedTheme={resolvedTheme} relayStatus={relayStatus} showVaults={hasVaultMembership} />
 
       <IncomingVaultMembershipBanner />
       <IncomingPsbtCosignBanner />
