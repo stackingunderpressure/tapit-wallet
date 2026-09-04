@@ -624,7 +624,6 @@ export function HomeScreen() {
           peerNames={peerNames}
           dismissInboxEnvelope={dismissInboxEnvelope}
           routeInbox={routeInbox}
-          resolvedTheme={resolvedTheme}
           onPromote={handlePromote}
         />
         </>

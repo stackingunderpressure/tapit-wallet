@@ -9,7 +9,6 @@ export const manifest: FeatureManifest = {
     'src/features/journal/JournalComposer.tsx',
     'src/features/journal/JournalCard.tsx',
     'src/features/journal/JournalDetail.tsx',
-    'src/features/journal/JournalTabs.tsx',
     'src/features/journal/JournalTabRouter.tsx',
     'src/features/journal/FreshTodayCarousel.tsx',
     'src/features/journal/FreshTodayCard.tsx',

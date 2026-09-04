@@ -10,7 +10,6 @@ export const manifest: FeatureManifest = {
     'src/features/theme/useTheme.ts',
     'src/features/theme/applyTheme.ts',
     'src/features/theme/deviceTheme.ts',
-    'src/features/theme/useDeviceTheme.ts',
     'src/features/theme/FreshLoginShell.tsx',
     'src/main.tsx',
     'tailwind.config.ts',

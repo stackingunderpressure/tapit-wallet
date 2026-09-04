@@ -4,12 +4,10 @@ import { useSession } from './useSession.ts';
 import { takePostLoginReturn } from './postLoginReturn.ts';
 import { hasPendingInvite } from '../connections/pendingInvite.ts';
 
-// FreshLoginShell carries the entire Fresh compose-before-login
-// onboarding state machine (Cut 5). Lazy-loaded so the cold-start
-// login bundle Classic operators land on stays tight — the Fresh
-// chunk only flies down the wire when useDeviceTheme resolves to
-// 'fresh'. This is the "lazy-loaded so Classic operators never
-// pay Fresh bytes" pattern the brief asks for.
+// FreshLoginShell carries the entire signed-out onboarding state
+// machine. Lazy-loaded so it rides its own chunk and the cold-start
+// login bundle stays tight; the aurora fallback below covers the
+// fetch so there's no flash before it lands.
 const FreshLoginShell = lazy(() =>
   import('../theme/FreshLoginShell.tsx').then((m) => ({
     default: m.FreshLoginShell,

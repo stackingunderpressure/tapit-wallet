@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
-import { ClassicConnections } from '../connections/ClassicConnections.tsx';
 import {
   findCompletedHandshakeWith,
   isHandshake,
@@ -46,7 +45,6 @@ interface Props {
     action: InboxRouteAction,
     senderPubkey: string,
   ) => void;
-  resolvedTheme: 'classic' | 'fresh';
   /** Sub-cut 2c — operator promoted a chat moment; HomeScreen routes it. */
   onPromote?: (payload: PromotePayload) => void;
 }
@@ -67,7 +65,6 @@ export function PeopleTabBody({
   peerNames,
   dismissInboxEnvelope,
   routeInbox,
-  resolvedTheme,
   onPromote,
 }: Props) {
   const [selectedPeer, setSelectedPeer] = useState<{
@@ -184,7 +181,7 @@ export function PeopleTabBody({
             namesByPubkey={peerNames}
           />
         </Suspense>
-      ) : resolvedTheme === 'fresh' ? (
+      ) : (
         <Suspense fallback={null}>
           <FreshCrew
             connectionEntries={connectionEntries}
@@ -192,12 +189,6 @@ export function PeopleTabBody({
             onOpenThread={handleOpenThread}
           />
         </Suspense>
-      ) : (
-        <ClassicConnections
-          connectionEntries={connectionEntries}
-          myIdentity={myIdentity}
-          onOpenThread={handleOpenThread}
-        />
       )}
     </section>
   );
