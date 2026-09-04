@@ -73,9 +73,9 @@ describe('simulateWholeCoin — an open sell (holding cash)', () => {
       currentPrice: 80_000,
     });
     expect(atSell.holding).toBe('cash');
-    // Both fees are baked into "buy back right now": (1 - f) on the sell that
-    // produced the cash, and (1 - f) again on buying back, so ~0.9801 at par.
-    expect(atSell.coinsNow).toBeCloseTo(0.9801, 4);
+    // Only the sell fee has executed, so at par buying power reads 0.99 — the
+    // buy-back fee is not pre-charged, it lands when the buy leg actually runs.
+    expect(atSell.coinsNow).toBeCloseTo(0.99, 4);
 
     const priceUp = simulateWholeCoin([sell(80_000)], {
       frictionPctPerLeg: 1,
