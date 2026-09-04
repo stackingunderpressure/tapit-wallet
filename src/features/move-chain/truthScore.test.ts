@@ -54,46 +54,43 @@ describe('simulateWholeCoin — friction is real and visible', () => {
 });
 
 describe('simulateWholeCoin — an open sell (holding cash)', () => {
-  it('locks the coin count at the sell — the live price does not move it', () => {
+  it('marks cash to the live buying power at the current price', () => {
     const r = simulateWholeCoin([sell(100_000)], { currentPrice: 90_000 });
     expect(r.holding).toBe('cash');
     expect(r.openSell).toEqual({ sellPrice: 100_000, cashUsd: 100_000 });
-    // No friction here, so you locked exactly 1.0 coin at the sell — NOT
-    // 100000/90000 marked to the live 90k price. The count is your realized
-    // position, not a mark-to-market.
-    expect(r.coinsNow).toBeCloseTo(1, 10);
+    // No friction here: cash of 100k buys 100000/90000 = 1.111 coins at the
+    // live 90k price — the price dipped, so buying power rose above 1.0.
+    expect(r.coinsNow).toBeCloseTo(1.1111, 4);
     // must buy back below 100k to beat the ball (no friction here)
     expect(r.minBuyBackToBeatHodl).toBeCloseTo(100_000, 6);
   });
 
-  it('a single sell paying one fee reads 0.99, and the live price never moves it', () => {
-    // The operator's exact report: after ONE sell all I've paid is one fee,
-    // so I hold 0.99 of a coin, and it must NOT change as the price wanders.
+  it('when the price runs up against you (you are down) your total sats fall', () => {
+    // The operator's model: holding cash, if the price rises you lose the
+    // ability to buy back as many sats, so your buying power (coinsNow) drops.
     const atSell = simulateWholeCoin([sell(80_000)], {
       frictionPctPerLeg: 1,
       currentPrice: 80_000,
     });
     expect(atSell.holding).toBe('cash');
-    expect(atSell.coinsNow).toBeCloseTo(0.99, 10); // one fee, not two
-    expect(atSell.edgeCoins).toBeCloseTo(-0.01, 10);
+    // Both fees are baked into "buy back right now": (1 - f) on the sell that
+    // produced the cash, and (1 - f) again on buying back, so ~0.9801 at par.
+    expect(atSell.coinsNow).toBeCloseTo(0.9801, 4);
 
-    // Same chain, wildly different live prices — the count is identical.
     const priceUp = simulateWholeCoin([sell(80_000)], {
       frictionPctPerLeg: 1,
-      currentPrice: 200_000,
+      currentPrice: 120_000,
     });
     const priceDown = simulateWholeCoin([sell(80_000)], {
       frictionPctPerLeg: 1,
-      currentPrice: 40_000,
+      currentPrice: 50_000,
     });
-    expect(priceUp.coinsNow).toBeCloseTo(0.99, 10);
-    expect(priceDown.coinsNow).toBeCloseTo(0.99, 10);
-    // Buying back actually moves it: cheaper buy → more coins than 0.99.
-    const boughtBack = simulateWholeCoin([sell(80_000), buy(40_000)], {
-      frictionPctPerLeg: 1,
-    });
-    expect(boughtBack.holding).toBe('btc');
-    expect(boughtBack.coinsNow).toBeGreaterThan(0.99);
+    // Down (price up) → fewer sats than at par; the dip → more.
+    expect(priceUp.coinsNow).toBeLessThan(atSell.coinsNow);
+    expect(priceDown.coinsNow).toBeGreaterThan(atSell.coinsNow);
+    // And the edge tracks it: behind when up, ahead when the price dipped.
+    expect(priceUp.edgeCoins).toBeLessThan(0);
+    expect(priceDown.edgeCoins).toBeGreaterThan(0);
   });
 
   it('the beat-HODL threshold accounts for friction', () => {

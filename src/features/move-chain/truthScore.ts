@@ -40,9 +40,12 @@ export interface RoundResult {
 export interface TruthResult {
   /** the HODL ball — one whole coin, frozen. */
   hodlCoins: number;
-  /** your realized coin count: the coin amount while holding it, or the coins
-   *  locked at the sell price (one fee paid) while in cash. Only a trade moves
-   *  it — never the live price. */
+  /** your live buying power in coins: the coin amount while holding it, or —
+   *  while in cash — what that cash could actually buy RIGHT NOW at the current
+   *  price after the buy-back fee. It marks to market, so when the price runs up
+   *  against you your buying power falls (you're losing the ability to buy back
+   *  as many sats); when the price dips it rises. Matches WealthStrategy's
+   *  Stones "You now". */
   coinsNow: number;
   /** 'btc' = holding the coin; 'cash' = sold, waiting to buy back. */
   holding: 'btc' | 'cash';
@@ -83,6 +86,7 @@ function replayCoins(
   moves: readonly WholeCoinMove[],
   startCoins: number,
   f: number,
+  currentPrice: number,
 ): {
   coins: number;
   cashUsd: number;
@@ -129,15 +133,14 @@ function replayCoins(
     }
   }
 
-  // Your coin count is your REALIZED position, and it only moves when you
-  // trade — never when the live price wanders. Holding the coin, it's the coin
-  // amount. Holding cash, it's the coins you locked in at the price you sold
-  // at (cashUsd / sellPrice), which equals coins × (1 − f): the one fee you
-  // actually paid on the sell, and nothing more. The live price does not mark
-  // this to market — that truth lives in minBuyBackToBeatHodl (the price you'd
-  // need to buy back at) and only becomes real coins when you actually buy.
+  // Your coin count is your live BUYING POWER. Holding the coin, it's the coin
+  // amount. Holding cash, it's what that cash could actually buy RIGHT NOW at
+  // the current price after the buy-back fee: (cashUsd × (1 − f)) / currentPrice.
+  // It marks to market on purpose — when the price runs up against you your
+  // buying power falls (you're down, losing the ability to buy back as many
+  // sats); when the price dips it rises. This is WealthStrategy's Stones view.
   const coinsNow =
-    holding === 'btc' ? coins : open && open.sellPrice > 0 ? cashUsd / open.sellPrice : 0;
+    holding === 'btc' ? coins : currentPrice > 0 ? (cashUsd * (1 - f)) / currentPrice : 0;
   const openSell = holding === 'cash' && open ? { sellPrice: open.sellPrice, cashUsd } : null;
   return { coins, cashUsd, holding, rounds, openSell, wellFormed, coinsNow };
 }
@@ -157,8 +160,8 @@ export function simulateWholeCoin(moves: readonly WholeCoinMove[], opts: TruthOp
   const currentPrice =
     typeof opts.currentPrice === 'number' && opts.currentPrice > 0 ? opts.currentPrice : lastPrice;
 
-  const real = replayCoins(moves, startCoins, f);
-  const shadow = replayCoins(moves, startCoins, 0);
+  const real = replayCoins(moves, startCoins, f, currentPrice);
+  const shadow = replayCoins(moves, startCoins, 0, currentPrice);
 
   const hodlCoins = startCoins;
   const edgeCoins = real.coinsNow - hodlCoins;
