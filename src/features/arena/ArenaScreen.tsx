@@ -229,17 +229,23 @@ export function ArenaScreen() {
           className="mt-4 rounded-2xl p-4"
           style={{ background: '#0D1117', border: `1px solid ${ORANGE}33` }}
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-start justify-between mb-2">
             <div>
               <div
-                className="text-[10px] font-bold uppercase"
+                className="flex items-center gap-1.5 text-[10px] font-bold uppercase"
                 style={{ letterSpacing: '0.14em', color: '#8b949e' }}
               >
-                Bitcoin · USD
+                {lastClose && (
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-full"
+                    style={{ background: ORANGE, boxShadow: `0 0 6px ${ORANGE}` }}
+                  />
+                )}
+                Bitcoin · USD · live
               </div>
               <div
                 className="tabular-nums"
-                style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 900, color: ORANGE, lineHeight: 1.1 }}
+                style={{ fontFamily: 'monospace', fontSize: 40, fontWeight: 900, color: ORANGE, lineHeight: 1.05 }}
               >
                 {fmtUsd(lastClose)}
               </div>
@@ -288,8 +294,12 @@ export function ArenaScreen() {
               <div className="text-[10px] text-muted mt-0.5">after costs</div>
             </div>
             <div className="text-right">
-              <div className="text-xs uppercase tracking-wide text-muted">HODL</div>
+              <div className="inline-flex items-center gap-1 rounded-full border border-ink/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-ink/40" />
+                HODL · the ball
+              </div>
               <div className="text-3xl font-semibold tabular-nums text-muted">1.000000</div>
+              <div className="text-[10px] text-muted mt-0.5">to beat</div>
             </div>
           </div>
           <div className={`mt-3 text-sm font-medium ${ahead ? 'text-accent' : 'text-muted'}`}>
