@@ -1,7 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { WalletGuide } from './WalletGuide.tsx';
-import { useDeviceTheme } from '../theme/useDeviceTheme.ts';
 import { useSession } from './useSession.ts';
 import { takePostLoginReturn } from './postLoginReturn.ts';
 import { hasPendingInvite } from '../connections/pendingInvite.ts';
@@ -33,29 +31,13 @@ const PendingInviteBanner = lazy(() =>
   })),
 );
 
-// The signed-out landing page. Two presentations:
-//
-//   - Classic: the shared WalletGuide with the Account tab open by
-//     default — a returning user lands on the sign-in form while
-//     still being one tap away from Why/What/Recovery/Sovereignty.
-//
-//   - Fresh: the dark-default FreshLoginShell — compose-first
-//     register, no marketing essay at the door, reference tabs
-//     reachable via /about. Shipped as part of Cut 2 of the 2026-
-//     05-24 Fresh young-adult-friendly theme + IA roadmap;
-//     expanded in Cut 5 to host the full 90-second compose-
-//     before-login state machine.
-//
-// Which one paints comes from `useDeviceTheme`, which reads the
-// localStorage mirror of the operator's last Appearance choice.
-// Pre-auth surfaces cannot read prefs (the wallet is not unlocked)
-// so the device-level mirror is the canonical source here.
-//
-// The Fresh fallback uses the aurora-drift background so the
-// transition from cold-paint to lazy-loaded FreshLoginShell is
-// visually continuous — no Classic-flash during the chunk fetch.
+// The signed-out landing page: the dark FreshLoginShell — the
+// setup flow, no marketing essay at the door, reference tabs
+// reachable via /about. Fresh is the only look as of 2026-09-04
+// (the Classic WalletGuide-as-login branch was removed with the
+// theme picker); the aurora-drift fallback keeps the cold-paint
+// to lazy-load transition visually continuous.
 export function LoginPage() {
-  const theme = useDeviceTheme();
   const session = useSession();
   const navigate = useNavigate();
   const [showInviteBanner] = useState(() => hasPendingInvite());
@@ -78,24 +60,16 @@ export function LoginPage() {
     </Suspense>
   );
 
-  if (theme === 'fresh') {
-    return (
-      <>
-        {inviteBanner}
-        <Suspense
-          fallback={
-            <div className="relative min-h-screen overflow-hidden fresh-aurora-bg" />
-          }
-        >
-          <FreshLoginShell />
-        </Suspense>
-      </>
-    );
-  }
   return (
     <>
       {inviteBanner}
-      <WalletGuide initialTab="account" />
+      <Suspense
+        fallback={
+          <div className="relative min-h-screen overflow-hidden fresh-aurora-bg" />
+        }
+      >
+        <FreshLoginShell />
+      </Suspense>
     </>
   );
 }

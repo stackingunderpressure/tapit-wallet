@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ThemeChoice } from '../storage/prefsStore.ts';
 import { applyTheme, resolveTheme } from './applyTheme.ts';
-import { loadDeviceTheme, saveDeviceTheme } from './deviceTheme.ts';
+import { saveDeviceTheme } from './deviceTheme.ts';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
@@ -50,22 +50,11 @@ export function useTheme(choice: ThemeChoice): 'classic' | 'fresh' {
     saveDeviceTheme(choice);
   }, [choice]);
 
-  // Revert to the device-level theme when the component owning the
-  // hook unmounts — e.g. WalletProvider tears down on sign-out and
-  // the login surface should render under whatever the operator
-  // last picked. Falls back to Classic when nothing is persisted.
+  // Keep Fresh painted when the hook's owner unmounts (e.g.
+  // WalletProvider tears down on sign-out). Fresh is the only look.
   useEffect(() => {
     return () => {
-      const stored = loadDeviceTheme();
-      if (stored === null) {
-        applyTheme('classic');
-        return;
-      }
-      const fallbackDark =
-        typeof window !== 'undefined' &&
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia(DARK_QUERY).matches;
-      applyTheme(resolveTheme(stored, fallbackDark));
+      applyTheme('fresh');
     };
   }, []);
 
