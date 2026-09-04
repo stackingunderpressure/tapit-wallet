@@ -274,11 +274,12 @@ export function ArenaScreen() {
             </div>
           )}
           <p className="mt-3 text-xs text-muted">
-            Friction is a fixed <strong>2% per leg</strong> — about 4% for a full
-            sell-and-buy-back. Every real switch pays an exchange fee, the bid-ask
-            spread, and slippage, so 2% is deliberately pessimistic: beat the HODL
-            ball after that and you beat it for real. It can't be turned down —
-            letting you lower your own costs would just manufacture a fake win.
+            Friction is a fixed <strong>1% per leg</strong> — <strong>2% for a full
+            sell-and-buy-back</strong>. Every real switch pays an exchange fee, the
+            bid-ask spread, and slippage, so 2% round trip is a fair-but-pessimistic
+            all-in cost: beat the HODL ball after that and you beat it for real. It
+            can't be turned down — letting you lower your own costs would just
+            manufacture a fake win.
           </p>
         </section>
 

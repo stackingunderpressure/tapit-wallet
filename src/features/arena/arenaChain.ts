@@ -25,15 +25,15 @@ import type { SignedPriceRound } from './priceRound.ts';
 export const ARENA_GAME = 'beat-the-hodl' as const;
 
 /**
- * Friction charged on EVERY leg (percent). Fixed at 2% and not user-lowerable
- * on purpose: a sell-all then buy-all-back is two legs, and each real leg pays
- * an exchange/withdrawal fee, the bid-ask spread, and slippage moving size. Two
- * percent per leg (~4% round trip) is deliberately pessimistic so the game can
- * never flatter you — if you beat the HODL ball after 2% a leg, you beat it for
- * real. Letting a player dial their own friction down would let them
+ * Friction charged on EVERY leg (percent). Fixed at 1% per leg — 2% for a full
+ * sell-all then buy-all-back round trip — and not user-lowerable on purpose:
+ * each real leg pays an exchange/withdrawal fee, the bid-ask spread, and
+ * slippage moving size. 2% round trip is a fair-but-pessimistic all-in cost so
+ * the game can never flatter you — beat the HODL ball after that and you beat
+ * it for real. Letting a player dial their own friction down would let them
  * manufacture a fake win, which defeats the whole point.
  */
-export const DEFAULT_FRICTION_PCT = 2;
+export const DEFAULT_FRICTION_PCT = 1;
 
 export interface GenesisOpts {
   /** The charity donation txid that roots the trail (optional in the prototype). */
