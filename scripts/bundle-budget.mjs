@@ -469,7 +469,10 @@ const BUDGETS = [
   // 2026-09-04 "How this stays honest" collapsible explainer (donation-legitimacy
   // + tamper-evident-trail copy) added to the arena. Measured ~7.2KB gz.
   // Bumped 7.0 -> 7.5KB.
-  { pattern: /^ArenaScreen-.*\.js$/, gz: 7_680, label: 'ArenaScreen (Beat the HODL arena)' },
+  // 2026-09-04 second explainer ("Why HODL is so hard to beat" — spot-fee
+  // realism + leverage funding/liquidation + HODL appeal) plus per-field dollar
+  // values alongside sats. Measured ~7.95KB gz. Bumped 7.5 -> 8.5KB.
+  { pattern: /^ArenaScreen-.*\.js$/, gz: 8_704, label: 'ArenaScreen (Beat the HODL arena)' },
   // The TradingView lightweight-charts candle chart for the arena (copied from
   // WealthStrategy's Stones lab). Deferred — its own lazy chunk that loads only
   // when the /arena chart renders, so it never touches initial or main load.

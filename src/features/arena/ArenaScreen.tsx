@@ -85,6 +85,8 @@ export function ArenaTabBody() {
   const [previewText, setPreviewText] = useState<string | null>(null);
   // "How this stays honest" explainer, collapsed by default.
   const [showHow, setShowHow] = useState(false);
+  // "Why HODL is so hard to beat" explainer (fees / funding / liquidation).
+  const [showWhy, setShowWhy] = useState(false);
 
   const chain = useMemo(
     () => findArenaChain(holdings, wallet.identity),
@@ -247,6 +249,15 @@ export function ArenaTabBody() {
     });
 
   const ahead = score.edgeCoins > 0;
+  // Dollar value of a coin amount at the live price, for showing each field's
+  // worth in sats AND dollars. Null when no live price yet.
+  const priceNow = lastClose && lastClose > 0 ? lastClose : null;
+  const usdOf = (coins: number): string | null =>
+    priceNow != null && Number.isFinite(coins) ? fmtUsd(coins * priceNow) : null;
+  const usdSigned = (coins: number): string | null => {
+    const v = usdOf(Math.abs(coins));
+    return v == null ? null : (coins >= 0 ? '+' : '−') + v;
+  };
 
   return (
     <div className="mt-5 pb-24">
@@ -299,6 +310,60 @@ export function ArenaTabBody() {
                 stamps prove <strong>when</strong> and <strong>at what price</strong>{' '}
                 you chose; the math proves the result. It's honest because it's
                 tamper-evident, not because anyone is asked to trust you.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Why HODL is so hard to beat — fee realism + leverage costs */}
+        <button
+          type="button"
+          onClick={() => setShowWhy((v) => !v)}
+          aria-expanded={showWhy}
+          className="mt-2 flex w-full items-center justify-between rounded-xl border border-ink/15 bg-ink/[0.03] px-4 py-2.5 text-left text-sm font-medium hover:bg-ink/[0.05]"
+        >
+          <span>Why HODL is so hard to beat</span>
+          <span className={`text-muted transition-transform ${showWhy ? 'rotate-90' : ''}`} aria-hidden>
+            ›
+          </span>
+        </button>
+        {showWhy && (
+          <div className="mt-2 space-y-3 rounded-xl border border-ink/10 bg-white p-4 text-sm shadow-sm">
+            <div>
+              <div className="font-semibold">The fee is a tax on every move</div>
+              <p className="mt-1 text-muted">
+                Here it's about 2% for a round trip — 1% to sell, 1% to buy back —
+                and real exchanges charge roughly the same. That tax lands on{' '}
+                <strong>every</strong> strategy, not just this one: you have to be
+                right by more than the fee just to break even, so a coin-flip
+                trader slowly bleeds out. Only genuinely well-placed trades —
+                bought back meaningfully lower than you sold — clear the tax and
+                actually get ahead. It's the quiet reason most active trading
+                loses to simply holding.
+              </p>
+            </div>
+            <div>
+              <div className="font-semibold">Leverage adds funding and liquidation</div>
+              <p className="mt-1 text-muted">
+                Trading with borrowed size isn't free. You pay a{' '}
+                <strong>funding rate</strong> every few hours just to hold the
+                position — a fee that never stops while you wait. And if the price
+                moves against you past your margin, you're{' '}
+                <strong>liquidated</strong>: the position is force-closed at a loss
+                you can't undo, often near the worst price. That's ruin risk spot
+                simply doesn't have. Leverage can amplify a good call, but it hands
+                you two brand-new ways to lose that holding never faces.
+              </p>
+            </div>
+            <div>
+              <div className="font-semibold">HODL pays none of it</div>
+              <p className="mt-1 text-muted">
+                One buy, then nothing — no per-trade fees, no funding, no
+                liquidation, no timing to get right. That's why the HODL ball is
+                the undefeated champion here and the bar every trade has to clear.
+                Beating it isn't impossible, but it takes trades placed well enough
+                to overcome a cost stack that only grows the more you trade. This
+                lab shows you, honestly, whether yours did.
               </p>
             </div>
           </div>
@@ -384,7 +449,9 @@ export function ArenaTabBody() {
             <div>
               <div className="text-xs uppercase tracking-wide text-muted">Your coins</div>
               <div className="text-3xl font-semibold tabular-nums">{fmtCoins(score.coinsNow)}</div>
-              <div className="text-[10px] text-muted mt-0.5">after costs</div>
+              <div className="text-[10px] text-muted mt-0.5">
+                after costs{usdOf(score.coinsNow) ? ` · ${usdOf(score.coinsNow)}` : ''}
+              </div>
             </div>
             <div className="text-right">
               <div className="inline-flex items-center gap-1 rounded-full border border-ink/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -392,7 +459,9 @@ export function ArenaTabBody() {
                 HODL · the ball
               </div>
               <div className="text-3xl font-semibold tabular-nums text-muted">1.000000</div>
-              <div className="text-[10px] text-muted mt-0.5">to beat</div>
+              <div className="text-[10px] text-muted mt-0.5">
+                to beat{usdOf(score.hodlCoins) ? ` · ${usdOf(score.hodlCoins)}` : ''}
+              </div>
             </div>
           </div>
           {/* You vs HODL, in sats — the WealthStrategy Stones view */}
@@ -414,6 +483,7 @@ export function ArenaTabBody() {
             >
               {score.edgePct >= 0 ? '+' : ''}
               {score.edgePct.toFixed(2)}%
+              {usdSigned(score.edgeCoins) ? ` · ${usdSigned(score.edgeCoins)}` : ''}
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <div className="rounded-lg bg-white border border-ink/10 px-2 py-2">
@@ -421,12 +491,18 @@ export function ArenaTabBody() {
                 <div className="mt-0.5 font-mono text-xs font-semibold tabular-nums">
                   {fmtSats(score.coinsNow)}
                 </div>
+                {usdOf(score.coinsNow) && (
+                  <div className="text-[10px] text-muted tabular-nums">{usdOf(score.coinsNow)}</div>
+                )}
               </div>
               <div className="rounded-lg bg-white border border-ink/10 px-2 py-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted">HODL frozen</div>
                 <div className="mt-0.5 font-mono text-xs font-semibold tabular-nums text-muted">
                   {fmtSats(score.hodlCoins)}
                 </div>
+                {usdOf(score.hodlCoins) && (
+                  <div className="text-[10px] text-muted tabular-nums">{usdOf(score.hodlCoins)}</div>
+                )}
               </div>
             </div>
           </div>
