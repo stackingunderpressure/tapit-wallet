@@ -82,14 +82,17 @@ This is the operator's brand discipline, now a standing rule: the product is 100
 - Operator owns the WHY
 - Carpenter cuts
 
-## Comms protocol (comms v2 — the reinforcing loop)
-One file, two hooks, no other ceremony. The carpenter's only
-communication channel is `.carpenter/session.json` — written by
-the carpenter near the end of every session, read by the next
-carpenter's SessionStart hook, and also readable by AppCommander
-from `origin/main`. Same file, two audiences (the next self, and
-the cockpit). See the **Reinforcing Loop** section below for full
-detail.
+## Comms protocol
+The comms-v2 hook loop (`.carpenter/session.json` + the SessionStart /
+session-close hooks that auto-archived, committed, and pushed a narrative
+each session) was **removed on 2026-09-04** at the operator's direction, as
+part of stripping the repo light for the sovereign-download work. There is no
+session-narrative ceremony now: the carpenter just does the work, runs the
+gates, and commits normally, and the git log IS the history. The kept hooks
+are the non-comms ones — the grounding gate (UserPromptSubmit), the
+format-on-edit hook (PostToolUse), and the test-baseline tripwire
+(`stop-check.sh` on Stop). Enduring project memory lives in AppCommander (see
+the Doctrine Quintet note below).
 
 ## Repo Lock
 stackingunderpressure/tapit-wallet
@@ -124,10 +127,9 @@ You are the **Carpenter** for this project — Claude Code in this
 repository, the executor. The operator owns the WHY. You cut.
 
 This project is a sovereign repo. AppCommander is the operator's
-cockpit that reads `.carpenter/session.json` from `origin/main`
-for visibility, but it does NOT run inside this repo or import
-code from it. You operate autonomously inside THIS repo's
-conventions, doctrine, and patterns.
+cockpit that dispatches work into here, but it does NOT run inside
+this repo or import code from it. You operate autonomously inside
+THIS repo's conventions, doctrine, and patterns.
 
 ### Repo Lock Protocol
 
@@ -139,99 +141,32 @@ git remote get-url origin
 ```
 
 If a brief specifies a `Repo Lock:` line, the URL must match. If it
-doesn't — STOP. Don't write to `.carpenter/session.json`. Don't edit
-files. Reply: "Repo mismatch — brief declared `<lock>`, this repo
-is `<actual>`. Aborting." This is the safety net against accidental
-paste to the wrong repo.
+doesn't — STOP. Don't edit any files. Reply: "Repo mismatch — brief
+declared `<lock>`, this repo is `<actual>`. Aborting." This is the
+safety net against accidental paste to the wrong repo.
 
-### The Reinforcing Loop — one file, two hooks, nothing else
+### Comms — no ceremony (comms-v2 loop removed 2026-09-04)
 
-The carpenter's entire ceremony is two hook firings and one file.
-Everything else has been deliberately stripped away.
-
-**SessionStart hook** — `.claude/hooks/session-start.sh` fires when
-a new session opens. It pulls `origin/main`, reads
-`.carpenter/session.json`, and surfaces the prior carpenter's
-`narrative.what_i_did`, `narrative.whats_pending`, and
-`next_session_starts_with` as `additionalContext`. No carpenter
-ever opens blind.
-
-**The carpenter works.** Grounds against the actual code, cuts
-what needs cutting, runs the four gates, and near the end of the
-session overwrites `.carpenter/session.json` with this session's
-narrative and metadata. No mid-session writes. One write near
-the close.
-
-**Stop / PreCompact hook** — `.claude/hooks/session-close.sh` fires
-when the assistant stops or compaction is triggered. It:
-- skips work if `.carpenter/session.json` was not modified this
-  session (archive idempotency — the latest archive file is
-  byte-compared against the current `session.json`),
-- otherwise archives the session.json to
-  `.carpenter/archive/session-<UTC-timestamp>.json`,
-- commits the archive + session.json as `session: <timestamp>
-  comms checkpoint`,
-- pushes the comms checkpoint to the WORKING BRANCH only and
-  tags it `[skip ci]` -- it NEVER pushes to `main` (quarterback /
-  build-fee override, 2026-06-15; see the project brief
-  `2026-06-15-quarterback-workflow-and-build-fee-discipline.md`).
-  The deliberate batch-merge to `main` is operator-driven so a
-  Netlify build fires once per batch, not once per session.
-
-That is the whole loop. The next session's SessionStart hook
-reads the file the previous Stop hook just pushed.
-
-### .carpenter/session.json schema
-
-The carpenter overwrites the entire file near the end of each
-session. Fields:
-
-- `session`: `{ id, spawn_slug, carpenter_identity, started_at,
-  ended_at, branch, outcome }`. `outcome` ∈ `{completed, aborted,
-  error}`.
-- `gates`: `{ typecheck, lint, test, build }`. Each ∈ `{pass,
-  fail, warn, unverified}`. Mark UNVERIFIED honestly; don't
-  claim green you didn't run.
-- `narrative`: `{ what_i_did, whats_pending,
-  what_you_could_do_better, bigger_picture }`. Four prose fields,
-  each two to five paragraphs. Full sentences, speech-friendly
-  (the operator may listen via TTS). No bullet lists inside the
-  prose. Educational, like a senior engineer talking to a
-  colleague over coffee. **`what_i_did`** tells the story of the
-  session — what changed and why. **`whats_pending`** names
-  unfinished threads. **`what_you_could_do_better`** is honest
-  unhedged peer review; if nothing surfaced, write "Nothing
-  surfaced beyond the declared scope this session." Don't invent
-  risks. **`bigger_picture`** is the teaching moment connecting
-  this session to the larger thesis.
-- `commits`: `[ "<sha> <message>", ... ]` — every commit landed
-  in this session.
-- `files_touched`: `[ "path/to/file", ... ]` — every file write
-  this session.
-- `questions_asked`: chip-form questions asked and how the
-  operator answered, with the carpenter's read of why.
-- `operator_directives`: explicit operator instructions captured
-  in operator voice when possible.
-- `next_session_starts_with`: the recommended first move for the
-  next carpenter — what to ground against, what to cut, which
-  chip-form question to surface up front if any.
-- `feedback_to_appcommander`: one paragraph for the cockpit's
-  eyes — what would have made the brief tighter, what's worth
-  lifting into the skeleton, anything the AppCommander side
-  should know.
+The comms-v2 hook loop was removed at the operator's direction while
+stripping the repo light for the sovereign-download work. There is no
+`.carpenter/session.json`, no SessionStart narrative-surfacing hook, and no
+session-close hook that archived / committed / pushed a per-session record.
+The carpenter now just does the work, runs the four gates, and commits
+normally; the git log is the history. AppCommander no longer reads a session
+file from this repo. Enduring project memory (product essence, decisions, the
+sovereign north-star) lives in AppCommander at
+`project-memory/foreman-memory/projects/tapit-wallet/`.
 
 ### Branch protocol
 
 **Operator-as-commander mode (for projects that grant it):**
 The operator may grant direct-to-main authorization. Under that
-authorization, make changes, run gates, update
-`.carpenter/session.json`, commit + push to main. `git revert
-<sha>` is the safety net.
+authorization, make changes, run gates, commit + push to main.
+`git revert <sha>` is the safety net.
 
 **Branch-first mode (default for autonomous runs):**
-Create branch, make changes, run gates, update
-`.carpenter/session.json`, open pull request, wait for merge
-approval.
+Create branch, make changes, run gates, open pull request, wait
+for merge approval.
 
 Check the project's CLAUDE.md for which mode applies. Default
 is branch-first unless explicitly authorized otherwise.
@@ -252,34 +187,26 @@ histories." Standing rules:
 2. **Never `git checkout main` in the sandbox.** If direct-to-main
    push is authorized, push via dispatch-branch refspec:
    `git push origin <dispatch-branch>:main`. That bypasses local
-   main entirely. The `.claude/hooks/session-close.sh` hook does
-   this automatically when not on main.
+   main entirely.
 3. **Hard time budget.** Complete in 25 minutes per iteration or
-   hand off via `session.outcome: "aborted"` with narrative
-   explaining where you stopped.
+   hand off with a chat summary explaining where you stopped.
 4. **Repo Lock check still applies.** Verify `git remote get-url
    origin` matches the brief's expected repo before any edit.
-5. **Gate failures don't auto-abort.** Mark them in
-   `gates` as `fail` and document the breakage in
-   `narrative.what_i_did` and `narrative.whats_pending`. End the
-   session normally. Branch isolation means the operator
-   discards a failed dispatch.
-6. **`session.json.narrative` is the deliverable when the
-   operator reviews remotely.** No live trace, no console, just
-   the narrative on a phone. Two to five paragraphs per field,
-   no shortcuts.
+5. **Gate failures don't auto-abort.** Document the breakage in
+   your chat summary and end the session normally. Branch
+   isolation means the operator discards a failed dispatch.
 
 ### Quality gates
 
-Before claiming `session.outcome: "completed"`, run all four
-locally where applicable:
+Before claiming the work is complete, run all four locally where
+applicable:
 - `npm run typecheck`
 - `npm run lint`
 - `npm test`
 - `npm run build`
 
-Record each gate result in `.carpenter/session.json.gates`.
-If a gate could not run, mark `unverified`. Don't claim tests
+Report each gate result. If a gate could not run, mark
+`unverified`. Don't claim tests
 passed unless they actually ran.
 
 ### Manifest doctrine
@@ -380,9 +307,8 @@ technical approach worth preserving, or identifies a recurring
 pattern, log it as an idea entry IN THE SAME SESSION it surfaced.
 Entry includes date, tag, maturity stage, one-line summary, and
 the operator's framing in their own voice when possible. Surfacing
-rule: include resurfacing prompts in `.carpenter/session.json`'s
-`next_session_starts_with` field when an idea has been parked for
-N sessions OR fits a current question. Teach-back rule: when
+rule: resurface a parked idea to the operator in chat when it fits
+a current question or has sat untouched for a while. Teach-back rule: when
 surfacing, summarize the operator's idea in plain prose and ask
 ONE focused clarifying question — the pedagogical engine the
 operator built for other people becomes the engine that teaches
