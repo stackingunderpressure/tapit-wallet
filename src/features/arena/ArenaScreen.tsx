@@ -82,6 +82,8 @@ export function ArenaScreen() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // The Nostr note held for preview; null when no preview is open.
+  const [previewText, setPreviewText] = useState<string | null>(null);
 
   const chain = useMemo(
     () => findArenaChain(holdings, wallet.identity),
@@ -200,15 +202,37 @@ export function ArenaScreen() {
       );
     });
 
-  const reveal = () =>
+  // The exact public note this run would post — built once so the preview
+  // shows byte-for-byte what gets sent.
+  function buildShareText(): string {
+    const rounds = score.rounds.length;
+    return (
+      `Beat the HODL — ${rounds} round${rounds === 1 ? '' : 's'}, ` +
+      `${fmtCoins(score.coinsNow)} coins vs 1.0 HODL ` +
+      `(${score.edgeCoins >= 0 ? '+' : ''}${fmtCoins(score.edgeCoins)}).`
+    );
+  }
+
+  // Step 1: open the preview. Nothing goes to a relay yet — the operator sees
+  // exactly what would be posted and confirms (or cancels) from there.
+  function openPreview() {
+    setErr(null);
+    setNote(null);
+    if (!transport) {
+      setErr('Not connected to a relay right now.');
+      return;
+    }
+    setPreviewText(buildShareText());
+  }
+
+  // Step 2: publish the previewed text verbatim.
+  const confirmPublish = () =>
     run(async () => {
+      const text = previewText;
+      if (!text) return;
       if (!transport) throw new Error('Not connected to a relay right now.');
-      const rounds = score.rounds.length;
-      const text =
-        `Beat the HODL — ${rounds} round${rounds === 1 ? '' : 's'}, ` +
-        `${fmtCoins(score.coinsNow)} coins vs 1.0 HODL ` +
-        `(${score.edgeCoins >= 0 ? '+' : ''}${fmtCoins(score.edgeCoins)}).`;
       const { publish } = await publishPublicNote(text);
+      setPreviewText(null);
       const n = publish.accepted.length;
       setNote(`Published to Nostr — ${n} relay${n === 1 ? '' : 's'} accepted.`);
     });
@@ -441,8 +465,8 @@ export function ArenaScreen() {
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              disabled={busy || !transport}
-              onClick={reveal}
+              disabled={busy || !transport || previewText != null}
+              onClick={openPreview}
               className="flex-1 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
             >
               {transport ? 'Publish to Nostr' : 'Relay offline'}
@@ -456,6 +480,38 @@ export function ArenaScreen() {
               Clear run
             </button>
           </div>
+        )}
+
+        {/* Preview & confirm — see exactly what goes to the relays first */}
+        {previewText != null && (
+          <section className="mt-3 rounded-2xl bg-white border border-accent/40 p-5 shadow-sm">
+            <div className="font-medium">Preview — this is what you'll post</div>
+            <p className="mt-1 text-sm text-muted">
+              A public Nostr note, signed by your key and sent to your relays.
+              Anyone can read it. Nothing is sent until you confirm.
+            </p>
+            <div className="mt-3 rounded-lg border border-ink/15 bg-ink/[0.02] px-3 py-3 text-sm whitespace-pre-wrap break-words">
+              {previewText}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={confirmPublish}
+                className="rounded-md bg-accent text-white py-2 text-sm font-semibold disabled:opacity-40"
+              >
+                {busy ? 'Publishing…' : 'Confirm & publish'}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setPreviewText(null)}
+                className="rounded-md border border-ink/15 bg-white py-2 text-sm font-medium disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
+          </section>
         )}
 
         {(err || note) && (
