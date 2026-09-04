@@ -31,6 +31,10 @@ import {
 // verified price for the on-chain proof; otherwise at the live candle close.
 
 const ORANGE = '#F7931A';
+// Deep blood red for "behind HODL" — an explicit hex, not the Tailwind
+// red-700 utility (that renders a bright fire-engine "paint" red the operator
+// kept seeing). Inline style guarantees this exact shade paints.
+const BLOOD = '#8B0000';
 const INTERVALS: CandleInterval[] = ['1h', '4h', '1d', '1w'];
 
 function fmtCoins(n: number): string {
@@ -87,6 +91,9 @@ export function ArenaTabBody() {
   const [showHow, setShowHow] = useState(false);
   // "Why HODL is so hard to beat" explainer (fees / funding / liquidation).
   const [showWhy, setShowWhy] = useState(false);
+  // A whole-coin sell/buy is a signed, permanent move — gate it behind an
+  // explicit confirm so an accidental tap can't log an irreversible trade.
+  const [confirmingTrade, setConfirmingTrade] = useState(false);
 
   const chain = useMemo(
     () => findArenaChain(holdings, wallet.identity),
@@ -471,15 +478,17 @@ export function ArenaTabBody() {
             </div>
             <div
               className={`mt-1 font-mono text-2xl font-black tabular-nums ${
-                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-700' : 'text-muted'
+                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? '' : 'text-muted'
               }`}
+              style={score.edgeCoins < 0 ? { color: BLOOD } : undefined}
             >
               {fmtSatsSigned(score.edgeCoins)}
             </div>
             <div
               className={`text-sm font-bold ${
-                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? 'text-red-700' : 'text-muted'
+                ahead ? 'text-emerald-600' : score.edgeCoins < 0 ? '' : 'text-muted'
               }`}
+              style={score.edgeCoins < 0 ? { color: BLOOD } : undefined}
             >
               {score.edgePct >= 0 ? '+' : ''}
               {score.edgePct.toFixed(2)}%
@@ -535,15 +544,52 @@ export function ArenaTabBody() {
 
         {/* Action */}
         {hasRun ? (
-          <button
-            type="button"
-            disabled={busy || !lastClose}
-            onClick={act}
-            className="mt-4 w-full rounded-xl bg-accent text-white px-4 py-4 text-base font-semibold disabled:opacity-40"
-          >
-            {side === 'sell' ? 'Sell the whole coin' : 'Buy the whole coin back'}
-            {lastClose ? ` · ${fmtUsd(lastClose)}` : ''}
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={busy || !lastClose || confirmingTrade}
+              onClick={() => setConfirmingTrade(true)}
+              className="mt-4 w-full rounded-xl bg-accent text-white px-4 py-4 text-base font-semibold disabled:opacity-40"
+            >
+              {side === 'sell' ? 'Sell the whole coin' : 'Buy the whole coin back'}
+              {lastClose ? ` · ${fmtUsd(lastClose)}` : ''}
+            </button>
+            {/* Deliberate-action gate — an accidental tap must not log a move */}
+            {confirmingTrade && (
+              <section className="mt-3 rounded-2xl bg-white border border-accent/40 p-5 shadow-sm">
+                <div className="font-medium">
+                  {side === 'sell' ? 'Sell the whole coin?' : 'Buy the whole coin back?'}
+                </div>
+                <p className="mt-1 text-sm text-muted">
+                  This logs a signed, permanent move at the live price
+                  {lastClose ? ` (${fmtUsd(lastClose)})` : ''}. It becomes part of your
+                  tamper-evident trail and can't be undone — only the whole run can be
+                  cleared. Confirm to make it deliberate.
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={busy || !lastClose}
+                    onClick={() => {
+                      setConfirmingTrade(false);
+                      void act();
+                    }}
+                    className="rounded-md bg-accent text-white py-2 text-sm font-semibold disabled:opacity-40"
+                  >
+                    {side === 'sell' ? 'Yes, sell' : 'Yes, buy back'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => setConfirmingTrade(false)}
+                    className="rounded-md border border-ink/15 bg-white py-2 text-sm font-medium disabled:opacity-40"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </section>
+            )}
+          </>
         ) : (
           <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
             <div className="font-medium">Start a run</div>
