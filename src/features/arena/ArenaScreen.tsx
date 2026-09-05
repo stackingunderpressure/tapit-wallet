@@ -34,8 +34,10 @@ const ORANGE = '#F7931A';
 // Deep blood red for "behind HODL" — an explicit hex, not the Tailwind
 // red-700 utility (that renders a bright fire-engine "paint" red the operator
 // kept seeing). Inline style guarantees this exact shade paints.
-// Dialed back from #8B0000 (2026-09-05, operator: "a little too red now").
-const BLOOD = '#991B1B';
+// Dialed back from #8B0000 -> #991B1B -> #B23A3A (2026-09-05, operator:
+// "still too red, a little lighter") -- lightened by desaturating so it
+// stays a soft deep red and never drifts back to the bright paint red.
+const BLOOD = '#B23A3A';
 const INTERVALS: CandleInterval[] = ['1h', '4h', '1d', '1w'];
 
 function fmtCoins(n: number): string {
