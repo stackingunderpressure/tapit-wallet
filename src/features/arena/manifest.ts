@@ -9,7 +9,7 @@ export const manifest: FeatureManifest = {
     'buy-all-back at a price, and the tested truth scorer races your coin ' +
     'count against the HODL ball fixed at 1.0 after friction. Each move is ' +
     'a real signed move-chain attestation, held and queued for a Bitcoin ' +
-    'anchor. A main bottom-nav tab ("Arena") as of 2026-09-04; /arena ' +
+    'anchor. A main bottom-nav tab ("Beat HODL") as of 2026-09-04; /arena ' +
     'redirects to /?tab=arena for old links.',
   touches: [
     'src/features/arena/arenaChain.ts',

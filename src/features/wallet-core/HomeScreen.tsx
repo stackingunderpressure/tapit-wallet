@@ -129,12 +129,12 @@ import { useSecretPieceHeartbeat } from '../recovery/useSecretPieceHeartbeat.ts'
 // used to be a header-only link.
 type Tab = 'journal' | 'identity' | 'captured' | 'people' | 'family' | 'lattice' | 'inbox' | 'arena';
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: Tab; label: string; accent?: 'bitcoin' }[] = [
   { id: 'journal', label: 'Journal' },
   { id: 'identity', label: 'Identity' },
   { id: 'people', label: 'People' },
   { id: 'inbox', label: 'Inbox' },
-  { id: 'arena', label: 'Arena' },
+  { id: 'arena', label: 'Beat HODL', accent: 'bitcoin' },
 ];
 
 // A capture (Phase 4.5 capture bridge) is a journal-kind
