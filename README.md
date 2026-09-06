@@ -14,7 +14,7 @@ connects **to** in order to get something signed.
 <br>
 
 ![gates](https://img.shields.io/badge/gates-typecheck%20%E2%80%A2%20lint%20%E2%80%A2%20test%20%E2%80%A2%20build-brightgreen?style=for-the-badge)
-![tests](https://img.shields.io/badge/tests-903%20passing-brightgreen?style=for-the-badge)
+![tests](https://img.shields.io/badge/tests-948%20passing-brightgreen?style=for-the-badge)
 ![core](https://img.shields.io/badge/tapit--attest-186%20passing-brightgreen?style=for-the-badge)
 
 ![stack](https://img.shields.io/badge/React_18-20232A?style=flat-square&logo=react)
@@ -108,6 +108,63 @@ composition rather than new mechanism.**
 Prove you're over 21 without showing your birthday. Prove a relationship without
 exposing your contacts. Rotate your key without becoming a stranger.
 
+### The thesis in one page
+
+The full argument, kept short. It describes only what `tapit-attest` implements.
+
+1. **The primitive.** Every attestation is one envelope: a signer (one or more x-only secp256k1
+   keys), a subject, a claim, an issued-at time, an optional anchor, and signatures. The claim is
+   a tree of named fields — scalars are leaves, nested objects are branches, keys sorted at every
+   depth so the same claim always yields the same tree. Kind (identity, relationship, credential,
+   agreement, prediction, meta) is a label, not a code path; trust tiers are configuration
+   evaluated by one routine.
+2. **Commitment.** Each node is hashed under a domain-separated tag; the top branch's hash is the
+   field-tree root. The envelope's metadata is hashed on its own and the digest binds the two.
+   Every signer signs the digest and any anchor stamps it — so changing any field, at any depth,
+   or the subject, tier, or timestamp invalidates every signature.
+   ```
+   leafHash   = taggedHash(tapit/leaf,   canonicalJson{name, value})
+   branchHash = taggedHash(tapit/branch, name ‖ childHashes…)
+   metaHash   = taggedHash(meta,         canonicalJson{v, kind, tier, subject, issuedAt})
+   digest     = taggedHash(tapit/root,   metaHash ‖ fieldTreeRoot(claim))
+   ```
+3. **Selective disclosure.** Because the claim is a Merkle tree, one leaf can be proven without
+   revealing its siblings: the proof carries the metadata, the disclosed leaf, the sibling hashes
+   up to the root, and the signatures. The verifier rebuilds the root, recomputes the digest, and
+   checks each signature. The undisclosed fields never leave the holder. Multi-leaf proofs use the
+   same construction.
+4. **Continuity across keys.** A key is not the identity. A retiring key signs a succession link
+   naming its successor; each link records the previous link's hash, forming a chain from the
+   genesis key to the active key. Altering an earlier link breaks every hash after it. A verifier
+   resolves "who is this now" by walking the chain, so rotating or replacing a key never interrupts
+   the identity — the attestations, which name the subject, persist.
+5. **Time.** A digest can be anchored through OpenTimestamps, which aggregates hashes into a
+   Merkle tree and commits the root in a Bitcoin transaction. The proof shows the envelope existed
+   at or before that block — enough to refute backdating and to order any two attestations — while
+   only the hash, never the content, leaves the device.
+6. **Composition.** With those four in place, nothing else needs a new mechanism: recovery
+   Shamir-splits the symmetric backup key (never the signing key) across trusted peers; a
+   relationship carries its verification tier as a signed field a verifier always sees; a group's
+   signature is its members' signatures accumulated under a recomputable weight, with no group
+   master key.
+
+```mermaid
+flowchart TB
+  M["envelope metadata<br/>v · kind · tier · subject · issuedAt"] --> MH["metaHash"]
+  L1["display_name"] --> R["field-tree root<br/><i>tapit/branch over tapit/leaf hashes</i>"]
+  L2["birthday"] --> R
+  L3["key"] --> R
+  MH --> D["digest = taggedHash(tapit/root, metaHash ‖ root)"]
+  R --> D
+  D --> S["BIP-340 Schnorr signature(s)"]
+  D --> A["OpenTimestamps anchor (optional)"]
+```
+
+*Scope: every construction above is implemented and tested in `tapit-attest` — the field tree and
+digest, BIP-340 signatures over secp256k1, single- and multi-leaf disclosure proofs, the
+succession chain, OpenTimestamps anchoring, Shamir recovery. It composes standard primitives and
+introduces no new cryptography.*
+
 ---
 
 ## ✅ What it does today
@@ -134,7 +191,9 @@ Not a roadmap. These are shipped, tested, and working end-to-end.
 **🔍 Proof & disclosure**
 - Multi-leaf and single-leaf selective disclosure proofs
 - The verifier path runs **outside the auth gate** — a wallet-less stranger can verify at `/verify`
-  without downloading anything, without an account, without trusting us
+  without downloading anything, without an account, without trusting us — and is walked through
+  the fingerprint, the Merkle re-derivation from only the disclosed fields, and the signature
+  in plain language, with an honest line on what the Bitcoin anchor does and doesn't prove
 
 **🔗 Connection & expression**
 - Layer 2 inter-app signing: an app sends a `SignRequest` → you see a plain-English approval screen → it gets a `SignGrant`
@@ -219,7 +278,7 @@ and are never committed.
 ## 🗺️ Repo map
 
 ```
-src/features/<slug>/     32 feature modules — each with a manifest.ts and an index.ts edge
+src/features/<slug>/     30 feature modules — each with a manifest.ts and an index.ts edge
   wallet-core/           the keypair, succession chain, Merkle holder
   identity-gate/         peer-mediated key release, release-authority envelopes
   recovery/              Shamir social recovery
@@ -247,10 +306,7 @@ A feature is something you can **pause, price, or remove cleanly** — its
 | **4 — Wallet bot** | **Deferred by design** — scaffolding dormant, awaiting its phase |
 
 **Next cuts:** the release-ceremony UX (the architectural keystone — every
-downstream custody story composes against it), NIP-05 verification, and turning
-`/verify` into a **teaching surface** that walks a curious stranger through the
-hash, the Merkle path, the signature and the Bitcoin block in plain language —
-instead of just flashing "valid ✓."
+downstream custody story composes against it) and NIP-05 verification.
 
 Deferred is not debt. The wallet bot, the hub layer, and the air-gapped
 hardware-signing path are answers to "why doesn't it do X yet," confidently
