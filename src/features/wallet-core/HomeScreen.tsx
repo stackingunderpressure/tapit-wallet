@@ -62,9 +62,9 @@ import {
 import { useOpenMemberRosterControls } from './useOpenMemberRosterControls.ts';
 import { OfficialsEditorModal } from '../connections/OfficialsEditorModal.tsx';
 import { MembershipChainSheet } from '../connections/MembershipChainSheet.tsx';
-const StartFamilyModal = lazy(() =>
-  import('../connections/StartFamilyModal.tsx').then((m) => ({
-    default: m.StartFamilyModal,
+const FamilyWizard = lazy(() =>
+  import('../connections/FamilyWizard.tsx').then((m) => ({
+    default: m.FamilyWizard,
   })),
 );
 const JoinOrgModal = lazy(() =>
@@ -192,7 +192,7 @@ export function HomeScreen() {
   const [membershipOpen, setMembershipOpen] = useState(false);
   const [joinOrgOpen, setJoinOrgOpen] = useState(false);
   const [startFamilyOpen, setStartFamilyOpen] = useState(false);
-  // When set, StartFamilyModal opens in edit mode pre-filled from this
+  // When set, FamilyWizard opens in edit mode pre-filled from this
   // family-unit envelope. Founder-only, sole-signer-only — the card
   // gates the affordance before calling this.
   const [editFamily, setEditFamily] = useState<Attestation | null>(null);
@@ -711,13 +711,14 @@ export function HomeScreen() {
 
       {startFamilyOpen && (
         <Suspense fallback={null}>
-          <StartFamilyModal onClose={() => setStartFamilyOpen(false)} />
+          <FamilyWizard mode="create" onClose={() => setStartFamilyOpen(false)} />
         </Suspense>
       )}
 
       {editFamily && (
         <Suspense fallback={null}>
-          <StartFamilyModal
+          <FamilyWizard
+            mode="edit"
             editing={editFamily}
             onClose={() => setEditFamily(null)}
           />

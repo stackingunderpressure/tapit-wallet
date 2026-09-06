@@ -7,7 +7,7 @@ import {
 import type { Attestation } from 'tapit-attest';
 import {
   buildFamilyUnitDraft,
-  buildFamilyWithAddedMember,
+  buildFamilyWithAddedMembers,
   familyOtherRatifierCount,
   familySignatureProgress,
   familySignersComplete,
@@ -400,7 +400,7 @@ describe('findFamilyUnitsForMember', () => {
   });
 });
 
-describe('buildFamilyWithAddedMember', () => {
+describe('buildFamilyWithAddedMembers', () => {
   it('appends a new member, founder + family name unchanged', () => {
     const dad = newWalletAs('Dad');
     const kid = newWalletAs('Kid');
@@ -411,11 +411,11 @@ describe('buildFamilyWithAddedMember', () => {
         memberOf(kid, 'child'),
       ]),
     );
-    const rebuilt = buildFamilyWithAddedMember(dad.identity, family, {
+    const rebuilt = buildFamilyWithAddedMembers(dad.identity, family, [{
       pubkey: newKid.identity.subject,
       name: 'NewKid',
       role: 'child',
-    });
+    }]);
     const view = readFamilyUnit(rebuilt);
     expect(view.familyName).toBe('Test');
     expect(view.founderId.toLowerCase()).toBe(dad.identity.subject.toLowerCase());
@@ -423,6 +423,35 @@ describe('buildFamilyWithAddedMember', () => {
     expect(
       view.members.some(
         (m) => m.pubkey.toLowerCase() === newKid.identity.subject.toLowerCase(),
+      ),
+    ).toBe(true);
+  });
+
+  it('appends multiple new members in one rebuild', () => {
+    const dad = newWalletAs('Dad');
+    const kid = newWalletAs('Kid');
+    const newKid1 = newWalletAs('NewKid1');
+    const newKid2 = newWalletAs('NewKid2');
+    const family = dad.wallet.sign(
+      buildFamilyUnitDraft(dad.identity, 'Test', [
+        memberOf(dad, 'dad'),
+        memberOf(kid, 'child'),
+      ]),
+    );
+    const rebuilt = buildFamilyWithAddedMembers(dad.identity, family, [
+      { pubkey: newKid1.identity.subject, name: 'NewKid1', role: 'child' },
+      { pubkey: newKid2.identity.subject, name: 'NewKid2', role: 'sibling' },
+    ]);
+    const view = readFamilyUnit(rebuilt);
+    expect(view.members).toHaveLength(4);
+    expect(
+      view.members.some(
+        (m) => m.pubkey.toLowerCase() === newKid1.identity.subject.toLowerCase(),
+      ),
+    ).toBe(true);
+    expect(
+      view.members.some(
+        (m) => m.pubkey.toLowerCase() === newKid2.identity.subject.toLowerCase(),
       ),
     ).toBe(true);
   });
@@ -437,11 +466,11 @@ describe('buildFamilyWithAddedMember', () => {
         { pubkey: kid.identity.subject, name: 'Kid', role: 'child', as_of: '2015-03-02' },
       ]),
     );
-    const rebuilt = buildFamilyWithAddedMember(dad.identity, family, {
+    const rebuilt = buildFamilyWithAddedMembers(dad.identity, family, [{
       pubkey: newKid.identity.subject,
       name: 'NewKid',
       role: 'sibling',
-    });
+    }]);
     const kidEntry = readFamilyUnit(rebuilt).members.find(
       (m) => m.pubkey.toLowerCase() === kid.identity.subject.toLowerCase(),
     );
@@ -449,7 +478,7 @@ describe('buildFamilyWithAddedMember', () => {
     expect(kidEntry?.role).toBe('child');
   });
 
-  it('throws when the new member is already in the family', () => {
+  it('throws when a new member is already in the family', () => {
     const dad = newWalletAs('Dad');
     const kid = newWalletAs('Kid');
     const family = dad.wallet.sign(
@@ -459,11 +488,11 @@ describe('buildFamilyWithAddedMember', () => {
       ]),
     );
     expect(() =>
-      buildFamilyWithAddedMember(dad.identity, family, {
+      buildFamilyWithAddedMembers(dad.identity, family, [{
         pubkey: kid.identity.subject,
         name: 'Kid',
         role: 'child',
-      }),
+      }]),
     ).toThrow(/duplicate member pubkey/);
   });
 });

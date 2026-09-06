@@ -547,13 +547,18 @@ const BUDGETS = [
   // JournalDetail and HomeScreen import it (5c-i-ε inbox routing).
   // ~2.8KB gz today.
   { pattern: /^AbsorbCosignModal-.*\.js$/, gz: 4_000, label: 'AbsorbCosignModal' },
-  // StartFamilyModal — named budget added 2026-05-31 when the family
-  // CRUD overhaul gave it an edit mode (pre-fill from an existing
-  // envelope, hold-new-then-unhold-old replace, auto-send-on-create
-  // loop) and pushed it past the 3KB catch-all to ~3.2KB gz. Its own
-  // React.lazy chunk; only the section render lands statically in
-  // HomeScreen.
-  { pattern: /^StartFamilyModal-.*\.js$/, gz: 4_000, label: 'StartFamilyModal' },
+  // FamilyWizard — 2026-09-06 overhaul retired StartFamilyModal
+  // (its own ~3.2KB gz chunk) and AddToFamilyModal (previously
+  // uncatalogued, riding the default catch-all budget from
+  // PeerThread's lazy import) into one step-by-step wizard covering
+  // create/edit/add-member. Consolidating two chunks into one plus
+  // the new per-member step screens (pick-contact search, member-
+  // details form) measured 5.14KB gz; budget set with headroom.
+  // Split across FamilyWizard.tsx (orchestrator) + FamilyWizardSteps.tsx
+  // (step JSX) to stay under the file-size hard limit, but Rollup
+  // bundles both into this one lazy chunk since only FamilyWizard.tsx
+  // is the React.lazy entry point.
+  { pattern: /^FamilyWizard-.*\.js$/, gz: 6_000, label: 'FamilyWizard' },
   // The handshake helpers (createHandshake + leafValue +
   // displayNameOf + isHandshake + readHandshake) get hoisted once
   // PeerPicker (5c-i-θ) joins HandshakeModal as an importer.
@@ -773,9 +778,10 @@ const BUDGETS = [
   // 2026-05-25 sub-cut 2c brought it to ~3KB gz with the
   // PromoteMenu, useLongPress hook, and bubble long-press wiring.
   // 2026-06-01: "Add to family" header button + state + lazy
-  // Suspense mount bumped it to 4.25KB gz. The AddToFamilyModal body
-  // is React.lazy in its own chunk; only the button + mount wiring
-  // lands here. Bumped 4.0KB -> 4.5KB.
+  // Suspense mount bumped it to 4.25KB gz. The add-to-family body
+  // (FamilyWizard as of the 2026-09-06 overhaul, was AddToFamilyModal
+  // before) is React.lazy in its own chunk; only the button + mount
+  // wiring lands here. Bumped 4.0KB -> 4.5KB.
   { pattern: /^PeerThread-.*\.js$/, gz: 4_500, label: 'PeerThread' },
 
   // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org

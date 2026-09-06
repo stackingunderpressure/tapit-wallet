@@ -23,7 +23,7 @@ import { summarizePublish } from '../transport/publishStatus.ts';
 //   Update — founder-only "Edit" button, enabled only while the
 //            founder is the sole signer (familyOtherRatifierCount===0)
 //            because re-signing mints a new envelopeId and orphans any
-//            ratifications already collected. Opens StartFamilyModal in
+//            ratifications already collected. Opens FamilyWizard in
 //            edit mode via onEditFamily. Once another member has
 //            ratified, Edit is hidden and the operator uses Delete +
 //            recreate instead (a proper amendment-envelope flow that

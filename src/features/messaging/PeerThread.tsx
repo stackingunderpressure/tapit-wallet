@@ -11,9 +11,9 @@ import { formatBubbleHeader } from './bubbleFormat.ts';
 // Lazy so the add-to-family rebuild surface (familyUnit builders +
 // anchorQueue + the role/family picker) stays out of the PeerThread
 // chunk — most thread opens never add anyone to a family.
-const AddToFamilyModal = lazy(() =>
-  import('../connections/AddToFamilyModal.tsx').then((m) => ({
-    default: m.AddToFamilyModal,
+const FamilyWizard = lazy(() =>
+  import('../connections/FamilyWizard.tsx').then((m) => ({
+    default: m.FamilyWizard,
   })),
 );
 import type { ThreadMessage } from './threadMessage.ts';
@@ -191,9 +191,9 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
       </div>
       {addFamilyOpen && (
         <Suspense fallback={null}>
-          <AddToFamilyModal
-            peerPubkey={peerPubkey}
-            peerName={peerName}
+          <FamilyWizard
+            mode="add-member"
+            addMemberTarget={{ pubkey: peerPubkey, name: peerName }}
             preselectFamilyName={view.familyHint || undefined}
             onClose={() => setAddFamilyOpen(false)}
           />
