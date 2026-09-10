@@ -123,6 +123,7 @@ export function ArenaTabBody() {
   // A whole-coin sell/buy is a signed, permanent move — gate it behind an
   // explicit confirm so an accidental tap can't log an irreversible trade.
   const [confirmingTrade, setConfirmingTrade] = useState(false);
+  const [copiedProof, setCopiedProof] = useState(false);
 
   const chain = useMemo(
     () => findArenaChain(holdings, wallet.identity),
@@ -257,6 +258,22 @@ export function ArenaTabBody() {
       verify = undefined;
     }
     return buildArenaShareText(chain, score, includeFunding, verify);
+  }
+
+  // The full chain proof INCLUDING every move's Bitcoin-anchor data — the
+  // heavier version the default share link deliberately leaves out to stay
+  // short. A separate, explicit action (not auto-posted anywhere) for
+  // whenever the operator wants to hand someone the whole thing directly —
+  // a reply, a DM, wherever they choose, on their own timeline.
+  async function copyFullChainProof() {
+    const { json } = buildChainVerifyUrl(chain, { includeAnchors: true });
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopiedProof(true);
+      setTimeout(() => setCopiedProof(false), 1500);
+    } catch {
+      window.prompt('Copy the full chain proof:', json);
+    }
   }
 
   // Step 1: open the preview. Nothing goes to a relay yet — the operator sees
@@ -689,6 +706,16 @@ export function ArenaTabBody() {
                 Include donation txid / stake amount in the share
               </label>
             )}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void copyFullChainProof()}
+              className="mt-2 text-xs text-muted underline hover:text-ink disabled:opacity-40"
+            >
+              {copiedProof
+                ? 'Copied'
+                : "Copy the full chain proof (with Bitcoin timestamps) to share yourself"}
+            </button>
           </>
         )}
 

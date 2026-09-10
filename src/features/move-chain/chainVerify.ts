@@ -20,19 +20,27 @@ export const CHAIN_PROOF_KIND = 'move_chain' as const;
 export interface ChainProofBundle {
   v: 1;
   kind: typeof CHAIN_PROOF_KIND;
+  /** false when every move's `anchor` was stripped to keep the bundle
+   *  small — the moves may still be genuinely anchored; this proof just
+   *  doesn't carry the (often large) OTS proof blobs to show it. Read
+   *  this rather than a missing `anchor` field alone, so a verifier never
+   *  reads "not anchored" when the truth is "not included here." */
+  anchorsIncluded: boolean;
   chain: Attestation[];
 }
 
 // A whole chain carries every move's full claim + signatures (no pruning —
-// a move has nothing sensitive to hide), so it's much heavier per move than
-// a single disclosure proof: measured ~800-900 bytes of JSON per move,
-// ~1100 base64. Disclosure's 1800-byte budget (built for QR capacity and
-// iMessage previews) would make even a 2-move run fall back immediately.
-// This is a Nostr note, not a QR code, so the budget is looser — enough
-// for genesis plus several real round trips to stay one-tap; past this the
-// link falls back to a bare /verify and the caller should append the JSON
-// as a pasteable block in the same note so the whole thing stays
-// self-contained with no side channel needed to move the proof.
+// a move has nothing sensitive to hide), heavier per move than a single
+// disclosure proof, and an anchored move's `anchor.proof` — the OTS Merkle
+// path + calendar attestations, opaque hex — commonly dwarfs everything
+// else in that move by itself. Stripping anchors (the default; see
+// includeAnchors below) keeps the bundle to roughly the size of the claim +
+// signature alone, which stays well within a Nostr note; carrying every
+// anchor blob can blow past what's reasonable to inline OR to dump as a
+// pasteable block in the note (a real risk: oversized events get rejected
+// by many relays outright). This budget is sized for the anchors-stripped
+// default; a caller who opts into includeAnchors should expect the
+// non-inline fallback far more often on any chain with real anchors.
 export const CHAIN_INLINE_URL_BYTE_BUDGET = 5_000;
 
 export interface MintedChainVerify {
@@ -42,11 +50,36 @@ export interface MintedChainVerify {
   verifyUrl: string;
   /** True when the proof rode inline in the URL. */
   urlIsInline: boolean;
+  /** Mirrors ChainProofBundle.anchorsIncluded. */
+  anchorsIncluded: boolean;
 }
 
-/** Build the whole-chain proof + verify URL for a run's full move chain. */
-export function buildChainVerifyUrl(chain: readonly Attestation[]): MintedChainVerify {
-  const bundle: ChainProofBundle = { v: 1, kind: CHAIN_PROOF_KIND, chain: [...chain] };
+/**
+ * Build the whole-chain proof + verify URL for a run's full move chain.
+ * Anchors are stripped by default (see the size note above) — a share note
+ * should almost always use the default, since the note claiming "anchored
+ * to Bitcoin" is already true independent of whether this particular proof
+ * carries the (large) OTS blobs proving it. Pass includeAnchors: true only
+ * for an explicit, separate "full proof" action, never the default share.
+ */
+export function buildChainVerifyUrl(
+  chain: readonly Attestation[],
+  opts: { includeAnchors?: boolean } = {},
+): MintedChainVerify {
+  const includeAnchors = opts.includeAnchors ?? false;
+  const strippedChain = includeAnchors
+    ? [...chain]
+    : chain.map((att) => {
+        if (!att.anchor) return att;
+        const { anchor: _anchor, ...rest } = att;
+        return rest as Attestation;
+      });
+  const bundle: ChainProofBundle = {
+    v: 1,
+    kind: CHAIN_PROOF_KIND,
+    anchorsIncluded: includeAnchors,
+    chain: strippedChain,
+  };
   const json = JSON.stringify(bundle);
   const encoded = base64UrlEncode(json);
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -56,6 +89,7 @@ export function buildChainVerifyUrl(chain: readonly Attestation[]): MintedChainV
     json,
     verifyUrl: urlIsInline ? inlineUrl : `${origin}/verify`,
     urlIsInline,
+    anchorsIncluded: includeAnchors,
   };
 }
 
@@ -90,7 +124,11 @@ export interface ChainStepView {
   /** This move's prevHash equals the prior move's moveLink (true for a
    *  well-formed genesis, whose prevHash must be empty). */
   linkValid: boolean;
-  anchor: 'none' | 'pending' | 'confirmed';
+  /** 'not_included' means anchor data was stripped from this proof (see
+   *  ChainProofBundle.anchorsIncluded) — the move may still genuinely be
+   *  anchored, this proof just can't show it. Distinct from 'none', which
+   *  means the proof DID carry anchor data and there genuinely isn't one. */
+  anchor: 'none' | 'pending' | 'confirmed' | 'not_included';
 }
 
 /**
@@ -99,8 +137,15 @@ export interface ChainStepView {
  * and whether it genuinely links to the move before it. Purely descriptive;
  * the trusted pass/fail verdict for the WHOLE chain is verifyMoveChain's,
  * called separately by the caller against the same bundle.chain.
+ * `anchorsIncluded` should mirror the bundle this chain came from (default
+ * true for older proofs minted before that field existed, which always
+ * carried anchors) — it's what lets step.anchor distinguish "not included
+ * in this proof" from "genuinely not anchored."
  */
-export function describeChainSteps(chain: readonly Attestation[]): ChainStepView[] {
+export function describeChainSteps(
+  chain: readonly Attestation[],
+  anchorsIncluded = true,
+): ChainStepView[] {
   const steps: ChainStepView[] = [];
   for (let i = 0; i < chain.length; i++) {
     const att = chain[i]!;
@@ -123,7 +168,7 @@ export function describeChainSteps(chain: readonly Attestation[]): ChainStepView
       whenIso,
       sigValid,
       linkValid,
-      anchor: att.anchor ? att.anchor.status : 'none',
+      anchor: att.anchor ? att.anchor.status : anchorsIncluded ? 'none' : 'not_included',
     });
   }
   return steps;

@@ -11,6 +11,7 @@ import type { ChainStepView } from '../move-chain/chainVerify.ts';
 interface Props {
   verdict: MoveChainResult;
   steps: ChainStepView[];
+  anchorsIncluded: boolean;
 }
 
 function shortKey(s: string): string {
@@ -30,7 +31,7 @@ function fmtPrice(n: number | null): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
-export function ChainVerifyResult({ verdict, steps }: Props) {
+export function ChainVerifyResult({ verdict, steps, anchorsIncluded }: Props) {
   const [howOpen, setHowOpen] = useState(false);
 
   return (
@@ -57,6 +58,14 @@ export function ChainVerifyResult({ verdict, steps }: Props) {
           </>
         )}
 
+        {!anchorsIncluded && (
+          <p className="mt-3 rounded-md border border-ink/10 bg-ink/[0.02] px-3 py-2 text-xs text-muted">
+            This proof leaves out each move's Bitcoin-timestamp data to keep the link short — the
+            signature and chain-link checks below don't need it. A move can still genuinely be
+            anchored even though this particular proof can't show it.
+          </p>
+        )}
+
         <div className="mt-3 text-xs uppercase tracking-wide text-muted">
           Moves ({steps.length})
         </div>
@@ -77,6 +86,7 @@ export function ChainVerifyResult({ verdict, steps }: Props) {
                   {s.anchor === 'confirmed' && '✓ Bitcoin-anchored'}
                   {s.anchor === 'pending' && '… anchor pending'}
                   {s.anchor === 'none' && 'not yet anchored'}
+                  {s.anchor === 'not_included' && 'Bitcoin timestamp not included in this proof'}
                 </span>
               </div>
             </li>

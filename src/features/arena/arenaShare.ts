@@ -67,11 +67,15 @@ export function hasFundingInfo(chain: readonly Attestation[]): boolean {
  * is opt-in and off by default — a donation txid can link a Nostr identity
  * back to a specific wallet, so it is never shown implicitly. `verify`, when
  * given, is the whole chain's proof — genesis through the latest move, each
- * one checked against the one before it, not just the latest move alone.
- * When the proof is too big to ride inline in the URL (a run with many
- * moves), the raw proof JSON is appended to the note itself so the whole
- * thing stays self-contained — no side channel needed to hand someone the
- * chain to verify.
+ * one checked against the one before it, not just the latest move alone —
+ * built WITHOUT each move's Bitcoin-anchor data (buildChainVerifyUrl's
+ * default) so the note stays short; the note's own "signed and anchored to
+ * Bitcoin" line above is already true independent of whether this
+ * particular proof carries the anchor blobs. When even the anchor-free
+ * proof is too big for a one-tap link, the note says so plainly and points
+ * at the bare /verify page rather than dumping the raw proof JSON inline —
+ * a wall of hex helps no one and risks the note itself getting rejected as
+ * oversized by a relay.
  */
 export function buildArenaShareText(
   chain: readonly Attestation[],
@@ -125,10 +129,13 @@ export function buildArenaShareText(
   sections.push(status.join('\n'));
   sections.push('Every move above is signed and anchored to Bitcoin — nothing here can be edited after the fact.');
   if (verify) {
-    sections.push(`Verify the whole chain yourself, genesis to now: ${verify.verifyUrl}`);
-    if (!verify.urlIsInline) {
-      sections.push(`Full signed chain (paste at the link above if it didn't load automatically):\n${verify.json}`);
-    }
+    sections.push(
+      verify.urlIsInline
+        ? `Verify the whole chain yourself, genesis to now: ${verify.verifyUrl}`
+        : `Verify the whole chain yourself, genesis to now — this run got too long for a ` +
+          `one-tap link, so tap ${verify.verifyUrl} and paste the copy of the chain proof ` +
+          `from the app.`,
+    );
   }
   return sections.join('\n\n');
 }

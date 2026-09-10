@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Wallet } from 'tapit-attest';
+import { Wallet, type Attestation, type Anchor } from 'tapit-attest';
 import { verifyMoveChain, buildMoveDraftInput, moveLink } from './moveChain.ts';
 import {
   buildChainVerifyUrl,
@@ -92,5 +92,70 @@ describe('chainVerify', () => {
     // move 2 ('buy') still names the ORIGINAL sell's link, not foreignSell's
     expect(steps[2]!.linkValid).toBe(false);
     expect(verifyMoveChain(tampered).valid).toBe(false);
+  });
+
+  // An anchored move's anchor.proof is an opaque OTS hex blob that commonly
+  // dwarfs everything else about the move — carrying it by default in a
+  // share link is what produced the wall-of-hex dump the operator flagged
+  // ("This is the share now"). Anchors are stripped unless explicitly opted
+  // into, and the strip must be truthfully flagged, never silently implied
+  // as "not anchored."
+  function withFakeAnchor(att: Attestation): Attestation {
+    const anchor: Anchor = {
+      provider: 'test-ots',
+      digest: 'ab'.repeat(32),
+      proof: 'cd'.repeat(400), // stand-in for a realistically large OTS blob
+      status: 'confirmed',
+      stampedAt: '2026-08-01T00:00:00.000Z',
+      confirmedAt: '2026-08-01T01:00:00.000Z',
+      btcHeight: 900000,
+    };
+    return { ...att, anchor };
+  }
+
+  it('buildChainVerifyUrl strips anchors by default and flags it in the bundle', () => {
+    const w = Wallet.generate();
+    const chain = mintChain(w).map(withFakeAnchor);
+    const minted = buildChainVerifyUrl(chain);
+    expect(minted.anchorsIncluded).toBe(false);
+    const bundle = parseChainProofBundle(minted.json)!;
+    expect(bundle.anchorsIncluded).toBe(false);
+    expect(bundle.chain.every((att) => !att.anchor)).toBe(true);
+    // stripping the (large) anchor blobs keeps the default bundle far
+    // smaller than the same chain with anchors included
+    const withAnchors = buildChainVerifyUrl(chain, { includeAnchors: true });
+    expect(minted.json.length).toBeLessThan(withAnchors.json.length);
+  });
+
+  it('buildChainVerifyUrl keeps anchors when explicitly opted in', () => {
+    const w = Wallet.generate();
+    const chain = mintChain(w).map(withFakeAnchor);
+    const minted = buildChainVerifyUrl(chain, { includeAnchors: true });
+    expect(minted.anchorsIncluded).toBe(true);
+    const bundle = parseChainProofBundle(minted.json)!;
+    expect(bundle.chain.every((att) => att.anchor?.status === 'confirmed')).toBe(true);
+    // the chain still verifies — anchor data is extra, not load-bearing
+    expect(verifyMoveChain(bundle.chain).valid).toBe(true);
+  });
+
+  it('describeChainSteps distinguishes "not included in this proof" from "genuinely not anchored"', () => {
+    const w = Wallet.generate();
+    const anchoredChain = mintChain(w).map(withFakeAnchor);
+    // anchorsIncluded=false (the stripped case): even though these moves
+    // WERE anchored, a stripped bundle must never claim "not yet anchored".
+    const stripped = anchoredChain.map((att) => {
+      const { anchor: _anchor, ...rest } = att;
+      return rest as Attestation;
+    });
+    expect(describeChainSteps(stripped, false).every((s) => s.anchor === 'not_included')).toBe(
+      true,
+    );
+    // anchorsIncluded=true and the anchor genuinely present: reads its real status.
+    expect(describeChainSteps(anchoredChain, true).every((s) => s.anchor === 'confirmed')).toBe(
+      true,
+    );
+    // anchorsIncluded=true but genuinely never anchored: honestly "none", not "not_included".
+    const neverAnchored = mintChain(Wallet.generate());
+    expect(describeChainSteps(neverAnchored, true).every((s) => s.anchor === 'none')).toBe(true);
   });
 });

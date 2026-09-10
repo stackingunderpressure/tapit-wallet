@@ -66,7 +66,12 @@ type Outcome =
       threshold: number;
       detail: string;
     }
-  | { kind: 'chain'; verdict: MoveChainResult; steps: ChainStepView[] };
+  | {
+      kind: 'chain';
+      verdict: MoveChainResult;
+      steps: ChainStepView[];
+      anchorsIncluded: boolean;
+    };
 
 // Detect + verify a whole move-chain bundle (arena's "verify the whole
 // ball" link). Returns a 'chain' outcome when the text is one, or null
@@ -77,10 +82,14 @@ type Outcome =
 function tryVerifyChainBundle(text: string): Outcome | null {
   const bundle = parseChainProofBundle(text);
   if (!bundle) return null;
+  // Older proofs minted before anchorsIncluded existed always carried
+  // anchors, so a missing field means "included," not "unknown."
+  const anchorsIncluded = bundle.anchorsIncluded ?? true;
   return {
     kind: 'chain',
     verdict: verifyMoveChain(bundle.chain),
-    steps: describeChainSteps(bundle.chain),
+    steps: describeChainSteps(bundle.chain, anchorsIncluded),
+    anchorsIncluded,
   };
 }
 
@@ -336,7 +345,11 @@ export function VerifyProofScreen() {
 
       {outcome.kind === 'chain' && (
         <Suspense fallback={null}>
-          <ChainVerifyResult verdict={outcome.verdict} steps={outcome.steps} />
+          <ChainVerifyResult
+            verdict={outcome.verdict}
+            steps={outcome.steps}
+            anchorsIncluded={outcome.anchorsIncluded}
+          />
         </Suspense>
       )}
 

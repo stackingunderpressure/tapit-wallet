@@ -81,12 +81,28 @@ export const manifest: FeatureManifest = {
     'per-move breakdown (signature check, link-to-prior-move check, anchor ' +
     'status) plus a plain-language "how does one link prove the whole ' +
     'chain" explainer, so a reader learns the mechanism, not just a ' +
-    'pass/fail badge. Measured heavier per move than a disclosure proof ' +
-    '(~800-900B JSON/move vs a pruned proof\'s much smaller footprint), so ' +
-    'the inline-URL budget is 5KB (vs disclosure\'s 1.8KB, sized for QR/ ' +
-    'iMessage) — past that the link falls back to a bare /verify and the ' +
-    'raw proof JSON is appended to the note itself so it stays ' +
-    'self-contained with no side channel needed. Minting can fail (an ' +
-    'empty chain); the share degrades gracefully and just omits the link ' +
-    'rather than blocking. No longer depends on the disclosure feature.',
+    'pass/fail badge. Inline-URL budget is 5KB (vs disclosure\'s 1.8KB, ' +
+    'sized for QR/iMessage) — this rides in a Nostr note instead. Minting ' +
+    'can fail (an empty chain); the share degrades gracefully and just ' +
+    'omits the link rather than blocking. No longer depends on the ' +
+    'disclosure feature. (5) ANCHOR-STRIP FIX (2026-09-10, same day, after ' +
+    'the operator screenshotted the live share and said "This is the share ' +
+    'now" over a wall of raw hex): the first cut of (4) carried every ' +
+    "move's full Bitcoin-anchor data (anchor.proof — an opaque OTS blob " +
+    'that commonly dwarfs everything else about a move) into the default ' +
+    'link, which blew straight past the 5KB budget and fell back to ' +
+    'appending the ENTIRE raw proof JSON into the Nostr note itself — ugly, ' +
+    'and a real risk of the note getting rejected outright by relays with ' +
+    'tighter size limits. Fixed at the root: buildChainVerifyUrl now strips ' +
+    'every move\'s anchor by default (chainVerify.ts\'s includeAnchors ' +
+    'option, off unless explicitly requested), which the note\'s own ' +
+    '"signed and anchored to Bitcoin" line is already true independent of ' +
+    '— the anchor blobs were never needed to prove the chain, only to show ' +
+    'the timestamp inline. The append-raw-JSON-to-the-note fallback was ' +
+    'removed entirely; when even the anchor-free proof cannot fit inline, ' +
+    'the note now says so plainly and points at a bare /verify link instead ' +
+    'of dumping noise. A separate "Copy the full chain proof (with Bitcoin ' +
+    'timestamps)" action (ArenaScreen.tsx, includeAnchors: true) lets the ' +
+    'operator hand someone the heavier, fully-anchored proof on their own ' +
+    'terms — a reply, a DM, wherever — never auto-posted.',
 };
