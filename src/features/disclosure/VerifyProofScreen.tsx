@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   disclosedLeavesOf,
@@ -9,12 +9,26 @@ import {
   type Signature,
 } from 'tapit-attest';
 import { parseDisclosureProof } from './parseDisclosureProof.ts';
+import { base64UrlDecode } from '../../shared/lib/base64url.ts';
 import { QrScanModal } from '../qr/QrScanModal.tsx';
 import { HowVerificationWorks } from './HowVerificationWorks.tsx';
+// Lazy — a chain-verify result is the less common path (arena / move-chain
+// links), so its rendering code shouldn't weigh down every everyday
+// single-leaf verify. The detection + verification logic below (moveChain.ts,
+// chainVerify.ts) stays eager since it has to run on every paste regardless.
+const ChainVerifyResult = lazy(() =>
+  import('./ChainVerifyResult.tsx').then((m) => ({ default: m.ChainVerifyResult })),
+);
 import {
   verifyGatedReleaseBundle,
   type GatedReleaseBundle,
 } from '../identity-gate/gatedReleaseBundle.ts';
+import { verifyMoveChain, type MoveChainResult } from '../move-chain/moveChain.ts';
+import {
+  describeChainSteps,
+  parseChainProofBundle,
+  type ChainStepView,
+} from '../move-chain/chainVerify.ts';
 import {
   readBundleAnchor,
   verifyProofAnchor,
@@ -51,7 +65,24 @@ type Outcome =
       validCount: number;
       threshold: number;
       detail: string;
-    };
+    }
+  | { kind: 'chain'; verdict: MoveChainResult; steps: ChainStepView[] };
+
+// Detect + verify a whole move-chain bundle (arena's "verify the whole
+// ball" link). Returns a 'chain' outcome when the text is one, or null
+// when it isn't (falls through to the gate / disclosure-proof paths).
+// Never throws on a malformed chain — an unverifiable chain still parses
+// as a 'chain' outcome, just an invalid one, so the reader sees exactly
+// which move broke rather than a generic parse error.
+function tryVerifyChainBundle(text: string): Outcome | null {
+  const bundle = parseChainProofBundle(text);
+  if (!bundle) return null;
+  return {
+    kind: 'chain',
+    verdict: verifyMoveChain(bundle.chain),
+    steps: describeChainSteps(bundle.chain),
+  };
+}
 
 // Detect + verify a gated-release bundle (item 11 D4). Returns a 'gate'
 // outcome when the text is a gated_release bundle, or null when it isn't
@@ -112,19 +143,6 @@ function asString(v: unknown): string {
 // legacy single-leaf bundles still in the wild, and the multi-leaf
 // bundles new wallets produce. The disclosed-fields list is rendered
 // uniformly regardless of which kind arrived.
-function decodeInlineProof(encoded: string): string {
-  // Decode the base64url-encoded proof bundle from the ?p= query
-  // parameter the Fresh share card mints. Mirrors the encoder in
-  // QuickShareModal — replace url-safe chars, restore padding,
-  // atob, then UTF-8 round-trip.
-  const padded = encoded
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
-    .padEnd(encoded.length + ((4 - (encoded.length % 4)) % 4), '=');
-  const latin1 = atob(padded);
-  return decodeURIComponent(escape(latin1));
-}
-
 export function VerifyProofScreen() {
   const [searchParams] = useSearchParams();
   const [raw, setRaw] = useState('');
@@ -166,8 +184,14 @@ export function VerifyProofScreen() {
 
   function verifyText(text: string) {
     try {
-      // A gated-release bundle (item 11 D4) is a different shape than a
-      // disclosure proof — detect it first and run its own verifier.
+      // A whole move-chain bundle and a gated-release bundle are both
+      // different shapes than a disclosure proof — detect each first and
+      // run its own verifier before falling through to disclosure parsing.
+      const chain = tryVerifyChainBundle(text);
+      if (chain) {
+        setOutcome(chain);
+        return;
+      }
       const gate = tryVerifyGateBundle(text);
       if (gate) {
         setOutcome(gate);
@@ -238,7 +262,7 @@ export function VerifyProofScreen() {
     if (!encoded) return;
     let decoded: string;
     try {
-      decoded = decodeInlineProof(encoded);
+      decoded = base64UrlDecode(encoded);
     } catch {
       setOutcome({
         kind: 'error',
@@ -308,6 +332,12 @@ export function VerifyProofScreen() {
           <p className="text-sm font-medium">This is not a valid proof.</p>
           <p className="mt-2 text-xs text-muted">{outcome.detail}</p>
         </section>
+      )}
+
+      {outcome.kind === 'chain' && (
+        <Suspense fallback={null}>
+          <ChainVerifyResult verdict={outcome.verdict} steps={outcome.steps} />
+        </Suspense>
       )}
 
       {outcome.kind === 'gate' && (

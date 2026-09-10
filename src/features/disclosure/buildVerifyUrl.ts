@@ -1,5 +1,6 @@
 import { multiDisclosureProof } from 'tapit-attest';
 import type { Attestation } from 'tapit-attest';
+import { base64UrlEncode } from '../../shared/lib/base64url.ts';
 
 // Mint a selective-disclosure proof bundle for an attestation and turn it into
 // a verifier URL. Extracted 2026-06-05 from QuickShareModal so both the Fresh
@@ -24,15 +25,6 @@ export interface MintedVerify {
   verifyUrl: string;
   /** True when the proof rode inline in the URL. */
   urlIsInline: boolean;
-}
-
-function base64UrlEncode(input: string): string {
-  // btoa works on Latin-1 strings; encodeURIComponent handles UTF-8 first,
-  // then unescape collapses the percent-encoded bytes back to Latin-1 so btoa
-  // accepts them. Works in every PWA target.
-  const utf8 = unescape(encodeURIComponent(input));
-  const b64 = btoa(utf8);
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 /**

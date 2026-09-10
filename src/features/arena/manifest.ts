@@ -31,7 +31,7 @@ export const manifest: FeatureManifest = {
     'netlify.toml',
     'scripts/arena-oracle-keygen.mjs',
   ],
-  depends_on: ['move-chain', 'transport', 'wallet-core', 'anchoring', 'disclosure'],
+  depends_on: ['move-chain', 'transport', 'wallet-core', 'anchoring'],
   pause_safe: true,
   removal_safe: true,
   monetizable: false,
@@ -67,15 +67,26 @@ export const manifest: FeatureManifest = {
     'verify the record after the fact; sharing is safe at any point because ' +
     'only sunk, already-signed moves are ever in the text. Not yet built: a ' +
     'way to pick an earlier point in your own history to publish about — ' +
-    'today it always narrates the current live state. (4) VERIFY LINK ' +
-    '(2026-09-10): the share text ends with a /verify?p=<proof> link built ' +
-    'from the disclosure feature\'s buildVerifyUrl, minted for the chain ' +
-    'HEAD (buildHeadDisclosurePaths in arenaShare.ts discloses seq, prev, ' +
-    'and the move fields already narrated in the text). Scoped honestly: ' +
-    'this proves the latest move is genuinely signed and — once the anchor ' +
-    'lands — Bitcoin-anchored; it does NOT prove the full chain back to ' +
-    'genesis, since there is no public verifier yet that walks a whole ' +
-    'move-chain from one link. Minting can fail (an unexpected payload ' +
-    'shape); the share degrades gracefully and just omits the link rather ' +
-    'than blocking.',
+    'today it always narrates the current live state. (4) WHOLE-CHAIN ' +
+    'VERIFY LINK (2026-09-10, superseding the 2026-09-10 head-only version): ' +
+    'the share text ends with a /verify?p=<proof> link built from ' +
+    'move-chain\'s buildChainVerifyUrl (chainVerify.ts) against the FULL ' +
+    'chain, genesis through the latest move, not just the head — the ' +
+    'operator wanted the whole thing checkable and legible ("genesis and ' +
+    'each one built on the last hash"). Unlike a disclosure proof, nothing ' +
+    'is pruned (a move has nothing sensitive to hide), so the bundle is the ' +
+    'full signed attestations; the /verify page (disclosure feature) ' +
+    'detects the move_chain bundle kind, runs verifyMoveChain for the ' +
+    'trusted verdict, and renders ChainVerifyResult — a step-by-step ' +
+    'per-move breakdown (signature check, link-to-prior-move check, anchor ' +
+    'status) plus a plain-language "how does one link prove the whole ' +
+    'chain" explainer, so a reader learns the mechanism, not just a ' +
+    'pass/fail badge. Measured heavier per move than a disclosure proof ' +
+    '(~800-900B JSON/move vs a pruned proof\'s much smaller footprint), so ' +
+    'the inline-URL budget is 5KB (vs disclosure\'s 1.8KB, sized for QR/ ' +
+    'iMessage) — past that the link falls back to a bare /verify and the ' +
+    'raw proof JSON is appended to the note itself so it stays ' +
+    'self-contained with no side channel needed. Minting can fail (an ' +
+    'empty chain); the share degrades gracefully and just omits the link ' +
+    'rather than blocking. No longer depends on the disclosure feature.',
 };

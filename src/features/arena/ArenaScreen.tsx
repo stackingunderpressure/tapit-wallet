@@ -5,14 +5,8 @@ import { arenaOracle } from '../../shared/lib/env.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import { verifyMoveChain, readMoveMeta } from '../move-chain/moveChain.ts';
 import { readWholeCoinMoves, simulateWholeCoin } from '../move-chain/truthScore.ts';
-import { buildVerifyUrl } from '../disclosure/buildVerifyUrl.ts';
-import {
-  buildArenaShareText,
-  buildHeadDisclosurePaths,
-  fmtCoins,
-  fmtUsd,
-  hasFundingInfo,
-} from './arenaShare.ts';
+import { buildChainVerifyUrl } from '../move-chain/chainVerify.ts';
+import { buildArenaShareText, fmtCoins, fmtUsd, hasFundingInfo } from './arenaShare.ts';
 import { fetchSignedRound, type SignedPriceRound } from './priceRound.ts';
 import { useBtcCandles, type CandleInterval } from './useBtcCandles.ts';
 import type { StoneMarker } from './ArenaChart.tsx';
@@ -253,25 +247,16 @@ export function ArenaTabBody() {
   // The exact public note this run would post — built once so the preview
   // shows byte-for-byte what gets sent.
   function buildShareText(): string {
-    // The verify link proves only the chain HEAD — the latest signed move —
-    // not the full history back to genesis; there's no public verifier yet
-    // for walking a whole chain from one link. Minting the proof can fail
-    // (an unusual payload shape, a field the disclosure walk doesn't expect);
-    // the share still works without it rather than blocking on a proof.
-    const head = chain[chain.length - 1];
-    let verifyUrl: string | undefined;
-    if (head) {
-      try {
-        const meta = readMoveMeta(head);
-        if (meta) {
-          const paths = buildHeadDisclosurePaths(meta, includeFunding);
-          verifyUrl = buildVerifyUrl(head, paths).verifyUrl;
-        }
-      } catch {
-        verifyUrl = undefined;
-      }
+    // The whole chain, genesis through the latest move — not just the
+    // latest one. Minting can fail in principle (an empty chain); the share
+    // still works without the link rather than blocking on a proof.
+    let verify: ReturnType<typeof buildChainVerifyUrl> | undefined;
+    try {
+      if (chain.length > 0) verify = buildChainVerifyUrl(chain);
+    } catch {
+      verify = undefined;
     }
-    return buildArenaShareText(chain, score, includeFunding, verifyUrl);
+    return buildArenaShareText(chain, score, includeFunding, verify);
   }
 
   // Step 1: open the preview. Nothing goes to a relay yet — the operator sees
