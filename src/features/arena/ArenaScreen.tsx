@@ -130,7 +130,10 @@ export function ArenaTabBody() {
     [holdings, wallet.identity],
   );
   const hasRun = chain.length > 0;
-  const verify = useMemo(() => verifyMoveChain(chain), [chain]);
+  const verify = useMemo(
+    () => verifyMoveChain(chain, wallet.successionChain),
+    [chain, wallet.successionChain],
+  );
   const markPrice = lastClose ?? undefined;
 
   const score = useMemo(
@@ -261,7 +264,10 @@ export function ArenaTabBody() {
   // verifyMoveChain actually needs; includeAnchors:true for the heavier
   // version carrying each move's real Bitcoin-timestamp data too.
   async function copyChainProof(includeAnchors: boolean) {
-    const { json } = buildChainVerifyUrl(chain, { includeAnchors });
+    const { json } = buildChainVerifyUrl(chain, {
+      includeAnchors,
+      succession: wallet.successionChain,
+    });
     try {
       await navigator.clipboard.writeText(json);
       setCopiedProof(true);

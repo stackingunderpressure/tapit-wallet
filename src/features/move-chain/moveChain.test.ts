@@ -105,6 +105,40 @@ describe('verifyMoveChain — a clean chain', () => {
     expect(r.valid).toBe(true);
     expect(r.errors).toHaveLength(0);
   });
+
+  // Regression: this is the actual live bug the case-fix above didn't
+  // catch — a real device screenshot still showed "not signed by its own
+  // subject identity" on every move after that fix shipped. Root cause:
+  // subject/identity is the wallet's STABLE genesis key, but wallet.attest
+  // always signs with the CURRENT active key, and after a rotation those
+  // are two different keys. Without the owner's succession chain, a
+  // genuinely valid post-rotation signature has no way to be recognized as
+  // still belonging to the same owner.
+  it('a move signed after rotation fails without succession, verifies with it', () => {
+    const w = Wallet.generate();
+    const genesis = mintChain(w, [ARM])[0]!;
+    w.rotate();
+    const afterRotation = w.attest(
+      buildMoveDraftInput({ subject: w.identity, payload: BUY, seq: 1, prevHash: moveLink(genesis) }),
+    );
+    const chain = [genesis, afterRotation];
+    expect(verifyMoveChain(chain).valid).toBe(false);
+    const withSuccession = verifyMoveChain(chain, w.successionChain);
+    expect(withSuccession.valid).toBe(true);
+    expect(withSuccession.errors).toHaveLength(0);
+  });
+
+  it('resolveActiveKeys ignores a succession chain that does not start from this identity', () => {
+    const w = Wallet.generate();
+    const stranger = Wallet.generate();
+    stranger.rotate();
+    // A real, internally-valid succession chain, just for someone else's
+    // identity — must never widen who counts as THIS chain's owner.
+    const chain = mintChain(w, [ARM]);
+    const r = verifyMoveChain(chain, stranger.successionChain);
+    expect(r.valid).toBe(true); // unaffected — w never rotated
+    expect(r.owner).toBe(w.identity);
+  });
 });
 
 describe('verifyMoveChain — cheats and breaks', () => {

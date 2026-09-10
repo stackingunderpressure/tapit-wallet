@@ -12,6 +12,9 @@ interface Props {
   verdict: MoveChainResult;
   steps: ChainStepView[];
   anchorsIncluded: boolean;
+  /** How many times the owner has rotated keys, per the included
+   *  succession chain — 0 when never rotated or none was included. */
+  rotations: number;
 }
 
 function shortKey(s: string): string {
@@ -31,7 +34,7 @@ function fmtPrice(n: number | null): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
-export function ChainVerifyResult({ verdict, steps, anchorsIncluded }: Props) {
+export function ChainVerifyResult({ verdict, steps, anchorsIncluded, rotations }: Props) {
   const [howOpen, setHowOpen] = useState(false);
 
   return (
@@ -56,6 +59,15 @@ export function ChainVerifyResult({ verdict, steps, anchorsIncluded }: Props) {
             <div className="mt-3 text-xs uppercase tracking-wide text-muted">Owner</div>
             <div className="mt-1 font-mono text-sm break-all">{shortKey(verdict.owner)}</div>
           </>
+        )}
+
+        {rotations > 0 && (
+          <p className="mt-3 rounded-md border border-ink/10 bg-ink/[0.02] px-3 py-2 text-xs text-muted">
+            This owner has rotated keys {rotations} time{rotations === 1 ? '' : 's'} since starting —
+            a move signed by a newer key still checks out above because this proof also carries the
+            owner's succession chain, which your browser independently verified links each retired
+            key to its replacement.
+          </p>
         )}
 
         {!anchorsIncluded && (

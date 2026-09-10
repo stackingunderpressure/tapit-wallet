@@ -136,5 +136,12 @@ export const manifest: FeatureManifest = {
     'reassemble the chain live from the same public relays, the way ' +
     'subscribeMoves was always built to do — genuinely short AND genuinely ' +
     'self-contained, unlike embedding the proof. Bigger lift (touches the ' +
-    'core move-recording path, not just sharing); not started.',
+    'core move-recording path, not just sharing); not started. (7) ' +
+    'ROTATED-KEY VERIFY FIX (2026-09-10, same day, third report — a chain ' +
+    'from the operator\'s own device, which has rotated its identity key at ' +
+    'least once, kept failing to verify even after (6)): ArenaScreen now ' +
+    'passes wallet.successionChain into both its internal verify check and ' +
+    'the two "copy the chain proof" actions, so a move signed after a ' +
+    'rotation is correctly recognized as still belonging to this owner — ' +
+    'see move-chain\'s manifest for the actual fix (resolveActiveKeys).',
 };

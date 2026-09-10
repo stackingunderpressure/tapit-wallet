@@ -1,9 +1,11 @@
 import {
   envelopeId,
   verifyEnvelope,
+  verifySuccessionChain,
   type Attestation,
   type DraftInput,
   type FieldNode,
+  type SuccessionLink,
   type TierName,
 } from 'tapit-attest';
 
@@ -137,26 +139,59 @@ export function orderMoves(moves: readonly Attestation[]): Attestation[] {
 }
 
 /**
+ * The owner's full set of valid signing keys, lowercased: the genesis
+ * identity, plus every key a verified succession chain has rotated that
+ * identity to since. `succession` only counts when it is itself internally
+ * valid (verifySuccessionChain) AND genuinely starts from `genesisSubject`
+ * — bad, unrelated, or omitted succession data never silently widens who
+ * counts as the owner, it just leaves the set at the identity key alone.
+ * Exported so chainVerify.ts's describeChainSteps can mirror this exact
+ * resolution for display without re-deriving succession validation itself.
+ */
+export function resolveActiveKeys(
+  genesisSubject: string,
+  succession: readonly SuccessionLink[] = [],
+): Set<string> {
+  const activeKeys = new Set([genesisSubject.toLowerCase()]);
+  if (succession.length > 0) {
+    const succ = verifySuccessionChain([...succession]);
+    if (succ.valid && succession[0]!.fromKey.toLowerCase() === genesisSubject.toLowerCase()) {
+      for (const link of succession) activeKeys.add(link.toKey.toLowerCase());
+    }
+  }
+  return activeKeys;
+}
+
+/**
  * Verify a whole chain, in order. All-or-nothing on purpose: a claim is
  * only as good as an unbroken, correctly-signed chain from the genesis.
  *
- * Every move must: carry a valid signature FROM the chain owner's own
- * identity (so no one can claim someone else's chain), name the same
- * owner as the genesis, sit at seq exactly equal to its position (0, 1,
- * 2…), and link prevHash to the previous move's moveLink — with the
- * genesis carrying seq 0 and prevHash ''. Any hole, reorder, or edited
- * move breaks a signature or a link and the whole chain reads invalid.
+ * Every move must: carry a valid signature FROM the chain owner (the
+ * genesis identity, or — when `succession` is given — any key a verified
+ * succession chain has rotated that identity to since; so no one can claim
+ * someone else's chain, but a legitimately rotated owner isn't locked out
+ * of their own), name the same owner as the genesis, sit at seq exactly
+ * equal to its position (0, 1, 2…), and link prevHash to the previous
+ * move's moveLink — with the genesis carrying seq 0 and prevHash ''. Any
+ * hole, reorder, edited move, or identity forgery breaks a signature or a
+ * link and the whole chain reads invalid.
  *
- * v1 binds the chain to one un-rotated identity (subject === a valid
- * signer). Honoring a key rotation mid-chain (signer in the owner's
- * succession chain rather than equal to the identity) is a later
- * refinement; the succession primitive already exists to build it on.
+ * `succession` is optional and, if given, only counts toward "owner" when
+ * it is itself internally valid (every link correctly signed, correctly
+ * chained) AND genuinely starts from this chain's own genesis identity —
+ * bad, unrelated, or unprovided succession data never silently widens who
+ * counts as the owner, it only narrows verification back to the identity
+ * key alone, same as v1 always did.
  */
-export function verifyMoveChain(chain: readonly Attestation[]): MoveChainResult {
+export function verifyMoveChain(
+  chain: readonly Attestation[],
+  succession: readonly SuccessionLink[] = [],
+): MoveChainResult {
   const errors: string[] = [];
   if (chain.length === 0) {
     return { valid: false, length: 0, owner: null, errors: ['empty chain'] };
   }
+  const activeKeys = resolveActiveKeys(chain[0]!.subject, succession);
   let owner: string | null = null;
   for (let i = 0; i < chain.length; i++) {
     const att = chain[i]!;
@@ -173,7 +208,7 @@ export function verifyMoveChain(chain: readonly Attestation[]): MoveChainResult 
     // arrive from elsewhere (storage, an import) in a different case, so a
     // bare === here can read a genuinely valid signature as foreign.
     const signedBySubject = v.signers.some(
-      (s) => s.valid && s.signer.toLowerCase() === att.subject.toLowerCase(),
+      (s) => s.valid && activeKeys.has(s.signer.toLowerCase()),
     );
     if (!signedBySubject) errors.push(`move ${i}: not signed by its own subject identity`);
 

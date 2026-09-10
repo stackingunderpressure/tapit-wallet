@@ -175,4 +175,48 @@ describe('chainVerify', () => {
     const neverAnchored = mintChain(Wallet.generate());
     expect(describeChainSteps(neverAnchored, true).every((s) => s.anchor === 'none')).toBe(true);
   });
+
+  // Regression: the real live bug — a chain with a move signed after a
+  // key rotation reads as unsigned without the owner's succession chain,
+  // and correctly as signed once it's included, mirroring
+  // moveChain.test.ts's verifyMoveChain regression for this same function.
+  it('describeChainSteps flags sigValid false without succession, true with it, after a rotation', () => {
+    const w = Wallet.generate();
+    const genesis = w.attest(
+      buildMoveDraftInput({ subject: w.identity, payload: { game: 'test', kind: 'start' }, seq: 0, prevHash: '' }),
+    );
+    w.rotate();
+    const afterRotation = w.attest(
+      buildMoveDraftInput({
+        subject: w.identity,
+        payload: { game: 'test', kind: 'sell', price: 70000 },
+        seq: 1,
+        prevHash: moveLink(genesis),
+      }),
+    );
+    const chain = [genesis, afterRotation];
+    expect(describeChainSteps(chain)[1]!.sigValid).toBe(false);
+    expect(describeChainSteps(chain, true, w.successionChain)[1]!.sigValid).toBe(true);
+  });
+
+  it('buildChainVerifyUrl round-trips a succession chain so a stranger verifier honors a rotation', () => {
+    const w = Wallet.generate();
+    const genesis = w.attest(
+      buildMoveDraftInput({ subject: w.identity, payload: { game: 'test', kind: 'start' }, seq: 0, prevHash: '' }),
+    );
+    w.rotate();
+    const afterRotation = w.attest(
+      buildMoveDraftInput({
+        subject: w.identity,
+        payload: { game: 'test', kind: 'sell', price: 70000 },
+        seq: 1,
+        prevHash: moveLink(genesis),
+      }),
+    );
+    const chain = [genesis, afterRotation];
+    const minted = buildChainVerifyUrl(chain, { succession: w.successionChain });
+    const bundle = parseChainProofBundle(minted.json)!;
+    expect(bundle.succession.length).toBe(1);
+    expect(verifyMoveChain(bundle.chain, bundle.succession).valid).toBe(true);
+  });
 });

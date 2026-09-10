@@ -1,6 +1,6 @@
-import { verifyEnvelope, type Attestation } from 'tapit-attest';
+import { verifyEnvelope, type Attestation, type SuccessionLink } from 'tapit-attest';
 import { base64UrlEncode } from '../../shared/lib/base64url.ts';
-import { moveLink, readMoveMeta } from './moveChain.ts';
+import { moveLink, readMoveMeta, resolveActiveKeys } from './moveChain.ts';
 
 // chainVerify — lets a stranger verify a WHOLE move chain, genesis through
 // the latest move, not just one disclosed move. Unlike disclosure's pruned
@@ -27,6 +27,12 @@ export interface ChainProofBundle {
    *  reads "not anchored" when the truth is "not included here." */
   anchorsIncluded: boolean;
   chain: Attestation[];
+  /** The owner's key-succession chain, if it's ever rotated — lets a
+   *  stranger verifier independently confirm a move signed by a ROTATED
+   *  key still genuinely belongs to this owner, the same way
+   *  verifyMoveChain does, rather than trusting an unprovable claim. Empty
+   *  when the owner has never rotated. */
+  succession: SuccessionLink[];
 }
 
 // A whole chain carries every move's full claim + signatures (no pruning —
@@ -64,7 +70,7 @@ export interface MintedChainVerify {
  */
 export function buildChainVerifyUrl(
   chain: readonly Attestation[],
-  opts: { includeAnchors?: boolean } = {},
+  opts: { includeAnchors?: boolean; succession?: readonly SuccessionLink[] } = {},
 ): MintedChainVerify {
   const includeAnchors = opts.includeAnchors ?? false;
   const strippedChain = includeAnchors
@@ -79,6 +85,7 @@ export function buildChainVerifyUrl(
     kind: CHAIN_PROOF_KIND,
     anchorsIncluded: includeAnchors,
     chain: strippedChain,
+    succession: [...(opts.succession ?? [])],
   };
   const json = JSON.stringify(bundle);
   const encoded = base64UrlEncode(json);
@@ -140,22 +147,23 @@ export interface ChainStepView {
  * `anchorsIncluded` should mirror the bundle this chain came from (default
  * true for older proofs minted before that field existed, which always
  * carried anchors) — it's what lets step.anchor distinguish "not included
- * in this proof" from "genuinely not anchored."
+ * in this proof" from "genuinely not anchored." `succession`, if the owner
+ * has ever rotated keys, lets a move signed by a rotated-to key still
+ * report sigValid — resolved via the exact same resolveActiveKeys
+ * verifyMoveChain itself uses, never a looser or different check.
  */
 export function describeChainSteps(
   chain: readonly Attestation[],
   anchorsIncluded = true,
+  succession: readonly SuccessionLink[] = [],
 ): ChainStepView[] {
   const steps: ChainStepView[] = [];
+  const activeKeys = chain.length > 0 ? resolveActiveKeys(chain[0]!.subject, succession) : new Set<string>();
   for (let i = 0; i < chain.length; i++) {
     const att = chain[i]!;
     const meta = readMoveMeta(att);
     const v = verifyEnvelope(att);
-    // Same case-insensitive compare as verifyMoveChain (moveChain.ts) — hex
-    // pubkeys aren't guaranteed consistent case, so a bare === here can flag
-    // a genuinely valid signature as foreign.
-    const sigValid =
-      v.valid && v.signers.some((s) => s.valid && s.signer.toLowerCase() === att.subject.toLowerCase());
+    const sigValid = v.valid && v.signers.some((s) => s.valid && activeKeys.has(s.signer.toLowerCase()));
     const linkValid = meta
       ? i === 0
         ? meta.prevHash === ''

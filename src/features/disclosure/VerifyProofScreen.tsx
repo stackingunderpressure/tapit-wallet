@@ -71,6 +71,9 @@ type Outcome =
       verdict: MoveChainResult;
       steps: ChainStepView[];
       anchorsIncluded: boolean;
+      /** How many times the owner has rotated keys, per the included
+       *  succession chain — 0 when never rotated or none was included. */
+      rotations: number;
     };
 
 // Detect + verify a whole move-chain bundle (arena's "verify the whole
@@ -85,11 +88,13 @@ function tryVerifyChainBundle(text: string): Outcome | null {
   // Older proofs minted before anchorsIncluded existed always carried
   // anchors, so a missing field means "included," not "unknown."
   const anchorsIncluded = bundle.anchorsIncluded ?? true;
+  const succession = bundle.succession ?? [];
   return {
     kind: 'chain',
-    verdict: verifyMoveChain(bundle.chain),
-    steps: describeChainSteps(bundle.chain, anchorsIncluded),
+    verdict: verifyMoveChain(bundle.chain, succession),
+    steps: describeChainSteps(bundle.chain, anchorsIncluded, succession),
     anchorsIncluded,
+    rotations: succession.length,
   };
 }
 
@@ -349,6 +354,7 @@ export function VerifyProofScreen() {
             verdict={outcome.verdict}
             steps={outcome.steps}
             anchorsIncluded={outcome.anchorsIncluded}
+            rotations={outcome.rotations}
           />
         </Suspense>
       )}
