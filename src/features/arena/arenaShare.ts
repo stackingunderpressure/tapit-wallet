@@ -106,7 +106,6 @@ export function buildArenaShareText(
         ? `${doneRounds} round trip${doneRounds === 1 ? '' : 's'} banked. Live position right now: ${liveLine}.`
         : `Live position right now: ${liveLine}.`,
     );
-    status.push('The buy-back is mine to choose — no target shown until I act on it.');
   } else if (doneRounds > 0) {
     status.push(`${doneRounds} round trip${doneRounds === 1 ? '' : 's'} — ${liveLine}.`);
   } else {
