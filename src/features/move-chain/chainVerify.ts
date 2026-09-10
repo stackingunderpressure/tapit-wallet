@@ -151,7 +151,11 @@ export function describeChainSteps(
     const att = chain[i]!;
     const meta = readMoveMeta(att);
     const v = verifyEnvelope(att);
-    const sigValid = v.valid && v.signers.some((s) => s.valid && s.signer === att.subject);
+    // Same case-insensitive compare as verifyMoveChain (moveChain.ts) — hex
+    // pubkeys aren't guaranteed consistent case, so a bare === here can flag
+    // a genuinely valid signature as foreign.
+    const sigValid =
+      v.valid && v.signers.some((s) => s.valid && s.signer.toLowerCase() === att.subject.toLowerCase());
     const linkValid = meta
       ? i === 0
         ? meta.prevHash === ''

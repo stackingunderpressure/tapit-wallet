@@ -64,6 +64,23 @@ describe('chainVerify', () => {
     expect(parseChainProofBundle('{"v":1,"kind":"move_chain"}')).toBeNull(); // missing chain array
   });
 
+  // Regression: mirrors moveChain.test.ts's case-mismatch regression — this
+  // function re-derives the same signer-vs-subject check purely for display,
+  // and had the same bare === bug.
+  it('describeChainSteps still reports sigValid when subject is a different case than the signer hex', () => {
+    const w = Wallet.generate();
+    const g = w.attest(
+      buildMoveDraftInput({
+        subject: w.identity.toUpperCase(),
+        payload: { game: 'test', kind: 'start' },
+        seq: 0,
+        prevHash: '',
+      }),
+    );
+    const steps = describeChainSteps([g]);
+    expect(steps[0]!.sigValid).toBe(true);
+  });
+
   it('describeChainSteps reports every step valid for a genuine chain', () => {
     const w = Wallet.generate();
     const chain = mintChain(w);

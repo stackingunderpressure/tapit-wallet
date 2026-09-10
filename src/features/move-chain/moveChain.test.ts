@@ -88,6 +88,23 @@ describe('verifyMoveChain — a clean chain', () => {
     expect(r.length).toBe(4);
     expect(isCleanChain(mintChain(w, [ARM, BUY]))).toBe(true);
   });
+
+  // Regression: a real device chain reported "not signed by its own subject
+  // identity" on every move even though the signatures were genuine —
+  // bytesToHex always lowercases a signer's pubkey, but subject/identity can
+  // arrive in a different case (storage, an import), and the comparison was
+  // a bare ===. Reproduced here by signing a genesis whose subject is
+  // deliberately upper-cased — cryptographically the same key, same valid
+  // signature, just a differently-cased hex string for the same value.
+  it('still verifies when subject is a different case than the signer hex', () => {
+    const w = Wallet.generate();
+    const g = w.attest(
+      buildMoveDraftInput({ subject: w.identity.toUpperCase(), payload: ARM, seq: 0, prevHash: '' }),
+    );
+    const r = verifyMoveChain([g]);
+    expect(r.valid).toBe(true);
+    expect(r.errors).toHaveLength(0);
+  });
 });
 
 describe('verifyMoveChain — cheats and breaks', () => {

@@ -167,7 +167,14 @@ export function verifyMoveChain(chain: readonly Attestation[]): MoveChainResult 
     }
     const v = verifyEnvelope(att);
     if (!v.valid) errors.push(`move ${i}: invalid signature`);
-    const signedBySubject = v.signers.some((s) => s.valid && s.signer === att.subject);
+    // Hex pubkeys aren't guaranteed consistent case across the codebase
+    // (tapit-attest's own signDigestAs lowercases before comparing for the
+    // same reason) — bytesToHex always lowercases, but subject/identity can
+    // arrive from elsewhere (storage, an import) in a different case, so a
+    // bare === here can read a genuinely valid signature as foreign.
+    const signedBySubject = v.signers.some(
+      (s) => s.valid && s.signer.toLowerCase() === att.subject.toLowerCase(),
+    );
     if (!signedBySubject) errors.push(`move ${i}: not signed by its own subject identity`);
 
     if (i === 0) {
@@ -175,7 +182,9 @@ export function verifyMoveChain(chain: readonly Attestation[]): MoveChainResult 
       if (meta.seq !== 0) errors.push(`genesis: seq ${meta.seq} is not 0`);
       if (meta.prevHash !== '') errors.push('genesis: prevHash is not empty');
     } else {
-      if (att.subject !== owner) errors.push(`move ${i}: different owner than genesis`);
+      if (att.subject.toLowerCase() !== (owner ?? '').toLowerCase()) {
+        errors.push(`move ${i}: different owner than genesis`);
+      }
       if (meta.seq !== i) errors.push(`move ${i}: seq ${meta.seq} out of order`);
       const expectedPrev = moveLink(chain[i - 1]!);
       if (meta.prevHash !== expectedPrev) errors.push(`move ${i}: broken link to move ${i - 1}`);
