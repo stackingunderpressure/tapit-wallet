@@ -31,7 +31,7 @@ export const manifest: FeatureManifest = {
     'netlify.toml',
     'scripts/arena-oracle-keygen.mjs',
   ],
-  depends_on: ['move-chain', 'transport', 'wallet-core', 'anchoring'],
+  depends_on: ['move-chain', 'transport', 'wallet-core', 'anchoring', 'disclosure'],
   pause_safe: true,
   removal_safe: true,
   monetizable: false,
@@ -67,5 +67,15 @@ export const manifest: FeatureManifest = {
     'verify the record after the fact; sharing is safe at any point because ' +
     'only sunk, already-signed moves are ever in the text. Not yet built: a ' +
     'way to pick an earlier point in your own history to publish about — ' +
-    'today it always narrates the current live state.',
+    'today it always narrates the current live state. (4) VERIFY LINK ' +
+    '(2026-09-10): the share text ends with a /verify?p=<proof> link built ' +
+    'from the disclosure feature\'s buildVerifyUrl, minted for the chain ' +
+    'HEAD (buildHeadDisclosurePaths in arenaShare.ts discloses seq, prev, ' +
+    'and the move fields already narrated in the text). Scoped honestly: ' +
+    'this proves the latest move is genuinely signed and — once the anchor ' +
+    'lands — Bitcoin-anchored; it does NOT prove the full chain back to ' +
+    'genesis, since there is no public verifier yet that walks a whole ' +
+    'move-chain from one link. Minting can fail (an unexpected payload ' +
+    'shape); the share degrades gracefully and just omits the link rather ' +
+    'than blocking.',
 };

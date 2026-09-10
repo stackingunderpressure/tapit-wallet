@@ -1,5 +1,5 @@
 import type { Attestation } from 'tapit-attest';
-import { readMoveMeta } from '../move-chain/moveChain.ts';
+import { readMoveMeta, type MoveMeta } from '../move-chain/moveChain.ts';
 import type { TruthResult } from '../move-chain/truthScore.ts';
 
 // arenaShare — builds the public Nostr note for a "Beat the HODL" run.
@@ -62,14 +62,39 @@ export function hasFundingInfo(chain: readonly Attestation[]): boolean {
 }
 
 /**
+ * Which leaves of the chain HEAD's claim to disclose in its verify proof —
+ * always its position (seq + prev, the same fields that make a signature
+ * proof-of-order rather than a mere timestamp claim) and what kind of move
+ * it is, plus price/price_time for a sell or buy, plus the funding fields
+ * only when the operator opted into showing them. Only includes a path the
+ * payload actually carries — multiDisclosureProof throws on a missing one.
+ */
+export function buildHeadDisclosurePaths(meta: MoveMeta, includeFunding: boolean): string[] {
+  const paths = ['seq', 'prev', 'move/game', 'move/kind'];
+  const p = meta.payload;
+  if (p.price !== undefined) paths.push('move/price');
+  if (typeof p.price_time === 'string') paths.push('move/price_time');
+  if (includeFunding) {
+    if (p.charity_txid !== undefined) paths.push('move/charity_txid');
+    if (p.stake_sats !== undefined) paths.push('move/stake_sats');
+  }
+  return paths;
+}
+
+/**
  * The exact public note a "Beat the HODL" run would post. `includeFunding`
  * is opt-in and off by default — a donation txid can link a Nostr identity
- * back to a specific wallet, so it is never shown implicitly.
+ * back to a specific wallet, so it is never shown implicitly. `verifyUrl`,
+ * when given, is a link to a selective-disclosure proof of the chain HEAD
+ * only — it proves that latest move is genuinely signed (and anchored, if
+ * the anchor has landed), not the full history back to genesis; there is no
+ * public verifier yet for walking a whole move-chain from one link.
  */
 export function buildArenaShareText(
   chain: readonly Attestation[],
   score: TruthResult,
   includeFunding: boolean,
+  verifyUrl?: string,
 ): string {
   const genesis = chain[0];
   const genesisMeta = genesis ? readMoveMeta(genesis) : null;
@@ -116,5 +141,6 @@ export function buildArenaShareText(
   if (log.length > 0) sections.push(log.join('\n'));
   sections.push(status.join('\n'));
   sections.push('Every move above is signed and anchored to Bitcoin — nothing here can be edited after the fact.');
+  if (verifyUrl) sections.push(`Verify the latest move yourself: ${verifyUrl}`);
   return sections.join('\n\n');
 }
