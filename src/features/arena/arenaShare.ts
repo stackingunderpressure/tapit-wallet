@@ -1,6 +1,5 @@
 import type { Attestation } from 'tapit-attest';
 import { readMoveMeta } from '../move-chain/moveChain.ts';
-import type { MintedChainVerify } from '../move-chain/chainVerify.ts';
 import type { TruthResult } from '../move-chain/truthScore.ts';
 
 // arenaShare — builds the public Nostr note for a "Beat the HODL" run.
@@ -65,23 +64,23 @@ export function hasFundingInfo(chain: readonly Attestation[]): boolean {
 /**
  * The exact public note a "Beat the HODL" run would post. `includeFunding`
  * is opt-in and off by default — a donation txid can link a Nostr identity
- * back to a specific wallet, so it is never shown implicitly. `verify`, when
- * given, is the whole chain's proof — genesis through the latest move, each
- * one checked against the one before it, not just the latest move alone —
- * built WITHOUT each move's Bitcoin-anchor data (buildChainVerifyUrl's
- * default) so the note stays short; the note's own "signed and anchored to
- * Bitcoin" line above is already true independent of whether this
- * particular proof carries the anchor blobs. When even the anchor-free
- * proof is too big for a one-tap link, the note says so plainly and points
- * at the bare /verify page rather than dumping the raw proof JSON inline —
- * a wall of hex helps no one and risks the note itself getting rejected as
- * oversized by a relay.
+ * back to a specific wallet, so it is never shown implicitly.
+ *
+ * `verifyUrl`, when given, is always the bare /verify page — NEVER a link
+ * with the proof encoded into it. A single move's honest proof (one
+ * signature + its claim, base64'd) already runs past 900 characters before
+ * anchors or anything else are even counted, which is too long to read as
+ * a normal link at any chain length worth playing — there is no byte
+ * budget that makes an embedded proof look like a short link, so this
+ * doesn't try. The note stays short and clean regardless of how long the
+ * run gets; the proof itself travels separately, on the operator's own
+ * terms, via the app's "copy the chain proof" action.
  */
 export function buildArenaShareText(
   chain: readonly Attestation[],
   score: TruthResult,
   includeFunding: boolean,
-  verify?: MintedChainVerify,
+  verifyUrl?: string,
 ): string {
   const genesis = chain[0];
   const genesisMeta = genesis ? readMoveMeta(genesis) : null;
@@ -128,13 +127,10 @@ export function buildArenaShareText(
   if (log.length > 0) sections.push(log.join('\n'));
   sections.push(status.join('\n'));
   sections.push('Every move above is signed and anchored to Bitcoin — nothing here can be edited after the fact.');
-  if (verify) {
+  if (verifyUrl) {
     sections.push(
-      verify.urlIsInline
-        ? `Verify the whole chain yourself, genesis to now: ${verify.verifyUrl}`
-        : `Verify the whole chain yourself, genesis to now — this run got too long for a ` +
-          `one-tap link, so tap ${verify.verifyUrl} and paste the copy of the chain proof ` +
-          `from the app.`,
+      `Verify the whole chain yourself, genesis to now — tap ${verifyUrl} and paste the ` +
+        `chain proof copied from the app.`,
     );
   }
   return sections.join('\n\n');

@@ -104,5 +104,37 @@ export const manifest: FeatureManifest = {
     'of dumping noise. A separate "Copy the full chain proof (with Bitcoin ' +
     'timestamps)" action (ArenaScreen.tsx, includeAnchors: true) lets the ' +
     'operator hand someone the heavier, fully-anchored proof on their own ' +
-    'terms — a reply, a DM, wherever — never auto-posted.',
+    'terms — a reply, a DM, wherever — never auto-posted. (6) STOPPED ' +
+    'INLINING THE PROOF AT ALL (2026-09-10, same day, second report from ' +
+    'the operator — a screenshot of an unbroken base64 wall and "Still not ' +
+    'right"): (5) only fixed the ANCHOR half of the size problem; the ' +
+    '/verify?p=<base64> link itself was still the thing shown as "the ' +
+    'link," and measuring it directly showed the real floor — ONE move\'s ' +
+    'honest proof (one signature + its claim, base64\'d) already runs past ' +
+    '900 characters before anchors or anything else are counted, because a ' +
+    'BIP340 signature alone is 128 hex chars and the meta fields add more ' +
+    'on top. There is no byte budget that makes an embedded proof read as ' +
+    'a normal link at any chain length worth playing — tuning the number ' +
+    'further was solving the wrong problem. Fixed by dropping the whole ' +
+    'inline-the-proof-in-the-link idea for arena\'s default note: ' +
+    'buildArenaShareText now takes a plain verifyUrl string, always the ' +
+    'bare /verify page, never anything encoded into it, so the note stays ' +
+    'short and clean at ANY chain length. The proof travels via two copy ' +
+    'actions instead (ArenaScreen.tsx: "Copy the chain proof to paste at ' +
+    'the link above," lean/anchors-stripped by default, plus a secondary ' +
+    '"(with Bitcoin timestamps instead)" for the heavier version) — always ' +
+    'a deliberate, separate step, never auto-embedded. chainVerify.ts\'s ' +
+    'buildChainVerifyUrl / CHAIN_INLINE_URL_BYTE_BUDGET machinery is left ' +
+    'in place as general infrastructure (still tested, still legitimate ' +
+    'for a context where a long URL doesn\'t need to look clean) but arena ' +
+    'no longer calls it for its own share text. The real path to a TRUE ' +
+    'one-tap link later is the one move-chain\'s own manifest already names ' +
+    'as reserved: broadcast each move over moveChannel.ts\'s existing ' +
+    'MOVE_EVENT_KIND public Nostr channel as it happens (not yet wired — ' +
+    'arena currently only reveals via a plain kind-1 note), then a short ' +
+    'reference (owner pubkey + topic) in the link lets /verify fetch and ' +
+    'reassemble the chain live from the same public relays, the way ' +
+    'subscribeMoves was always built to do — genuinely short AND genuinely ' +
+    'self-contained, unlike embedding the proof. Bigger lift (touches the ' +
+    'core move-recording path, not just sharing); not started.',
 };

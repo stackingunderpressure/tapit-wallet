@@ -246,33 +246,28 @@ export function ArenaTabBody() {
     });
 
   // The exact public note this run would post — built once so the preview
-  // shows byte-for-byte what gets sent.
+  // shows byte-for-byte what gets sent. Points at the bare /verify page —
+  // never a link with the proof embedded in it (see buildArenaShareText's
+  // own note on why that never looks like a real link). The proof itself
+  // travels via the copy actions below, on the operator's own terms.
   function buildShareText(): string {
-    // The whole chain, genesis through the latest move — not just the
-    // latest one. Minting can fail in principle (an empty chain); the share
-    // still works without the link rather than blocking on a proof.
-    let verify: ReturnType<typeof buildChainVerifyUrl> | undefined;
-    try {
-      if (chain.length > 0) verify = buildChainVerifyUrl(chain);
-    } catch {
-      verify = undefined;
-    }
-    return buildArenaShareText(chain, score, includeFunding, verify);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return buildArenaShareText(chain, score, includeFunding, `${origin}/verify`);
   }
 
-  // The full chain proof INCLUDING every move's Bitcoin-anchor data — the
-  // heavier version the default share link deliberately leaves out to stay
-  // short. A separate, explicit action (not auto-posted anywhere) for
-  // whenever the operator wants to hand someone the whole thing directly —
-  // a reply, a DM, wherever they choose, on their own timeline.
-  async function copyFullChainProof() {
-    const { json } = buildChainVerifyUrl(chain, { includeAnchors: true });
+  // Copy the chain proof to the clipboard for the operator to hand to
+  // someone directly — a reply, a DM, wherever they choose, never
+  // auto-posted. Lean (anchors stripped) by default, matching what
+  // verifyMoveChain actually needs; includeAnchors:true for the heavier
+  // version carrying each move's real Bitcoin-timestamp data too.
+  async function copyChainProof(includeAnchors: boolean) {
+    const { json } = buildChainVerifyUrl(chain, { includeAnchors });
     try {
       await navigator.clipboard.writeText(json);
       setCopiedProof(true);
       setTimeout(() => setCopiedProof(false), 1500);
     } catch {
-      window.prompt('Copy the full chain proof:', json);
+      window.prompt('Copy the chain proof:', json);
     }
   }
 
@@ -706,16 +701,24 @@ export function ArenaTabBody() {
                 Include donation txid / stake amount in the share
               </label>
             )}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void copyFullChainProof()}
-              className="mt-2 text-xs text-muted underline hover:text-ink disabled:opacity-40"
-            >
-              {copiedProof
-                ? 'Copied'
-                : "Copy the full chain proof (with Bitcoin timestamps) to share yourself"}
-            </button>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void copyChainProof(false)}
+                className="underline hover:text-ink disabled:opacity-40"
+              >
+                {copiedProof ? 'Copied' : 'Copy the chain proof to paste at the link above'}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void copyChainProof(true)}
+                className="underline hover:text-ink disabled:opacity-40"
+              >
+                (with Bitcoin timestamps instead)
+              </button>
+            </div>
           </>
         )}
 
