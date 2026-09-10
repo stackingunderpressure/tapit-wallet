@@ -5,6 +5,7 @@ import { arenaOracle } from '../../shared/lib/env.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import { verifyMoveChain, readMoveMeta } from '../move-chain/moveChain.ts';
 import { readWholeCoinMoves, simulateWholeCoin } from '../move-chain/truthScore.ts';
+import { buildArenaShareText, fmtCoins, fmtUsd, hasFundingInfo } from './arenaShare.ts';
 import { fetchSignedRound, type SignedPriceRound } from './priceRound.ts';
 import { useBtcCandles, type CandleInterval } from './useBtcCandles.ts';
 import type { StoneMarker } from './ArenaChart.tsx';
@@ -40,14 +41,6 @@ const ORANGE = '#F7931A';
 const BLOOD = '#B23A3A';
 const INTERVALS: CandleInterval[] = ['1h', '4h', '1d', '1w'];
 
-function fmtCoins(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  return n.toFixed(6);
-}
-function fmtUsd(n: number | undefined | null): string {
-  if (n == null || !Number.isFinite(n)) return '—';
-  return '$' + Math.round(n).toLocaleString();
-}
 // Sats view, copied from WealthStrategy's Stones scoreboard: 1 coin =
 // 100,000,000 sats, shown as a big tangible integer so "how far behind HODL"
 // reads as a concrete number, not a fraction.
@@ -119,6 +112,9 @@ export function ArenaTabBody() {
   const [note, setNote] = useState<string | null>(null);
   // The Nostr note held for preview; null when no preview is open.
   const [previewText, setPreviewText] = useState<string | null>(null);
+  // Off by default — a donation txid can link this Nostr identity back to a
+  // specific wallet, so showing it in a public share is opt-in, never implied.
+  const [includeFunding, setIncludeFunding] = useState(false);
   // "How this stays honest" explainer, collapsed by default.
   const [showHow, setShowHow] = useState(false);
   // "Why HODL is so hard to beat" explainer (fees / funding / liquidation).
@@ -144,6 +140,9 @@ export function ArenaTabBody() {
     [chain, friction, markPrice],
   );
   const side = nextSide(chain);
+  // Whether the genesis move carries a donation txid or stake worth an
+  // opt-in checkbox — read from the signed chain, not stale form state.
+  const showFundingToggle = useMemo(() => hasFundingInfo(chain), [chain]);
 
   // Buy/sell pins on the chart, built from the signed move chain.
   const markers = useMemo<StoneMarker[]>(() => {
@@ -247,12 +246,7 @@ export function ArenaTabBody() {
   // The exact public note this run would post — built once so the preview
   // shows byte-for-byte what gets sent.
   function buildShareText(): string {
-    const rounds = score.rounds.length;
-    return (
-      `Beat the HODL — ${rounds} round${rounds === 1 ? '' : 's'}, ` +
-      `${fmtCoins(score.coinsNow)} coins vs 1.0 HODL ` +
-      `(${score.edgeCoins >= 0 ? '+' : ''}${fmtCoins(score.edgeCoins)}).`
-    );
+    return buildArenaShareText(chain, score, includeFunding);
   }
 
   // Step 1: open the preview. Nothing goes to a relay yet — the operator sees
@@ -656,24 +650,36 @@ export function ArenaTabBody() {
         )}
 
         {hasRun && (
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              disabled={busy || !transport || previewText != null}
-              onClick={openPreview}
-              className="flex-1 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
-            >
-              {transport ? 'Publish to Nostr' : 'Relay offline'}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={resetRun}
-              className="rounded-md border border-red-300 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 disabled:opacity-40"
-            >
-              Clear run
-            </button>
-          </div>
+          <>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={busy || !transport || previewText != null}
+                onClick={openPreview}
+                className="flex-1 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5 disabled:opacity-40"
+              >
+                {transport ? 'Publish to Nostr' : 'Relay offline'}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={resetRun}
+                className="rounded-md border border-red-300 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-50 disabled:opacity-40"
+              >
+                Clear run
+              </button>
+            </div>
+            {showFundingToggle && (
+              <label className="mt-2 flex items-center gap-2 text-xs text-muted">
+                <input
+                  type="checkbox"
+                  checked={includeFunding}
+                  onChange={(e) => setIncludeFunding(e.target.checked)}
+                />
+                Include donation txid / stake amount in the share
+              </label>
+            )}
+          </>
         )}
 
         {/* Preview & confirm — see exactly what goes to the relays first */}

@@ -15,6 +15,7 @@ export const manifest: FeatureManifest = {
     'src/features/arena/arenaChain.ts',
     'src/features/arena/arenaChain.test.ts',
     'src/features/arena/ArenaScreen.tsx',
+    'src/features/arena/arenaShare.ts',
     'src/features/arena/ArenaChart.tsx',
     'src/features/arena/useBtcCandles.ts',
     'netlify/functions/btc-candles.mts',
@@ -54,5 +55,17 @@ export const manifest: FeatureManifest = {
     'note (publishPublicNote) to prove the relay round-trip. NOT ' +
     'browser-tested from the sandbox — a device smoke of start/sell/buy, ' +
     'the scoreboard reading in coins, persistence across reload, and the ' +
-    'Nostr publish is owed.',
+    'Nostr publish is owed. (3) SHARE TEXT (2026-09-10): buildArenaShareText ' +
+    '(arenaShare.ts, split out of ArenaScreen.tsx to stay under the 800-line ' +
+    'cap) turns the note from one dry stat line into a real narrative — a ' +
+    'start date, per-move prices and dates, an honest mid-cycle "in ' +
+    'progress" status instead of a bare live number, and an opt-in ' +
+    '(off-by-default) toggle to disclose the genesis donation txid / stake. ' +
+    'Deliberately narrates ONLY moves already executed and signed — the next ' +
+    'move is never mentioned, since disclosing an undecided buy-back target ' +
+    'is the one thing that would let a reader copy-trade instead of just ' +
+    'verify the record after the fact; sharing is safe at any point because ' +
+    'only sunk, already-signed moves are ever in the text. Not yet built: a ' +
+    'way to pick an earlier point in your own history to publish about — ' +
+    'today it always narrates the current live state.',
 };
