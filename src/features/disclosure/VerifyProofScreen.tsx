@@ -30,6 +30,11 @@ import {
   type ChainStepView,
 } from '../move-chain/chainVerify.ts';
 import {
+  readChainPriceAttestations,
+  type MovePriceAttestation,
+} from '../arena/moveOracle.ts';
+import { arenaOracle } from '../../shared/lib/env.ts';
+import {
   readBundleAnchor,
   verifyProofAnchor,
   type AnchorCheck,
@@ -74,6 +79,13 @@ type Outcome =
       /** How many times the owner has rotated keys, per the included
        *  succession chain — 0 when never rotated or none was included. */
       rotations: number;
+      /** Per-move price provenance, index-aligned with `steps`. Re-verifies
+       *  the oracle round each move committed to, pinned to this build's
+       *  configured oracle key when it has one. */
+      prices: MovePriceAttestation[];
+      /** True when this build knows which oracle key to expect, so an
+       *  'attested' verdict means something. False when unconfigured. */
+      oraclePinned: boolean;
     };
 
 // Detect + verify a whole move-chain bundle (arena's "verify the whole
@@ -89,12 +101,19 @@ function tryVerifyChainBundle(text: string): Outcome | null {
   // anchors, so a missing field means "included," not "unknown."
   const anchorsIncluded = bundle.anchorsIncluded ?? true;
   const succession = bundle.succession ?? [];
+  // Pin price provenance to the oracle key THIS build was configured with.
+  // Without a configured key the signature can still be checked, but it
+  // proves nothing about who signed it — readChainPriceAttestations says so
+  // with 'attested_unpinned' rather than quietly passing.
+  const oracle = arenaOracle();
   return {
     kind: 'chain',
     verdict: verifyMoveChain(bundle.chain, succession),
     steps: describeChainSteps(bundle.chain, anchorsIncluded, succession),
     anchorsIncluded,
     rotations: succession.length,
+    prices: readChainPriceAttestations(bundle.chain, oracle?.pubkey),
+    oraclePinned: Boolean(oracle?.pubkey),
   };
 }
 
@@ -355,6 +374,8 @@ export function VerifyProofScreen() {
             steps={outcome.steps}
             anchorsIncluded={outcome.anchorsIncluded}
             rotations={outcome.rotations}
+            prices={outcome.prices}
+            oraclePinned={outcome.oraclePinned}
           />
         </Suspense>
       )}

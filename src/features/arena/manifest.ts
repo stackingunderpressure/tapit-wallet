@@ -22,6 +22,9 @@ export const manifest: FeatureManifest = {
     'src/features/arena/priceRound.ts',
     'src/features/arena/priceRound.test.ts',
     'src/features/arena/priceRoundCanonical.ts',
+    'src/features/arena/moveOracle.ts',
+    'src/features/arena/moveOracle.test.ts',
+    'src/features/arena/oracleFunctionParity.test.ts',
     'src/features/arena/manifest.ts',
     'src/App.tsx',
     'src/features/wallet-core/HomeScreen.tsx',
@@ -45,7 +48,37 @@ export const manifest: FeatureManifest = {
     'oracle is NOW BUILT as a tiny self-signed Nostr-shaped round verified ' +
     'with tapit-attest Schnorr (priceRound.ts + netlify/functions/' +
     'price-oracle; wired behind VITE_ARENA_ORACLE_URL/PUBKEY; owed: key + ' +
-    "Netlify secret + publish pubkey + deploy + smoke). (2) GENESIS here is " +
+    "Netlify secret + publish pubkey + deploy + smoke). VERIFY-SIDE CLOSED " +
+    '2026-09-15 (moveOracle.ts): until then the oracle round was ' +
+    'WRITE-ONLY — buildSwitchDraft stamped oracle_pubkey/sig/round/time/ ' +
+    'source into the move as signed leaves, but verifyPriceRound ran ONCE, ' +
+    "in the player's own browser, at move time, and nothing ever read those " +
+    'leaves back. A stranger handed a move_chain proof could confirm the ' +
+    'signatures and the hash links but had no way to tell an oracle-signed ' +
+    'price from a number the player typed. readMovePriceAttestation now ' +
+    're-verifies the round from the move itself, pinned to the build\'s ' +
+    'configured VITE_ARENA_ORACLE_PUBKEY. The binding is free: the oracle ' +
+    "signs a digest over the round's price and the builder writes that same " +
+    "price into the move's `price` leaf, so checking the signature against " +
+    'the move IS the did-the-price-change check — edit the price and the ' +
+    'signature stops verifying (tested). States are deliberately six, not ' +
+    'a boolean: attested / attested_unpinned (signature good but this build ' +
+    'knows no oracle key to pin to, so provenance is unproven — the same ' +
+    'honesty distinction the anchor view draws between "not included" and ' +
+    '"not anchored") / unattested / incomplete / bad_signature / ' +
+    'foreign_oracle. Freshness is deliberately NOT re-checked at verify ' +
+    'time — isRoundFresh stops a stale price entering a NEW move, but an ' +
+    'old move legitimately carries an old round. oracleFunctionParity.test' +
+    '.ts guards the one silent-death risk: price-oracle.mts inlines its own ' +
+    'copy of the canonical digest (deliberately, so Netlify esbuild never ' +
+    'chokes on a ../../src import), and if the two copies drift every price ' +
+    'in the game reads bad_signature with nothing naming the cause. STILL ' +
+    'OWED and operator-only: run scripts/arena-oracle-keygen.mjs, set ' +
+    'ARENA_ORACLE_PRIVATE_KEY + VITE_ARENA_ORACLE_PUBKEY + ' +
+    'VITE_ARENA_ORACLE_URL in Netlify, redeploy, smoke the endpoint. Until ' +
+    'that is done arenaOracle() returns null, moves stamp price_source=' +
+    'market, and every price honestly reads "stated by the player." (2) ' +
+    'GENESIS here is ' +
     'a local start move; the real genesis is a ' +
     'public on-chain donation to an open-source charity whose txid roots ' +
     'the trail (charity_txid is an optional field so the flow is playable ' +

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { MoveChainResult } from '../move-chain/moveChain.ts';
 import type { ChainStepView } from '../move-chain/chainVerify.ts';
+import type { MovePriceAttestation, PriceAttestationState } from '../arena/moveOracle.ts';
 
 // Renders a whole-chain verify outcome: genesis through the latest move,
 // each one checked against the move before it. Sibling to
@@ -15,6 +16,33 @@ interface Props {
   /** How many times the owner has rotated keys, per the included
    *  succession chain — 0 when never rotated or none was included. */
   rotations: number;
+  /** Per-move price provenance, index-aligned with `steps`. Optional so
+   *  older callers keep working; absent means the price line is omitted
+   *  rather than shown as a failure. */
+  prices?: MovePriceAttestation[];
+  /** Whether this build knows which oracle key to expect. */
+  oraclePinned?: boolean;
+}
+
+// Plain-English, never-alarming labels for where a move's price came from.
+// The distinction that matters to a reader: a price an independent oracle
+// signed, versus a number the player themselves supplied. Both are honest
+// states — only a BROKEN signature is a warning.
+const PRICE_LABEL: Record<PriceAttestationState, string> = {
+  attested: '✓ price signed by the oracle',
+  attested_unpinned: '• price carries an oracle signature (unrecognised oracle)',
+  unattested: '• price stated by the player',
+  incomplete: '✗ price proof incomplete',
+  bad_signature: "✗ price signature doesn't check out",
+  foreign_oracle: '✗ price signed by a different oracle',
+};
+
+function priceToneClass(state: PriceAttestationState): string {
+  if (state === 'attested') return 'text-emerald-700';
+  if (state === 'bad_signature' || state === 'incomplete' || state === 'foreign_oracle') {
+    return 'text-red-700';
+  }
+  return 'text-muted';
 }
 
 function shortKey(s: string): string {
@@ -34,8 +62,26 @@ function fmtPrice(n: number | null): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
-export function ChainVerifyResult({ verdict, steps, anchorsIncluded, rotations }: Props) {
+export function ChainVerifyResult({
+  verdict,
+  steps,
+  anchorsIncluded,
+  rotations,
+  prices,
+  oraclePinned = false,
+}: Props) {
   const [howOpen, setHowOpen] = useState(false);
+  // Only moves that state a price can carry one — the genesis move states
+  // none, so counting it would make an honest chain look under-attested.
+  // Walk by index so steps and prices stay aligned.
+  let pricedCount = 0;
+  let attestedCount = 0;
+  steps.forEach((s, i) => {
+    if (s.price == null) return;
+    pricedCount += 1;
+    if (prices?.[i]?.state === 'attested') attestedCount += 1;
+  });
+  const showPriceSummary = Boolean(prices) && pricedCount > 0;
 
   return (
     <>
@@ -78,11 +124,39 @@ export function ChainVerifyResult({ verdict, steps, anchorsIncluded, rotations }
           </p>
         )}
 
+        {showPriceSummary && (
+          <p className="mt-3 rounded-md border border-ink/10 bg-ink/[0.02] px-3 py-2 text-xs text-muted">
+            {attestedCount === pricedCount && oraclePinned ? (
+              <>
+                Every price in this run — all {pricedCount} of them — was signed by the independent
+                price oracle at the moment the move was made, and your browser just re-checked each
+                of those signatures itself. That matters because the signature covers the price:
+                change the number and the signature stops matching. So these aren't prices the
+                player told you about. They're prices someone else vouched for, and you verified.
+              </>
+            ) : attestedCount > 0 ? (
+              <>
+                {attestedCount} of the {pricedCount} prices below were signed by an independent
+                oracle and re-checked here. The rest were stated by the player — honest enough for
+                a friendly game, but you're taking their word for those numbers rather than
+                checking them.
+              </>
+            ) : (
+              <>
+                The prices below were stated by the player, not signed by an independent oracle, so
+                nothing here proves the market really was at those numbers. The signatures and
+                chain links above are unaffected — they prove who made these moves and in what
+                order, which is a separate question from whether the prices are right.
+              </>
+            )}
+          </p>
+        )}
+
         <div className="mt-3 text-xs uppercase tracking-wide text-muted">
           Moves ({steps.length})
         </div>
         <ol className="mt-1 space-y-2">
-          {steps.map((s) => (
+          {steps.map((s, i) => (
             <li key={s.seq} className="rounded-md border border-ink/10 bg-white px-3 py-2 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium capitalize">
@@ -100,6 +174,14 @@ export function ChainVerifyResult({ verdict, steps, anchorsIncluded, rotations }
                   {s.anchor === 'none' && 'not yet anchored'}
                   {s.anchor === 'not_included' && 'Bitcoin timestamp not included in this proof'}
                 </span>
+                {prices?.[i] && s.price != null && (
+                  <span className={priceToneClass(prices[i]!.state)}>
+                    {PRICE_LABEL[prices[i]!.state]}
+                    {prices[i]!.state === 'attested' &&
+                      prices[i]!.source &&
+                      ` (${prices[i]!.source})`}
+                  </span>
+                )}
               </div>
             </li>
           ))}
