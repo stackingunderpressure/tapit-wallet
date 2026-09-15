@@ -30,7 +30,13 @@ interface Payload {
   fetchedAt: number;
 }
 
-const SESSION_TTL_MS = 5 * 60 * 1000; // 5 min — the endpoint refreshes ~10 min
+// How long a cached payload may satisfy a NON-forced read. This used to be 5
+// minutes, which — stacked on the endpoint's own CDN cache — meant the live
+// price could be ten minutes old while a 30-second poll ran on top of it,
+// achieving nothing. A live trading price has to be seconds old, not minutes,
+// and the CDN (not this cache) is what protects the upstream exchanges from
+// being hammered: every visitor shares one upstream fetch per s-maxage window.
+const SESSION_TTL_MS = 20_000;
 const cache = new Map<string, Payload>();
 const inFlight = new Map<string, Promise<Payload>>();
 
@@ -109,17 +115,24 @@ export function useBtcCandles(
   source: string;
   loading: boolean;
   reload: () => void;
+  /** Unix ms the shown payload was fetched; null before the first success.
+   *  Exposed so the surface can SHOW its own freshness instead of asking the
+   *  operator to guess whether the number on screen is live. */
+  fetchedAt: number | null;
 } {
   const key = keyOf(interval, limit);
   const refreshMs = opts?.refreshMs;
-  const [state, setState] = useState<{ candles: Candle[]; lastClose: number | null; source: string }>(
-    () => {
-      const hit = cache.get(key);
-      return hit
-        ? { candles: hit.candles, lastClose: hit.lastClose, source: hit.source }
-        : { candles: [], lastClose: null, source: "none" };
-    },
-  );
+  const [state, setState] = useState<{
+    candles: Candle[];
+    lastClose: number | null;
+    source: string;
+    fetchedAt: number | null;
+  }>(() => {
+    const hit = cache.get(key);
+    return hit
+      ? { candles: hit.candles, lastClose: hit.lastClose, source: hit.source, fetchedAt: hit.fetchedAt }
+      : { candles: [], lastClose: null, source: "none", fetchedAt: null };
+  });
   const [loading, setLoading] = useState<boolean>(() => !cache.get(key));
   // Bumped by the refresh button and the poll tick; any value > 0 forces a
   // fresh fetch past the module cache.
@@ -131,7 +144,12 @@ export function useBtcCandles(
     const force = reloadKey > 0;
     const hit = cache.get(key);
     if (!force && hit && Date.now() - hit.fetchedAt < SESSION_TTL_MS) {
-      setState({ candles: hit.candles, lastClose: hit.lastClose, source: hit.source });
+      setState({
+        candles: hit.candles,
+        lastClose: hit.lastClose,
+        source: hit.source,
+        fetchedAt: hit.fetchedAt,
+      });
       setLoading(false);
       return;
     }
@@ -143,7 +161,7 @@ export function useBtcCandles(
       setState((prev) =>
         force && p.candles.length === 0
           ? prev
-          : { candles: p.candles, lastClose: p.lastClose, source: p.source },
+          : { candles: p.candles, lastClose: p.lastClose, source: p.source, fetchedAt: p.fetchedAt },
       );
       setLoading(false);
     });
@@ -160,5 +178,40 @@ export function useBtcCandles(
     return () => window.clearInterval(id);
   }, [refreshMs]);
 
-  return { candles: state.candles, lastClose: state.lastClose, source: state.source, loading, reload };
+  // Refetch the moment the app comes back to the foreground.
+  //
+  // This is the fix for "the price is stale and I almost always have to hit
+  // refresh." On a phone, a backgrounded PWA gets its timers throttled hard or
+  // suspended outright, so the interval above does NOT keep running while the
+  // wallet is closed. The operator reopens the app, sees whatever number was on
+  // screen when they left — minutes or hours old — and the only thing that ever
+  // corrected it was a manual tap. An interval alone can never fix this,
+  // however short: the tab has to be awake to tick.
+  //
+  // Waking on visibility/focus is the event that actually corresponds to "a
+  // human is looking at this right now." `online` is here too, because a fetch
+  // attempted while offline fails silently and would otherwise leave the price
+  // frozen until the next tick.
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") setReloadKey((k) => k + 1);
+    };
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+    window.addEventListener("online", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+      window.removeEventListener("online", refreshIfVisible);
+    };
+  }, []);
+
+  return {
+    candles: state.candles,
+    lastClose: state.lastClose,
+    source: state.source,
+    loading,
+    reload,
+    fetchedAt: state.fetchedAt,
+  };
 }

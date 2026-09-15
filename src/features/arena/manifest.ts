@@ -25,6 +25,10 @@ export const manifest: FeatureManifest = {
     'src/features/arena/moveOracle.ts',
     'src/features/arena/moveOracle.test.ts',
     'src/features/arena/oracleFunctionParity.test.ts',
+    'src/features/arena/priceFreshness.ts',
+    'src/features/arena/priceFreshness.test.ts',
+    'src/features/arena/ArenaModal.tsx',
+    'src/features/arena/OracleOutageModal.tsx',
     'src/features/arena/manifest.ts',
     'src/App.tsx',
     'src/features/wallet-core/HomeScreen.tsx',
@@ -77,7 +81,38 @@ export const manifest: FeatureManifest = {
     'ARENA_ORACLE_PRIVATE_KEY + VITE_ARENA_ORACLE_PUBKEY + ' +
     'VITE_ARENA_ORACLE_URL in Netlify, redeploy, smoke the endpoint. Until ' +
     'that is done arenaOracle() returns null, moves stamp price_source=' +
-    'market, and every price honestly reads "stated by the player." (2) ' +
+    'market, and every price honestly reads "stated by the player." ' +
+    'SILENT FALLBACK REMOVED 2026-09-15 (operator chose warn-and-choose in ' +
+    'chip form): a configured-but-unreachable oracle used to be swallowed ' +
+    'and the move logged at the chart price stamped price_source=market, so ' +
+    'one move in an otherwise attested run could quietly be the one a ' +
+    'verifier cannot vouch for. act() now pauses and raises ' +
+    'OracleOutageModal; the operator proceeds explicitly via act(true) or ' +
+    'waits. It deliberately does NOT block the move — an oracle outage is ' +
+    'our problem, not a reason the operator loses a trade. (4) PRICE ' +
+    'STALENESS fixed 2026-09-15 (operator, field-test: "it is slow and ' +
+    'almost always have to refresh"). Four compounding causes, all real: ' +
+    'btc-candles sent Cache-Control public, max-age=300, so the CDN AND ' +
+    'every browser held a body up to 5 min old and the 30s poll mostly ' +
+    're-read one cached response; useBtcCandles had its own 5-min ' +
+    'SESSION_TTL_MS stacked on top, ~10 min worst case; and NOTHING ' +
+    'refetched when the app returned to the foreground — the decisive one, ' +
+    'because a backgrounded PWA has its timers throttled or suspended, so ' +
+    'setInterval CANNOT keep a phone current however short it is set, and a ' +
+    'manual tap was the only cure. Fixes: split the cache header into ' +
+    'max-age=0 for the browser + s-maxage=20 + stale-while-revalidate=120 ' +
+    'for the CDN (the edge still absorbs load, so the exchanges are no more ' +
+    'exposed than before); SESSION_TTL_MS 5min -> 20s; poll 30s -> 20s; and ' +
+    'the hook now refetches on visibilitychange / focus / online. ' +
+    'useBtcCandles also returns fetchedAt and the screen states the price\'s ' +
+    'own age (priceFreshness.ts, pure + tested) warning past 90s — a number ' +
+    'you are about to sign a permanent move against should never look ' +
+    'authoritative while quietly being minutes old. ArenaModal was ' +
+    'extracted to its own file to make room under the 800-line cap; ' +
+    'ArenaScreen.tsx sits at 787. The foreground-refetch wiring is ' +
+    'READ-VERIFIED, NOT unit-tested (no React renderer in this repo\'s ' +
+    'tests — same split as useAutoBackup.test.ts); a device smoke is owed. ' +
+    '(2) ' +
     'GENESIS here is ' +
     'a local start move; the real genesis is a ' +
     'public on-chain donation to an open-source charity whose txid roots ' +

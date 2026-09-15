@@ -45,7 +45,24 @@ const INTERVAL_MS: Record<string, number> = {
 const J = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+    // max-age=0 for the BROWSER, s-maxage=20 for the CDN.
+    //
+    // This was `public, max-age=300`, which capped the live price at five
+    // minutes stale no matter what the client did — the arena's 30-second poll
+    // was mostly re-reading one cached body, and a trader saw a number that
+    // could be older than the move they were about to make.
+    //
+    // Splitting the two is what makes a short window safe: the edge still
+    // absorbs the load, so every visitor in a 20-second window shares ONE
+    // upstream fetch and the exchanges are no more exposed than before, while
+    // no individual browser holds its own stale copy on top of that.
+    // stale-while-revalidate lets the edge answer instantly from a slightly old
+    // body and refresh behind it, so a slow exchange shows as a late update
+    // rather than a spinner.
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=0, s-maxage=20, stale-while-revalidate=120",
+    },
   });
 
 function n(x: unknown): number {

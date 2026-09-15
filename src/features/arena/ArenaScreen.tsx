@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { envelopeId, type Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { arenaOracle } from '../../shared/lib/env.ts';
@@ -9,6 +9,9 @@ import { buildChainVerifyUrl } from '../move-chain/chainVerify.ts';
 import { buildArenaShareText, fmtCoins, fmtUsd, hasFundingInfo } from './arenaShare.ts';
 import { fetchSignedRound, type SignedPriceRound } from './priceRound.ts';
 import { useBtcCandles, type CandleInterval } from './useBtcCandles.ts';
+import { ArenaModal } from './ArenaModal.tsx';
+import { OracleOutageModal } from './OracleOutageModal.tsx';
+import { describeFreshness } from './priceFreshness.ts';
 import type { StoneMarker } from './ArenaChart.tsx';
 
 // Lazy so lightweight-charts (~45KB gz) loads as its own deferred chunk only
@@ -55,35 +58,6 @@ function fmtSatsSigned(coins: number): string {
   return (coins >= 0 ? '+' : '') + fmtSats(coins);
 }
 
-// A centered pop-up over the whole screen (not a bottom-of-page section)
-// for the game's confirmations — matches the app's other modals
-// (fixed backdrop + centered card). Tapping the backdrop dismisses via
-// onDismiss; pass undefined to disable dismiss while busy.
-function ArenaModal({
-  onDismiss,
-  children,
-}: {
-  onDismiss?: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-      onClick={onDismiss}
-      role="presentation"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-accent/40 bg-white p-5 shadow-xl"
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export function ArenaTabBody() {
   const {
     wallet,
@@ -103,9 +77,17 @@ export function ArenaTabBody() {
   const [interval, setInterval] = useState<CandleInterval>('4h');
   // Poll the candle feed every 30s so the live price keeps moving on its own;
   // reload() is the manual tap-to-refresh.
-  const { candles, lastClose, loading, reload } = useBtcCandles(interval, undefined, {
-    refreshMs: 30_000,
-  });
+  // Poll every 20s; the hook also refetches the instant the app returns to the
+  // foreground, which is what a phone actually needs — a backgrounded PWA has
+  // its timers suspended, so an interval alone can never keep the price current.
+  const { candles, lastClose, loading, reload, fetchedAt } = useBtcCandles(
+    interval,
+    undefined,
+    { refreshMs: 20_000 },
+  );
+  // Recomputed each render; the 20s poll and the foreground refetch both cause
+  // renders, so the label keeps pace without a second timer of its own.
+  const freshness = describeFreshness(fetchedAt);
   const [charityTx, setCharityTx] = useState('');
   const [stake, setStake] = useState('');
   const [busy, setBusy] = useState(false);
@@ -123,6 +105,9 @@ export function ArenaTabBody() {
   // A whole-coin sell/buy is a signed, permanent move — gate it behind an
   // explicit confirm so an accidental tap can't log an irreversible trade.
   const [confirmingTrade, setConfirmingTrade] = useState(false);
+  // Set when a configured oracle failed to answer, so the move paused to ask
+  // instead of silently recording an unattested price.
+  const [oracleDown, setOracleDown] = useState(false);
   const [copiedProof, setCopiedProof] = useState(false);
 
   const chain = useMemo(
@@ -207,21 +192,28 @@ export function ArenaTabBody() {
   // Execute the next legal move at the current market price. When an oracle is
   // configured the price is a freshly signed, verified round (the on-chain
   // proof); otherwise it's the live candle close.
-  const act = () =>
+  // allowUnattested is the operator's explicit 'go ahead without the oracle'
+  // from the outage prompt. Default false — never assumed.
+  const act = (allowUnattested = false) =>
     run(async () => {
       const market = lastClose && lastClose > 0 ? lastClose : null;
       let usePrice: number | null = market;
       let usedRound: SignedPriceRound | undefined;
-      // The oracle is a BEST-EFFORT proof layer: if it's configured and
-      // reachable, execute at its signed, verified price; if it's unset or
-      // failing, fall back to the live market price so a move NEVER breaks.
-      if (oracle) {
+      // When an oracle is configured, its signed round is what makes the price
+      // provable to anyone later. If it does not answer we STOP and ask rather
+      // than quietly recording an unattested price: the fallback used to be
+      // silent, so a move could land marked price_source=market with the
+      // operator never told that this one is the odd one out in their chain.
+      // The choice stays theirs — an oracle outage must not cost a trade — but
+      // it has to be a choice.
+      if (oracle && !allowUnattested) {
         try {
           const r = await fetchSignedRound(oracle.url, oracle.pubkey);
           usePrice = r.price;
           usedRound = r;
         } catch {
-          usedRound = undefined; // oracle down — quietly use the market price
+          setOracleDown(true);
+          return; // no move logged; the modal decides what happens next
         }
       }
       if (!usePrice || usePrice <= 0) {
@@ -455,6 +447,15 @@ export function ArenaTabBody() {
               >
                 {fmtUsd(lastClose)}
               </div>
+              {/* State the price's own age. A number you are about to sign a
+                  permanent move against should never look authoritative while
+                  quietly being minutes old. */}
+              <div
+                className="mt-0.5 text-[11px]"
+                style={{ color: freshness.stale ? BLOOD : '#8b949e' }}
+              >
+                {freshness.stale ? `\u26a0 ${freshness.label} — tap refresh` : freshness.label}
+              </div>
             </div>
             <div className="flex flex-col items-end gap-1.5">
               <div className="flex gap-1">
@@ -608,6 +609,17 @@ export function ArenaTabBody() {
               {side === 'sell' ? 'Sell the whole coin' : 'Buy the whole coin back'}
               {lastClose ? ` · ${fmtUsd(lastClose)}` : ''}
             </button>
+            {oracleDown && (
+              <OracleOutageModal
+                price={lastClose ? fmtUsd(lastClose) : null}
+                busy={busy}
+                onProceed={() => {
+                  setOracleDown(false);
+                  void act(true);
+                }}
+                onCancel={() => setOracleDown(false)}
+              />
+            )}
             {/* Deliberate-action gate — an accidental tap must not log a move */}
             {confirmingTrade && (
               <ArenaModal onDismiss={busy ? undefined : () => setConfirmingTrade(false)}>
