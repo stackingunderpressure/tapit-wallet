@@ -17,6 +17,42 @@ path or a repo name is load-bearing AND uncertain, ASK before spending an
 agent run, a push, or a long edit on it. One question costs a sentence; a
 wrong guess costs the whole branch of work built on it.
 
+
+## Fleet standard rules
+The rules that proved themselves in one repo and now hold in all of them.
+Each was a real incident somewhere in this fleet. Anything this repo states
+in its own words above is not repeated here.
+
+**Sync before you build.**
+At the START of every session, and before any new work, `git fetch origin
+main` and make sure your branch is not behind it — rebase or merge first.
+Never build on a stale branch: that is exactly how work forks and gets
+silently superseded, and it has already bitten this fleet. Push after every
+good batch so nothing lives only on this machine.
+
+**No speculative fix — evidence from a real run, one change at a time.**
+A plausible theory is not a reason to change working code. Reproduce the
+failure first, change ONE thing, and measure. On 2026-08-24 in Build-Forward-
+three plausible fixes shipped in one evening on three untested theories and
+the product got worse on all three. If you cannot show the before and the
+after, you are guessing with someone else's software.
+
+**Report the number you measured, never one you inherited.**
+"228 tests pass" is a real number from a real run, not an estimate and not a
+figure copied from a doc. A count carried forward from another repo or an
+older session is how a file ends up claiming seventy-six tests for a suite
+that has forty-nine.
+
+**Never claim a surface works without walking it.**
+Typecheck and tests verify correctness, not experience. If you could not
+open the thing and use it, say so explicitly rather than letting silence
+imply you did.
+
+**Three patches in, rewrite it clean.**
+Make the minimal correct change, and do not refactor working code while
+fixing a bug. But if a file has been patched three or more times for the
+same class of problem, the patches are the problem — rewrite it clean
+instead of stacking a fourth.
 ## What this is
 Tapit Wallet is a person's sovereign identity wallet. The user
 installs it, it generates and holds their keypair, and it is the
