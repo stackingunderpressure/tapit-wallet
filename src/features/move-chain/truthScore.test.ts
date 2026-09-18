@@ -153,40 +153,48 @@ describe('readWholeCoinMoves — bridge from a signed chain', () => {
 });
 
 describe('previewMove — what the button is allowed to promise', () => {
-  // The operator's live state, 2026-09-18, from a device screenshot AND his
-  // correction of my first reading of it. I had reconstructed a single sell at
-  // $82,268 from one coin; he said "I sold at 80383, not 82." He was right, and
-  // the screen proves it two ways: it reads "Rounds 1", so a sell->buy had
-  // already completed, and a lone sell at spot from 1.0 coin can only produce
-  // 0.980100 (both legs' fees), never the 1.003089 on screen.
+  // The operator's REAL run, read off the signed move chain he pasted
+  // (chain-proof bundle, 2026-09-18, verified valid across two key rotations).
+  // Not a reconstruction: these are the prices in his signed attestations.
   //
-  // The real path: a winning first round left him holding 1.023456 coins, and
-  // he then sold ALL of that at $80,383 — the same price as spot, which is why
-  // the coin count has not moved since. Verified below rather than asserted.
-  const SPOT = 80_383;
+  //   seq 1  2026-09-04  sell  $79,675
+  //   seq 2  2026-09-15  buy   $76,299.80
+  //   seq 3  2026-09-18  sell  $80,383.20   <- still open, holding cash
+  //
+  // He sold at the market and it had not moved by the time of the screenshot,
+  // so spot == that last sell price, and every figure below reproduces his
+  // screen exactly: 1.003089 coins, +308,896 sats, $80,632.
+  //
+  // My first pass at this reconstructed a single sell at $82,268 from one coin.
+  // He corrected it ("I sold at 80383 not 82") and he was right — the screen
+  // said so twice and I read past both: "Rounds 1" means a sell->buy had
+  // already completed, and a lone sell at spot from 1.0 coin can only produce
+  // 0.980100 after both legs' fees.
+  const R1_SELL = 79_675;
+  const R1_BUY = 76_299.8;
+  const OPEN_SELL = 80_383.2;
+  const SPOT = OPEN_SELL;
   const F = 1;
-  const R1_BUY = 76_000;
-  // Solved, not guessed: with the open sell at spot, coinsNow = (1-f)^4 x
-  // (R1_SELL / R1_BUY), so this is the first-round sell price that lands on the
-  // 1.003089 printed on his screen. R1_BUY is free — only the ratio matters.
-  const R1_SELL = (1.003089 / (1 - F / 100) ** 4) * R1_BUY;
-  const moves = [sell(R1_SELL), buy(R1_BUY), sell(SPOT)];
+  const moves = [sell(R1_SELL), buy(R1_BUY), sell(OPEN_SELL)];
   const inCash = simulateWholeCoin(moves, { frictionPctPerLeg: F, currentPrice: SPOT });
 
-  it('reproduces the screenshot from the path the operator actually took', () => {
+  it('reproduces his screen exactly from his own signed prices', () => {
     expect(inCash.rounds).toHaveLength(1); // screen: Rounds 1
     expect(inCash.holding).toBe('cash'); // screen: Holding cash
-    expect(inCash.openSell!.sellPrice).toBe(SPOT); // he sold at 80,383
-    // Compared the way the app prints them (fmtCoins = toFixed(6)), so the
-    // assertion is against what he actually saw, not a float near it.
+    expect(inCash.openSell!.sellPrice).toBe(OPEN_SELL);
+    // Compared the way the app prints them (fmtCoins = toFixed(6), fmtUsd =
+    // rounded), so these are what he actually saw, not floats near it.
     expect(inCash.openSell!.coinsSold.toFixed(6)).toBe('1.023456');
+    expect(Math.round(inCash.openSell!.cashUsd)).toBe(81_446);
     expect(inCash.coinsNow.toFixed(6)).toBe('1.003089'); // screen: 1.003089
-    expect(Math.round(inCash.edgeCoins * 1e8)).toBeCloseTo(308_896, -2); // screen: +308,896 sats
-    expect(Math.round(inCash.minBuyBackToBeatHodl!)).toBe(80_631); // screen: $80,632
+    expect(Math.round(inCash.edgeCoins * 1e8)).toBe(308_896); // screen: +308,896 sats
+    expect(inCash.edgePct.toFixed(2)).toBe('0.31'); // screen: +0.31%
+    expect(Math.round(inCash.minBuyBackToBeatHodl!)).toBe(80_632); // screen: $80,632
+    expect(Math.round(inCash.coinsNow * SPOT)).toBe(80_632); // screen: after costs $80,632
   });
 
   it('a lone sell at spot could NOT have produced that screen', () => {
-    // Guards the correction itself: my first reconstruction was impossible.
+    // Guards the correction itself: the first reconstruction was impossible.
     const lone = simulateWholeCoin([sell(SPOT)], { frictionPctPerLeg: F, currentPrice: SPOT });
     expect(lone.coinsNow).toBeCloseTo(0.9801, 6);
     expect(lone.rounds).toHaveLength(0);
@@ -199,7 +207,7 @@ describe('previewMove — what the button is allowed to promise', () => {
     const p = previewMove(inCash, SPOT, F)!;
     expect(p.kind).toBe('buy');
     expect(Math.round(p.cashUsd)).toBe(81_446);
-    expect(Math.round(p.cashUsd)).not.toBe(SPOT);
+    expect(Math.round(p.cashUsd) - Math.round(SPOT)).toBe(1_063);
   });
 
   it('promises exactly the coin count the scoreboard is already showing', () => {
@@ -227,10 +235,15 @@ describe('previewMove — what the button is allowed to promise', () => {
     // UI now states the coin count that makes it legible, so pin both facts.
     expect(inCash.openSell!.coinsSold).toBeGreaterThan(1);
     expect(inCash.minBuyBackToBeatHodl!).toBeGreaterThan(inCash.openSell!.sellPrice);
+    // Concretely: sold at $80,383.20, may buy back up to $80,631.50.
+    expect(Math.round(inCash.minBuyBackToBeatHodl!)).toBe(80_632);
 
     // And the opposite case still holds: from exactly one coin, fees force the
     // threshold BELOW the sell price.
-    const fromOne = simulateWholeCoin([sell(SPOT)], { frictionPctPerLeg: F, currentPrice: SPOT });
+    const fromOne = simulateWholeCoin([sell(OPEN_SELL)], {
+      frictionPctPerLeg: F,
+      currentPrice: SPOT,
+    });
     expect(fromOne.openSell!.coinsSold).toBe(1);
     expect(fromOne.minBuyBackToBeatHodl!).toBeLessThan(fromOne.openSell!.sellPrice);
   });
