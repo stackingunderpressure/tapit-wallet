@@ -4,7 +4,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { arenaOracle } from '../../shared/lib/env.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import { verifyMoveChain, readMoveMeta } from '../move-chain/moveChain.ts';
-import { readWholeCoinMoves, simulateWholeCoin } from '../move-chain/truthScore.ts';
+import { previewMove, readWholeCoinMoves, simulateWholeCoin } from '../move-chain/truthScore.ts';
 import { buildChainVerifyUrl } from '../move-chain/chainVerify.ts';
 import { buildArenaShareText, fmtCoins, fmtUsd, hasFundingInfo } from './arenaShare.ts';
 import { fetchSignedRound, type SignedPriceRound } from './priceRound.ts';
@@ -315,6 +315,10 @@ export function ArenaTabBody() {
   const priceNow = lastClose && lastClose > 0 ? lastClose : null;
   const usdOf = (coins: number): string | null =>
     priceNow != null && Number.isFinite(coins) ? fmtUsd(coins * priceNow) : null;
+  // What the next legal move would actually do at the live price. Drives the
+  // action button's second line so it can never quote a number the move does
+  // not produce.
+  const preview = priceNow != null ? previewMove(score, priceNow, friction) : null;
   const usdSigned = (coins: number): string | null => {
     const v = usdOf(Math.abs(coins));
     return v == null ? null : (coins >= 0 ? '+' : '−') + v;
@@ -605,8 +609,25 @@ export function ArenaTabBody() {
               onClick={() => setConfirmingTrade(true)}
               className="mt-4 w-full rounded-xl bg-accent text-white px-4 py-4 text-base font-semibold disabled:opacity-40"
             >
-              {side === 'sell' ? 'Sell the whole coin' : 'Buy the whole coin back'}
-              {lastClose ? ` · ${fmtUsd(lastClose)}` : ''}
+              <span className="block">
+                {side === 'sell' ? 'Sell the whole coin' : 'Buy the whole coin back'}
+              </span>
+              {/*
+                What the move DOES, not the price of one coin. A buy-back
+                deploys the WHOLE cash balance, so quoting spot here read as
+                the cost of the trade and was off by the entire edge; the sell
+                leg drifts the same way once a winning round pushes the count
+                off 1.0. previewMove is the single source of both numbers and
+                uses the same arithmetic the scorer replays with.
+              */}
+              {preview && (
+                <span className="mt-0.5 block text-xs font-normal opacity-85">
+                  {preview.kind === 'buy'
+                    ? `${fmtUsd(preview.cashUsd)} → ${fmtCoins(preview.coins)} coins`
+                    : `${fmtCoins(preview.coins)} coins → ${fmtUsd(preview.cashUsd)}`}
+                  {` at ${fmtUsd(preview.price)}/coin`}
+                </span>
+              )}
             </button>
             {/* Deliberate-action gate — an accidental tap must not log a move */}
             {confirmingTrade && (

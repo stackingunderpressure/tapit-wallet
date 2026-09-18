@@ -188,6 +188,54 @@ export function simulateWholeCoin(moves: readonly WholeCoinMove[], opts: TruthOp
   };
 }
 
+/** What the NEXT move would actually do, at a given price. */
+export interface MovePreview {
+  kind: WholeCoinMoveKind;
+  /** the price the move would be stamped at — one coin's price. */
+  price: number;
+  /** cash the move produces (sell) or deploys (buy). NOT the same as price. */
+  cashUsd: number;
+  /** coins you hold once the move settles, after that leg's friction. */
+  coins: number;
+}
+
+/**
+ * Preview the next legal move, so a button can say what the move DOES rather
+ * than quoting the price of one coin.
+ *
+ * This exists because those are different numbers and the difference is money.
+ * A buy-back deploys the WHOLE cash balance — `replayCoins` computes
+ * `(cashUsd / price) * (1 - f)`, not "one coin for `price`" — so a player
+ * holding $81,446 buying back at a spot price of $80,383 spends $81,446 and
+ * receives 1.003089 coins. Quoting the spot price next to "Buy the whole coin
+ * back" reads as the cost of the trade and is off by the whole edge. The sell
+ * leg has the same gap the moment a winning round pushes the coin count off
+ * 1.0: selling 1.003089 coins at $80,383 nets $79,825, not $80,383.
+ *
+ * Returns null when there is no legal move at this price.
+ */
+export function previewMove(
+  score: TruthResult,
+  price: number,
+  frictionPctPerLeg: number,
+): MovePreview | null {
+  const p = num(price);
+  const f = Math.max(0, num(frictionPctPerLeg)) / 100;
+  if (p <= 0) return null;
+
+  if (score.holding === 'btc') {
+    // Holding the coin, `coinsNow` IS the coin count (see replayCoins).
+    const coins = num(score.coinsNow);
+    if (coins <= 0) return null;
+    return { kind: 'sell', price: p, cashUsd: coins * p * (1 - f), coins };
+  }
+
+  if (!score.openSell) return null;
+  const cashUsd = num(score.openSell.cashUsd);
+  if (cashUsd <= 0) return null;
+  return { kind: 'buy', price: p, cashUsd, coins: (cashUsd / p) * (1 - f) };
+}
+
 /**
  * Bridge move-chain → the scorer: read a verified chain's sell/buy moves
  * (in order) into WholeCoinMoves. The genesis "start" move (any kind

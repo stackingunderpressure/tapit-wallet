@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Wallet, type Attestation } from 'tapit-attest';
 import { buildMoveDraftInput, moveLink, verifyMoveChain, type MovePayload } from './moveChain.ts';
 import {
+  previewMove,
   simulateWholeCoin,
   readWholeCoinMoves,
   type WholeCoinMove,
@@ -148,5 +149,93 @@ describe('readWholeCoinMoves — bridge from a signed chain', () => {
       { kind: 'buy', price: 50_000 },
     ]);
     expect(simulateWholeCoin(moves).coinsNow).toBeCloseTo(2, 10);
+  });
+});
+
+describe('previewMove — what the button is allowed to promise', () => {
+  // The operator's live state, 2026-09-18, reconstructed from the screenshot:
+  // holding cash after one sell, spot $80,383, 1%/leg friction, scoreboard
+  // reading 1.003089 coins and "buy back below $80,632".
+  const SPOT = 80_383;
+  const F = 1;
+  const SELL = 82_268.45; // the sell price that reproduces 1.003089 at SPOT
+  const inCash = simulateWholeCoin([sell(SELL)], {
+    frictionPctPerLeg: F,
+    currentPrice: SPOT,
+  });
+
+  it('reproduces the screenshot the bug was reported from', () => {
+    expect(inCash.coinsNow).toBeCloseTo(1.003089, 6);
+    expect(inCash.holding).toBe('cash');
+    expect(Math.round(inCash.minBuyBackToBeatHodl!)).toBe(80_631);
+  });
+
+  it('a buy-back deploys the WHOLE cash balance, not one coin at spot', () => {
+    // This is the defect. The button quoted spot ($80,383) next to "Buy the
+    // whole coin back", which reads as the cost of the trade. The trade
+    // actually spends $81,446 — the entire balance — and is off by $1,063.
+    const p = previewMove(inCash, SPOT, F)!;
+    expect(p.kind).toBe('buy');
+    expect(Math.round(p.cashUsd)).toBe(81_446);
+    expect(Math.round(p.cashUsd)).not.toBe(SPOT);
+  });
+
+  it('promises exactly the coin count the scoreboard is already showing', () => {
+    // The button and the headline must agree, or one of them is lying.
+    const p = previewMove(inCash, SPOT, F)!;
+    const actual = simulateWholeCoin([sell(SELL), buy(SPOT)], {
+      frictionPctPerLeg: F,
+      currentPrice: SPOT,
+    });
+    expect(p.coins).toBeCloseTo(actual.coinsNow, 9);
+    expect(p.coins).toBeCloseTo(inCash.coinsNow, 9);
+  });
+
+  it('crosses 1.0 exactly at the stated buy-back threshold', () => {
+    const at = previewMove(inCash, inCash.minBuyBackToBeatHodl!, F)!;
+    expect(at.coins).toBeCloseTo(1, 9);
+    expect(previewMove(inCash, inCash.minBuyBackToBeatHodl! - 500, F)!.coins).toBeGreaterThan(1);
+    expect(previewMove(inCash, inCash.minBuyBackToBeatHodl! + 500, F)!.coins).toBeLessThan(1);
+  });
+
+  it('the sell leg drifts the same way once the count leaves 1.0', () => {
+    // Why this was never caught: at exactly one coin the old label is roughly
+    // right. After a winning round it is not — selling 1.003089 coins at
+    // $80,383 nets $79,825, not $80,383.
+    const inCoin = simulateWholeCoin([sell(SELL), buy(SPOT)], {
+      frictionPctPerLeg: F,
+      currentPrice: SPOT,
+    });
+    const p = previewMove(inCoin, SPOT, F)!;
+    expect(p.kind).toBe('sell');
+    expect(p.coins).toBeCloseTo(1.003089, 6);
+    expect(Math.round(p.cashUsd)).toBe(79_825);
+    expect(Math.round(p.cashUsd)).not.toBe(SPOT);
+  });
+
+  it('a sell preview feeds straight into the next real sell', () => {
+    const inCoin = simulateWholeCoin([sell(SELL), buy(SPOT)], {
+      frictionPctPerLeg: F,
+      currentPrice: SPOT,
+    });
+    const p = previewMove(inCoin, SPOT, F)!;
+    const after = simulateWholeCoin([sell(SELL), buy(SPOT), sell(SPOT)], {
+      frictionPctPerLeg: F,
+      currentPrice: SPOT,
+    });
+    expect(p.cashUsd).toBeCloseTo(after.openSell!.cashUsd, 6);
+  });
+
+  it('returns null rather than a junk number when there is no usable price', () => {
+    expect(previewMove(inCash, 0, F)).toBeNull();
+    expect(previewMove(inCash, -1, F)).toBeNull();
+    expect(previewMove(inCash, Number.NaN, F)).toBeNull();
+  });
+
+  it('honours zero friction', () => {
+    const clean = simulateWholeCoin([sell(100_000)], { frictionPctPerLeg: 0, currentPrice: 90_000 });
+    const p = previewMove(clean, 90_000, 0)!;
+    expect(p.cashUsd).toBeCloseTo(100_000, 6);
+    expect(p.coins).toBeCloseTo(100_000 / 90_000, 9);
   });
 });
