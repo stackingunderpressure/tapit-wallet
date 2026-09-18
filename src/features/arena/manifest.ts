@@ -15,6 +15,8 @@ export const manifest: FeatureManifest = {
     'src/features/arena/arenaChain.ts',
     'src/features/arena/arenaChain.test.ts',
     'src/features/arena/ArenaScreen.tsx',
+    'src/features/arena/ArenaAction.tsx',
+    'src/features/arena/ArenaModal.tsx',
     'src/features/arena/arenaShare.ts',
     'src/features/arena/ArenaChart.tsx',
     'src/features/arena/useBtcCandles.ts',

@@ -58,8 +58,12 @@ export interface TruthResult {
   /** while in cash: the price you must buy back at to get back to the
    *  HODL ball; buying back below it puts you ahead. null when in btc. */
   minBuyBackToBeatHodl: number | null;
-  /** while in cash: the open sell's price and the cash it produced. */
-  openSell: { sellPrice: number; cashUsd: number } | null;
+  /** while in cash: the open sell's price, the coins sold, and the cash it
+   *  produced. coinsSold is what makes minBuyBackToBeatHodl legible — sell
+   *  MORE than one coin and the threshold sits ABOVE your own sell price,
+   *  because the lead you carried into the sell is already banked. Without
+   *  it the screen reads as broken arithmetic. */
+  openSell: { sellPrice: number; coinsSold: number; cashUsd: number } | null;
   currentPrice: number;
   /** false if a move came out of turn (a sell while already in cash, or
    *  a buy while already in btc). Such a move is skipped, not applied. */
@@ -92,7 +96,7 @@ function replayCoins(
   cashUsd: number;
   holding: 'btc' | 'cash';
   rounds: RoundResult[];
-  openSell: { sellPrice: number; cashUsd: number } | null;
+  openSell: { sellPrice: number; coinsSold: number; cashUsd: number } | null;
   wellFormed: boolean;
   coinsNow: number;
 } {
@@ -146,7 +150,10 @@ function replayCoins(
   // above 1.0 once the price drops under minBuyBackToBeatHodl.
   const coinsNow =
     holding === 'btc' ? coins : currentPrice > 0 ? (cashUsd * (1 - f)) / currentPrice : 0;
-  const openSell = holding === 'cash' && open ? { sellPrice: open.sellPrice, cashUsd } : null;
+  const openSell =
+    holding === 'cash' && open
+      ? { sellPrice: open.sellPrice, coinsSold: open.coinsBefore, cashUsd }
+      : null;
   return { coins, cashUsd, holding, rounds, openSell, wellFormed, coinsNow };
 }
 

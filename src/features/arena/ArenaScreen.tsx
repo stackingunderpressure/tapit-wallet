@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { envelopeId, type Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { arenaOracle } from '../../shared/lib/env.ts';
@@ -10,6 +10,8 @@ import { buildArenaShareText, fmtCoins, fmtUsd, hasFundingInfo } from './arenaSh
 import { fetchSignedRound, type SignedPriceRound } from './priceRound.ts';
 import { useBtcCandles, type CandleInterval } from './useBtcCandles.ts';
 import type { StoneMarker } from './ArenaChart.tsx';
+import { ArenaModal } from './ArenaModal.tsx';
+import { ArenaAction } from './ArenaAction.tsx';
 
 // Lazy so lightweight-charts (~45KB gz) loads as its own deferred chunk only
 // when the chart actually renders, keeping the arena screen chunk lean.
@@ -55,35 +57,6 @@ function fmtSatsSigned(coins: number): string {
   return (coins >= 0 ? '+' : '') + fmtSats(coins);
 }
 
-// A centered pop-up over the whole screen (not a bottom-of-page section)
-// for the game's confirmations — matches the app's other modals
-// (fixed backdrop + centered card). Tapping the backdrop dismisses via
-// onDismiss; pass undefined to disable dismiss while busy.
-function ArenaModal({
-  onDismiss,
-  children,
-}: {
-  onDismiss?: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-      onClick={onDismiss}
-      role="presentation"
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-accent/40 bg-white p-5 shadow-xl"
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export function ArenaTabBody() {
   const {
     wallet,
@@ -122,7 +95,6 @@ export function ArenaTabBody() {
   const [showWhy, setShowWhy] = useState(false);
   // A whole-coin sell/buy is a signed, permanent move — gate it behind an
   // explicit confirm so an accidental tap can't log an irreversible trade.
-  const [confirmingTrade, setConfirmingTrade] = useState(false);
   const [copiedProof, setCopiedProof] = useState(false);
 
   const chain = useMemo(
@@ -589,8 +561,28 @@ export function ArenaTabBody() {
           </div>
           {score.holding === 'cash' && score.minBuyBackToBeatHodl != null && (
             <div className="mt-3 rounded-lg bg-accent/[0.06] border border-accent/30 px-3 py-2 text-sm">
-              Buy back below <strong>{fmtUsd(score.minBuyBackToBeatHodl)}</strong> to beat
-              the HODL ball.
+              <div>
+                Buy back below <strong>{fmtUsd(score.minBuyBackToBeatHodl)}</strong> to beat
+                the HODL ball.
+              </div>
+              {/*
+                Say WHERE that number comes from. The threshold is set by the
+                cash on hand, not by the price you sold at, so once a winning
+                round has you holding more than one coin it lands ABOVE your
+                own sell price — you can buy back higher than you sold and
+                still be ahead, because the lead is already banked. True, and
+                it reads as broken arithmetic with nothing explaining it.
+              */}
+              {score.openSell && (
+                <div className="mt-1 text-xs text-muted">
+                  You sold {fmtCoins(score.openSell.coinsSold)} coins at{' '}
+                  {fmtUsd(score.openSell.sellPrice)} and hold{' '}
+                  {fmtUsd(score.openSell.cashUsd)}.{' '}
+                  {score.openSell.coinsSold > 1
+                    ? `That is above your sell price because you went in holding more than one coin — the lead from your earlier round is already banked, so buying back a little higher than you sold still leaves you ahead of HODL.`
+                    : `Fees on both legs are why it sits below your sell price — you have to buy back cheaper than you sold just to break even.`}
+                </div>
+              )}
             </div>
           )}
           {!score.wellFormed && (
@@ -602,69 +594,13 @@ export function ArenaTabBody() {
 
         {/* Action */}
         {hasRun ? (
-          <>
-            <button
-              type="button"
-              disabled={busy || !lastClose || confirmingTrade}
-              onClick={() => setConfirmingTrade(true)}
-              className="mt-4 w-full rounded-xl bg-accent text-white px-4 py-4 text-base font-semibold disabled:opacity-40"
-            >
-              <span className="block">
-                {side === 'sell' ? 'Sell the whole coin' : 'Buy the whole coin back'}
-              </span>
-              {/*
-                What the move DOES, not the price of one coin. A buy-back
-                deploys the WHOLE cash balance, so quoting spot here read as
-                the cost of the trade and was off by the entire edge; the sell
-                leg drifts the same way once a winning round pushes the count
-                off 1.0. previewMove is the single source of both numbers and
-                uses the same arithmetic the scorer replays with.
-              */}
-              {preview && (
-                <span className="mt-0.5 block text-xs font-normal opacity-85">
-                  {preview.kind === 'buy'
-                    ? `${fmtUsd(preview.cashUsd)} → ${fmtCoins(preview.coins)} coins`
-                    : `${fmtCoins(preview.coins)} coins → ${fmtUsd(preview.cashUsd)}`}
-                  {` at ${fmtUsd(preview.price)}/coin`}
-                </span>
-              )}
-            </button>
-            {/* Deliberate-action gate — an accidental tap must not log a move */}
-            {confirmingTrade && (
-              <ArenaModal onDismiss={busy ? undefined : () => setConfirmingTrade(false)}>
-                <div className="font-medium">
-                  {side === 'sell' ? 'Sell the whole coin?' : 'Buy the whole coin back?'}
-                </div>
-                <p className="mt-1 text-sm text-muted">
-                  This logs a signed, permanent move at the live price
-                  {lastClose ? ` (${fmtUsd(lastClose)})` : ''}. It becomes part of your
-                  tamper-evident trail and can't be undone — only the whole run can be
-                  cleared. Confirm to make it deliberate.
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={busy || !lastClose}
-                    onClick={() => {
-                      setConfirmingTrade(false);
-                      void act();
-                    }}
-                    className="rounded-md bg-accent text-white py-2 text-sm font-semibold disabled:opacity-40"
-                  >
-                    {side === 'sell' ? 'Yes, sell' : 'Yes, buy back'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setConfirmingTrade(false)}
-                    className="rounded-md border border-ink/15 bg-white py-2 text-sm font-medium disabled:opacity-40"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </ArenaModal>
-            )}
-          </>
+          <ArenaAction
+            side={side}
+            preview={preview}
+            busy={busy}
+            lastClose={lastClose}
+            onAct={act}
+          />
         ) : (
           <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
             <div className="font-medium">Start a run</div>

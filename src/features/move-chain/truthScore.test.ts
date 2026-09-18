@@ -58,7 +58,7 @@ describe('simulateWholeCoin — an open sell (holding cash)', () => {
   it('marks cash to the live buying power at the current price', () => {
     const r = simulateWholeCoin([sell(100_000)], { currentPrice: 90_000 });
     expect(r.holding).toBe('cash');
-    expect(r.openSell).toEqual({ sellPrice: 100_000, cashUsd: 100_000 });
+    expect(r.openSell).toEqual({ sellPrice: 100_000, coinsSold: 1, cashUsd: 100_000 });
     // No friction here: cash of 100k buys 100000/90000 = 1.111 coins at the
     // live 90k price — the price dipped, so buying power rose above 1.0.
     expect(r.coinsNow).toBeCloseTo(1.1111, 4);
@@ -153,27 +153,49 @@ describe('readWholeCoinMoves — bridge from a signed chain', () => {
 });
 
 describe('previewMove — what the button is allowed to promise', () => {
-  // The operator's live state, 2026-09-18, reconstructed from the screenshot:
-  // holding cash after one sell, spot $80,383, 1%/leg friction, scoreboard
-  // reading 1.003089 coins and "buy back below $80,632".
+  // The operator's live state, 2026-09-18, from a device screenshot AND his
+  // correction of my first reading of it. I had reconstructed a single sell at
+  // $82,268 from one coin; he said "I sold at 80383, not 82." He was right, and
+  // the screen proves it two ways: it reads "Rounds 1", so a sell->buy had
+  // already completed, and a lone sell at spot from 1.0 coin can only produce
+  // 0.980100 (both legs' fees), never the 1.003089 on screen.
+  //
+  // The real path: a winning first round left him holding 1.023456 coins, and
+  // he then sold ALL of that at $80,383 — the same price as spot, which is why
+  // the coin count has not moved since. Verified below rather than asserted.
   const SPOT = 80_383;
   const F = 1;
-  const SELL = 82_268.45; // the sell price that reproduces 1.003089 at SPOT
-  const inCash = simulateWholeCoin([sell(SELL)], {
-    frictionPctPerLeg: F,
-    currentPrice: SPOT,
+  const R1_BUY = 76_000;
+  // Solved, not guessed: with the open sell at spot, coinsNow = (1-f)^4 x
+  // (R1_SELL / R1_BUY), so this is the first-round sell price that lands on the
+  // 1.003089 printed on his screen. R1_BUY is free — only the ratio matters.
+  const R1_SELL = (1.003089 / (1 - F / 100) ** 4) * R1_BUY;
+  const moves = [sell(R1_SELL), buy(R1_BUY), sell(SPOT)];
+  const inCash = simulateWholeCoin(moves, { frictionPctPerLeg: F, currentPrice: SPOT });
+
+  it('reproduces the screenshot from the path the operator actually took', () => {
+    expect(inCash.rounds).toHaveLength(1); // screen: Rounds 1
+    expect(inCash.holding).toBe('cash'); // screen: Holding cash
+    expect(inCash.openSell!.sellPrice).toBe(SPOT); // he sold at 80,383
+    // Compared the way the app prints them (fmtCoins = toFixed(6)), so the
+    // assertion is against what he actually saw, not a float near it.
+    expect(inCash.openSell!.coinsSold.toFixed(6)).toBe('1.023456');
+    expect(inCash.coinsNow.toFixed(6)).toBe('1.003089'); // screen: 1.003089
+    expect(Math.round(inCash.edgeCoins * 1e8)).toBeCloseTo(308_896, -2); // screen: +308,896 sats
+    expect(Math.round(inCash.minBuyBackToBeatHodl!)).toBe(80_631); // screen: $80,632
   });
 
-  it('reproduces the screenshot the bug was reported from', () => {
-    expect(inCash.coinsNow).toBeCloseTo(1.003089, 6);
-    expect(inCash.holding).toBe('cash');
-    expect(Math.round(inCash.minBuyBackToBeatHodl!)).toBe(80_631);
+  it('a lone sell at spot could NOT have produced that screen', () => {
+    // Guards the correction itself: my first reconstruction was impossible.
+    const lone = simulateWholeCoin([sell(SPOT)], { frictionPctPerLeg: F, currentPrice: SPOT });
+    expect(lone.coinsNow).toBeCloseTo(0.9801, 6);
+    expect(lone.rounds).toHaveLength(0);
   });
 
   it('a buy-back deploys the WHOLE cash balance, not one coin at spot', () => {
-    // This is the defect. The button quoted spot ($80,383) next to "Buy the
-    // whole coin back", which reads as the cost of the trade. The trade
-    // actually spends $81,446 — the entire balance — and is off by $1,063.
+    // The defect. The button quoted spot ($80,383) next to "Buy the whole coin
+    // back", which reads as the cost of the trade. The trade actually spends
+    // $81,446 — the entire balance — off by $1,063.
     const p = previewMove(inCash, SPOT, F)!;
     expect(p.kind).toBe('buy');
     expect(Math.round(p.cashUsd)).toBe(81_446);
@@ -183,7 +205,7 @@ describe('previewMove — what the button is allowed to promise', () => {
   it('promises exactly the coin count the scoreboard is already showing', () => {
     // The button and the headline must agree, or one of them is lying.
     const p = previewMove(inCash, SPOT, F)!;
-    const actual = simulateWholeCoin([sell(SELL), buy(SPOT)], {
+    const actual = simulateWholeCoin([...moves, buy(SPOT)], {
       frictionPctPerLeg: F,
       currentPrice: SPOT,
     });
@@ -198,32 +220,48 @@ describe('previewMove — what the button is allowed to promise', () => {
     expect(previewMove(inCash, inCash.minBuyBackToBeatHodl! + 500, F)!.coins).toBeLessThan(1);
   });
 
+  it('the threshold sits ABOVE the sell price when more than a coin was sold', () => {
+    // The second thing that looked like broken math: he sold at $80,383 and the
+    // app said buy back below $80,631 — buy back HIGHER than you sold and still
+    // win. True, because the lead carried into the sell is already banked. The
+    // UI now states the coin count that makes it legible, so pin both facts.
+    expect(inCash.openSell!.coinsSold).toBeGreaterThan(1);
+    expect(inCash.minBuyBackToBeatHodl!).toBeGreaterThan(inCash.openSell!.sellPrice);
+
+    // And the opposite case still holds: from exactly one coin, fees force the
+    // threshold BELOW the sell price.
+    const fromOne = simulateWholeCoin([sell(SPOT)], { frictionPctPerLeg: F, currentPrice: SPOT });
+    expect(fromOne.openSell!.coinsSold).toBe(1);
+    expect(fromOne.minBuyBackToBeatHodl!).toBeLessThan(fromOne.openSell!.sellPrice);
+  });
+
   it('the sell leg drifts the same way once the count leaves 1.0', () => {
     // Why this was never caught: at exactly one coin the old label is roughly
     // right. After a winning round it is not — selling 1.003089 coins at
     // $80,383 nets $79,825, not $80,383.
-    const inCoin = simulateWholeCoin([sell(SELL), buy(SPOT)], {
+    const inCoin = simulateWholeCoin([...moves, buy(SPOT)], {
       frictionPctPerLeg: F,
       currentPrice: SPOT,
     });
     const p = previewMove(inCoin, SPOT, F)!;
     expect(p.kind).toBe('sell');
-    expect(p.coins).toBeCloseTo(1.003089, 6);
+    expect(p.coins.toFixed(6)).toBe('1.003089');
     expect(Math.round(p.cashUsd)).toBe(79_825);
     expect(Math.round(p.cashUsd)).not.toBe(SPOT);
   });
 
   it('a sell preview feeds straight into the next real sell', () => {
-    const inCoin = simulateWholeCoin([sell(SELL), buy(SPOT)], {
+    const inCoin = simulateWholeCoin([...moves, buy(SPOT)], {
       frictionPctPerLeg: F,
       currentPrice: SPOT,
     });
     const p = previewMove(inCoin, SPOT, F)!;
-    const after = simulateWholeCoin([sell(SELL), buy(SPOT), sell(SPOT)], {
+    const after = simulateWholeCoin([...moves, buy(SPOT), sell(SPOT)], {
       frictionPctPerLeg: F,
       currentPrice: SPOT,
     });
     expect(p.cashUsd).toBeCloseTo(after.openSell!.cashUsd, 6);
+    expect(p.coins).toBeCloseTo(after.openSell!.coinsSold, 9);
   });
 
   it('returns null rather than a junk number when there is no usable price', () => {
