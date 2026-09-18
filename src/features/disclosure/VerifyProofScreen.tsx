@@ -92,7 +92,7 @@ function tryVerifyChainBundle(text: string): Outcome | null {
   return {
     kind: 'chain',
     verdict: verifyMoveChain(bundle.chain, succession),
-    steps: describeChainSteps(bundle.chain, anchorsIncluded, succession),
+    steps: describeChainSteps(bundle.chain, { anchorsIncluded, succession }),
     anchorsIncluded,
     rotations: succession.length,
   };

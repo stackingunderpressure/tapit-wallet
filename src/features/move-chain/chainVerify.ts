@@ -152,11 +152,35 @@ export interface ChainStepView {
  * report sigValid — resolved via the exact same resolveActiveKeys
  * verifyMoveChain itself uses, never a looser or different check.
  */
+export interface DescribeChainOpts {
+  /** Mirror the bundle's own `anchorsIncluded`. Default true — proofs minted
+   *  before that field existed always carried anchors. */
+  anchorsIncluded?: boolean;
+  /** The owner's succession chain, so a move signed by a rotated-to key still
+   *  reports sigValid. Omit and a post-rotation move reads as unsigned. */
+  succession?: readonly SuccessionLink[];
+}
+
 export function describeChainSteps(
   chain: readonly Attestation[],
-  anchorsIncluded = true,
-  succession: readonly SuccessionLink[] = [],
+  opts: DescribeChainOpts = {},
 ): ChainStepView[] {
+  // NAMED, not positional, and deliberately so. The old signature was
+  // (chain, anchorsIncluded = true, succession = []) — a boolean sandwiched
+  // before an array. Swap the last two and every move reports sigValid=false
+  // while verifyMoveChain says the chain is fine: the exact "signature X on
+  // every move, links all passing" symptom this repo has already chased down
+  // twice (a case-sensitivity bug, then the missing succession-awareness).
+  // Silently reporting a good chain as forged is the worst failure this
+  // function has, so the shape now makes the mistake unspellable, and the
+  // guard below catches it in untyped callers where tsc cannot.
+  if (Array.isArray(opts) || typeof opts === 'boolean') {
+    throw new TypeError(
+      'describeChainSteps(chain, { anchorsIncluded, succession }) — the second ' +
+        'argument is now an options object, not a positional flag or succession array.',
+    );
+  }
+  const { anchorsIncluded = true, succession = [] } = opts;
   const steps: ChainStepView[] = [];
   const activeKeys = chain.length > 0 ? resolveActiveKeys(chain[0]!.subject, succession) : new Set<string>();
   for (let i = 0; i < chain.length; i++) {

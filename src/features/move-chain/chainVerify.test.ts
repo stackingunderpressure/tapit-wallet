@@ -164,16 +164,16 @@ describe('chainVerify', () => {
       const { anchor: _anchor, ...rest } = att;
       return rest as Attestation;
     });
-    expect(describeChainSteps(stripped, false).every((s) => s.anchor === 'not_included')).toBe(
+    expect(describeChainSteps(stripped, { anchorsIncluded: false }).every((s) => s.anchor === 'not_included')).toBe(
       true,
     );
     // anchorsIncluded=true and the anchor genuinely present: reads its real status.
-    expect(describeChainSteps(anchoredChain, true).every((s) => s.anchor === 'confirmed')).toBe(
+    expect(describeChainSteps(anchoredChain, { anchorsIncluded: true }).every((s) => s.anchor === 'confirmed')).toBe(
       true,
     );
     // anchorsIncluded=true but genuinely never anchored: honestly "none", not "not_included".
     const neverAnchored = mintChain(Wallet.generate());
-    expect(describeChainSteps(neverAnchored, true).every((s) => s.anchor === 'none')).toBe(true);
+    expect(describeChainSteps(neverAnchored, { anchorsIncluded: true }).every((s) => s.anchor === 'none')).toBe(true);
   });
 
   // Regression: the real live bug — a chain with a move signed after a
@@ -196,7 +196,26 @@ describe('chainVerify', () => {
     );
     const chain = [genesis, afterRotation];
     expect(describeChainSteps(chain)[1]!.sigValid).toBe(false);
-    expect(describeChainSteps(chain, true, w.successionChain)[1]!.sigValid).toBe(true);
+    expect(describeChainSteps(chain, { succession: w.successionChain })[1]!.sigValid).toBe(true);
+  });
+
+  // The options object is named rather than positional BECAUSE the old
+  // (chain, anchorsIncluded, succession) shape let a caller swap the last two
+  // and get "every signature invalid" on a chain that is perfectly fine — the
+  // same symptom this file has already been fixed for twice. tsc catches the
+  // swap in typed callers; this guard catches it in an untyped one, because
+  // silently reporting a good chain as forged is the worst thing this
+  // function can do.
+  it('refuses the OLD positional call shape instead of silently lying', () => {
+    const w = Wallet.generate();
+    const chain = mintChain(w);
+    // @ts-expect-error — deliberately the retired positional shape.
+    expect(() => describeChainSteps(chain, w.successionChain)).toThrow(TypeError);
+    // @ts-expect-error — and the retired boolean flag.
+    expect(() => describeChainSteps(chain, false)).toThrow(TypeError);
+    // The named shape is unaffected.
+    expect(() => describeChainSteps(chain, { anchorsIncluded: false })).not.toThrow();
+    expect(() => describeChainSteps(chain)).not.toThrow();
   });
 
   it('buildChainVerifyUrl round-trips a succession chain so a stranger verifier honors a rotation', () => {
