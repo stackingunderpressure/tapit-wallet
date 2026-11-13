@@ -361,7 +361,7 @@ export function SignApprovalScreen() {
             maxLength={2}
             value={screenCodeInput}
             onChange={(e) => setScreenCodeInput(e.target.value.replace(/\D/g, '').slice(0, 2))}
-            className="mt-2 w-24 rounded-md border border-ink/20 px-3 py-3 text-center font-mono text-2xl tracking-widest"
+            className="mt-2 w-24 rounded-md border border-ink/20 bg-white px-3 py-3 text-center font-mono text-2xl tracking-widest text-ink"
             aria-describedby="screen-code-help"
           />
           <p id="screen-code-help" className="mt-2 text-xs text-muted">
