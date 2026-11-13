@@ -447,7 +447,14 @@ const BUDGETS = [
   // rather than being deferred behind a dynamic import — the approval
   // screen already gates on user interaction, so there's no bundle-size
   // pressure to hide it further. Measured 9.45KB gz. Bumped 3.91 -> 9.75KB.
-  { pattern: /^SignApprovalScreen-.*\.js$/, gz: 9_984, label: 'SignApprovalScreen' },
+  // 2026-11-13 (operator, choosing "Raise budget, ship both"): already
+  // 11.50KB gz on main before this date -- the September arena work grew
+  // shared code that lands in this chunk -- so main's own build was failing
+  // this check. The DynastyTrust sign-in number (threat model G: type the
+  // number from the requesting screen) adds 0.42KB. Measured 11.92KB gz.
+  // Bumped 9.75 -> 12.5KB. Shrinking it (moving arena-only code out of the
+  // shared path) is separate work, not done here.
+  { pattern: /^SignApprovalScreen-.*\.js$/, gz: 12_800, label: 'SignApprovalScreen' },
   // 2026-06-03: verify page now re-verifies + displays a proof's Bitcoin
   // anchor (verifyProofAnchor + the "Bitcoin timestamp" block-explorer
   // panel + the gated-release-bundle verdict from item 11 D4), measured
