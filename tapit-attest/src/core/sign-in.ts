@@ -57,6 +57,15 @@ export interface SignInAttestation {
   /** x-only public key of the holder proving key control. */
   signer: string;
   issuedAt: string;
+  /**
+   * The two-digit sign-in number the holder typed from the screen they are
+   * signing in on (see `signInScreenCode`). Optional and inside the signed
+   * digest: an attestation without it hashes exactly as before this field
+   * existed, so older proofs still verify; a verifier that requires it
+   * (`requireScreenCode`) knows the holder's wallet asked for it, because
+   * nobody but the holder can add it to the signature.
+   */
+  screenCode?: string;
   /** The holder's Schnorr signature over the sign-in digest. */
   signature: string;
 }
@@ -69,7 +78,24 @@ function signInBase(attestation: SignInAttestation): SignInBase {
     challenge: attestation.challenge,
     signer: attestation.signer,
     issuedAt: attestation.issuedAt,
+    ...(attestation.screenCode !== undefined ? { screenCode: attestation.screenCode } : {}),
   };
+}
+
+/**
+ * The two-digit sign-in number for a challenge. The relying party shows it
+ * on the screen that asked for the sign-in; the wallet asks the holder to
+ * type what that screen shows and refuses to sign on a mismatch. A sign-in
+ * request the holder did not start -- pushed to them, or a QR they were sent
+ * -- cannot be approved by tapping through, because they have no screen
+ * showing the number. (It does not stop a fake site that shows a real
+ * request's QR and its number side by side; nothing on two screens does.)
+ * Derived from the nonce alone, so both sides compute it independently.
+ */
+export function signInScreenCode(challenge: Pick<SignInChallenge, 'nonce'>): string {
+  if (!isHex(challenge.nonce, 32)) throw new Error('nonce must be 32-byte hex');
+  const h = taggedHash('tapit/sign-in-screen-code', hexToBytes(challenge.nonce));
+  return String(((h[0] << 8) | h[1]) % 100).padStart(2, '0');
 }
 
 function signInDigest(base: SignInBase): Uint8Array {
@@ -92,6 +118,7 @@ export function signInDigestFor(base: {
   challenge: SignInChallenge;
   signer: string;
   issuedAt: string;
+  screenCode?: string;
 }): Uint8Array {
   return signInDigest(base);
 }
@@ -152,6 +179,8 @@ export function answerSignInChallenge(input: {
   challenge: SignInChallenge;
   signerPrivateKey: string;
   issuedAt?: string;
+  /** The two-digit number the holder typed from the requesting screen. */
+  screenCode?: string;
 }): SignInAttestation {
   if (!isChallengeShape(input.challenge)) {
     throw new Error('challenge is malformed');
@@ -165,6 +194,7 @@ export function answerSignInChallenge(input: {
     challenge: input.challenge,
     signer: bytesToHex(schnorr.getPublicKey(priv)),
     issuedAt: input.issuedAt ?? new Date().toISOString(),
+    ...(input.screenCode !== undefined ? { screenCode: input.screenCode } : {}),
   };
   return { ...base, signature: bytesToHex(schnorr.sign(signInDigest(base), priv)) };
 }
@@ -191,6 +221,12 @@ export function verifySignIn(input: {
   expectedChallenge: SignInChallenge;
   /** Current time in ms for the freshness check. Defaults to `Date.now()`. */
   now?: number;
+  /**
+   * Refuse a proof that does not carry the right two-digit sign-in number
+   * (`signInScreenCode`) inside its signature. Off by default, so existing
+   * verifiers behave exactly as before.
+   */
+  requireScreenCode?: boolean;
 }): SignInVerifyResult {
   const att = input.attestation;
   if (!isHex(att.signature, 64) || !isHex(att.signer, 32)) {
@@ -228,6 +264,14 @@ export function verifySignIn(input: {
     signatureOk = false;
   }
   if (!signatureOk) errors.push('sign-in signature is invalid');
+
+  // Screen code: present when the holder's wallet asked for the number; it
+  // must match the number for THIS challenge.
+  if (att.screenCode !== undefined && att.screenCode !== signInScreenCode(input.expectedChallenge)) {
+    errors.push('sign-in number does not match this sign-in');
+  } else if (input.requireScreenCode && att.screenCode === undefined) {
+    errors.push('sign-in number missing: update Tapit and try again');
+  }
 
   const valid = errors.length === 0;
   return { valid, signer: valid ? att.signer : null, errors };

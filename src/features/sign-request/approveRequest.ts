@@ -1,5 +1,5 @@
 import type { Attestation, SignInAttestation, Wallet } from 'tapit-attest';
-import { envelopeId, signInDigestFor, journalAttestation } from 'tapit-attest';
+import { envelopeId, signInDigestFor, signInScreenCode, journalAttestation } from 'tapit-attest';
 import { parsePsbt, toHex } from '@dynastytrust/bip341-psbt-signer';
 import type { SignRequest, SignGrant } from './types.ts';
 import { coSignEnvelope } from './coSignEnvelope.ts';
@@ -161,6 +161,14 @@ export async function approveSignRequest(
    * path).
    */
   transport: Transport | null = null,
+  /**
+   * Only consulted for intent 'sign-in': the two-digit number the person
+   * typed from the screen they are signing in on (DynastyTrust threat model
+   * item G). Re-checked here, not just in the UI, and signed into the proof,
+   * so a sign-in nobody started on a screen of their own cannot be approved
+   * by tapping through it.
+   */
+  typedScreenCode: string | null = null,
 ): Promise<ApproveResult> {
   // intent 'sign-in' — answer a login challenge. This produces NO envelope to
   // hold or anchor; it is a one-time login proof. The wallet's private key
@@ -172,11 +180,18 @@ export async function approveSignRequest(
   // grant carries the SignInAttestation in its own `signIn` field, not in
   // `envelope` (a SignInAttestation is not an Attestation envelope).
   if (request.intent === 'sign-in') {
+    const screenCode = signInScreenCode(request.challenge);
+    if ((typedScreenCode ?? '').trim() !== screenCode) {
+      throw new Error(
+        'That number does not match this sign-in. Type the two digits shown on the screen you are signing in on. If you did not just start a sign-in, decline.',
+      );
+    }
     const base = {
       v: 1 as const,
       challenge: request.challenge,
       signer: wallet.publicKey,
       issuedAt: new Date().toISOString(),
+      screenCode,
     };
     const signature = wallet.signDigest(signInDigestFor(base));
     const signIn: SignInAttestation = { ...base, signature };

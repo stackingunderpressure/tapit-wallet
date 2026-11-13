@@ -126,3 +126,55 @@ test('builders reject malformed input', () => {
     /signerPrivateKey/,
   );
 });
+
+// -- Sign-in number (2026-11-13, DynastyTrust threat model item G) -------
+import { signInScreenCode } from '../dist/index.js';
+
+test('the sign-in number is two digits, the same for the same challenge', () => {
+  const challenge = buildSignInChallenge({ audience });
+  const code = signInScreenCode(challenge);
+  assert.match(code, /^\d{2}$/);
+  assert.equal(signInScreenCode({ nonce: challenge.nonce }), code);
+  // Known answer: both sides of every relying party must compute exactly this.
+  // Worked out independently (Python hashlib, BIP340-style tagged hash).
+  assert.equal(signInScreenCode({ nonce: '00'.repeat(32) }), '36');
+});
+
+test('a proof carrying the right number verifies, also when it is required', () => {
+  const holder = generateKeypair();
+  const challenge = buildSignInChallenge({ audience });
+  const attestation = answerSignInChallenge({ challenge, signerPrivateKey: holder.privateKey, screenCode: signInScreenCode(challenge) });
+  assert.equal(verifySignIn({ attestation, expectedChallenge: challenge }).valid, true);
+  assert.equal(verifySignIn({ attestation, expectedChallenge: challenge, requireScreenCode: true }).valid, true);
+});
+
+test('a wrong number is refused', () => {
+  const holder = generateKeypair();
+  const challenge = buildSignInChallenge({ audience });
+  const right = signInScreenCode(challenge);
+  const wrong = String((Number(right) + 1) % 100).padStart(2, '0');
+  const attestation = answerSignInChallenge({ challenge, signerPrivateKey: holder.privateKey, screenCode: wrong });
+  const r = verifySignIn({ attestation, expectedChallenge: challenge });
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(';'), /number does not match/);
+});
+
+test('a proof without the number still verifies unless the number is required', () => {
+  const holder = generateKeypair();
+  const challenge = buildSignInChallenge({ audience });
+  const attestation = answerSignInChallenge({ challenge, signerPrivateKey: holder.privateKey });
+  assert.equal(verifySignIn({ attestation, expectedChallenge: challenge }).valid, true);
+  const r = verifySignIn({ attestation, expectedChallenge: challenge, requireScreenCode: true });
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(';'), /number missing/);
+});
+
+test('the number is inside the signature: adding or changing it afterwards breaks the proof', () => {
+  const holder = generateKeypair();
+  const challenge = buildSignInChallenge({ audience });
+  const bare = answerSignInChallenge({ challenge, signerPrivateKey: holder.privateKey });
+  const added = { ...bare, screenCode: signInScreenCode(challenge) };
+  const r = verifySignIn({ attestation: added, expectedChallenge: challenge, requireScreenCode: true });
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(';'), /signature is invalid/);
+});

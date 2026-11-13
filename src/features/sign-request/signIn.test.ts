@@ -85,3 +85,49 @@ describe('sign-in via wallet.signDigest (no raw key)', () => {
     expect(result.valid).toBe(false);
   });
 });
+
+// -- The sign-in number (2026-11-13, DynastyTrust threat model item G) ----
+// The approve path itself must refuse unless the person typed the number
+// shown on the screen they are signing in on, and must sign that number
+// into the proof so a relying party can require it.
+import { signInScreenCode } from 'tapit-attest';
+import { approveSignRequest } from './approveRequest.ts';
+import type { SignInSignRequest } from './types.ts';
+
+describe('approveSignRequest -- sign-in number', () => {
+  const request = (): SignInSignRequest => ({
+    v: 1,
+    intent: 'sign-in',
+    origin: 'DynastyTrust',
+    callback: 'https://dynastytrust.family/keys?tapit_mode=signin',
+    challenge: buildSignInChallenge({ audience: 'dynastytrust.family' }),
+  });
+  const approve = (wallet: Wallet, req: SignInSignRequest, typed: string | null) =>
+    approveSignRequest(wallet, 'owner-1', req, async () => {}, null, false, null, typed);
+
+  it('refuses with no number, or the wrong one, and sends nothing', async () => {
+    const wallet = Wallet.generate();
+    const req = request();
+    const right = signInScreenCode(req.challenge);
+    const wrong = String((Number(right) + 37) % 100).padStart(2, '0');
+    const before = window.location.href;
+    await expect(approve(wallet, req, null)).rejects.toThrow(/does not match this sign-in/);
+    await expect(approve(wallet, req, '')).rejects.toThrow(/does not match/);
+    await expect(approve(wallet, req, wrong)).rejects.toThrow(/does not match/);
+    expect(window.location.href).toBe(before);
+  });
+
+  it('with the right number, the proof carries it inside the signature and passes a verifier that requires it', async () => {
+    const wallet = Wallet.generate();
+    const req = request();
+    const code = signInScreenCode(req.challenge);
+    const result = await approve(wallet, req, ` ${code} `);
+    expect(result.delivered).toBe('redirect');
+    const grantRaw = new URL((result as { url: string }).url).searchParams.get('grant')!;
+    const grant = JSON.parse(atob(grantRaw)) as { signIn: SignInAttestation };
+    expect(grant.signIn.screenCode).toBe(code);
+    const verdict = verifySignIn({ attestation: grant.signIn, expectedChallenge: req.challenge, requireScreenCode: true });
+    expect(verdict.valid).toBe(true);
+    expect(verdict.signer).toBe(wallet.publicKey);
+  });
+});

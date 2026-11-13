@@ -91,6 +91,13 @@ export function SignApprovalScreen() {
   // approveSignRequest re-checks this is true whenever the spend requires
   // it, so this is a real gate, not decoration.
   const [calloutConfirmed, setCalloutConfirmed] = useState(false);
+  // Only meaningful for intent 'sign-in' (DynastyTrust threat model item G):
+  // the two digits shown on the screen the person is signing in on. The
+  // wallet never shows the number itself -- a sign-in nobody started on a
+  // screen of their own has no number to type. approveSignRequest re-checks
+  // it and signs it into the proof.
+  const [screenCodeInput, setScreenCodeInput] = useState('');
+  const screenCodeReady = /^\d{2}$/.test(screenCodeInput.trim());
 
   // Phone-callback phrase gate (2026-08-08 follow-up to the amount-tiered
   // callback ritual). null while still checking whether this vault even has
@@ -214,6 +221,7 @@ export function SignApprovalScreen() {
     if (state.kind !== 'ready') return;
     if (psbtCosignGate?.kind === 'no-trail') return;
     if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !confirmed) return;
+    if (state.request.intent === 'sign-in' && !screenCodeReady) return;
     setError(null);
     setState({ kind: 'busy' });
     try {
@@ -228,6 +236,7 @@ export function SignApprovalScreen() {
         worker,
         confirmed,
         transport,
+        state.request.intent === 'sign-in' ? screenCodeInput.trim() : null,
       );
       if (result.delivered === 'nostr') {
         // Nostr-delivered requests never leave this screen at all -- there
@@ -339,6 +348,29 @@ export function SignApprovalScreen() {
           )}
         </div>
       </section>
+
+      {state.request.intent === 'sign-in' && (
+        <div className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+          <label htmlFor="screen-code" className="block text-sm font-medium text-ink">
+            Type the 2-digit number shown on the screen you are signing in on
+          </label>
+          <input
+            id="screen-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={2}
+            value={screenCodeInput}
+            onChange={(e) => setScreenCodeInput(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            className="mt-2 w-24 rounded-md border border-ink/20 px-3 py-3 text-center font-mono text-2xl tracking-widest"
+            aria-describedby="screen-code-help"
+          />
+          <p id="screen-code-help" className="mt-2 text-xs text-muted">
+            If you did not just start a sign-in yourself, or someone sent you a link or a QR code,
+            or read or texted you this number, do not approve: decline. Only sign in on a screen
+            you opened yourself at the address you expect.
+          </p>
+        </div>
+      )}
 
       {psbtCosignGate?.kind === 'no-trail' && (
         <div className="mt-4 rounded-md border border-red-300 bg-red-50 p-4">
@@ -478,7 +510,8 @@ export function SignApprovalScreen() {
             onClick={approve}
             disabled={
               psbtCosignGate?.kind === 'no-trail' ||
-              (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed)
+              (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed) ||
+              (state.request.intent === 'sign-in' && !screenCodeReady)
             }
             className="w-full rounded-md bg-ink py-3 text-paper text-sm font-medium disabled:opacity-40"
           >
