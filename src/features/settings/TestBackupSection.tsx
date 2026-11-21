@@ -66,7 +66,10 @@ async function onTest(e: React.FormEvent) {
     {testResult && testResult.ok && (
       <p className="mt-3 text-sm text-green-700" role="status">
         This backup opens. It belongs to identity{' '}
-        <span className="font-mono text-xs break-all">{testResult.identity}</span>.
+        <span className="font-mono text-xs break-all">{testResult.identity}</span>.{' '}
+        {testResult.records === null
+          ? 'It holds the wallet only, from before complete backups. Download a new one to include messages, attachments and everything else.'
+          : `It also holds ${testResult.records} other saved record${testResult.records === 1 ? '' : 's'} (messages, attachments, notes and settings).`}
       </p>
     )}
     {testResult && !testResult.ok && (

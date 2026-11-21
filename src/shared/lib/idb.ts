@@ -40,4 +40,22 @@ export const idb = {
   delete(key: string): Promise<undefined> {
     return tx<undefined>('readwrite', (s) => s.delete(key) as IDBRequest<undefined>);
   },
+  /** Every key and value in the store, read in one transaction so the pairs
+   *  can never be misaligned. Used by the complete backup file. */
+  entries(): Promise<Array<[string, unknown]>> {
+    return openDb().then(
+      (db) =>
+        new Promise((resolve, reject) => {
+          const out: Array<[string, unknown]> = [];
+          const req = db.transaction(STORE, 'readonly').objectStore(STORE).openCursor();
+          req.onsuccess = () => {
+            const c = req.result;
+            if (!c) return resolve(out);
+            out.push([String(c.key), c.value]);
+            c.continue();
+          };
+          req.onerror = () => reject(req.error ?? new Error('IndexedDB read failed'));
+        }),
+    );
+  },
 };

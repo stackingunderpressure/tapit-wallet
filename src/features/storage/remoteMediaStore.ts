@@ -57,6 +57,23 @@ export const remoteMediaStore = {
     return JSON.parse(text) as Wrapped;
   },
 
+  /** Hashes of every attachment stored for this owner (the complete backup
+   *  pulls any that this device never downloaded). */
+  async listHashes(ownerId: string): Promise<string[]> {
+    const out: string[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await supabase()
+        .storage.from(BUCKET)
+        .list(ownerId, { limit: 1000, offset });
+      if (error) throw error;
+      for (const f of data ?? []) {
+        const m = /^([0-9a-f]{64})\.json$/.exec(f.name);
+        if (m?.[1]) out.push(m[1]);
+      }
+      if (!data || data.length < 1000) return out;
+    }
+  },
+
   /** Delete a remote object. The wallet's UI doesn't call this yet. */
   async delete(ownerId: string, hashHex: string): Promise<void> {
     const { error } = await supabase()

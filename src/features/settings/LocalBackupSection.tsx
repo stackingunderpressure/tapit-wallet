@@ -8,7 +8,6 @@ import type { Wallet } from 'tapit-attest';
 import { unwrapKData, type RecoverableEncryptedBlob } from 'tapit-attest';
 import type { Prefs } from '../storage/prefsStore.ts';
 import { walletStore } from '../storage/walletStore.ts';
-import { downloadEncryptedBackup } from './localExport.ts';
 import { requestPersistentStorage, type PersistenceState } from '../storage/persistence.ts';
 
 /**
@@ -34,6 +33,7 @@ export function LocalBackupSection({
   const [passphraseForExport, setPassphraseForExport] = useState('');
   const [exportBusy, setExportBusy] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportDone, setExportDone] = useState<string | null>(null);
 
   const [showKeyForm, setShowKeyForm] = useState(false);
   const [passphraseForKey, setPassphraseForKey] = useState('');
@@ -53,8 +53,15 @@ export function LocalBackupSection({
     e.preventDefault();
     setExportBusy(true);
     setExportError(null);
+    setExportDone(null);
     try {
-      await downloadEncryptedBackup(wallet, passphraseForExport);
+      const { downloadEncryptedBackup } = await import('./localExport.ts');
+      const { records, pull } = await downloadEncryptedBackup(wallet, ownerId, passphraseForExport);
+      setExportDone(
+        `Saved the wallet and ${records} other record${records === 1 ? '' : 's'} to your Downloads folder.` +
+          (pull.mediaFetched > 0 ? ` ${pull.mediaFetched} attachment(s) were fetched from the cloud first.` : '') +
+          (pull.problems.length > 0 ? ` Not included: ${pull.problems.join(' ')}` : ''),
+      );
       setPassphraseForExport('');
       setShowExportForm(false);
       // Record that an encrypted-file backup exists so the home-screen nudge
@@ -130,7 +137,9 @@ export function LocalBackupSection({
 
       <div className="mt-4 text-sm font-medium">Encrypted file</div>
       <p className="mt-1 text-xs text-muted">
-        You still need your passphrase to open this file on a new device — it
+        One file with the wallet and everything saved with it: messages,
+        attachments, notes, circle phrases and request history. You still need
+        your passphrase to open this file on a new device — it
         protects against a lost device, not a forgotten passphrase. For a
         forgotten passphrase, use the recovery key or your trusted helpers.
       </p>
@@ -181,6 +190,10 @@ export function LocalBackupSection({
             </p>
           )}
         </form>
+      )}
+
+      {exportDone && (
+        <p className="mt-2 text-sm text-green-700" role="status">{exportDone}</p>
       )}
 
       <div className="mt-5 border-t border-ink/10 pt-4">

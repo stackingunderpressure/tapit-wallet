@@ -1,19 +1,35 @@
-import type { Wallet } from 'tapit-attest';
+import { decrypt, unwrapKData, type Wallet, type EncryptedBlob, type RecoverableEncryptedBlob } from 'tapit-attest';
+import { localStore } from '../storage/localStore.ts';
+import { buildBackupFile } from './fullBackup.ts';
+import { pullCloudCopies, type PullReport } from './pullCloudCopies.ts';
 
-// Trigger a download of the encrypted wallet snapshot as a JSON
-// file. The blob is ciphertext — losing the file is not a key leak,
-// but a found file is also not useful to an attacker without the
-// passphrase. PBKDF2-SHA256 at 210k iterations protects the blob
-// at rest (tapit-attest/src/core/encryption.ts).
+// Download the complete backup file: the wallet plus every record this
+// device keeps for it, sealed with the passphrase (fullBackup.ts). Cloud-only
+// copies are pulled down first so the file is whole. Ciphertext only: a found
+// file is no use without the passphrase. PBKDF2-SHA256 at 210k iterations
+// (tapit-attest/src/core/encryption.ts).
 //
 // Filename embeds the date so multiple exports do not collide.
 export async function downloadEncryptedBackup(
   wallet: Wallet,
+  ownerId: string,
   passphrase: string,
-): Promise<void> {
-  const blob = await wallet.exportEncrypted(passphrase);
-  const json = JSON.stringify(blob, null, 2);
-  const file = new Blob([json], { type: 'application/json' });
+): Promise<{ records: number; pull: PullReport }> {
+  // Check the passphrase opens this device's saved wallet before anything
+  // else, so a typo never produces a file sealed under a passphrase nobody
+  // remembers. Throws "wrong passphrase" style errors from tapit-attest.
+  const saved = await localStore.get(ownerId);
+  if (saved) {
+    try {
+      if (saved.blob.v === 2) unwrapKData(saved.blob as RecoverableEncryptedBlob, passphrase);
+      else decrypt(saved.blob as EncryptedBlob, passphrase);
+    } catch {
+      throw new Error("That isn't this wallet's passphrase. Enter the one you unlock with.");
+    }
+  }
+  const pull = await pullCloudCopies(ownerId, passphrase);
+  const { text, records } = await buildBackupFile(wallet, ownerId, passphrase);
+  const file = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   const date = new Date().toISOString().slice(0, 10);
@@ -23,4 +39,5 @@ export async function downloadEncryptedBackup(
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  return { records, pull };
 }

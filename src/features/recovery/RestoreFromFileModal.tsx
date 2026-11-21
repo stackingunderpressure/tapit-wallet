@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Wallet, type EncryptedBlob } from 'tapit-attest';
+import type { Wallet } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
+import { openBackupFile, rehomeRecords, writeRestoredRecords, NotABackupError } from '../settings/fullBackup.ts';
 
 // Restore-from-encrypted-file flow (recovery-hardening arc, part 4,
 // 2026-06-03). Closes the dead-end the audit found: Settings → Local
@@ -61,13 +62,21 @@ export function RestoreFromFileModal({ ownerId, onRecovered, onClose }: Props) {
     }
     setPhase({ kind: 'working' });
     try {
-      let blob: EncryptedBlob;
+      let opened;
       try {
-        blob = JSON.parse(fileText) as EncryptedBlob;
-      } catch {
-        throw new Error("That file isn't a wallet backup — pick the tapit-wallet-backup file you downloaded.");
+        opened = await openBackupFile(fileText, passphrase);
+      } catch (err) {
+        if (err instanceof NotABackupError) {
+          throw new Error("That file isn't a wallet backup — pick the tapit-wallet-backup file you downloaded.");
+        }
+        throw err;
       }
-      const restored = await Wallet.restore(blob, passphrase);
+      const restored = opened.wallet;
+      // A complete backup also carries messages, attachments and the rest.
+      // Records already on this device are kept, never overwritten.
+      if (opened.records && opened.ownerId) {
+        await writeRestoredRecords(rehomeRecords(opened.records, opened.ownerId, ownerId));
+      }
       // Re-save in the v2 recoverable format so the restored wallet has a
       // recovery key + cloud path on this device going forward.
       const { blob: v2 } = await restored.exportRecoverable(passphrase);
