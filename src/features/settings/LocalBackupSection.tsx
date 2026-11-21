@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
+
+// Loaded on demand so the Settings chunk stays under its bundle budget.
+const TestBackupSection = lazy(() =>
+  import('./TestBackupSection.tsx').then((m) => ({ default: m.TestBackupSection })),
+);
 import type { Wallet } from 'tapit-attest';
 import { unwrapKData, type RecoverableEncryptedBlob } from 'tapit-attest';
 import type { Prefs } from '../storage/prefsStore.ts';
 import { walletStore } from '../storage/walletStore.ts';
 import { downloadEncryptedBackup } from './localExport.ts';
+import { requestPersistentStorage, type PersistenceState } from '../storage/persistence.ts';
 
 /**
  * LocalBackupSection — two offline fallbacks for the day you cannot get back
@@ -34,6 +40,14 @@ export function LocalBackupSection({
   const [keyBusy, setKeyBusy] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
+
+  // Whether the browser agreed to keep this site's storage. Asked once here.
+  const [persistence, setPersistence] = useState<PersistenceState | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void requestPersistentStorage().then((s) => alive && setPersistence(s));
+    return () => { alive = false; };
+  }, []);
 
   async function onExport(e: React.FormEvent) {
     e.preventDefault();
@@ -168,6 +182,18 @@ export function LocalBackupSection({
           )}
         </form>
       )}
+
+      <div className="mt-5 border-t border-ink/10 pt-4">
+        <Suspense fallback={null}>
+          <TestBackupSection />
+        </Suspense>
+
+        <div className="mt-5 text-xs text-muted" aria-live="polite">
+          {persistence === 'granted' && 'This browser has agreed to keep this wallet\'s data until you clear it.'}
+          {persistence === 'not-granted' && 'This browser has not promised to keep this wallet\'s data. Download a backup regularly in case it is cleared.'}
+          {persistence === 'unsupported' && 'This browser does not say whether it will keep this wallet\'s data. Download a backup regularly.'}
+        </div>
+      </div>
 
       <div className="mt-5 border-t border-ink/10 pt-4">
         <div className="text-sm font-medium">Recovery key</div>
