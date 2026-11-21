@@ -1,7 +1,7 @@
 # Sovereign sync: Tapit Wallet without a hosted database
 
-Status: PLAN. No code written. Needs operator decisions in section 10 before
-any build work starts.
+Status: PLAN, decisions recorded (section 10, operator answers 2026-11-20).
+No code written yet.
 
 ## 1. Goal
 
@@ -192,7 +192,24 @@ Recommendation: A now, then decide between B and C once P1 to P3 have run
 for a while. Forcing a migration before the sovereign build has been used by
 real people would cost trust we haven't earned yet.
 
-## 10. Decisions needed from the operator
+## 10. Decisions (operator answers, 2026-11-20)
+
+1. Replace the hosted build with the sovereign build (not a separate build).
+   Consequence: the hosted users must move, so section 9 option B is needed.
+2. Recovery is the backup file plus the passphrase only. No recovery service,
+   no email reset, no recovery phrase.
+3. Hosted users move on a set date (section 9, option B). The date and the
+   export step still need to be set.
+4. First targets: backup file and folder. Google Drive after review.
+5. A stale backup is nudged after 30 days.
+
+Consequences to act on before P3: the hosted service must stay readable long
+enough for every user to export their wallet and backup, the export step
+must work before Supabase is switched off, and the migration date must be
+decided with the users in mind. Section 9's earlier recommendation (keep
+hosted for now) no longer applies.
+
+Original questions, for reference:
 
 1. Confirm the sovereign build is separate from the hosted build (recommended)
    rather than replacing it.
