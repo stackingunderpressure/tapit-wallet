@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { requestPersistentStorage } from '../storage/persistence.ts';
+import { isApplePhone, isInstalledApp, isPhoneOrTablet } from '../../shared/lib/appMode.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { backupStatusLine } from '../wallet-core/backupBanner.ts';
 import { confirmFaceId } from '../face-unlock/confirm.ts';
@@ -21,6 +23,13 @@ export function BackupNowLine() {
   const [error, setError] = useState<string | null>(null);
   const status = backupStatusLine(prefs);
   const share = canShareBackup();
+  const inTab = isPhoneOrTablet() && !isInstalledApp();
+
+  // Ask the browser to keep this wallet's data every time home opens after
+  // unlock (it may say no; the answer is not shown here, Settings shows it).
+  useEffect(() => {
+    void requestPersistentStorage();
+  }, []);
 
   async function done() {
     await updatePrefs({ localBackupDownloaded: true, lastFileBackupAt: new Date().toISOString() });
@@ -96,6 +105,14 @@ export function BackupNowLine() {
         </p>
       )}
       {error && <p className="mt-1 text-xs" role="alert">{error}</p>}
+      {inTab && (
+        <p className="mt-2 border-t border-ink/10 pt-2 text-xs">
+          You&apos;re in a browser tab, where the phone can clear the wallet more easily.{' '}
+          {isApplePhone()
+            ? 'Add it to your Home Screen: tap Share, then Add to Home Screen. The app starts empty — save a backup here first, then bring it in.'
+            : 'Install it: open the browser menu and choose Install app or Add to Home screen. Save a backup here first.'}
+        </p>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import type { Wallet } from 'tapit-attest';
 import { ExplainChip } from '../education/ExplainChip.tsx';
 import { PassphraseCommitWarnings } from './PassphraseCommitWarnings.tsx';
 import { SignOutEscape } from './SignOutEscape.tsx';
+import { isInstalledApp } from '../../shared/lib/appMode.ts';
 
 // Lazy-loaded so the import-existing-nsec substrate (bech32 codec,
 // publicKeyFromPrivate, the disclose + enter + confirm UI) stays
@@ -116,6 +117,25 @@ export function PassphrasePrompt({ onSubmit, onImport, ownerId, onRecovered }: P
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <form onSubmit={submit} className="w-full max-w-sm">
+        {/* Installed app, first launch: on iPhone the app does not share
+            storage with the Safari tab, so an existing wallet has to be
+            brought in from its backup file once. */}
+        {canRestoreFromFile && isInstalledApp() && (
+          <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="text-sm font-semibold">Already have a wallet in your browser?</div>
+            <p className="mt-1 text-xs">
+              This app keeps its own copy, separate from the browser tab. In the browser, tap
+              Save now at the top to make a backup file, then come back and bring it in here.
+            </p>
+            <button
+              type="button"
+              onClick={() => setRestoreOpen(true)}
+              className="mt-3 w-full min-h-[44px] rounded-md bg-fresh-accent-primary text-sm font-semibold text-fresh-text-inverse"
+            >
+              Bring in my wallet from a backup file
+            </button>
+          </div>
+        )}
         <h1 className="text-xl font-semibold">Pick a passphrase only you would know</h1>
         <p className="mt-1 text-sm text-muted">
           Your wallet is encrypted under this passphrase. Pick something
