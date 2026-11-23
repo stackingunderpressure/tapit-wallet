@@ -1,3 +1,4 @@
+import { confirmFaceId } from '../face-unlock/confirm.ts';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { parsePsbt } from '@dynastytrust/bip341-psbt-signer';
@@ -225,6 +226,7 @@ export function SignApprovalScreen() {
     setError(null);
     setState({ kind: 'busy' });
     try {
+      await confirmFaceId(ownerId); // Face ID before every signature, when it is on
       await save(); // make sure prior changes are persisted
       const result = await approveSignRequest(
         wallet,

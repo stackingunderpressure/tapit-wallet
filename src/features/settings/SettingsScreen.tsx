@@ -1,4 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
+// Loaded on demand so the Settings chunk stays under its bundle budget.
+const FaceUnlockSection = lazy(() =>
+  import('../face-unlock/FaceUnlockSection.tsx').then((m) => ({ default: m.FaceUnlockSection })),
+);
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { isSovereign } from '../../shared/lib/sovereign.ts';
@@ -126,7 +132,10 @@ export function SettingsScreen() {
         />
       </CategoryGroup>
 
-      <CategoryGroup title="Security & access" subtitle="Auto-lock and sign out">
+      <CategoryGroup title="Security & access" subtitle={isSovereign() ? 'Face ID and auto-lock' : 'Face ID, auto-lock and sign out'}>
+        <Suspense fallback={null}>
+          <FaceUnlockSection />
+        </Suspense>
         <AutoLockSection prefs={prefs} updatePrefs={updatePrefs} />
         {!isSovereign() && <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
           <div className="font-medium">Session</div>

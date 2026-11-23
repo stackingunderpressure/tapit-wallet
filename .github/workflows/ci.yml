@@ -31,8 +31,10 @@ jobs:
         run: npm run lint
       - name: Test
         run: npm run test
+      # The live site ships the sovereign build (netlify.toml), so CI builds
+      # that one: budgets plus the no-Supabase check.
       - name: Build
-        run: npm run build
+        run: npm run build:sovereign
       - name: Test-baseline tripwire
         run: npm run test:baseline
       - name: Doctrine drift-check

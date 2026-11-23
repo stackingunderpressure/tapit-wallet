@@ -29,6 +29,7 @@ import { manifest as moveChain } from './features/move-chain/manifest.ts';
 import { manifest as arena } from './features/arena/manifest.ts';
 import { manifest as circlePhrase } from './features/circle-phrase/manifest.ts';
 import { manifest as inbox } from './features/inbox/manifest.ts';
+import { manifest as faceUnlock } from './features/face-unlock/manifest.ts';
 
 // Dormant scaffolding — paused until the Phase 7+ wallet-bot launch
 // session brings the bot online. Trimmed 2026-09-03 (wallet-wide gut
@@ -68,5 +69,6 @@ export const features: readonly FeatureManifest[] = [
   arena,
   circlePhrase,
   inbox,
+  faceUnlock,
   persona,
 ];

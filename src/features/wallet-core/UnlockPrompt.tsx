@@ -3,6 +3,10 @@ import type { Wallet } from 'tapit-attest';
 import type { AnyEncryptedBlob } from '../storage/localStore.ts';
 import { SignOutEscape } from './SignOutEscape.tsx';
 
+// Shown only when Face ID is on; its code loads on demand.
+const FaceUnlockButton = lazy(() =>
+  import('../face-unlock/FaceUnlockButton.tsx').then((m) => ({ default: m.FaceUnlockButton })),
+);
 const RecoveryInitiatorModal = lazy(() =>
   import('../recovery/RecoveryInitiatorModal.tsx').then((m) => ({
     default: m.RecoveryInitiatorModal,
@@ -60,6 +64,9 @@ export function UnlockPrompt({ onSubmit, ownerId, storedBlob, relays, onRecovere
         <p className="mt-1 text-sm text-muted">
           Enter the passphrase you set when you created this wallet.
         </p>
+        <Suspense fallback={null}>
+          <FaceUnlockButton ownerId={ownerId} onSubmit={onSubmit} />
+        </Suspense>
         <label className="mt-6 block">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Passphrase</span>

@@ -1,3 +1,4 @@
+import { confirmFaceId } from '../face-unlock/confirm.ts';
 import { useMemo, useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { useWallet } from '../wallet-core/useWallet.ts';
@@ -110,6 +111,7 @@ export function FamilyRatifyModal({
   async function sign() {
     setError(null);
     try {
+      await confirmFaceId(ownerId); // Face ID before every signature, when it is on
       // wallet.sign wraps tapit-attest's signEnvelope using the active
       // key. Signatures are deduped by signer pubkey so this is
       // idempotent if the operator ratifies twice for any reason. Hold

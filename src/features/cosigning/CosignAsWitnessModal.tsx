@@ -1,3 +1,4 @@
+import { confirmFaceId } from '../face-unlock/confirm.ts';
 import { useState } from 'react';
 import type { Attestation } from 'tapit-attest';
 import { canonicalEnvelope } from 'tapit-attest';
@@ -83,6 +84,7 @@ export function CosignAsWitnessModal({ onClose, incoming, incomingSender, onSucc
     if (step.kind !== 'preview') return;
     setError(null);
     try {
+      await confirmFaceId(ownerId); // Face ID before every signature, when it is on
       // wallet.sign(att) wraps tapit-attest's signEnvelope using the
       // wallet's active key. The private key never leaves the Wallet
       // object; the returned envelope is public.

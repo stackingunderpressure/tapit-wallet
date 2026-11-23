@@ -1,3 +1,4 @@
+import { confirmFaceId } from '../face-unlock/confirm.ts';
 import { useState } from 'react';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { useAnchorWorker } from '../anchoring/useAnchorWorker.ts';
@@ -79,6 +80,7 @@ export function IncomingVaultMembershipBannerView({ state }: { state: VaultMembe
     setError(null);
     setBusyId(item.eventId);
     try {
+      await confirmFaceId(ownerId); // Face ID before every signature, when it is on
       await acceptVaultMembership(
         wallet,
         ownerId,
