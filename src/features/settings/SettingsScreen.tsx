@@ -128,7 +128,7 @@ export function SettingsScreen() {
 
       <CategoryGroup title="Security & access" subtitle="Auto-lock and sign out">
         <AutoLockSection prefs={prefs} updatePrefs={updatePrefs} />
-        <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+        {!isSovereign() && <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
           <div className="font-medium">Session</div>
           <button
             type="button"
@@ -137,7 +137,7 @@ export function SettingsScreen() {
           >
             Sign out
           </button>
-        </section>
+        </section>}
       </CategoryGroup>
 
       <CategoryGroup title="Network" subtitle="Stay reachable, relays, and Nostr activity">

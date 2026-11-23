@@ -1,3 +1,4 @@
+import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { useState } from 'react';
 import { supabase } from '../../shared/lib/supabase.ts';
 
@@ -38,6 +39,9 @@ export function SignOutEscape({ label }: Props) {
     }
     // On success AuthGate redirects to /login; this component unmounts.
   }
+
+  // Sovereign build: there is no account to sign out of.
+  if (isSovereign()) return null;
 
   return (
     <div className="mt-6 text-center">

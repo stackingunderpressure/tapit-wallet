@@ -1,4 +1,5 @@
 import { decrypt, unwrapKData, type Wallet, type EncryptedBlob, type RecoverableEncryptedBlob } from 'tapit-attest';
+import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { localStore } from '../storage/localStore.ts';
 import { buildBackupFile } from './fullBackup.ts';
 import { pullCloudCopies, type PullReport } from './pullCloudCopies.ts';
@@ -27,7 +28,10 @@ export async function downloadEncryptedBackup(
       throw new Error("That isn't this wallet's passphrase. Enter the one you unlock with.");
     }
   }
-  const pull = await pullCloudCopies(ownerId, passphrase);
+  // The sovereign build has no cloud copy to pull from.
+  const pull: PullReport = isSovereign()
+    ? { mediaFetched: 0, mediaFailed: 0, problems: [] }
+    : await pullCloudCopies(ownerId, passphrase);
   const { text, records } = await buildBackupFile(wallet, ownerId, passphrase);
   const file = new Blob([text], { type: 'application/json' });
   const url = URL.createObjectURL(file);

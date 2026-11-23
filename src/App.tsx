@@ -4,6 +4,7 @@ import { AuthGate } from './features/auth/AuthGate.tsx';
 import { LoginPage } from './features/auth/LoginPage.tsx';
 import { AuthCallback } from './features/auth/AuthCallback.tsx';
 import { WalletGuide } from './features/auth/WalletGuide.tsx';
+import { isSovereign } from './shared/lib/sovereign.ts';
 import { UpdateBanner } from './features/wallet-core/UpdateBanner.tsx';
 
 // wallet-core + settings are the largest chunks — keep them lazy so
@@ -71,9 +72,10 @@ export function App() {
     <BrowserRouter>
       <UpdateBanner />
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        {/* Sovereign build: no sign-in, so the sign-in pages lead home. */}
+        <Route path="/login" element={isSovereign() ? <Navigate to="/" replace /> : <LoginPage />} />
         <Route path="/about" element={<WalletGuide initialTab="why" />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/callback" element={isSovereign() ? <Navigate to="/" replace /> : <AuthCallback />} />
         <Route
           path="/verify"
           element={

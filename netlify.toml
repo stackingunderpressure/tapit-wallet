@@ -8,7 +8,7 @@
   # `npm install` runs automatically before this when Netlify
   # sees package.json. The build script runs typecheck (tsc) then
   # `vite build`, so any type error fails the deploy.
-  command = "npm run build"
+  command = "npm run build:sovereign"
   publish = "dist"
 
 [build.environment]

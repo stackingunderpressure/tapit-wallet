@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 
 // Single build-version stamp, evaluated once when this config module
 // loads so the SAME value is baked into the JS bundle (via `define`
@@ -34,8 +35,22 @@ function versionManifestPlugin(): Plugin {
 //   - target esnext for smallest output; the browser support floor is
 //     PWA-installable browsers, all evergreen.
 //   - sourcemaps in dev only.
-export default defineConfig({
+// Sovereign build (`--mode sovereign`): the Supabase client module is swapped
+// for a stub that refuses every call, so the SDK never enters the bundle.
+// scripts/check-no-supabase.mjs fails the build if any of it slips back in.
+export default defineConfig(({ mode }) => ({
   plugins: [react(), versionManifestPlugin()],
+  resolve: {
+    alias:
+      mode === 'sovereign'
+        ? [
+            {
+              find: /^.*\/shared\/lib\/supabase\.ts$/,
+              replacement: fileURLToPath(new URL('./src/shared/lib/supabase.sovereign.ts', import.meta.url)),
+            },
+          ]
+        : [],
+  },
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
@@ -46,7 +61,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
+          ...(mode === 'sovereign' ? {} : { supabase: ['@supabase/supabase-js'] }),
           attest: ['tapit-attest'],
           // qrcode is a heavy single-purpose library; pin it to its
           // own deterministic chunk so the filename stays stable for
@@ -62,4 +77,4 @@ export default defineConfig({
     globals: true,
     include: ['src/**/*.test.{ts,tsx}'],
   },
-});
+}));

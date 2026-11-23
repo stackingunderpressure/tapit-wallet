@@ -1,7 +1,13 @@
 # Sovereign sync: Tapit Wallet without a hosted database
 
-Status: PLAN, decisions recorded (section 10, operator answers 2026-11-20).
-No code written yet.
+Status: LIVE. Decisions in section 10 (operator answers 2026-11-20).
+Shipped: complete backup file and Test my backup (P1, 2026-11-21); the live
+site builds the sovereign flavor with no sign-in and no Supabase client in
+the bundle, checked by `scripts/check-no-supabase.mjs` (P3, 2026-11-23).
+`ownerId` comes from this device (`src/features/auth/deviceOwner.ts`): a
+device that already holds a hosted wallet keeps that wallet's id, so no record
+moves. Still open: the "Where your data lives" screen, the folder target (P2),
+and switching off the Supabase project, which waits for the operator's OK.
 
 ## 1. Goal
 

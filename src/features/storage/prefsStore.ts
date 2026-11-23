@@ -1,3 +1,4 @@
+import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { idb } from '../../shared/lib/idb.ts';
 import { DEFAULT_RELAYS } from '../transport/defaultRelays.ts';
 
@@ -171,6 +172,9 @@ export const prefsStore = {
     if (merged.nostrRelays.length === 0) {
       merged.nostrRelays = [...DEFAULT_RELAYS];
     }
+    // The sovereign build has no cloud copy to sync to; every cloud path
+    // keys off this flag, so it is off there whatever was saved before.
+    if (isSovereign()) merged.cloudSync = false;
     return merged;
   },
   async save(ownerId: string, prefs: Prefs): Promise<void> {
