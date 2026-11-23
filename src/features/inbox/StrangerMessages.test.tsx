@@ -21,7 +21,9 @@ describe('Inbox messages from strangers', () => {
   it('labels them as unknown senders and warns they are usually spam', () => {
     const { el } = mount();
     expect(el.textContent).toContain("From people you haven't connected with (2)");
-    expect(el.textContent).toContain('usually spam');
+    expect(el.textContent).toContain('could be a scammer');
+    expect(el.textContent).toContain('Not a contact');
+    expect(el.querySelector('[role=alert]')).not.toBeNull();
     expect(el.textContent).toContain('Unknown sender b1c7d279…ba20');
   });
 

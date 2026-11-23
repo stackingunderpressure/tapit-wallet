@@ -9,7 +9,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { findOwnOrgDeclaration } from '../connections/createOrganization.ts';
-import { CategoryGroup, SettingsItem } from './CategoryGroup.tsx';
+import { CategoryAccordion, CategoryGroup, SettingsItem } from './CategoryGroup.tsx';
 import { CloudBackupSection } from './CloudBackupSection.tsx';
 import { RecoveryCohortSection } from './RecoveryCohortSection.tsx';
 import { LocalBackupSection } from './LocalBackupSection.tsx';
@@ -74,6 +74,7 @@ export function SettingsScreen() {
 
       {/* Load-bearing first. Each category opens to short items; each item
           opens to its controls, so the page stays a short list. */}
+      <CategoryAccordion>
       <CategoryGroup title="Backup & recovery" subtitle="Your ways back in if you lose this device or forget the passphrase">
         {!isSovereign() && <CloudBackupSection prefs={prefs} updatePrefs={updatePrefs} save={save} />}
         <SettingsItem title="Backup file" description="Download one file with everything, and test that it opens">
@@ -167,6 +168,7 @@ export function SettingsScreen() {
           <KnownLimitationsSection />
         </SettingsItem>
       </CategoryGroup>
+      </CategoryAccordion>
     </div>
   );
 }

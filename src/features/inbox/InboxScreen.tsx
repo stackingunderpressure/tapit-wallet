@@ -246,7 +246,7 @@ export function InboxTabBody() {
               {knownRows.length > 0 && (
                 <ul className="mt-2 space-y-2">
                   {knownRows.map((row) => (
-                    <li key={row.peerPubkey} className="rounded-2xl border border-ink/10 bg-white">
+                    <li key={row.peerPubkey} className="rounded-2xl border-2 border-fresh-accent-warning bg-white">
                       <Link to="/?tab=people" className="block p-3 min-h-[44px]">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium text-sm text-ink truncate">{row.name}</span>
@@ -372,7 +372,19 @@ export function StrangerMessages({
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="mt-4">
-      <div className="flex items-center justify-between gap-2">
+      <div role="alert" className="rounded-2xl border-2 border-fresh-accent-warning bg-amber-50 p-3">
+        <div className="text-sm font-semibold text-fresh-accent-warning">
+          ⚠ Not in your contacts — could be a scammer
+        </div>
+        <p className="mt-1 text-xs text-ink">
+          These {rows.length === 1 ? 'message is' : `${rows.length} messages are`} from people you
+          haven&apos;t connected with, so you can&apos;t trust who sent them yet. Anyone on Nostr who
+          has your public key can message you, and messages like these are usually scams. Don&apos;t
+          tap links in them, don&apos;t send money or codes, and don&apos;t share your recovery key or
+          passphrase. Deleting one also blocks that sender on this device.
+        </p>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-2">
         <div className="text-sm font-medium">From people you haven&apos;t connected with ({rows.length})</div>
         <button
           type="button"
@@ -382,12 +394,6 @@ export function StrangerMessages({
           Delete and block all
         </button>
       </div>
-      <p className="mt-1 text-xs text-muted">
-        Anyone on Nostr who has your public key can message you. These aren&apos;t from
-        anyone you&apos;ve connected with, and messages like these are usually spam. Don&apos;t
-        open links in them or send money. Deleting one also blocks that sender on
-        this device.
-      </p>
       <ul className="mt-2 space-y-2">
         {rows.map((row) => (
           <li key={row.peerPubkey} className="rounded-2xl border border-ink/10 bg-white">
@@ -398,7 +404,12 @@ export function StrangerMessages({
               className="w-full min-h-[44px] p-3 text-left"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-ink truncate">Unknown sender {row.name}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0 rounded-full border border-fresh-accent-warning px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fresh-accent-warning">
+                    Not a contact
+                  </span>
+                  <span className="text-sm text-ink truncate">Unknown sender {row.name}</span>
+                </span>
                 <span className="shrink-0 text-[11px] text-muted">{timeAgo(row.lastTs)}</span>
               </div>
               <p className={`mt-0.5 text-xs text-muted ${open === row.peerPubkey ? 'whitespace-pre-wrap break-words' : 'truncate'}`}>
