@@ -73,10 +73,10 @@
     Content-Type = "application/manifest+json"
 
 # Baseline security headers across the whole site. Intentionally
-# light: no Content-Security-Policy because it's a footgun for a
-# wallet that talks to Supabase auth + REST + realtime over both
-# https and wss plus the OpenTimestamps calendar; the operator
-# can add a tuned CSP later from this same headers block.
+# light: no Content-Security-Policy yet. The wallet talks to Nostr
+# relays (wss), the OpenTimestamps calendars and mempool.space; a tuned
+# CSP can be added later from this same headers block. (No Supabase
+# since 2026-11-23.)
 [[headers]]
   for = "/*"
   [headers.values]

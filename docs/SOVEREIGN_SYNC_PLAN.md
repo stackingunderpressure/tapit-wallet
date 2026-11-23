@@ -6,8 +6,11 @@ site builds the sovereign flavor with no sign-in and no Supabase client in
 the bundle, checked by `scripts/check-no-supabase.mjs` (P3, 2026-11-23).
 `ownerId` comes from this device (`src/features/auth/deviceOwner.ts`): a
 device that already holds a hosted wallet keeps that wallet's id, so no record
-moves. Still open: the "Where your data lives" screen, the folder target (P2),
-and switching off the Supabase project, which waits for the operator's OK.
+moves. Supabase disconnected 2026-11-23 at the operator's OK, after a complete
+backup was downloaded and checked (opens with passphrase and recovery key):
+the deploy workflows and scripts are removed from the repo; pausing the
+project itself is done in the Supabase dashboard. Still open: the "Where your
+data lives" screen and the folder target (P2).
 
 ## 1. Goal
 
