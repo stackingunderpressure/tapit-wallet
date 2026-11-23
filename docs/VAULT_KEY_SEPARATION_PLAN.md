@@ -1,6 +1,6 @@
 # Separate vault keys from the Nostr identity — plan
 
-Status: PLAN only (operator: "write the plan", 2026-11-23). No code. Money-
+Status: PLAN, decisions recorded (section 6). No code. Money-
 touching: nothing here is built without an explicit go on this document.
 Read from tapit-wallet at 5d2fac2 and DynastyTrust apps/web on 2026-11-23.
 
@@ -76,12 +76,11 @@ DynastyTrust:
 - **Copies of tapit-attest drifting.** The integrity gate fails CI until every
   copy matches.
 
-## 6. Decisions for the operator
+## 6. Decisions (operator, 2026-11-23)
 
-1. One new key per vault (recommended) or one shared vault key separate from
-   the identity (simpler; vaults stay linkable to each other, not to Nostr).
-2. Existing vaults: leave on their current key (recommended), or move funds to
-   a recompiled vault later, by hand, per vault.
+1. One new key per vault: no two vaults share a key.
+2. Existing vaults stay on the key they were built with; only new vaults get
+   separate keys. Moving funds is by hand, later, if ever.
 
 ## 7. Order
 
