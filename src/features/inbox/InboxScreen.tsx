@@ -125,6 +125,7 @@ export function InboxTabBody() {
     inboxEnvelopes,
     dismissInboxEnvelope,
     chatThreadsByPeer,
+    blockChatSender,
   } = useWallet();
   const [category, setCategory] = useState<CategoryId>('all');
 
@@ -173,13 +174,16 @@ export function InboxTabBody() {
   );
 
   const chatRows = useMemo(() => {
-    const rows: { peerPubkey: string; name: string; lastText: string; lastTs: number; lastOut: boolean; count: number }[] = [];
+    const rows: { peerPubkey: string; name: string; known: boolean; lastText: string; lastTs: number; lastOut: boolean; count: number }[] = [];
     for (const [peerPubkey, messages] of chatThreadsByPeer) {
       const last = messages[messages.length - 1];
       if (!last) continue;
       rows.push({
         peerPubkey,
         name: peerNames.get(peerPubkey.toLowerCase()) ?? shortKey(peerPubkey),
+        // Known = someone you connected with. Anyone else on Nostr who has
+        // this wallet's public key can also message it; those are strangers.
+        known: peerNames.has(peerPubkey.toLowerCase()),
         lastText: last.text,
         lastTs: last.ts,
         lastOut: last.direction === 'out',
@@ -197,6 +201,8 @@ export function InboxTabBody() {
   const hasVaultActivity =
     membershipRequests.length > 0 || membershipRequestsState.history.length > 0;
 
+  const knownRows = chatRows.filter((r) => r.known);
+  const strangerRows = chatRows.filter((r) => !r.known);
   const showMessages = category === 'all' || category === 'messages';
   const showRequests = category === 'all' || category === 'requests';
   const showInvites = hasVaultActivity && (category === 'all' || category === 'invites');
@@ -236,25 +242,29 @@ export function InboxTabBody() {
           {chatRows.length === 0 ? (
             <p className="mt-2 text-sm text-muted">No conversations yet.</p>
           ) : (
-            <ul className="mt-2 space-y-2">
-              {chatRows.map((row) => (
-                <li key={row.peerPubkey}>
-                  <Link
-                    to="/?tab=people"
-                    className="block rounded-2xl border border-ink/10 bg-white p-3 hover:bg-ink/[0.03]"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-sm truncate">{row.name}</span>
-                      <span className="shrink-0 text-[11px] text-muted">{timeAgo(row.lastTs)}</span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted truncate">
-                      {row.lastOut ? 'You: ' : ''}
-                      {row.lastText}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <>
+              {knownRows.length > 0 && (
+                <ul className="mt-2 space-y-2">
+                  {knownRows.map((row) => (
+                    <li key={row.peerPubkey} className="rounded-2xl border border-ink/10 bg-white">
+                      <Link to="/?tab=people" className="block p-3 min-h-[44px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-sm text-ink truncate">{row.name}</span>
+                          <span className="shrink-0 text-[11px] text-muted">{timeAgo(row.lastTs)}</span>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted truncate">
+                          {row.lastOut ? 'You: ' : ''}
+                          {row.lastText}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {strangerRows.length > 0 && (
+                <StrangerMessages rows={strangerRows} onDelete={blockChatSender} />
+              )}
+            </>
           )}
         </section>
       )}
@@ -344,6 +354,74 @@ export function InboxScreen() {
         </Link>
       </header>
       <InboxTabBody />
+    </div>
+  );
+}
+
+// Messages from people this wallet has never connected with. Anyone on Nostr
+// who has the wallet's public key can send one, and unsolicited ones are
+// usually spam ("I saw your profile..." with a link). Shown collapsed, read as
+// plain text with no clickable links, and deletable.
+export function StrangerMessages({
+  rows,
+  onDelete,
+}: {
+  rows: { peerPubkey: string; name: string; lastText: string; lastTs: number; count: number }[];
+  onDelete: (peerPubkey: string) => void;
+}) {
+  const [open, setOpen] = useState<string | null>(null);
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium">From people you haven&apos;t connected with ({rows.length})</div>
+        <button
+          type="button"
+          onClick={() => rows.forEach((r) => onDelete(r.peerPubkey))}
+          className="shrink-0 min-h-[44px] px-2 text-xs text-red-500 hover:underline"
+        >
+          Delete and block all
+        </button>
+      </div>
+      <p className="mt-1 text-xs text-muted">
+        Anyone on Nostr who has your public key can message you. These aren&apos;t from
+        anyone you&apos;ve connected with, and messages like these are usually spam. Don&apos;t
+        open links in them or send money. Deleting one also blocks that sender on
+        this device.
+      </p>
+      <ul className="mt-2 space-y-2">
+        {rows.map((row) => (
+          <li key={row.peerPubkey} className="rounded-2xl border border-ink/10 bg-white">
+            <button
+              type="button"
+              onClick={() => setOpen(open === row.peerPubkey ? null : row.peerPubkey)}
+              aria-expanded={open === row.peerPubkey}
+              className="w-full min-h-[44px] p-3 text-left"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-ink truncate">Unknown sender {row.name}</span>
+                <span className="shrink-0 text-[11px] text-muted">{timeAgo(row.lastTs)}</span>
+              </div>
+              <p className={`mt-0.5 text-xs text-muted ${open === row.peerPubkey ? 'whitespace-pre-wrap break-words' : 'truncate'}`}>
+                {row.lastText}
+              </p>
+            </button>
+            {open === row.peerPubkey && (
+              <div className="flex items-center justify-between gap-2 px-3 pb-3">
+                <span className="text-[11px] text-muted">
+                  {row.count} message{row.count === 1 ? '' : 's'} · shown as text, links don&apos;t open
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onDelete(row.peerPubkey)}
+                  className="min-h-[44px] rounded-md border border-ink/15 px-3 text-xs font-medium text-red-500"
+                >
+                  Delete and block
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

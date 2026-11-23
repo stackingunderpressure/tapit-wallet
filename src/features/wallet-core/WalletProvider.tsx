@@ -622,7 +622,7 @@ export function WalletProvider({ children }: Props) {
     [phase, save, refresh],
   );
 
-  const { chatThreadsByPeer, sendChatMessage, purgePeerThread } = useChatTransport({
+  const { chatThreadsByPeer, sendChatMessage, purgePeerThread, blockSender } = useChatTransport({
     transport,
     wallet: activeWallet,
     ownerId: ownerId ?? null,
@@ -708,7 +708,7 @@ export function WalletProvider({ children }: Props) {
       refresh,
       adoptKey,
       unholdEnvelope,
-      removePeerConnection,
+      removePeerConnection, blockChatSender: blockSender,
       resolvedTheme,
       chatThreadsByPeer,
       sendChatMessage,
@@ -724,7 +724,7 @@ export function WalletProvider({ children }: Props) {
     refresh,
     adoptKey,
     unholdEnvelope,
-    removePeerConnection,
+    removePeerConnection, blockSender,
     anchorWorker,
     passphrase,
     inboxEnvelopes,

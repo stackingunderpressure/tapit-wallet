@@ -122,6 +122,9 @@ export interface WalletContextValue {
     handshakeEnvelopeId: string,
     peerPubkey: string,
   ) => Promise<void>;
+  /** Delete a stranger's conversation and ignore their future messages
+   *  (Inbox spam). Kept on this device; nothing is sent. */
+  blockChatSender: (peerPubkey: string) => void;
   /**
    * The currently-painted theme — 'classic' or 'fresh' — after
    * resolving the operator's prefs.theme choice (which can be

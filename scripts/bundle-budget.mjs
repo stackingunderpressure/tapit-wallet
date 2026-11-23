@@ -244,7 +244,11 @@ const BUDGETS = [
   // Removing family-tree/friends-trees dropped their lazy chunks, and Rollup
   // re-grouped a shared module into the WalletProvider chunk (~0.34KB gz).
   // Net bundle shrank; this is chunk-boundary drift, not WalletProvider growth.
-  { pattern: /^WalletProvider-.*\.js$/, gz: 14_336, label: 'WalletProvider' },
+  // 2026-11-23 bump (14 -> 14.25KB): blocked-senders filter in the chat
+  // subscription (stranger spam would otherwise come back on every relay
+  // replay). It must run inside the long-lived handler, which lives in this
+  // chunk; lazy-loading the 20-line store measured larger, not smaller.
+  { pattern: /^WalletProvider-.*\.js$/, gz: 14_592, label: 'WalletProvider' },
   // HomeScreen is the post-auth main surface — four tabs plus a
   // growing set of modal launchers. Each phase adds a section here:
   // org-mode (5b-org-i..iv), Tier V presence list (5d). MarkPresence

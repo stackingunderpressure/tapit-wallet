@@ -10,6 +10,7 @@ import {
   resolveCurrent,
 } from '../transport/peerSuccession.ts';
 import { useChatPersistence } from './useChatPersistence.ts';
+import { addBlockedSender, loadBlockedSenders } from './blockedSenders.ts';
 
 export interface SendChatMessageResult {
   warning?: string;
@@ -40,6 +41,9 @@ export interface UseChatTransportResult {
   // Used by removePeerConnection — the handshake unhold and the chat
   // purge belong to the same operator gesture.
   purgePeerThread(peerPubkey: string): void;
+  /** Delete a sender's thread AND ignore their future messages (stranger
+   *  spam). Kept on this device; the sender is not told. */
+  blockSender(peerPubkey: string): void;
 }
 
 // Owns the per-peer chat-thread substrate so WalletProvider does
@@ -72,6 +76,19 @@ export function useChatTransport({
   const alias = useMemo(() => buildPeerKeyAlias(holdings), [holdings]);
   const aliasRef = useRef(alias);
   aliasRef.current = alias;
+  // Blocked senders, read by the long-lived subscription handler below.
+  const blockedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!ownerId) return;
+    void loadBlockedSenders(ownerId).then((set) => {
+      blockedRef.current = set;
+      // Drop any thread restored from storage before the list loaded.
+      setChatThreadsByPeer((prev) => {
+        const next = new Map([...prev].filter(([k]) => !set.has(k.toLowerCase())));
+        return next.size === prev.size ? prev : next;
+      });
+    });
+  }, [ownerId]);
 
   useEffect(() => {
     if (!transport || !wallet) return;
@@ -91,6 +108,7 @@ export function useChatTransport({
               item.senderPubkey,
               aliasRef.current,
             );
+            if (blockedRef.current.has(threadKey.toLowerCase()) || blockedRef.current.has(item.senderPubkey.toLowerCase())) return;
             const incoming: ThreadMessage = {
               direction: 'in',
               text: item.payload.text,
@@ -250,5 +268,14 @@ export function useChatTransport({
 
   useChatPersistence(ownerId, passphrase, chatThreadsByPeer, setChatThreadsByPeer);
 
-  return { chatThreadsByPeer, sendChatMessage, purgePeerThread };
+  const blockSender = useCallback(
+    (peerPubkey: string) => {
+      blockedRef.current = new Set([...blockedRef.current, peerPubkey.toLowerCase()]);
+      if (ownerId) void addBlockedSender(ownerId, peerPubkey);
+      purgePeerThread(peerPubkey);
+    },
+    [ownerId, purgePeerThread],
+  );
+
+  return { chatThreadsByPeer, sendChatMessage, purgePeerThread, blockSender };
 }
