@@ -121,13 +121,13 @@ vault. Not started without an explicit go.
 - Relay check: the four default relays accept and return kind 1059 from a
   throwaway key (chat already proves this; re-checked per phase).
 
-## 7. Decisions for the operator
+## 7. Decisions (operator, 2026-11-23)
 
-1. How long every Tapit keeps accepting the old plain form after the switch:
-   recommended 90 days.
-2. Phase 3: carry names inside the encrypted acknowledgement (recommended), or
-   leave DynastyTrust showing local labels.
-3. Phase 4: whether to plan separating vault keys from the Nostr identity.
+1. Old-format window: none needed — "No real users yet". Each phase still
+   deploys the receiver first (DynastyTrust, or every Tapit) and the sender
+   second, so nothing in flight is dropped, but there is no 90-day overlap.
+2. Names: inside the encrypted acknowledgement (Phase 3).
+3. Vault keys: plan written — `docs/VAULT_KEY_SEPARATION_PLAN.md`.
 
 ## 8. Deliberately left out
 
