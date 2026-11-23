@@ -1,5 +1,6 @@
-import { Wallet, encrypt, decrypt, type EncryptedBlob } from 'tapit-attest';
+import { Wallet, encrypt, decrypt, unwrapKData, type EncryptedBlob, type RecoverableEncryptedBlob } from 'tapit-attest';
 import { idb } from '../../shared/lib/idb.ts';
+import { localStore } from '../storage/localStore.ts';
 
 // The complete backup file (SOVEREIGN_SYNC_PLAN.md, P1). One file holds the
 // wallet AND everything else this device keeps for it: messages, inbox,
@@ -11,7 +12,22 @@ import { idb } from '../../shared/lib/idb.ts';
 //     wallet: <EncryptedBlob, the same export the old file held>,
 //     data:   <EncryptedBlob of every IndexedDB record> }
 //
-// Both parts are sealed with the passphrase on this device. Some records are
+// Version 3 (2026-11-23) lets the paper recovery key open the file too, not
+// only the passphrase. The wallet part is the wallet's own recoverable blob
+// (K_data wrapped under the passphrase, the snapshot sealed under K_data,
+// REUSING this wallet's existing K_data so the written-down key and any
+// trusted-helper shares stay valid), and the data part is sealed under a key
+// derived from that same K_data:
+//
+//   { format: 'tapit-backup', version: 3, created_at, owner_id,
+//     wallet: <RecoverableEncryptedBlob>,
+//     data:   { alg: 'aes-256-gcm/hkdf-kdata', iv, ciphertext } }
+//
+// Passphrase -> unwrap K_data -> both parts. Recovery key = K_data -> both
+// parts. A wallet still on the old v1 format has no K_data, so its file stays
+// version 2 (passphrase only), as below.
+//
+// Both version-2 parts are sealed with the passphrase on this device. Some records are
 // plaintext in IndexedDB (prefs, request history), so the data part must be
 // encrypted as a whole, never copied out as is. A file from before this format
 // (a bare wallet EncryptedBlob) still opens: it simply has no data part.
@@ -31,8 +47,23 @@ export interface BackupFileV2 {
   data: EncryptedBlob;
 }
 
+export interface BackupFileV3 {
+  format: typeof BACKUP_FORMAT;
+  version: 3;
+  created_at: string;
+  owner_id: string;
+  wallet: RecoverableEncryptedBlob;
+  data: { alg: typeof DATA_ALG; iv: string; ciphertext: string };
+}
+
+const DATA_ALG = 'aes-256-gcm/hkdf-kdata';
+const DATA_INFO = new TextEncoder().encode('tapit-backup-data-v3');
+
 export interface OpenedBackup {
   wallet: Wallet;
+  /** The wallet's K_data, when the file carries it (version 3). Restoring
+   *  re-saves under it so the recovery key and helper shares stay valid. */
+  kData: Uint8Array | null;
   /** null for an old wallet-only file. */
   records: Array<[string, unknown]> | null;
   ownerId: string | null;
@@ -79,10 +110,49 @@ export function parseRecords(text: string): Array<[string, unknown]> {
   return parsed as Array<[string, unknown]>;
 }
 
+const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+const unhex = (s: string) => new Uint8Array((s.match(/../g) ?? []).map((h) => parseInt(h, 16)));
+
+async function dataKey(kData: Uint8Array): Promise<CryptoKey> {
+  const base = await crypto.subtle.importKey('raw', kData as BufferSource, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32) as BufferSource, info: DATA_INFO as BufferSource },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
+}
+
+async function sealData(text: string, kData: Uint8Array): Promise<BackupFileV3['data']> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, await dataKey(kData), new TextEncoder().encode(text));
+  return { alg: DATA_ALG, iv: hex(iv), ciphertext: hex(new Uint8Array(ct)) };
+}
+
+async function openData(data: BackupFileV3['data'], kData: Uint8Array): Promise<string> {
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unhex(data.iv) as BufferSource }, await dataKey(kData), unhex(data.ciphertext) as BufferSource);
+  return new TextDecoder().decode(pt);
+}
+
 /** Build the complete backup file's text from what is on this device now. */
-export async function buildBackupFile(wallet: Wallet, ownerId: string, passphrase: string): Promise<{ text: string; records: number }> {
+export async function buildBackupFile(wallet: Wallet, ownerId: string, passphrase: string): Promise<{ text: string; records: number; recoveryKeyOpens: boolean }> {
   const all = await idb.entries();
   const records = all.filter(([k]) => !k.startsWith(WALLET_KEY_PREFIX));
+  const saved = await localStore.get(ownerId);
+  if (saved?.blob.v === 2) {
+    // Same K_data as the saved wallet: the written-down key keeps working.
+    const { blob, kData } = await wallet.exportRecoverableReuseKData(saved.blob as RecoverableEncryptedBlob, passphrase);
+    const file3: BackupFileV3 = {
+      format: BACKUP_FORMAT,
+      version: 3,
+      created_at: new Date().toISOString(),
+      owner_id: ownerId,
+      wallet: blob,
+      data: await sealData(serializeRecords(records), kData),
+    };
+    return { text: JSON.stringify(file3), records: records.length, recoveryKeyOpens: true };
+  }
   const file: BackupFileV2 = {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
@@ -91,7 +161,7 @@ export async function buildBackupFile(wallet: Wallet, ownerId: string, passphras
     wallet: await wallet.exportEncrypted(passphrase),
     data: encrypt(serializeRecords(records), passphrase),
   };
-  return { text: JSON.stringify(file), records: records.length };
+  return { text: JSON.stringify(file), records: records.length, recoveryKeyOpens: false };
 }
 
 function isV2(x: unknown): x is BackupFileV2 {
@@ -100,7 +170,38 @@ function isV2(x: unknown): x is BackupFileV2 {
     && !!o.wallet && !!o.data && typeof o.owner_id === 'string';
 }
 
+function isV3(x: unknown): x is BackupFileV3 {
+  const o = x as Partial<BackupFileV3> | null;
+  return !!o && typeof o === 'object' && o.format === BACKUP_FORMAT && o.version === 3
+    && !!o.wallet && o.data?.alg === DATA_ALG && typeof o.owner_id === 'string';
+}
+
 export class NotABackupError extends Error {}
+
+/** A file made before the recovery key could open backups. */
+export class NoRecoveryKeyPathError extends Error {
+  constructor() {
+    super('This backup was made before recovery keys could open backup files, so it needs the passphrase. New backups open with either.');
+  }
+}
+
+/** Open a backup file with the paper recovery key (the wallet's K_data)
+ *  instead of the passphrase. Writes nothing. */
+export async function openBackupFileWithKey(text: string, kData: Uint8Array): Promise<OpenedBackup> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new NotABackupError('not json');
+  }
+  if (!isV3(parsed)) {
+    if (isV2(parsed) || (parsed && typeof parsed === 'object' && 'v' in parsed)) throw new NoRecoveryKeyPathError();
+    throw new NotABackupError('unknown shape');
+  }
+  const wallet = await Wallet.restoreFromKData(parsed.wallet, kData);
+  const records = parseRecords(await openData(parsed.data, kData));
+  return { wallet, kData, records, ownerId: parsed.owner_id, createdAt: parsed.created_at };
+}
 
 /** Open a backup file in memory. Writes nothing. Throws NotABackupError for a
  *  file that is not a backup; decrypt errors pass through for the caller. */
@@ -111,15 +212,22 @@ export async function openBackupFile(text: string, passphrase: string): Promise<
   } catch {
     throw new NotABackupError('not json');
   }
+  if (isV3(parsed)) {
+    // Throws "wrong passphrase" from tapit-attest before anything else runs.
+    const kData = unwrapKData(parsed.wallet, passphrase);
+    const wallet = await Wallet.restoreFromKData(parsed.wallet, kData);
+    const records = parseRecords(await openData(parsed.data, kData));
+    return { wallet, kData, records, ownerId: parsed.owner_id, createdAt: parsed.created_at };
+  }
   if (isV2(parsed)) {
     const wallet = await Wallet.restore(parsed.wallet, passphrase);
     const bytes = decrypt(parsed.data, passphrase);
     const records = parseRecords(new TextDecoder().decode(bytes));
-    return { wallet, records, ownerId: parsed.owner_id, createdAt: parsed.created_at };
+    return { wallet, kData: null, records, ownerId: parsed.owner_id, createdAt: parsed.created_at };
   }
   if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'v' in parsed) {
     const wallet = await Wallet.restore(parsed as Parameters<typeof Wallet.restore>[0], passphrase);
-    return { wallet, records: null, ownerId: null, createdAt: null };
+    return { wallet, kData: null, records: null, ownerId: null, createdAt: null };
   }
   throw new NotABackupError('unknown shape');
 }

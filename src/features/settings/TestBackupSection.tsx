@@ -69,7 +69,10 @@ async function onTest(e: React.FormEvent) {
         <span className="font-mono text-xs break-all">{testResult.identity}</span>.{' '}
         {testResult.records === null
           ? 'It holds the wallet only, from before complete backups. Download a new one to include messages, attachments and everything else.'
-          : `It also holds ${testResult.records} other saved record${testResult.records === 1 ? '' : 's'} (messages, attachments, notes and settings).`}
+          : `It also holds ${testResult.records} other saved record${testResult.records === 1 ? '' : 's'} (messages, attachments, notes and settings).`}{' '}
+        {testResult.recoveryKeyOpens
+          ? 'Your written-down recovery key opens it too, if you ever forget the passphrase.'
+          : 'Only the passphrase opens it. Download a new backup so your recovery key opens it too.'}
       </p>
     )}
     {testResult && !testResult.ok && (

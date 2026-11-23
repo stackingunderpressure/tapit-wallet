@@ -11,13 +11,13 @@ import { openBackupFile, NotABackupError } from './fullBackup.ts';
 // is switched off).
 
 export type BackupCheck =
-  | { ok: true; identity: string; records: number | null }
+  | { ok: true; identity: string; records: number | null; recoveryKeyOpens: boolean }
   | { ok: false; reason: 'not-a-backup' | 'wrong-passphrase' | 'damaged' };
 
 export async function checkBackupFile(text: string, passphrase: string): Promise<BackupCheck> {
   try {
     const opened = await openBackupFile(text, passphrase);
-    return { ok: true, identity: opened.wallet.identity, records: opened.records?.length ?? null };
+    return { ok: true, identity: opened.wallet.identity, records: opened.records?.length ?? null, recoveryKeyOpens: opened.kData !== null };
   } catch (err) {
     if (err instanceof NotABackupError) return { ok: false, reason: 'not-a-backup' };
     const message = err instanceof Error ? err.message : '';

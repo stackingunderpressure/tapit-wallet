@@ -42,3 +42,40 @@ export function CategoryGroup({
     </div>
   );
 }
+
+/**
+ * SettingsItem — one tappable row inside an open category: a name and a
+ * plain-language line saying what it is for, expanding to the control itself.
+ * Second level of the progressive layout: categories open to a short list of
+ * items, and only the item you tap opens its controls.
+ */
+export function SettingsItem({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2 rounded-xl border border-ink/10 bg-white/60">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full min-h-[44px] flex items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span>
+          <span className="block text-sm font-medium">{title}</span>
+          <span className="mt-0.5 block text-xs text-muted">{description}</span>
+        </span>
+        <span className={`shrink-0 text-muted transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden>
+          ›
+        </span>
+      </button>
+      {open && <div className="px-2 pb-2">{children}</div>}
+    </div>
+  );
+}

@@ -9,7 +9,7 @@ import { useWallet } from '../wallet-core/useWallet.ts';
 import { supabase } from '../../shared/lib/supabase.ts';
 import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { findOwnOrgDeclaration } from '../connections/createOrganization.ts';
-import { CategoryGroup } from './CategoryGroup.tsx';
+import { CategoryGroup, SettingsItem } from './CategoryGroup.tsx';
 import { CloudBackupSection } from './CloudBackupSection.tsx';
 import { RecoveryCohortSection } from './RecoveryCohortSection.tsx';
 import { LocalBackupSection } from './LocalBackupSection.tsx';
@@ -62,127 +62,110 @@ export function SettingsScreen() {
         <span className="w-12" aria-hidden />
       </header>
 
-      <section className="mt-6 rounded-2xl bg-accent/[0.06] border border-accent/30 p-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="font-medium">Sovereignty</div>
-          {isSovereign() && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 border border-accent/40 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" />
-              Sovereign build
-            </span>
-          )}
-        </div>
-        {isSovereign() && (
-          <p className="mt-2 text-xs text-accent">
-            You are running the sovereign build — the package that runs in your
-            own environment. You are responsible for your own data.
-          </p>
-        )}
-        <p className="mt-1 text-sm text-muted">
-          {isSovereign()
-            ? 'Your wallet lives on this device and nowhere else. Download a backup file and keep it somewhere safe, set up trusted helpers, write down your recovery key, and point "stay reachable" at your own servers if you run them.'
-            : 'Every lever below moves the wallet toward sovereign — turn off cloud backup to keep your encrypted wallet only on this device, point "stay reachable" at your own servers, set up trusted helpers, and write down your recovery key.'}
-        </p>
-        <Link
-          to="/about"
-          className="mt-3 inline-block text-xs font-medium text-accent hover:underline"
-        >
-          Read the full sovereignty picture in the Guide →
+      {/* One line instead of a card: the Guide carries the full picture. */}
+      <p className="mt-4 text-sm text-muted">
+        {isSovereign()
+          ? 'Your wallet lives on this device and nowhere else.'
+          : 'Your wallet is encrypted on this device before anything leaves it.'}{' '}
+        <Link to="/about" className="font-medium text-accent hover:underline">
+          How it works →
         </Link>
-      </section>
+      </p>
 
-      <CategoryGroup title="More screens" subtitle="Jump to the tabs kept off the main bar">
-        <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-          <div className="flex flex-col gap-2">
-            <Link
-              to="/?tab=captured"
-              className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
-            >
-              Captured
-            </Link>
-            <Link
-              to="/?tab=family"
-              className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
-            >
-              Family
-            </Link>
-            <Link
-              to="/?tab=lattice"
-              className="rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
-            >
-              Keychain
-            </Link>
-          </div>
-        </section>
-      </CategoryGroup>
-
-      <CategoryGroup
-        title="Backup & recovery"
-        subtitle={isSovereign() ? 'Backup file, trusted helpers, and your ways back in' : 'Cloud sync, trusted helpers, and your ways back in'}
-        defaultOpen
-      >
-        {/* No cloud in the sovereign build, so no cloud switch. */}
+      {/* Load-bearing first. Each category opens to short items; each item
+          opens to its controls, so the page stays a short list. */}
+      <CategoryGroup title="Backup & recovery" subtitle="Your ways back in if you lose this device or forget the passphrase">
         {!isSovereign() && <CloudBackupSection prefs={prefs} updatePrefs={updatePrefs} save={save} />}
-        <RecoveryCohortSection holdings={holdings} walletIdentity={wallet.identity} />
-        <LocalBackupSection
-          wallet={wallet}
-          ownerId={ownerId}
-          prefs={prefs}
-          updatePrefs={updatePrefs}
-        />
+        <SettingsItem title="Backup file" description="Download one file with everything, and test that it opens">
+          <LocalBackupSection wallet={wallet} ownerId={ownerId} prefs={prefs} updatePrefs={updatePrefs} part="file" />
+        </SettingsItem>
+        <SettingsItem title="Recovery key" description="A key you write down that opens the wallet without the passphrase">
+          <LocalBackupSection wallet={wallet} ownerId={ownerId} prefs={prefs} updatePrefs={updatePrefs} part="key" />
+        </SettingsItem>
+        <SettingsItem title="Trusted helpers" description="People who together can help you back in">
+          <RecoveryCohortSection holdings={holdings} walletIdentity={wallet.identity} />
+        </SettingsItem>
       </CategoryGroup>
 
-      <CategoryGroup title="Security & access" subtitle={isSovereign() ? 'Face ID and auto-lock' : 'Face ID, auto-lock and sign out'}>
-        <Suspense fallback={null}>
-          <FaceUnlockSection />
-        </Suspense>
-        <AutoLockSection prefs={prefs} updatePrefs={updatePrefs} />
-        {!isSovereign() && <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-          <div className="font-medium">Session</div>
-          <button
-            type="button"
-            onClick={signOut}
-            className="mt-3 text-sm text-red-600 hover:underline"
-          >
-            Sign out
-          </button>
-        </section>}
-      </CategoryGroup>
-
-      <CategoryGroup title="Network" subtitle="Stay reachable, relays, and Nostr activity">
-        <ReachabilitySection prefs={prefs} updatePrefs={updatePrefs} />
-        <NostrActivitySection />
-      </CategoryGroup>
-
-      <CategoryGroup title="Appearance" subtitle="Theme and quick share">
-        <AppearanceSection prefs={prefs} updatePrefs={updatePrefs} />
-        {resolvedTheme === 'fresh' && (
-          <QuickShareSection identity={identity} holdings={holdings} />
+      <CategoryGroup title="Security" subtitle="Face ID and when the wallet locks itself">
+        <SettingsItem title="Face ID" description="Unlock and confirm every signature with your face">
+          <Suspense fallback={null}>
+            <FaceUnlockSection />
+          </Suspense>
+        </SettingsItem>
+        <SettingsItem title="Auto-lock" description="How long before the wallet locks when you set it down">
+          <AutoLockSection prefs={prefs} updatePrefs={updatePrefs} />
+        </SettingsItem>
+        {!isSovereign() && (
+          <SettingsItem title="Sign out" description="Leave this account on this device">
+            <button type="button" onClick={signOut} className="m-3 text-sm text-red-600 hover:underline">
+              Sign out
+            </button>
+          </SettingsItem>
         )}
       </CategoryGroup>
 
-      <CategoryGroup
-        title="Advanced"
-        subtitle="Public key, circle phrase, org mode, and key management"
-      >
-        <PublicKeySection publicKey={wallet.publicKey} />
-        <CirclePhraseSection />
-        <OrgDeclarationSection
-          wallet={wallet}
-          ownerId={ownerId}
-          anchorWorker={anchorWorker}
-          existingOrgDeclaration={existingOrgDeclaration}
-          holdings={holdings}
-          identity={identity}
-          save={save}
-          refresh={refresh}
-        />
-        <RotateKeySection wallet={wallet} save={save} refresh={refresh} />
-        <AdoptExistingKeySection wallet={wallet} />
+      <CategoryGroup title="Connections & signing" subtitle="How people and apps like DynastyTrust reach you">
+        <SettingsItem title="Stay reachable" description="Receive messages and signing requests when you're apart, and which relays carry them">
+          <ReachabilitySection prefs={prefs} updatePrefs={updatePrefs} />
+        </SettingsItem>
+        <SettingsItem title="Your public key" description="Give an app your key so it can ask you to sign">
+          <PublicKeySection publicKey={wallet.publicKey} />
+        </SettingsItem>
+        <SettingsItem title="Circle safety phrases" description="Which vaults have a phrase set up for checking a callout">
+          <CirclePhraseSection />
+        </SettingsItem>
+        <SettingsItem title="Activity log" description="What has arrived, for checking that delivery works">
+          <NostrActivitySection />
+        </SettingsItem>
       </CategoryGroup>
 
-      <CategoryGroup title="About & limits" subtitle="What the wallet does not do yet">
-        <KnownLimitationsSection />
+      <CategoryGroup title="Look & sharing" subtitle="Home screen extras and share cards">
+        <SettingsItem title="Home extras" description="Memories and streaks on the home screen">
+          <AppearanceSection prefs={prefs} updatePrefs={updatePrefs} />
+        </SettingsItem>
+        {resolvedTheme === 'fresh' && (
+          <SettingsItem title="Quick share" description="Ready-made cards that prove one thing about you">
+            <QuickShareSection identity={identity} holdings={holdings} />
+          </SettingsItem>
+        )}
+      </CategoryGroup>
+
+      <CategoryGroup title="Organization" subtitle="Run a church, club or town from this wallet">
+        <SettingsItem title="Organization mode" description="Declare an organization and issue memberships">
+          <OrgDeclarationSection
+            wallet={wallet}
+            ownerId={ownerId}
+            anchorWorker={anchorWorker}
+            existingOrgDeclaration={existingOrgDeclaration}
+            holdings={holdings}
+            identity={identity}
+            save={save}
+            refresh={refresh}
+          />
+        </SettingsItem>
+      </CategoryGroup>
+
+      <CategoryGroup title="Key tools" subtitle="Rarely needed. Change the key this wallet signs with">
+        <SettingsItem title="Rotate wallet key" description="Move to a new signing key; your identity stays the same">
+          <RotateKeySection wallet={wallet} save={save} refresh={refresh} />
+        </SettingsItem>
+        <SettingsItem title="Use my existing Nostr key" description="Sign with the key from another Nostr app">
+          <AdoptExistingKeySection wallet={wallet} />
+        </SettingsItem>
+      </CategoryGroup>
+
+      <CategoryGroup title="Help" subtitle="Other screens, and what the wallet can't do yet">
+        <SettingsItem title="Other screens" description="Captured, Family and Keychain, kept off the main bar">
+          <div className="m-2 flex flex-col gap-2">
+            <Link to="/?tab=captured" className="rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5">Captured</Link>
+            <Link to="/?tab=family" className="rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5">Family</Link>
+            <Link to="/?tab=lattice" className="rounded-md border border-ink/15 px-4 py-3 text-sm font-medium hover:bg-ink/5">Keychain</Link>
+          </div>
+        </SettingsItem>
+        <SettingsItem title="Known limitations" description="Honest notes on what isn't built yet">
+          <KnownLimitationsSection />
+        </SettingsItem>
       </CategoryGroup>
     </div>
   );

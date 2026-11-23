@@ -348,8 +348,9 @@ function RecoveryPaths() {
       <Lede>
         Two different losses, two different answers. Lost the device: a
         backup file plus your passphrase brings the wallet back on a new
-        one. Forgot the passphrase: trusted helpers or your paper recovery
-        key open the wallet on the device that still holds it. Each needs
+        one. Forgot the passphrase: your paper recovery key opens the wallet
+        on this device or a backup file; trusted helpers open it on the
+        device that still holds it. Each needs
         preparation before the loss, so set them up now.
       </Lede>
 
@@ -379,7 +380,7 @@ function RecoveryPaths() {
         phrases, request history — encrypted under your passphrase. It is
         the only way back after a lost or broken device: open the wallet
         on the new device, choose "Restore from a backup file", and enter
-        the passphrase. "Test my backup" checks a file opens without
+        the passphrase — or, if you forgot it, your paper recovery key. "Test my backup" checks a file opens without
         changing anything. Download a new one at least once a month; the
         home screen reminds you after 30 days.
       </Card>
@@ -388,11 +389,10 @@ function RecoveryPaths() {
         <div className="text-sm font-semibold text-ink">A floor everyone hits</div>
         <p className="mt-2 text-sm leading-relaxed text-ink/75">
           Your wallet is kept on your device and nowhere else — there is
-          no cloud copy and no company that can restore it. The helpers
-          and the paper key open the copy on your device; they cannot
-          open a backup file. If the device is gone, a backup file plus
-          your passphrase is the only path back. Lose both the device and
-          the passphrase, and no one can bring the wallet back.
+          no cloud copy and no company that can restore it. If the device
+          is gone, a backup file is the only path back: it opens with your
+          passphrase or your paper recovery key. Lose the device with no
+          backup file, and no one can bring the wallet back.
         </p>
       </div>
 

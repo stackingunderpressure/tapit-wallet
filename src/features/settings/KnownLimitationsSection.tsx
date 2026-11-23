@@ -35,13 +35,13 @@ export function KnownLimitationsSection() {
         </div>
 
         <div>
-          <div className="text-sm font-medium">Face ID unlock not yet built</div>
+          <div className="text-sm font-medium">Face ID works on one device at a time</div>
           <p className="mt-1 text-xs text-muted">
             Face ID can unlock the wallet and confirm signatures (Settings,
             Security &amp; access), but only on the device where you turned it
-            on. It opens a copy of your passphrase sealed on that device; it
-            can&apos;t replace the passphrase, which is still what opens a
-            backup file on a new device.
+            on. It opens a copy of your passphrase sealed on that device. It
+            can&apos;t open a backup file on a new device; the passphrase or
+            the recovery key does that.
           </p>
         </div>
 
@@ -51,7 +51,8 @@ export function KnownLimitationsSection() {
           </div>
           <p className="mt-1 text-xs text-muted">
             The only way to bring this wallet back on a new device is a backup
-            file you downloaded before the loss, plus your passphrase. Nothing
+            file you downloaded before the loss, opened with your passphrase or
+            your written-down recovery key. Nothing
             is kept on a server, so if neither a backup file nor the original
             device survives, the wallet cannot be restored by anyone.
           </p>
@@ -79,14 +80,13 @@ export function KnownLimitationsSection() {
 
         <div>
           <div className="text-sm font-medium">
-            Trusted helpers and the recovery key work on this device only
+            Trusted helpers work on this device only
           </div>
           <p className="mt-1 text-xs text-muted">
-            Both forgotten-passphrase paths — trusted helpers and the recovery
-            key — open the copy of the wallet saved on this device. They
-            can&apos;t open a backup file, which needs the passphrase. Keep the
-            passphrase, and keep a recent backup file somewhere other than
-            this device.
+            Trusted helpers open the copy of the wallet saved on this device.
+            On a new device, open your backup file with the passphrase or the
+            written-down recovery key. Backup files downloaded before this
+            update open with the passphrase only, so download a new one.
           </p>
         </div>
       </div>

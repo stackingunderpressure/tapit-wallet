@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import type { Wallet } from 'tapit-attest';
 import { walletStore } from '../storage/walletStore.ts';
-import { openBackupFile, rehomeRecords, writeRestoredRecords, NotABackupError } from '../settings/fullBackup.ts';
+import { openBackupFile, openBackupFileWithKey, rehomeRecords, writeRestoredRecords, NotABackupError, type OpenedBackup } from '../settings/fullBackup.ts';
+
+const HEX_64 = /^[0-9a-f]{64}$/i;
+const normalizeKey = (t: string) => t.replace(/[\s\-_]+/g, '').toLowerCase();
+const keyBytes = (hex: string) => Uint8Array.from(hex.match(/../g) ?? [], (h) => parseInt(h, 16));
 
 // Restore-from-encrypted-file flow (recovery-hardening arc, part 4,
 // 2026-06-03). Closes the dead-end the audit found: Settings → Local
@@ -38,6 +42,12 @@ export function RestoreFromFileModal({ ownerId, onRecovered, onClose }: Props) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState('');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  // Forgot the passphrase: open the file with the written-down recovery key
+  // and choose a new passphrase for this device.
+  const [useKey, setUseKey] = useState(false);
+  const [keyInput, setKeyInput] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -56,18 +66,43 @@ export function RestoreFromFileModal({ ownerId, onRecovered, onClose }: Props) {
       setPhase({ kind: 'error', message: 'Choose your backup file first.' });
       return;
     }
-    if (passphrase.length === 0) {
-      setPhase({ kind: 'error', message: 'Enter the passphrase for this backup.' });
-      return;
+    let saveUnder: string;
+    let opener: () => Promise<OpenedBackup>;
+    if (useKey) {
+      const hex = normalizeKey(keyInput);
+      if (!HEX_64.test(hex)) {
+        setPhase({ kind: 'error', message: 'The recovery key is 64 characters (0-9 and a-f). Check for a missed or extra character.' });
+        return;
+      }
+      if (newPass.length < 8) {
+        setPhase({ kind: 'error', message: 'The new passphrase must be at least 8 characters.' });
+        return;
+      }
+      if (newPass !== confirmPass) {
+        setPhase({ kind: 'error', message: 'The two new passphrases do not match.' });
+        return;
+      }
+      saveUnder = newPass;
+      opener = () => openBackupFileWithKey(fileText, keyBytes(hex));
+    } else {
+      if (passphrase.length === 0) {
+        setPhase({ kind: 'error', message: 'Enter the passphrase for this backup.' });
+        return;
+      }
+      saveUnder = passphrase;
+      opener = () => openBackupFile(fileText, passphrase);
     }
     setPhase({ kind: 'working' });
     try {
-      let opened;
+      let opened: OpenedBackup;
       try {
-        opened = await openBackupFile(fileText, passphrase);
+        opened = await opener();
       } catch (err) {
         if (err instanceof NotABackupError) {
           throw new Error("That file isn't a wallet backup — pick the tapit-wallet-backup file you downloaded.");
+        }
+        if (useKey && !(err instanceof Error && /before recovery keys/.test(err.message))) {
+          throw new Error('That recovery key did not open this backup. Check it against the one you wrote down.');
         }
         throw err;
       }
@@ -77,14 +112,17 @@ export function RestoreFromFileModal({ ownerId, onRecovered, onClose }: Props) {
       if (opened.records && opened.ownerId) {
         await writeRestoredRecords(rehomeRecords(opened.records, opened.ownerId, ownerId));
       }
-      // Re-save in the v2 recoverable format so the restored wallet has a
-      // recovery key + cloud path on this device going forward.
-      const { blob: v2 } = await restored.exportRecoverable(passphrase);
+      // Save on this device in the recoverable format. When the file carries
+      // the wallet's K_data, keep it: the written-down recovery key and any
+      // trusted-helper shares stay valid. An older file gets a fresh one.
+      const v2 = opened.kData
+        ? await restored.exportRecoverableWithKData(opened.kData, saveUnder)
+        : (await restored.exportRecoverable(saveUnder)).blob;
       await walletStore.save(ownerId, v2);
-      await onRecovered(restored, passphrase);
+      await onRecovered(restored, saveUnder);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'restore failed';
-      const friendly = /decrypt|password|passphrase|MAC/i.test(message)
+      const friendly = !useKey && /decrypt|password|passphrase|MAC/i.test(message)
         ? 'That passphrase did not open this backup. Check it and try again.'
         : message;
       setPhase({ kind: 'error', message: friendly });
@@ -108,9 +146,8 @@ export function RestoreFromFileModal({ ownerId, onRecovered, onClose }: Props) {
           device.
         </p>
         <p className="mt-2 text-xs text-muted">
-          This needs the passphrase — it restores a lost device, not a
-          forgotten passphrase. For a forgotten passphrase, use your written
-          recovery key or your trusted helpers instead.
+          Opens with the passphrase, or with your written-down recovery key
+          if you forgot it (backup files downloaded after this update).
         </p>
 
         <label className="mt-4 block">
@@ -126,16 +163,48 @@ export function RestoreFromFileModal({ ownerId, onRecovered, onClose }: Props) {
           <p className="mt-1 text-xs text-muted">Selected: {fileName}</p>
         )}
 
-        <label className="mt-3 block">
-          <span className="text-sm font-medium">Passphrase for this backup</span>
-          <input
-            type="password"
-            autoComplete="current-password"
-            value={passphrase}
-            onChange={(e) => setPassphrase(e.target.value)}
-            className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none"
-          />
-        </label>
+        {!useKey ? (
+          <label className="mt-3 block">
+            <span className="text-sm font-medium">Passphrase for this backup</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none"
+            />
+          </label>
+        ) : (
+          <>
+            <label className="mt-3 block">
+              <span className="text-sm font-medium">Your recovery key</span>
+              <textarea
+                rows={2}
+                autoComplete="off"
+                spellCheck={false}
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                placeholder="64 characters, spaces are fine"
+                className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none font-mono"
+              />
+            </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-medium">New passphrase for this device</span>
+              <input type="password" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none" />
+            </label>
+            <label className="mt-3 block">
+              <span className="text-sm font-medium">New passphrase again</span>
+              <input type="password" autoComplete="new-password" value={confirmPass} onChange={(e) => setConfirmPass(e.target.value)} className="mt-1 w-full rounded-md border border-ink/15 bg-white px-3 py-2 text-base focus:border-accent focus:outline-none" />
+            </label>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => { setUseKey((v) => !v); setPhase({ kind: 'idle' }); }}
+          className="mt-2 text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+        >
+          {useKey ? 'I have the passphrase' : 'Forgot the passphrase? Use your recovery key'}
+        </button>
 
         <button
           type="button"

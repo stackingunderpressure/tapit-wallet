@@ -23,11 +23,14 @@ export function LocalBackupSection({
   ownerId,
   prefs,
   updatePrefs,
+  part,
 }: {
   wallet: Wallet;
   ownerId: string;
   prefs: Prefs;
   updatePrefs: (next: Partial<Prefs>) => Promise<void>;
+  /** Settings shows the backup file and the recovery key as separate items. */
+  part: 'file' | 'key';
 }) {
   const [showExportForm, setShowExportForm] = useState(false);
   const [passphraseForExport, setPassphraseForExport] = useState('');
@@ -125,22 +128,13 @@ export function LocalBackupSection({
   }
 
   return (
-    <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
-      <div className="font-medium">Local backup</div>
-      <p className="mt-1 text-sm text-muted">
-        Two offline fallbacks for the day you cannot get back in. The download is
-        the wallet itself encrypted under your passphrase. The recovery key
-        bypasses the passphrase entirely — write it down once and store it
-        somewhere physically safe.
-      </p>
-
-      <div className="mt-4 text-sm font-medium">Encrypted file</div>
-      <p className="mt-1 text-xs text-muted">
+    <section className="mt-2 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
+      {part === 'file' && (<>
+      <p className="text-xs text-muted">
         One file with the wallet and everything saved with it: messages,
-        attachments, notes, circle phrases and request history. You still need
-        your passphrase to open this file on a new device — it
-        protects against a lost device, not a forgotten passphrase. For a
-        forgotten passphrase, use the recovery key or your trusted helpers.
+        attachments, notes, circle phrases and request history. It opens on a
+        new device with your passphrase or your written-down recovery key. Keep
+        it somewhere other than this device.
       </p>
       {!showExportForm ? (
         <button
@@ -148,7 +142,7 @@ export function LocalBackupSection({
           onClick={() => setShowExportForm(true)}
           className="mt-2 rounded-md border border-ink/15 px-4 py-2 text-sm font-medium hover:bg-ink/5"
         >
-          Download local backup
+          Download backup file
         </button>
       ) : (
         <form onSubmit={onExport} className="mt-3">
@@ -207,14 +201,15 @@ export function LocalBackupSection({
         </div>
       </div>
 
-      <div className="mt-5 border-t border-ink/10 pt-4">
-        <div className="text-sm font-medium">Recovery key</div>
-        <p className="mt-1 text-sm text-muted">
+      </>)}
+
+      {part === 'key' && (
+      <div>
+        <p className="text-sm text-muted">
           A 64-character key that unlocks your wallet without the passphrase.
           Write it down on paper and keep it somewhere physically safe. Anyone
-          holding it can open your wallet on this device without the passphrase
-          — treat it like a house key. It does not open a backup file; a backup
-          file needs the passphrase.
+          holding it can open your wallet without the passphrase, on this device
+          or from a backup file — treat it like a house key.
         </p>
 
         {!showKeyForm && !revealedKey && (
@@ -295,6 +290,7 @@ export function LocalBackupSection({
           </div>
         )}
       </div>
+      )}
     </section>
   );
 }

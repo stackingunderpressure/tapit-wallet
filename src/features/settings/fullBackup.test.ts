@@ -14,6 +14,7 @@ vi.mock('../../shared/lib/idb.ts', () => ({
 import {
   buildBackupFile, openBackupFile, rehomeRecords, writeRestoredRecords,
   serializeRecords, parseRecords, NotABackupError,
+  openBackupFileWithKey, NoRecoveryKeyPathError,
 } from './fullBackup.ts';
 import { checkBackupFile } from './checkBackupFile.ts';
 
@@ -22,7 +23,7 @@ const NEW = '22222222-aaaa-4bbb-8ccc-000000000002';
 const PASS = 'correct horse battery';
 
 function seedDevice() {
-  store.set(`wallet:${OLD}`, { blob: { v: 2 }, updated_at: 'x' });
+  store.set(`wallet:${OLD}`, { blob: { v: 1 }, updated_at: 'x' }); // old-format wallet: version 2 file
   store.set(`chat-threads:${OLD}`, { v: 1, ciphertext: 'aa' });
   store.set(`media:${OLD}:${'ab'.repeat(32)}`, { blob: { v: 1 }, mime: 'image/png', byteLength: 3, stored_at: 't' });
   store.set(`prefs:${OLD}`, { theme: 'dark', localBackupDownloaded: true });
@@ -73,14 +74,14 @@ describe('complete backup file', () => {
     const old = JSON.stringify(await wallet.exportEncrypted(PASS));
     const opened = await openBackupFile(old, PASS);
     expect(opened.records).toBeNull();
-    expect(await checkBackupFile(old, PASS)).toEqual({ ok: true, identity: wallet.identity, records: null });
+    expect(await checkBackupFile(old, PASS)).toEqual({ ok: true, identity: wallet.identity, records: null, recoveryKeyOpens: false });
   });
 
   it('reports the record count for a complete file', async () => {
     seedDevice();
     const wallet = Wallet.generate();
     const { text } = await buildBackupFile(wallet, OLD, PASS);
-    expect(await checkBackupFile(text, PASS)).toEqual({ ok: true, identity: wallet.identity, records: 5 });
+    expect(await checkBackupFile(text, PASS)).toEqual({ ok: true, identity: wallet.identity, records: 5, recoveryKeyOpens: false });
   });
 
   it('calls a non-backup a non-backup', async () => {
@@ -118,5 +119,61 @@ describe('complete backup file', () => {
     const back = parseRecords(serializeRecords(recs));
     expect(back[0]?.[1]).toEqual({ b: new Uint8Array([0, 255, 7]), d: new Date('2026-01-02T03:04:05Z') });
     expect(() => serializeRecords([['k', new Map()]])).toThrow(/nothing was saved/);
+  });
+});
+
+describe('version 3: the recovery key opens the backup file too', () => {
+  beforeEach(() => store.clear());
+
+  async function v3Device() {
+    const wallet = Wallet.generate();
+    const { blob, kData } = await wallet.exportRecoverable(PASS);
+    store.set(`wallet:${OLD}`, { blob, updated_at: 'x' });
+    store.set(`chat-threads:${OLD}`, { v: 1, ciphertext: 'aa' });
+    return { wallet, kData };
+  }
+
+  it('opens with the passphrase and with the recovery key, to the same wallet and records', async () => {
+    const { wallet, kData } = await v3Device();
+    const { text, recoveryKeyOpens } = await buildBackupFile(wallet, OLD, PASS);
+    expect(recoveryKeyOpens).toBe(true);
+    expect(JSON.parse(text).version).toBe(3);
+    const byPass = await openBackupFile(text, PASS);
+    const byKey = await openBackupFileWithKey(text, kData);
+    expect(byPass.wallet.identity).toBe(wallet.identity);
+    expect(byKey.wallet.identity).toBe(wallet.identity);
+    expect(byKey.records).toEqual(byPass.records);
+    expect(byKey.records).toEqual([[`chat-threads:${OLD}`, { v: 1, ciphertext: 'aa' }]]);
+  });
+
+  it("keeps the wallet's existing K_data, so the written-down key stays valid", async () => {
+    const { wallet, kData } = await v3Device();
+    const { text } = await buildBackupFile(wallet, OLD, PASS);
+    expect((await openBackupFile(text, PASS)).kData).toEqual(kData);
+  });
+
+  it('refuses a wrong recovery key and a wrong passphrase', async () => {
+    const { wallet } = await v3Device();
+    const { text } = await buildBackupFile(wallet, OLD, PASS);
+    await expect(openBackupFileWithKey(text, new Uint8Array(32).fill(9))).rejects.toThrow();
+    expect(await checkBackupFile(text, 'nope')).toEqual({ ok: false, reason: 'wrong-passphrase' });
+  });
+
+  it('refuses to build with a passphrase that does not open this wallet', async () => {
+    const { wallet } = await v3Device();
+    await expect(buildBackupFile(wallet, OLD, 'nope')).rejects.toThrow();
+  });
+
+  it('says plainly when an older file needs the passphrase', async () => {
+    seedDevice(); // v1-style saved blob: version 2 file
+    const { text, recoveryKeyOpens } = await buildBackupFile(Wallet.generate(), OLD, PASS);
+    expect(recoveryKeyOpens).toBe(false);
+    await expect(openBackupFileWithKey(text, new Uint8Array(32))).rejects.toBeInstanceOf(NoRecoveryKeyPathError);
+  });
+
+  it('Test my backup reports that the recovery key opens it', async () => {
+    const { wallet } = await v3Device();
+    const { text } = await buildBackupFile(wallet, OLD, PASS);
+    expect(await checkBackupFile(text, PASS)).toMatchObject({ ok: true, identity: wallet.identity, records: 1, recoveryKeyOpens: true });
   });
 });

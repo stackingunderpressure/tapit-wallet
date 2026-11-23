@@ -13,7 +13,7 @@ describe('checkBackupFile', () => {
   it('opens a good backup with the right passphrase and reports its identity', async () => {
     const { text, identity } = await backupOf('correct horse battery');
     const result = await checkBackupFile(text, 'correct horse battery');
-    expect(result).toEqual({ ok: true, identity, records: null });
+    expect(result).toEqual({ ok: true, identity, records: null, recoveryKeyOpens: false });
   });
 
   it('refuses the wrong passphrase, and says so in plain words', async () => {
