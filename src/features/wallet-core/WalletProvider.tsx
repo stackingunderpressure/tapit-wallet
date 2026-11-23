@@ -334,21 +334,10 @@ export function WalletProvider({ children }: Props) {
       // wallet with no identity yet (needs-identity phase) produces no
       // event. kind-0 is replaceable by NIP-01, so re-publishing on
       // every connect just refreshes the relay's copy.
-      void (async () => {
-        try {
-          const held = await wallet.holdings();
-          const id = findIdentity(held, wallet.identity);
-          if (!id) return;
-          const { buildProfileEvent } = await import(
-            '../transport/nostrProfile.ts'
-          );
-          const event = await buildProfileEvent(wallet, id);
-          if (!event || cancelled) return;
-          await transport.publish(event);
-        } catch {
-          // Best-effort — profile re-publishes on the next connect.
-        }
-      })();
+      // Empty profile unless the person switched it on (2026-11-23).
+      void import('../transport/nostrProfile.ts')
+        .then((m) => m.publishProfileOnConnect(transport, wallet, ownerId, () => cancelled))
+        .catch(() => undefined); // best-effort; re-publishes on next connect
     })();
     return () => {
       cancelled = true;

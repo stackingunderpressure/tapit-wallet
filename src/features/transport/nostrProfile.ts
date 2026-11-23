@@ -80,3 +80,48 @@ export async function buildProfileEvent(
     created_at: options.created_at,
   });
 }
+
+/**
+ * What the wallet publishes on connect (operator, 2026-11-23: the profile
+ * was going out on every connect without asking; make it opt-in and clear
+ * it). Public profile ON in Settings: the profile from the identity. OFF
+ * (the default): an EMPTY profile, which replaces any profile published
+ * before - kind-0 is replaceable, so this is the most Nostr allows; relays
+ * that kept an old copy may still have it.
+ */
+export async function buildProfileEventForOwner(
+  wallet: Wallet,
+  identity: Attestation,
+  ownerId: string | null | undefined,
+  options: { created_at?: number } = {},
+): Promise<TransportEvent | null> {
+  const { prefsStore } = await import('../storage/prefsStore.ts');
+  const prefs = ownerId ? await prefsStore.load(ownerId) : null;
+  if (prefs?.publicProfile) return buildProfileEvent(wallet, identity, options);
+  return buildEvent({
+    pubkey: wallet.publicKey,
+    sign: (digest) => wallet.signDigest(digest),
+    kind: NOSTR_PROFILE_KIND,
+    content: '{}',
+    tags: [],
+    created_at: options.created_at,
+  });
+}
+
+/** On connect: publish the profile (or the empty replacement) for the
+ *  wallet's own identity. Best-effort; does nothing before the wallet has
+ *  an identity, or if the connection was torn down meanwhile. Lives here,
+ *  not in WalletProvider, to keep that chunk inside its budget. */
+export async function publishProfileOnConnect(
+  transport: { publish(event: TransportEvent): Promise<unknown> },
+  wallet: Wallet,
+  ownerId: string | null | undefined,
+  isCancelled: () => boolean,
+): Promise<void> {
+  const held = await wallet.holdings();
+  const id = held.find((a) => a.kind === 'identity' && a.subject === wallet.identity);
+  if (!id) return;
+  const event = await buildProfileEventForOwner(wallet, id, ownerId);
+  if (!event || isCancelled()) return;
+  await transport.publish(event);
+}

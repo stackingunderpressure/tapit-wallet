@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 // Loaded on demand so the Settings chunk stays under its bundle budget.
+const PublicProfileSection = lazy(() =>
+  import('./PublicProfileSection.tsx').then((m) => ({ default: m.PublicProfileSection })),
+);
 const FaceUnlockSection = lazy(() =>
   import('../face-unlock/FaceUnlockSection.tsx').then((m) => ({ default: m.FaceUnlockSection })),
 );
@@ -109,6 +112,11 @@ export function SettingsScreen() {
       <CategoryGroup title="Connections & signing" subtitle="How people and apps like DynastyTrust reach you">
         <SettingsItem title="Stay reachable" description="Receive messages and signing requests when you're apart, and which relays carry them">
           <ReachabilitySection prefs={prefs} updatePrefs={updatePrefs} />
+        </SettingsItem>
+        <SettingsItem title="Public profile" description={prefs.publicProfile ? 'On: your name is visible to anyone on Nostr' : 'Off: other Nostr apps see only your key'}>
+          <Suspense fallback={null}>
+            <PublicProfileSection />
+          </Suspense>
         </SettingsItem>
         <SettingsItem title="Your public key" description="Give an app your key so it can ask you to sign">
           <PublicKeySection publicKey={wallet.publicKey} />

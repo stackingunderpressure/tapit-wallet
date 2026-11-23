@@ -133,6 +133,10 @@ export interface Prefs {
    *  Drives the 30-day backup reminder in the sovereign build. Added
    *  2026-11-23. */
   lastFileBackupAt: string | null;
+  /** Publish a public Nostr profile (name, and full name + location if
+   *  entered) on connect. Off by default; off publishes an empty profile to
+   *  replace any earlier one. Added 2026-11-23. */
+  publicProfile: boolean;
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -156,6 +160,7 @@ export const DEFAULT_PREFS: Prefs = {
   recoveryKeySeen: false,
   localBackupDownloaded: false,
   lastFileBackupAt: null,
+  publicProfile: false,
 };
 
 export const prefsStore = {

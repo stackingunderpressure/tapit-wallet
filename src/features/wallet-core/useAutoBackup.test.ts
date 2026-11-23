@@ -11,6 +11,7 @@ function prefs(over: Partial<Prefs>): Prefs {
   return {
     cloudSync: true,
     lastFileBackupAt: null,
+    publicProfile: false,
     lastRemoteSync: null,
     lastLocalSync: null,
     lastRemoteFailedSync: null,

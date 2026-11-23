@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+const { prefsByOwner } = vi.hoisted(() => ({ prefsByOwner: new Map<string, { publicProfile: boolean }>() }));
+vi.mock('../storage/prefsStore.ts', () => ({
+  prefsStore: { load: async (id: string) => prefsByOwner.get(id) ?? { publicProfile: false } },
+}));
 import { Wallet, identityAttestation } from 'tapit-attest';
 import {
   profileFromIdentity,
   buildProfileEvent,
+  buildProfileEventForOwner,
   NOSTR_PROFILE_KIND,
 } from './nostrProfile.ts';
 import { verifyEvent } from './nostrEvent.ts';
@@ -86,5 +92,30 @@ describe('buildProfileEvent', () => {
       display_name: 'Ada',
       about: 'Ada Lovelace',
     });
+  });
+});
+
+describe('buildProfileEventForOwner (public profile is opt-in)', () => {
+  const fields = { display_name: 'Ada', full_name: 'Ada Lovelace', location: 'London' };
+
+  it('off by default: publishes an EMPTY profile that replaces any earlier one', async () => {
+    const { wallet, identity } = identityWith(fields);
+    const event = await buildProfileEventForOwner(wallet, identity, 'owner-off');
+    expect(event?.kind).toBe(NOSTR_PROFILE_KIND);
+    expect(event?.content).toBe('{}');
+    expect(event?.content).not.toContain('London');
+    expect(await verifyEvent(event!)).toBe(true);
+  });
+
+  it('no owner known: still empty, never the real profile', async () => {
+    const { wallet, identity } = identityWith(fields);
+    expect((await buildProfileEventForOwner(wallet, identity, null))?.content).toBe('{}');
+  });
+
+  it('switched on: publishes the profile from the identity', async () => {
+    prefsByOwner.set('owner-on', { publicProfile: true });
+    const { wallet, identity } = identityWith(fields);
+    const event = await buildProfileEventForOwner(wallet, identity, 'owner-on');
+    expect(JSON.parse(event!.content)).toEqual({ name: 'Ada', display_name: 'Ada', about: 'Ada Lovelace · London' });
   });
 });

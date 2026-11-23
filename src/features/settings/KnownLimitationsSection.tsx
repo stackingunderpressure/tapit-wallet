@@ -46,6 +46,17 @@ export function KnownLimitationsSection() {
         </div>
 
         <div>
+          <div className="text-sm font-medium">What Nostr relays can see</div>
+          <p className="mt-1 text-xs text-muted">
+            Your wallet talks to public Nostr relays, never to a Tapit server. Every relay sees your
+            internet address and that it is collecting messages for your key. Chat messages hide the
+            text and who sent them. Connection records, vault invites and spend or sign-in requests
+            hide their contents, but relays can see who sent them to whom and when. Your public
+            profile is off unless you turn it on in Settings.
+          </p>
+        </div>
+
+        <div>
           <div className="text-sm font-medium">
             Recovery from a lost device requires preparation
           </div>
