@@ -79,10 +79,9 @@ export function SettingsScreen() {
           </p>
         )}
         <p className="mt-1 text-sm text-muted">
-          Every lever below moves the wallet toward sovereign — turn off cloud
-          backup to keep your encrypted wallet only on this device, point
-          "stay reachable" at your own servers, set up trusted helpers, and
-          write down your recovery key.
+          {isSovereign()
+            ? 'Your wallet lives on this device and nowhere else. Download a backup file and keep it somewhere safe, set up trusted helpers, write down your recovery key, and point "stay reachable" at your own servers if you run them.'
+            : 'Every lever below moves the wallet toward sovereign — turn off cloud backup to keep your encrypted wallet only on this device, point "stay reachable" at your own servers, set up trusted helpers, and write down your recovery key.'}
         </p>
         <Link
           to="/about"
@@ -119,10 +118,11 @@ export function SettingsScreen() {
 
       <CategoryGroup
         title="Backup & recovery"
-        subtitle="Cloud sync, trusted helpers, and your ways back in"
+        subtitle={isSovereign() ? 'Backup file, trusted helpers, and your ways back in' : 'Cloud sync, trusted helpers, and your ways back in'}
         defaultOpen
       >
-        <CloudBackupSection prefs={prefs} updatePrefs={updatePrefs} save={save} />
+        {/* No cloud in the sovereign build, so no cloud switch. */}
+        {!isSovereign() && <CloudBackupSection prefs={prefs} updatePrefs={updatePrefs} save={save} />}
         <RecoveryCohortSection holdings={holdings} walletIdentity={wallet.identity} />
         <LocalBackupSection
           wallet={wallet}

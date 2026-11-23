@@ -429,7 +429,7 @@ export function RecoveryInitiatorModal({
       // walletStore.load to avoid a redundant network hop.
       if (storedBlob.v !== 2) {
         throw new Error(
-          'cloud backup is the legacy v1 format and cannot be recovered without a passphrase',
+          'this wallet is saved in the old format, which can only be opened with the passphrase',
         );
       }
       const recoverableBlob: RecoverableEncryptedBlob = storedBlob;

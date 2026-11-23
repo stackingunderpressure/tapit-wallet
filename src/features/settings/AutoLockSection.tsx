@@ -31,7 +31,7 @@ export function AutoLockSection({
           <option value={30 * 60 * 1000}>30 minutes (default)</option>
           <option value={60 * 60 * 1000}>1 hour</option>
           <option value={4 * 60 * 60 * 1000}>4 hours</option>
-          <option value={0}>Never (until you sign out)</option>
+          <option value={0}>Never (until you close the app)</option>
         </select>
       </label>
     </section>

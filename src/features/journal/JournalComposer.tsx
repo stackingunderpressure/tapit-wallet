@@ -130,7 +130,7 @@ export function JournalComposer({ onCreated, onCancel, prefill }: Props) {
       return;
     }
     if (!passphrase) {
-      setError('Wallet is locked — sign in again.');
+      setError('Wallet is locked — unlock it again.');
       return;
     }
     setBusy(true);

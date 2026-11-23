@@ -28,6 +28,7 @@ const OWNER = 'op-2026-05-30';
 function basePrefs(overrides: Partial<Prefs> = {}): Prefs {
   return {
     cloudSync: true,
+    lastFileBackupAt: null,
     lastRemoteSync: null,
     lastLocalSync: null,
     lastRemoteFailedSync: null,

@@ -98,3 +98,41 @@ export function backupBanner(
   }
   return null;
 }
+
+// Sovereign build: there is no cloud copy, so the health line is about the
+// backup file (SOVEREIGN_SYNC_PLAN.md section 4, decision 5: nudge after 30
+// days). Never claims more than the wallet knows: a file downloaded before
+// the date was recorded is reported as "date unknown", not as fresh.
+
+export const FILE_STALE_AFTER_DAYS = 30;
+
+export interface FileBackupInput {
+  localBackupDownloaded: boolean;
+  lastFileBackupAt: string | null;
+}
+
+export function fileBackupBanner(
+  prefs: FileBackupInput,
+  now: number = Date.now(),
+): BackupBanner | null {
+  if (!prefs.lastFileBackupAt) {
+    if (prefs.localBackupDownloaded) {
+      return {
+        tone: 'warn',
+        text: "This wallet doesn't know when your last backup file was made. Download a new one in Settings, Backup & recovery.",
+      };
+    }
+    return {
+      tone: 'warn',
+      text: 'Your wallet is saved only on this device. Download a backup file in Settings, Backup & recovery, so you can get it back if this device is lost.',
+    };
+  }
+  const days = Math.floor((now - new Date(prefs.lastFileBackupAt).getTime()) / 86_400_000);
+  if (days >= FILE_STALE_AFTER_DAYS) {
+    return {
+      tone: 'warn',
+      text: `Your last backup file is ${days} days old. Download a new one in Settings, Backup & recovery, so it holds your latest messages and changes.`,
+    };
+  }
+  return null;
+}

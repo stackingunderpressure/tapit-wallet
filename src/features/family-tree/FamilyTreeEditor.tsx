@@ -145,7 +145,7 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
       return;
     }
     if (!passphrase) {
-      setMomentError('Wallet is locked — sign in again.');
+      setMomentError('Wallet is locked — unlock it again.');
       return;
     }
     setMomentBusy(true);

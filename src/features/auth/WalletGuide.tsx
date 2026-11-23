@@ -1,3 +1,4 @@
+import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { lazy, Suspense, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../shared/lib/supabase.ts';
@@ -50,7 +51,8 @@ const TABS: TabSpec[] = [
   { id: 'recovery', label: 'Recovery' },
   { id: 'sovereignty', label: 'Sovereignty' },
   { id: 'bitcoin', label: 'Bitcoin' },
-  { id: 'account', label: 'Account' },
+  // The sovereign build has no account to show or sign out of.
+  ...(isSovereign() ? [] : [{ id: 'account' as const, label: 'Account' }]),
 ];
 
 interface Props {
@@ -176,7 +178,7 @@ function WhyAndWho() {
         key. Selectively share one fact — your age, your address, a specific
         credential — without leaking the rest. When an app asks you to sign
         something, you see exactly what it is in plain English before you
-        approve. Lost the device? Your cohort puts you back together.
+        approve. Lost the device? Your backup file brings it back.
       </Card>
 
       <Card title="For a family">
@@ -344,10 +346,11 @@ function RecoveryPaths() {
     <section>
       <SectionTitle>Three paths back.</SectionTitle>
       <Lede>
-        Lost the device, forgot the passphrase, or both — the wallet ships
-        three independent recovery paths. They stack: any one of them brings
-        the wallet back. Each requires preparation before the loss, so the
-        first time you set up the wallet, set up at least one.
+        Two different losses, two different answers. Lost the device: a
+        backup file plus your passphrase brings the wallet back on a new
+        one. Forgot the passphrase: trusted helpers or your paper recovery
+        key open the wallet on the device that still holds it. Each needs
+        preparation before the loss, so set them up now.
       </Lede>
 
       <Card title="Cohort cascade (the woven web)">
@@ -356,8 +359,8 @@ function RecoveryPaths() {
         signing key) via Shamir Secret Sharing and ships one piece to each
         peer, encrypted to them, either over the Mycelium network or in
         person via QR. On recovery, M peers verify it's really you
-        out-of-band, release their shares, and your wallet rebuilds on a
-        new device. The signing keypair is never split — peer collusion
+        out-of-band, release their shares, and the wallet saved on your
+        device opens again under a new passphrase. The signing keypair is never split — peer collusion
         can decrypt one snapshot but cannot become you.
       </Card>
 
@@ -371,31 +374,32 @@ function RecoveryPaths() {
       </Card>
 
       <Card title="Encrypted backup file">
-        Settings → Local backup also offers a download of the wallet
-        encrypted under your passphrase. Useful when you've still got the
-        passphrase but the device died — copy the file to the new device,
-        install the wallet, restore. Less powerful than the other two
-        because it still requires the passphrase to decrypt.
+        Settings → Local backup downloads one file holding the wallet and
+        everything saved with it — messages, attachments, notes, circle
+        phrases, request history — encrypted under your passphrase. It is
+        the only way back after a lost or broken device: open the wallet
+        on the new device, choose "Restore from a backup file", and enter
+        the passphrase. "Test my backup" checks a file opens without
+        changing anything. Download a new one at least once a month; the
+        home screen reminds you after 30 days.
       </Card>
 
       <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
         <div className="text-sm font-semibold text-ink">A floor everyone hits</div>
         <p className="mt-2 text-sm leading-relaxed text-ink/75">
-          All three recovery paths assume your cloud backup is on the new
-          device — that only happens if cloud sync was on. If you kept
-          everything local and the device is gone, the encrypted backup
-          file is the only path back, and you still need the passphrase
-          to decrypt it. The cohort cascade and paper key both decrypt
-          the cloud blob; without that blob there is nothing to restore
-          into.
+          Your wallet is kept on your device and nowhere else — there is
+          no cloud copy and no company that can restore it. The helpers
+          and the paper key open the copy on your device; they cannot
+          open a backup file. If the device is gone, a backup file plus
+          your passphrase is the only path back. Lose both the device and
+          the passphrase, and no one can bring the wallet back.
         </p>
       </div>
 
       <p className="mt-5 text-xs leading-relaxed text-muted">
-        Recovery actions appear on the lock screen when there's a stored
-        wallet to recover into — sign in first, then "Forgot your
-        passphrase?" plus "Or use your written-down recovery key" both appear
-        below the passphrase prompt.
+        Recovery actions appear on the lock screen when there's a saved
+        wallet on the device: "Forgot your passphrase?" and "Or use your
+        written-down recovery key" both sit below the passphrase prompt.
       </p>
     </section>
   );
@@ -414,23 +418,17 @@ function Sovereignty() {
         want. Every cryptographic primitive already runs on your device —
         signing, encryption, OpenTimestamps anchoring, Mycelium peer
         connections — and the pieces that touch outside infrastructure are
-        either optional today or on the roadmap. Four gradations are useful
-        to name.
+        optional. There is no login and no cloud copy: the wallet lives on
+        your device.
       </Lede>
 
-      <Card title="Connected (today's default)">
-        Email + 6-digit code login. Encrypted blob mirrored to Tapit's
-        cloud backup so a new phone can pick up where the old one left off.
-        Mycelium uses the default relay set. The cohort cascade and the
-        paper recovery key both work. Easiest UX, least work for you.
-      </Card>
-
-      <Card title="Connected but private">
-        Same login as above, but flip Settings → Cloud backup OFF. Your
-        encrypted blob lives only in IndexedDB on this device. The host
-        sees only that you have an account — no ciphertext, no holdings,
-        no metadata. Continuity now depends on the paper recovery key or
-        a downloaded encrypted-file backup. Already toggleable today.
+      <Card title="Sovereign solo (today)">
+        No login, no cloud. The first run picks a passphrase, and the
+        wallet is created and kept on this device. Face ID can unlock it
+        on this device. Continuity is your backup file, your paper
+        recovery key and your trusted helpers. Losing the device with no
+        backup file means the wallet is gone, so keep a recent file
+        somewhere other than the device.
       </Card>
 
       <Card title="Sovereign with cohort (roadmap)">
@@ -444,23 +442,13 @@ function Sovereignty() {
         peer-shard storage layer ships in a future cut.
       </Card>
 
-      <Card title="Sovereign solo (roadmap)">
-        No login, no peers, no cloud. First run picks a passphrase, the
-        wallet generates and lives entirely on this phone, ownerId is a
-        device-local UUID. Continuity is your paper recovery key and your
-        encrypted-file backup, full stop. Strongest sovereignty, hardest
-        UX — losing the device with no backup means the wallet is gone.
-        For the operator who wants the strictest version of "no
-        third-party dependencies."
-      </Card>
-
       <div className="mt-6 rounded-xl border border-ink/15 bg-paper/70 p-4">
         <div className="text-sm font-semibold text-ink">
           What you can already do
         </div>
         <p className="mt-2 text-sm leading-relaxed text-ink/75">
           Settings exposes the levers that already shift the wallet
-          toward sovereign today: turn off cloud backup, point Mycelium
+          toward sovereign today: download a backup file, point Mycelium
           at your own Nostr relays, declare a recovery cohort of people
           you trust, reveal your recovery key and write it down. Each of
           those independently reduces your dependence on outside
@@ -469,9 +457,9 @@ function Sovereignty() {
           Bitcoin doing the timestamp work, not us.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-ink/75">
-          What's coming: a no-login first-run picker, an opt-in
-          peer-shard storage layer so cohort recovery works without any
-          cloud blob, custom OpenTimestamps calendar server URLs so you
+          What's coming: saving the backup straight to a folder you
+          choose, an opt-in peer-shard storage layer so the cohort can
+          restore the wallet on a new device, custom OpenTimestamps calendar server URLs so you
           can use your own bitcoind plus your own calendar instance for
           the full sovereign-anchor loop, and a custom remote-backup
           endpoint so an operator running their own server (an

@@ -66,9 +66,8 @@ export function LocalBackupSection({
       setShowExportForm(false);
       // Record that an encrypted-file backup exists so the home-screen nudge
       // retires — this is one of the recovery paths it asks for.
-      if (!prefs.localBackupDownloaded) {
-        void updatePrefs({ localBackupDownloaded: true });
-      }
+      // The date drives the 30-day backup reminder on the home screen.
+      void updatePrefs({ localBackupDownloaded: true, lastFileBackupAt: new Date().toISOString() });
     } catch (err) {
       setExportError(err instanceof Error ? err.message : 'Export failed.');
     } finally {
@@ -83,7 +82,7 @@ export function LocalBackupSection({
     try {
       const stored = await walletStore.load(ownerId);
       if (!stored) {
-        throw new Error('No stored wallet — sign out and back in to refresh.');
+        throw new Error('No wallet is saved on this device yet. Lock the wallet and unlock it again, then try once more.');
       }
       if (stored.blob.v !== 2) {
         throw new Error(
@@ -213,8 +212,9 @@ export function LocalBackupSection({
         <p className="mt-1 text-sm text-muted">
           A 64-character key that unlocks your wallet without the passphrase.
           Write it down on paper and keep it somewhere physically safe. Anyone
-          holding it plus your cloud backup can recover your wallet — treat it
-          like a house key.
+          holding it can open your wallet on this device without the passphrase
+          — treat it like a house key. It does not open a backup file; a backup
+          file needs the passphrase.
         </p>
 
         {!showKeyForm && !revealedKey && (

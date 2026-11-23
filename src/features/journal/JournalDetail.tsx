@@ -319,8 +319,7 @@ export function JournalDetail() {
             )}
             {verifyResult?.state === 'missing' && (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                The encrypted file is not present in local storage or in the
-                cloud mirror right now. The signed envelope still proves
+                The encrypted file is not saved on this device right now. The signed envelope still proves
                 what the file's hash was on the day you filed it — re-supply
                 the bytes from any source that produces that same hash and
                 the integrity claim holds.

@@ -63,7 +63,7 @@ export function JoinScreen() {
                 : `Accept to connect with ${result.invite.founderName} in Tapit.`}{' '}
               New here? You'll get your own wallet — your keys stay on your
               device, encrypted by a passphrase only you know. Already have a
-              Tapit wallet? You'll just sign in.
+              Tapit wallet on this device? You'll just unlock it.
             </p>
             <button
               type="button"
@@ -74,7 +74,7 @@ export function JoinScreen() {
             </button>
             <p className="mt-4 text-center text-xs text-fresh-text-tertiary">
               New here? The next step sets up your wallet. Already have one?
-              You'll sign in instead — nothing new gets created.
+              You'll unlock it instead — nothing new gets created.
             </p>
             <Link
               to="/about"

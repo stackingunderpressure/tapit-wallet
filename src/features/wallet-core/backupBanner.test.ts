@@ -115,3 +115,22 @@ describe('backupBanner', () => {
     expect(banner).toBeNull();
   });
 });
+
+import { fileBackupBanner } from './backupBanner.ts';
+
+describe('fileBackupBanner (sovereign build)', () => {
+  const NOW = new Date('2026-11-23T12:00:00Z').getTime();
+  test('never backed up: says the wallet is only on this device', () => {
+    expect(fileBackupBanner({ localBackupDownloaded: false, lastFileBackupAt: null }, NOW)?.text).toMatch(/only on this device/);
+  });
+  test('downloaded before dates were kept: says the date is unknown, never claims fresh', () => {
+    expect(fileBackupBanner({ localBackupDownloaded: true, lastFileBackupAt: null }, NOW)?.text).toMatch(/doesn't know when/);
+  });
+  test('recent file: no banner', () => {
+    expect(fileBackupBanner({ localBackupDownloaded: true, lastFileBackupAt: '2026-11-01T12:00:00Z' }, NOW)).toBeNull();
+  });
+  test('30 days or older: reminds, with the age in days', () => {
+    expect(fileBackupBanner({ localBackupDownloaded: true, lastFileBackupAt: '2026-10-24T12:00:00Z' }, NOW)?.text).toMatch(/30 days old/);
+    expect(fileBackupBanner({ localBackupDownloaded: true, lastFileBackupAt: '2026-10-25T12:00:00Z' }, NOW)).toBeNull();
+  });
+});

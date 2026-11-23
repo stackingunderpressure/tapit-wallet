@@ -76,7 +76,7 @@ export function CaptureScreen() {
       return;
     }
     if (!passphrase) {
-      setError('Wallet is locked — sign in again.');
+      setError('Wallet is locked — unlock it again.');
       return;
     }
     setBusy(true);

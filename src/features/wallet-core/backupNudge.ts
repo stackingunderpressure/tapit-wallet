@@ -36,7 +36,7 @@ export function backupNudge(input: BackupNudgeInput): BackupNudge | null {
   }
   return {
     text:
-      "You haven't set up a way back into this wallet yet. If you forget your passphrase or lose this device, cloud backup alone can't bring you back. Take two minutes to secure it.",
+      "You haven't set up a way back into this wallet yet. If you forget your passphrase or lose this device, no company or server can bring it back. Take two minutes to secure it.",
     cta: 'Set up a way back in',
   };
 }

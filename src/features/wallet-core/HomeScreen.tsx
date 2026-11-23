@@ -107,7 +107,8 @@ import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promo
 import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
 import { PromoteRouter, type PromoteRouterHandle } from '../messaging/PromoteRouter.tsx';
 import type { PromotePayload } from '../messaging/promoteTarget.ts';
-import { backupBanner } from './backupBanner.ts';
+import { backupBanner, fileBackupBanner } from './backupBanner.ts';
+import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { BackupNudgeBanner } from './BackupNudgeBanner.tsx';
 import { findLatestCohort } from '../recovery/createCohort.ts';
 import { useSecretPieceHeartbeat } from '../recovery/useSecretPieceHeartbeat.ts';
@@ -201,7 +202,8 @@ export function HomeScreen() {
   const [presenceOpen, setPresenceOpen] = useState(false);
   const [presenceDetail, setPresenceDetail] = useState<Attestation | null>(null);
 
-  const banner = backupBanner(prefs);
+  // Sovereign build: the health line is about the backup file, not a cloud.
+  const banner = isSovereign() ? fileBackupBanner(prefs) : backupBanner(prefs);
   // Persistent "set up a way back in" nudge — retires once the operator
   // has revealed the recovery key, downloaded a backup, or declared a
   // cohort. Catches the nontechnical user who sailed past Settings and

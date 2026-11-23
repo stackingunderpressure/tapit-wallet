@@ -37,12 +37,11 @@ export function KnownLimitationsSection() {
         <div>
           <div className="text-sm font-medium">Face ID unlock not yet built</div>
           <p className="mt-1 text-xs text-muted">
-            The wallet still requires your passphrase at every unlock.
-            Biometric unlock is on the roadmap (Phase 7+) but deferred until
-            the cross-device recovery story is fully shipped — biometrics
-            are per-device and can't replace the passphrase as a recovery
-            primitive. Face ID is already used inside the wallet for
-            device-verified presence (Tier V), just not for unlock yet.
+            Face ID can unlock the wallet and confirm signatures (Settings,
+            Security &amp; access), but only on the device where you turned it
+            on. It opens a copy of your passphrase sealed on that device; it
+            can&apos;t replace the passphrase, which is still what opens a
+            backup file on a new device.
           </p>
         </div>
 
@@ -51,12 +50,10 @@ export function KnownLimitationsSection() {
             Recovery from a lost device requires preparation
           </div>
           <p className="mt-1 text-xs text-muted">
-            To recover this wallet on a new device using your cohort, the
-            wallet must have had cloud backup turned on AND a recovery
-            cohort declared AND shares distributed to the cohort BEFORE the
-            loss. The cohort cascade can't reach back in time. If none of
-            that was set up, the only path back is the original passphrase
-            plus the original device or a downloaded local backup file.
+            The only way to bring this wallet back on a new device is a backup
+            file you downloaded before the loss, plus your passphrase. Nothing
+            is kept on a server, so if neither a backup file nor the original
+            device survives, the wallet cannot be restored by anyone.
           </p>
         </div>
 
@@ -82,14 +79,14 @@ export function KnownLimitationsSection() {
 
         <div>
           <div className="text-sm font-medium">
-            Recovery requires the cloud backup to be on this device
+            Trusted helpers and the recovery key work on this device only
           </div>
           <p className="mt-1 text-xs text-muted">
-            Both recovery paths — cohort cascade and recovery key —
-            decrypt the cloud-mirrored backup blob, which only reaches a
-            new device if cloud sync was on. If cloud sync was off and
-            the original device is gone, the local-backup file download
-            plus your passphrase is the only path back.
+            Both forgotten-passphrase paths — trusted helpers and the recovery
+            key — open the copy of the wallet saved on this device. They
+            can&apos;t open a backup file, which needs the passphrase. Keep the
+            passphrase, and keep a recent backup file somewhere other than
+            this device.
           </p>
         </div>
       </div>

@@ -10,6 +10,7 @@ const DAY = 24 * 60 * 60 * 1000;
 function prefs(over: Partial<Prefs>): Prefs {
   return {
     cloudSync: true,
+    lastFileBackupAt: null,
     lastRemoteSync: null,
     lastLocalSync: null,
     lastRemoteFailedSync: null,

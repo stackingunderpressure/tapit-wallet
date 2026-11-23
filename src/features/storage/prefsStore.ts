@@ -129,6 +129,10 @@ export interface Prefs {
    * Added 2026-06-03.
    */
   localBackupDownloaded: boolean;
+  /** When the last complete backup file was downloaded (ISO), or null.
+   *  Drives the 30-day backup reminder in the sovereign build. Added
+   *  2026-11-23. */
+  lastFileBackupAt: string | null;
 }
 
 const KEY = (ownerId: string) => `prefs:${ownerId}`;
@@ -151,6 +155,7 @@ export const DEFAULT_PREFS: Prefs = {
   vouchingCirclePubkeys: [],
   recoveryKeySeen: false,
   localBackupDownloaded: false,
+  lastFileBackupAt: null,
 };
 
 export const prefsStore = {
