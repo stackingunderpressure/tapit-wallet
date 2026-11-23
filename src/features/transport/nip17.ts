@@ -259,3 +259,44 @@ function narrowToTransportEvent(raw: unknown): TransportEvent | null {
     tags: o.tags as readonly Tag[],
   };
 }
+
+/**
+ * Gift-wrap an ALREADY-SIGNED event for one recipient (docs/
+ * NOSTR_METADATA_PLAN.md, Phase 1). Same layering as chat, but the seal
+ * carries the whole signed event instead of an unsigned kind-14 rumor, so
+ * the receiver gets back the exact event it already knows how to check:
+ *
+ *   wrap (1059)  throwaway key, p = recipient, randomized time
+ *   seal (13)    signed by the sender's wallet, randomized time
+ *   inner        the signed event, unchanged (real time, real signature)
+ *
+ * Relays see only a throwaway key, the recipient and a size. The receiver
+ * (DynastyTrust apps/web/src/lib/tapit-gift-wrap.ts) requires the inner
+ * event to be signed by the same key that signed the seal.
+ */
+export async function wrapSignedEvent(
+  inner: TransportEvent,
+  recipientPubkey: string,
+  sender: Wallet,
+): Promise<TransportEvent> {
+  if (inner.pubkey !== sender.publicKey) {
+    throw new Error('wrapSignedEvent: the inner event must be signed by the sending wallet');
+  }
+  const seal = await buildEvent({
+    pubkey: sender.publicKey,
+    sign: (digest) => sender.signDigest(digest),
+    kind: NIP17_SEAL_KIND,
+    content: sender.nip44EncryptTo(JSON.stringify(inner), recipientPubkey),
+    tags: [],
+    created_at: randomizedPastTimestamp(),
+  });
+  const ephemeral = generateKeypair();
+  return buildEvent({
+    pubkey: ephemeral.publicKey,
+    sign: (digest) => schnorrSignDigest(digest, ephemeral.privateKey),
+    kind: NIP17_GIFT_WRAP_KIND,
+    content: encryptTo(JSON.stringify(seal), recipientPubkey, ephemeral.privateKey),
+    tags: [['p', recipientPubkey]],
+    created_at: randomizedPastTimestamp(),
+  });
+}

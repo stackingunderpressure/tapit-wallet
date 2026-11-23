@@ -1,5 +1,6 @@
 import type { Wallet, SignInAttestation } from 'tapit-attest';
 import { buildEvent } from '../transport/nostrEvent.ts';
+import { wrapSignedEvent } from '../transport/nip17.ts';
 import type { PublishResult, Transport } from '../transport/transport.ts';
 import type { SignGrant } from './types.ts';
 
@@ -52,5 +53,6 @@ export async function sendSignInResponseOverNostr(
     content: ciphertext,
     tags: [['p', requesterPubkey]],
   });
-  return transport.publish(event);
+  // Gift-wrapped so relays can't see which wallet answered (docs/NOSTR_METADATA_PLAN.md, Phase 1).
+  return transport.publish(await wrapSignedEvent(event, requesterPubkey, sender));
 }

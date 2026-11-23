@@ -190,9 +190,18 @@ describe('approveSignRequest — psbt-cosign response routing', () => {
     expect(window.location.href).toBe(hrefBefore); // never touched
     expect(transport.published).toHaveLength(1);
 
-    const event = transport.published[0]!;
+    // Gift-wrapped (docs/NOSTR_METADATA_PLAN.md, Phase 1): relays see a
+    // throwaway key, never the wallet's. Open it as DynastyTrust does.
+    const wrap = transport.published[0]!;
+    expect(wrap.kind).toBe(1059);
+    expect(wrap.pubkey).not.toBe(wallet.publicKey);
+    expect(wrap.tags).toEqual([['p', requesterPub]]);
+    const seal = JSON.parse(decryptFrom(wrap.content, wrap.pubkey, requesterPriv)) as { kind: number; pubkey: string; content: string };
+    expect(seal.kind).toBe(13);
+    expect(seal.pubkey).toBe(wallet.publicKey);
+    const event = JSON.parse(decryptFrom(seal.content, seal.pubkey, requesterPriv)) as { kind: number; pubkey: string; tags: string[][]; content: string };
     expect(event.kind).toBe(9579);
-    expect(event.pubkey).toBe(wallet.publicKey); // sent as the wallet's OWN real identity
+    expect(event.pubkey).toBe(wallet.publicKey); // the inner answer is still the wallet's own, signed
     expect(event.tags).toContainEqual(['p', requesterPub]);
 
     // Proof, not just "didn't throw": decrypt as the requester would and

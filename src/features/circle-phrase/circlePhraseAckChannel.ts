@@ -1,5 +1,6 @@
 import type { Wallet } from 'tapit-attest';
 import { buildEvent } from '../transport/nostrEvent.ts';
+import { wrapSignedEvent } from '../transport/nip17.ts';
 import type { PublishResult, Transport } from '../transport/transport.ts';
 
 // Real receipt confirmation for the circle safety phrase pair
@@ -50,5 +51,6 @@ export async function sendCirclePhraseAckOverNostr(
     content: ciphertext,
     tags: [['p', requesterPubkey]],
   });
-  return transport.publish(event);
+  // Gift-wrapped so relays can't see which wallet answered (docs/NOSTR_METADATA_PLAN.md, Phase 1).
+  return transport.publish(await wrapSignedEvent(event, requesterPubkey, sender));
 }

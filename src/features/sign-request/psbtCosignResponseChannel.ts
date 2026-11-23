@@ -1,5 +1,6 @@
 import type { Wallet } from 'tapit-attest';
 import { buildEvent } from '../transport/nostrEvent.ts';
+import { wrapSignedEvent } from '../transport/nip17.ts';
 import type { PublishResult, Transport } from '../transport/transport.ts';
 
 // Cut B3 slice 2 (docs/build-map-and-cut-lists.md; DynastyTrust
@@ -54,5 +55,6 @@ export async function sendPsbtCosignResponseOverNostr(
     content: ciphertext,
     tags: [['p', requesterPubkey]],
   });
-  return transport.publish(event);
+  // Gift-wrapped so relays can't see which wallet answered (docs/NOSTR_METADATA_PLAN.md, Phase 1).
+  return transport.publish(await wrapSignedEvent(event, requesterPubkey, sender));
 }
