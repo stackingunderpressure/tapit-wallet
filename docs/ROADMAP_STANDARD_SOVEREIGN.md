@@ -70,6 +70,39 @@ Bitcoin. Two ways to make it binding, from cheapest:
   hard question is who runs that signer: a Tapit wallet held by an official,
   or a small always-on service; each has trade-offs written out before build.
 
+### Changing members without rebuilding the vault (from the earlier passes)
+
+The operator has worked this through before; the passes are, oldest first:
+TAP_TO_ATTEST.md (AppCommander, 2026-05-18), the Tapit charter-governance
+brief (2026-05-25, recoverable from tapit-wallet commit 5184ac4),
+DynastyTrust `docs/sovereignty-education-bot.md` §11–11e (2026-06-15),
+`docs/build-map-and-cut-lists.md`, `docs/layered-vault-legs-and-frost.md`
+(§4, §6.2 business treasury, §11g), `docs/green-ladder-spec.md`,
+tapit-wallet `TRUST_FRAMEWORK.md` (2026-09-03), and DynastyTrust's threat
+model (2026-11-13). What they agree on, applied here:
+
+- **Members never go on-chain.** The member roster and the petition live in
+  Tapit as signed records (a roster whose changes the officials sign; new
+  members admitted by vouching or silent objection). Adding or removing a
+  member changes no Bitcoin key and moves no coins. Only the small,
+  stable security-member group is in the vault script (§11 of the education
+  doc: "big social quorums belong off-chain").
+- **Security members are the only churn that touches Bitcoin.** Today that
+  means building a new vault and moving the coins (DynastyTrust's threat
+  model: "a finalized vault takes no new members"). Later: put the seats that
+  are likely to change behind a FROST aggregate key, whose holders can be
+  re-dealt off-chain without changing the address ("resharing"); every pass
+  marks resharing as frontier, the least tested piece, so it comes last.
+- **FROST belongs on the deep backstop first** (layered-legs §11g): the
+  everyday path stays a plain hardware threshold of security members.
+- **Petition key rule already set** (build map, 2026-06-22): "Tapit shouldn't
+  sign if not a matching attested trail. No rogue signing anything." That is
+  exactly the petition key's job.
+- **Contradictions to settle later:** org authority as FROST ("the only way",
+  2026-05-18) vs. a plain majority-signed statement (TRUST_FRAMEWORK,
+  2026-09-03); where FROST sits moved from the fast path to backstop-only.
+  Not blocking the proof of concept, which uses neither.
+
 ## 4. Two tracks: Standard and Sovereign
 
 Asked once at the start, changeable later without rebuilding a vault.
@@ -162,5 +195,5 @@ DynastyTrust, under the company's Apple account.
    petition key (recommended), or petition key from the start.
 2. Who runs the petition key: an official's Tapit wallet (no server, needs a
    person online) or a small always-on signer (automatic, but a service).
-3. Order of P2 and P3: privacy first (recommended), or the org proof of
-   concept first to show the vision sooner.
+3. Order: privacy first (decided 2026-11-23).
+4. Who holds the petition key: investigate further (operator, 2026-11-23).
