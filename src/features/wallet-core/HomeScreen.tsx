@@ -107,7 +107,10 @@ import { promoteToJournalPrefill, type JournalPrefill } from '../messaging/promo
 import { promoteToPresencePrefill, type PresencePrefill } from '../messaging/promoteToPresencePrefill.ts';
 import { PromoteRouter, type PromoteRouterHandle } from '../messaging/PromoteRouter.tsx';
 import type { PromotePayload } from '../messaging/promoteTarget.ts';
-import { backupBanner, fileBackupBanner } from './backupBanner.ts';
+import { backupBanner } from './backupBanner.ts';
+const BackupNowLine = lazy(() =>
+  import('../settings/BackupNowLine.tsx').then((m) => ({ default: m.BackupNowLine })),
+);
 import { isSovereign } from '../../shared/lib/sovereign.ts';
 import { BackupNudgeBanner } from './BackupNudgeBanner.tsx';
 import { findLatestCohort } from '../recovery/createCohort.ts';
@@ -203,7 +206,7 @@ export function HomeScreen() {
   const [presenceDetail, setPresenceDetail] = useState<Attestation | null>(null);
 
   // Sovereign build: the health line is about the backup file, not a cloud.
-  const banner = isSovereign() ? fileBackupBanner(prefs) : backupBanner(prefs);
+  const banner = backupBanner(prefs);
   // Persistent "set up a way back in" nudge — retires once the operator
   // has revealed the recovery key, downloaded a backup, or declared a
   // cohort. Catches the nontechnical user who sailed past Settings and
@@ -360,7 +363,14 @@ export function HomeScreen() {
 
       {/* Backup health sits above the tabs — a warning must never be
           hidden behind a tab the operator might not be looking at. */}
-      {banner && (
+      {/* Sovereign build: one backup line with Save now replaces the
+          file banner and the way-back-in nudge. */}
+      {isSovereign() && (
+        <Suspense fallback={null}>
+          <BackupNowLine />
+        </Suspense>
+      )}
+      {!isSovereign() && banner && (
         <div
           className={`mt-3 flex items-start gap-3 rounded-md px-3 py-2 text-sm ${
             banner.tone === 'error'
@@ -395,11 +405,13 @@ export function HomeScreen() {
       {/* Set-up-a-way-back-in nudge — retires once any recovery path is
           established. The one prompt a nontechnical user who never opens
           Settings would otherwise never see. */}
-      <BackupNudgeBanner
-        recoveryKeySeen={prefs.recoveryKeySeen}
-        localBackupDownloaded={prefs.localBackupDownloaded}
-        hasCohort={hasCohort}
-      />
+      {!isSovereign() && (
+        <BackupNudgeBanner
+          recoveryKeySeen={prefs.recoveryKeySeen}
+          localBackupDownloaded={prefs.localBackupDownloaded}
+          hasCohort={hasCohort}
+        />
+      )}
 
       {tab === 'journal' && (
         <section className="mt-5">

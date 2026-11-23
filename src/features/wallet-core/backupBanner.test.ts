@@ -134,3 +134,25 @@ describe('fileBackupBanner (sovereign build)', () => {
     expect(fileBackupBanner({ localBackupDownloaded: true, lastFileBackupAt: '2026-10-25T12:00:00Z' }, NOW)).toBeNull();
   });
 });
+
+import { backupStatusLine } from './backupBanner.ts';
+
+describe('backupStatusLine (top of home, sovereign)', () => {
+  const NOW = new Date('2026-11-23T12:00:00Z').getTime();
+  const base = { localBackupDownloaded: true, lastLocalSync: null as string | null };
+  test('never backed up: warns plainly', () => {
+    expect(backupStatusLine({ ...base, localBackupDownloaded: false, lastFileBackupAt: null }, NOW)).toEqual({ tone: 'warn', text: 'Not backed up. If you lose this phone, the wallet is gone.' });
+  });
+  test('date unknown: never claims fresh', () => {
+    expect(backupStatusLine({ ...base, lastFileBackupAt: null }, NOW).tone).toBe('warn');
+  });
+  test('recent with no wallet changes since: up to date', () => {
+    expect(backupStatusLine({ ...base, lastFileBackupAt: '2026-11-23T09:00:00Z', lastLocalSync: '2026-11-23T08:00:00Z' }, NOW)).toEqual({ tone: 'ok', text: 'Last backup 3 hours ago · up to date' });
+  });
+  test('wallet changed after the backup: says so', () => {
+    expect(backupStatusLine({ ...base, lastFileBackupAt: '2026-11-21T12:00:00Z', lastLocalSync: '2026-11-23T11:00:00Z' }, NOW)).toEqual({ tone: 'warn', text: 'Last backup 2 days ago · changes since' });
+  });
+  test('30 days old with no changes: time for a new one', () => {
+    expect(backupStatusLine({ ...base, lastFileBackupAt: '2026-10-20T12:00:00Z' }, NOW).text).toBe('Last backup 34 days ago · time for a new one');
+  });
+});

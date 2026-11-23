@@ -11,6 +11,58 @@ import { pullCloudCopies, type PullReport } from './pullCloudCopies.ts';
 // (tapit-attest/src/core/encryption.ts).
 //
 // Filename embeds the date so multiple exports do not collide.
+export function backupFileName(date = new Date()): string {
+  return `tapit-wallet-backup-${date.toISOString().slice(0, 10)}.json`;
+}
+
+/** Save the finished file to the browser's downloads. */
+export function downloadBackupText(text: string): void {
+  const file = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = backupFileName();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** The phone's share sheet can take this file (iCloud Drive, Files, Proton,
+ *  AirDrop). False on browsers without file sharing; use the download. */
+export function canShareBackup(): boolean {
+  try {
+    const f = new File(['{}'], backupFileName(), { type: 'application/json' });
+    return typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [f] });
+  } catch {
+    return false;
+  }
+}
+
+/** Open the share sheet with the finished file. Must run straight from a
+ *  tap: phones refuse a share sheet that opens after a long wait. Resolves
+ *  'shared', or 'cancelled' when the person closes the sheet. */
+export async function shareBackupText(text: string): Promise<'shared' | 'cancelled'> {
+  const f = new File([text], backupFileName(), { type: 'application/json' });
+  try {
+    await navigator.share({ files: [f], title: 'Tapit Wallet backup' });
+    return 'shared';
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
+    throw err;
+  }
+}
+
+/** Build the complete file (cloud pull skipped in the sovereign build),
+ *  without delivering it. */
+export async function prepareBackup(
+  wallet: Wallet,
+  ownerId: string,
+  passphrase: string,
+): Promise<{ text: string; records: number; recoveryKeyOpens: boolean }> {
+  return buildBackupFile(wallet, ownerId, passphrase);
+}
+
 export async function downloadEncryptedBackup(
   wallet: Wallet,
   ownerId: string,
@@ -33,15 +85,6 @@ export async function downloadEncryptedBackup(
     ? { mediaFetched: 0, mediaFailed: 0, problems: [] }
     : await pullCloudCopies(ownerId, passphrase);
   const { text, records } = await buildBackupFile(wallet, ownerId, passphrase);
-  const file = new Blob([text], { type: 'application/json' });
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = `tapit-wallet-backup-${date}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+  downloadBackupText(text);
   return { records, pull };
 }

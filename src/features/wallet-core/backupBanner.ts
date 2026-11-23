@@ -136,3 +136,44 @@ export function fileBackupBanner(
   }
   return null;
 }
+
+// The one-line backup status at the top of home in the sovereign build, next
+// to the Save now button (replaces the file banner and the way-back-in nudge
+// there). "Changes since" compares the last wallet save on this device with
+// the last backup file, so it is about wallet changes (entries, contacts,
+// vaults), not every message.
+
+export interface BackupStatusInput extends FileBackupInput {
+  lastLocalSync: string | null;
+}
+
+export interface BackupStatus {
+  tone: 'ok' | 'warn';
+  text: string;
+}
+
+function ago(ms: number): string {
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  const d = Math.floor(h / 24);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+export function backupStatusLine(prefs: BackupStatusInput, now: number = Date.now()): BackupStatus {
+  if (!prefs.lastFileBackupAt) {
+    return prefs.localBackupDownloaded
+      ? { tone: 'warn', text: 'Last backup date unknown. Save a new one.' }
+      : { tone: 'warn', text: 'Not backed up. If you lose this phone, the wallet is gone.' };
+  }
+  const at = new Date(prefs.lastFileBackupAt).getTime();
+  const age = now - at;
+  const changed = !!prefs.lastLocalSync && new Date(prefs.lastLocalSync).getTime() > at;
+  const stale = age >= FILE_STALE_AFTER_DAYS * 86_400_000;
+  const base = `Last backup ${ago(age)}`;
+  if (changed) return { tone: 'warn', text: `${base} · changes since` };
+  if (stale) return { tone: 'warn', text: `${base} · time for a new one` };
+  return { tone: 'ok', text: `${base} · up to date` };
+}
