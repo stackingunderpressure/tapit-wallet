@@ -9,7 +9,7 @@ async function backupOf(passphrase: string) {
   return { text: JSON.stringify(blob, null, 2), identity: wallet.identity };
 }
 
-describe('checkBackupFile', () => {
+describe('checkBackupFile', { timeout: 30_000 }, () => {
   it('opens a good backup with the right passphrase and reports its identity', async () => {
     const { text, identity } = await backupOf('correct horse battery');
     const result = await checkBackupFile(text, 'correct horse battery');

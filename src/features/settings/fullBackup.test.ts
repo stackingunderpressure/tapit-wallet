@@ -31,7 +31,8 @@ function seedDevice() {
   store.set('circlePhrase:v1', { vault1: { receivedAt: '2026-11-01T00:00:00Z' } });
 }
 
-describe('complete backup file', () => {
+// Each case runs several 210k-round PBKDF2 derivations; give them room under load.
+describe('complete backup file', { timeout: 30_000 }, () => {
   beforeEach(() => store.clear());
 
   it('holds the wallet and every other record on the device, and opens back to the same data', async () => {
@@ -122,7 +123,7 @@ describe('complete backup file', () => {
   });
 });
 
-describe('version 3: the recovery key opens the backup file too', () => {
+describe('version 3: the recovery key opens the backup file too', { timeout: 30_000 }, () => {
   beforeEach(() => store.clear());
 
   async function v3Device() {
