@@ -808,7 +808,10 @@ const BUDGETS = [
   // cosign-build-note.md): it now derives each xpub key at a coin's address
   // with @scure/bip32 (plus its base58), which made it its own chunk,
   // measured 7.00KB gz. Budget with a little headroom.
-  { pattern: /^vaultTrail-.*\.js$/, gz: 7_250, label: 'vaultTrail' },
+  // Same day, later: the change-address check and the full-details review
+  // (address display via @scure/base bech32, the change-list hash) joined
+  // it -- measured 8.31KB gz (8,510 bytes).
+  { pattern: /^vaultTrail-.*\.js$/, gz: 8_750, label: 'vaultTrail' },
 
   // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org
   // creation UI lazy-loaded from SettingsScreen when the operator

@@ -8,7 +8,8 @@ import { parseSignRequest, SignRequestError } from './parseSignRequest.ts';
 import { RenderRequest } from './renderRequest.tsx';
 import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
-import { findVaultTrail, requiresCallbackConfirmation, diagnoseVaultTrail, type VaultTrailDiagnosis } from './vaultTrail.ts';
+import { findVaultTrail, readVaultMembership, requiresCallbackConfirmation, diagnoseVaultTrail, type VaultTrailDiagnosis } from './vaultTrail.ts';
+import { SpendReview } from './SpendReview.tsx';
 import type { SignRequest } from './types.ts';
 import { diagnoseCirclePhrase, checkCirclePhrase, type PhraseCheckResult, type CirclePhraseDiagnosis } from '../circle-phrase/circlePhrase.ts';
 
@@ -332,6 +333,12 @@ export function SignApprovalScreen() {
 
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <RenderRequest request={state.request} />
+        {state.request.intent === 'psbt-cosign' && (() => {
+          // Full details for a member set to see them; for everyone, a
+          // warning when the change does not come back (SpendReview.tsx).
+          const t = findVaultTrail(holdings, state.request.vault_context.vault_descriptor, wallet.keyHistory);
+          return t ? <SpendReview psbtHex={state.request.psbt_hex} membership={readVaultMembership(t)} /> : null;
+        })()}
         <div className="mt-3 rounded-md bg-ink/5 px-3 py-2 text-xs text-muted">
           {(state.request.intent === 'psbt-cosign' || state.request.intent === 'sign-in') &&
           state.request.response_channel?.kind === 'nostr' ? (

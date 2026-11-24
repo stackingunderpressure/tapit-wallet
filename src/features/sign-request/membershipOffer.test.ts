@@ -31,17 +31,17 @@ describe('membership offers', () => {
 
   it('an offer without fresh-address keys keeps the old key, so every stored decline or leave still means what it did', () => {
     expect(offerKey('d', 'heir')).toBe(dismissKey('d', 'heir'));
-    expect(offerKey('d', 'heir', [])).toBe(dismissKey('d', 'heir'));
+    expect(offerKey('d', 'heir', { rangedKeys: [], reviewMode: 'wellness', changeScripts: [] })).toBe(dismissKey('d', 'heir'));
   });
 
   it('an offer WITH keys is a different offer from the old one', () => {
-    expect(offerKey(base.vault_descriptor, 'everyday', fixture.ranged_keys)).not.toBe(dismissKey(base.vault_descriptor, 'everyday'));
+    expect(offerKey(base.vault_descriptor, 'everyday', { rangedKeys: fixture.ranged_keys })).not.toBe(dismissKey(base.vault_descriptor, 'everyday'));
   });
 
   it('a held membership without keys does not cover a request with keys; one with them does', () => {
-    expect(heldCoversRequest([], fixture.ranged_keys)).toBe(false);
-    expect(heldCoversRequest(fixture.ranged_keys, fixture.ranged_keys)).toBe(true);
-    expect(heldCoversRequest([], undefined)).toBe(true);
+    expect(heldCoversRequest({}, { rangedKeys: fixture.ranged_keys })).toBe(false);
+    expect(heldCoversRequest({ rangedKeys: fixture.ranged_keys }, { rangedKeys: fixture.ranged_keys })).toBe(true);
+    expect(heldCoversRequest({}, {})).toBe(true);
   });
 
   it("the operator's case: left the old membership, then a resend with keys is NOT suppressed; a replay of the old offer still is", async () => {
@@ -50,7 +50,7 @@ describe('membership offers', () => {
     await leaveVaultMembership(wallet, OWNER, null, old);
     const dismissed = await dismissedRequestsStore.load(OWNER, NAMESPACE);
     expect(dismissed.has(offerKey(base.vault_descriptor, 'everyday'))).toBe(true);
-    expect(dismissed.has(offerKey(base.vault_descriptor, 'everyday', fixture.ranged_keys))).toBe(false);
+    expect(dismissed.has(offerKey(base.vault_descriptor, 'everyday', { rangedKeys: fixture.ranged_keys }))).toBe(false);
   });
 
   it('accepting the updated offer replaces the old membership, so signing finds the one with keys', async () => {

@@ -63,6 +63,12 @@ export function isVaultMembershipRole(r: unknown): r is VaultMembershipRole {
   return typeof r === 'string' && (NAMED_ROLES.includes(r) || PATH_ID.test(r));
 }
 const MAX_ROLE_LABEL = 80;
+export type ReviewMode = 'wellness' | 'full';
+const MAX_CHANGE_SCRIPTS = 250;
+const SCRIPT_HEX = /^[0-9a-f]{4,140}$/;
+export function isChangeScriptList(v: unknown): v is string[] {
+  return Array.isArray(v) && v.length <= MAX_CHANGE_SCRIPTS && v.every((s) => typeof s === 'string' && s.length % 2 === 0 && SCRIPT_HEX.test(s));
+}
 
 export interface VaultMembershipRequestPayload {
   v: 1;
@@ -78,6 +84,15 @@ export interface VaultMembershipRequestPayload {
    *  wallet can recognise the vault's scripts at its other addresses
    *  (freshAddressLeaf.ts). Optional: one-address vaults, older senders. */
   ranged_keys?: RangedKey[];
+  /** What this member sees when co-signing (DynastyTrust docs/tapit-review-
+   *  modes-build-note.md): 'wellness' (the person only; the default) or
+   *  'full' (also the money). Signed into the membership on accept. */
+  review_mode?: ReviewMode;
+  /** The vault's own change addresses as output scripts (hex): signing
+   *  refuses a spend whose "change" goes anywhere else. */
+  change_scripts?: string[];
+  /** For showing addresses in full review. */
+  network?: 'bitcoin' | 'testnet' | 'signet';
   high_value_threshold_sats?: string;
   /** 2026-08-11 (DynastyTrust circle-membership-delivery.ts follow-up):
    *  where to publish an accept/decline acknowledgment, so DynastyTrust's
@@ -117,6 +132,9 @@ export function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershi
     Array.isArray(r.leaf_scripts) &&
     r.leaf_scripts.every((s) => typeof s === 'string') &&
     (r.ranged_keys === undefined || isRangedKeyList(r.ranged_keys)) &&
+    (r.review_mode === undefined || r.review_mode === 'wellness' || r.review_mode === 'full') &&
+    (r.change_scripts === undefined || isChangeScriptList(r.change_scripts)) &&
+    (r.network === undefined || r.network === 'bitcoin' || r.network === 'testnet' || r.network === 'signet') &&
     (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string') &&
     (r.response_channel === undefined || isValidResponseChannel(r.response_channel))
   );
@@ -171,6 +189,15 @@ function describeSchemaFailure(v: unknown): string {
   }
   if (r.ranged_keys !== undefined && !isRangedKeyList(r.ranged_keys)) {
     return 'ranged_keys present but malformed (each needs an xpub/tpub and a 64-hex key00, at most 50)';
+  }
+  if (r.review_mode !== undefined && r.review_mode !== 'wellness' && r.review_mode !== 'full') {
+    return 'review_mode not wellness or full';
+  }
+  if (r.change_scripts !== undefined && !isChangeScriptList(r.change_scripts)) {
+    return 'change_scripts present but malformed (lowercase hex scripts, at most 250)';
+  }
+  if (r.network !== undefined && r.network !== 'bitcoin' && r.network !== 'testnet' && r.network !== 'signet') {
+    return 'network not bitcoin, testnet or signet';
   }
   if (r.high_value_threshold_sats !== undefined && typeof r.high_value_threshold_sats !== 'string') {
     return 'high_value_threshold_sats present but not a string';

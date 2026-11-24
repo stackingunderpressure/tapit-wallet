@@ -14,6 +14,7 @@ import {
   requiresCallbackConfirmation,
 } from './vaultTrail.ts';
 import { checkRangedKeys, isFreshAddressLeaf } from './freshAddressLeaf.ts';
+import { changeProblem } from './spendOutputs.ts';
 import type { PsbtCosignSignRequest } from './types.ts';
 
 // The core of Cut B's psbt-cosign intent — pure, no hold, no anchoring, no
@@ -36,7 +37,7 @@ import type { PsbtCosignSignRequest } from './types.ts';
 
 export class PsbtCosignError extends Error {
   constructor(
-    public readonly code: 'no_vault_trail' | 'callback_required' | 'unknown_leaf_script',
+    public readonly code: 'no_vault_trail' | 'callback_required' | 'unknown_leaf_script' | 'change_not_vault',
     message: string,
   ) {
     super(message);
@@ -86,6 +87,13 @@ export function signPsbtCosign(
   const membership = readVaultMembership(trail);
   const rangedKeys = membership.rangedKeys;
   if (rangedKeys.length) checkRangedKeys(rangedKeys, membership.leafScripts);
+  // The change really comes back to the vault (DynastyTrust docs/tapit-
+  // review-modes-build-note.md): checked in every review mode, before any
+  // signature exists.
+  const badChange = changeProblem(parsed, membership.changeScripts);
+  if (badChange) {
+    throw new PsbtCosignError('change_not_vault', `${badChange} Refusing to sign.`);
+  }
   let signedAny = false;
 
   for (let i = 0; i < parsed.inputs.length; i++) {

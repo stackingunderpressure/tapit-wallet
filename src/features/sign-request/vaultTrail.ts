@@ -58,6 +58,13 @@ export interface VaultMembershipView {
   /** A fresh-address vault's xpub keys (freshAddressLeaf.ts); empty for a
    *  one-address vault and for memberships accepted before 2026-11-24. */
   rangedKeys: RangedKey[];
+  /** What this member sees when co-signing; 'wellness' for every membership
+   *  accepted before 2026-11-24 (operator's choice: they keep signing). */
+  reviewMode: 'wellness' | 'full';
+  /** The vault's own change scripts (hex); empty for older memberships,
+   *  which skip the change check until resent. */
+  changeScripts: string[];
+  network: 'bitcoin' | 'testnet' | 'signet' | null;
 }
 
 /** True when an attestation is a vault-membership agreement. */
@@ -96,6 +103,15 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
   } catch {
     rangedKeys = [];
   }
+  let changeScripts: string[] = [];
+  try {
+    const raw = leafValue(att, 'change_scripts');
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed) && parsed.every((x) => typeof x === 'string')) changeScripts = parsed.map((x: string) => x.toLowerCase());
+  } catch {
+    changeScripts = [];
+  }
+  const net = leafValue(att, 'network');
   return {
     vaultDescriptor: leafValue(att, 'vault_descriptor') || att.subject,
     vaultName: leafValue(att, 'vault_name'),
@@ -104,6 +120,9 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
     leafScripts,
     highValueThresholdSats,
     rangedKeys,
+    reviewMode: leafValue(att, 'review_mode') === 'full' ? 'full' : 'wellness',
+    changeScripts,
+    network: net === 'bitcoin' || net === 'testnet' || net === 'signet' ? net : null,
   };
 }
 

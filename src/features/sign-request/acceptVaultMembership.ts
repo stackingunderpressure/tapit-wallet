@@ -36,6 +36,9 @@ export async function acceptVaultMembership(
     ...(request.role_label ? { role_label: request.role_label } : {}),
     leaf_scripts: JSON.stringify(request.leaf_scripts),
     ...(request.ranged_keys?.length ? { ranged_keys: JSON.stringify(request.ranged_keys) } : {}),
+    review_mode: request.review_mode ?? 'wellness',
+    ...(request.change_scripts?.length ? { change_scripts: JSON.stringify(request.change_scripts) } : {}),
+    ...(request.network ? { network: request.network } : {}),
     ...(request.high_value_threshold_sats !== undefined
       ? { high_value_threshold_sats: request.high_value_threshold_sats }
       : {}),

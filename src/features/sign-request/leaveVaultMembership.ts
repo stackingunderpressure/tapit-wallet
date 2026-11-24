@@ -69,5 +69,5 @@ export async function leaveVaultMembership(
   await wallet.unhold(envelopeId(att));
   // Keyed by the offer's content (membershipOffer.ts): a replay of THIS
   // offer stays ignored; a changed re-invite (2026-11-24) shows.
-  await dismissedRequestsStore.add(ownerId, NAMESPACE, offerKey(view.vaultDescriptor, view.role, view.rangedKeys));
+  await dismissedRequestsStore.add(ownerId, NAMESPACE, offerKey(view.vaultDescriptor, view.role, view));
 }

@@ -150,7 +150,8 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
         // checkable and revocable instead of only inferable from here.
         // An exact repeat of an answered offer stays ignored; one carrying
         // something new (fresh-address keys) shows (membershipOffer.ts).
-        const key = offerKey(item.request.vault_descriptor, item.request.role, item.request.ranged_keys);
+        const offer = { rangedKeys: item.request.ranged_keys, reviewMode: item.request.review_mode, changeScripts: item.request.change_scripts };
+        const key = offerKey(item.request.vault_descriptor, item.request.role, offer);
         itemsRef.current.set(key, item);
         if (dismissedRef.current.has(key)) {
           void channelDiagnostics.record(
@@ -161,7 +162,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
           return;
         }
         const held = findVaultTrail(holdingsRef.current, item.request.vault_descriptor, wallet.keyHistory);
-        if (held && heldCoversRequest(readVaultMembership(held).rangedKeys, item.request.ranged_keys)) {
+        if (held && heldCoversRequest(readVaultMembership(held), offer)) {
           void channelDiagnostics.record(
             'vault-membership',
             'suppressed',
@@ -200,7 +201,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
     setRequests((prev) => {
       const target = prev.find((r) => r.eventId === eventId);
       if (target && ownerId) {
-        const key = offerKey(target.request.vault_descriptor, target.request.role, target.request.ranged_keys);
+        const key = offerKey(target.request.vault_descriptor, target.request.role, { rangedKeys: target.request.ranged_keys, reviewMode: target.request.review_mode, changeScripts: target.request.change_scripts });
         dismissedRef.current.add(key);
         void dismissedRequestsStore.add(ownerId, NAMESPACE, key);
         const item = itemsRef.current.get(key);
