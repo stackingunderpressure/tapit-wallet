@@ -169,6 +169,12 @@ function describeSchemaFailure(v: unknown): string {
   if (!Array.isArray(r.leaf_scripts) || !r.leaf_scripts.every((s) => typeof s === 'string')) {
     return 'leaf_scripts missing/not a string array';
   }
+  if (r.ranged_keys !== undefined && !isRangedKeyList(r.ranged_keys)) {
+    return 'ranged_keys present but malformed (each needs an xpub/tpub and a 64-hex key00, at most 50)';
+  }
+  if (r.high_value_threshold_sats !== undefined && typeof r.high_value_threshold_sats !== 'string') {
+    return 'high_value_threshold_sats present but not a string';
+  }
   if (r.response_channel !== undefined && !isValidResponseChannel(r.response_channel)) {
     return 'response_channel present but malformed';
   }
