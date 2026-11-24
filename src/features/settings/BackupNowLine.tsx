@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { requestPersistentStorage } from '../storage/persistence.ts';
-import { isApplePhone, isInstalledApp, isPhoneOrTablet } from '../../shared/lib/appMode.ts';
+import { isInstalledApp, isPhoneOrTablet } from '../../shared/lib/appMode.ts';
 import { useWallet } from '../wallet-core/useWallet.ts';
 import { backupStatusLine } from '../wallet-core/backupBanner.ts';
 import { confirmFaceId } from '../face-unlock/confirm.ts';
@@ -107,10 +107,7 @@ export function BackupNowLine() {
       {error && <p className="mt-1 text-xs" role="alert">{error}</p>}
       {inTab && (
         <p className="mt-2 border-t border-ink/10 pt-2 text-xs">
-          This is open in a browser, not as its own app — even a Home Screen icon can open this way. A browser can clear the wallet more easily.{' '}
-          {isApplePhone()
-            ? 'Open this page in Safari, tap Share, then Add to Home Screen. The new icon opens as its own app and starts empty — save a backup here first, then bring it in.'
-            : 'Open the browser menu and choose Install app or Add to Home screen. The installed app may start empty — save a backup here first, then bring it in.'}
+          Your wallet lives in this browser, and a phone can clear browser data that sits unused for a while. Keep a recent backup saved — that file brings everything back.
         </p>
       )}
     </div>
