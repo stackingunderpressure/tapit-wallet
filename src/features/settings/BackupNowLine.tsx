@@ -107,10 +107,10 @@ export function BackupNowLine() {
       {error && <p className="mt-1 text-xs" role="alert">{error}</p>}
       {inTab && (
         <p className="mt-2 border-t border-ink/10 pt-2 text-xs">
-          You&apos;re in a browser tab, where the phone can clear the wallet more easily.{' '}
+          This is open in a browser, not as its own app — even a Home Screen icon can open this way. A browser can clear the wallet more easily.{' '}
           {isApplePhone()
-            ? 'Add it to your Home Screen: tap Share, then Add to Home Screen. The app starts empty — save a backup here first, then bring it in.'
-            : 'Install it: open the browser menu and choose Install app or Add to Home screen. Save a backup here first.'}
+            ? 'Open this page in Safari, tap Share, then Add to Home Screen. The new icon opens as its own app and starts empty — save a backup here first, then bring it in.'
+            : 'Open the browser menu and choose Install app or Add to Home screen. The installed app may start empty — save a backup here first, then bring it in.'}
         </p>
       )}
     </div>
