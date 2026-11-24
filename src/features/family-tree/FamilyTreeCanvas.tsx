@@ -55,7 +55,7 @@ export function FamilyTreeCanvas({
   const edges = layout.edges;
 
   return (
-    <div className="overflow-auto" style={{ maxHeight: '46vh' }}>
+    <div className="overflow-auto" style={{ maxHeight: '46dvh' }}>
       <div className="relative mx-auto" style={{ width, height }}>
         <svg
           width={width}

@@ -42,7 +42,7 @@ export function Sheet({
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{title}</h2>
           <button
@@ -394,7 +394,7 @@ export function PickContactStep({
       ) : filteredContacts.length === 0 ? (
         <p className="mt-3 text-xs text-muted">No matches.</p>
       ) : (
-        <ul className="mt-2 space-y-1 max-h-[50vh] overflow-y-auto">
+        <ul className="mt-2 space-y-1 max-h-[50dvh] overflow-y-auto">
           {filteredContacts.map((c) => (
             <li key={c.pubkey}>
               <button

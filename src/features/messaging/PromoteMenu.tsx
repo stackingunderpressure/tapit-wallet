@@ -34,7 +34,7 @@ export function PromoteMenu({ sourceText, isFresh, onSelect, onClose }: Props) {
     >
       <div className="absolute inset-0 bg-ink/40" aria-hidden />
       <div
-        className={`relative w-full max-w-md rounded-t-2xl border-t border-x p-4 pb-6 ${sheetClass}`}
+        className={`relative w-full max-w-md rounded-t-2xl border-t border-x p-4 pb-6 max-h-[90dvh] overflow-y-auto overscroll-contain ${sheetClass}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-xs uppercase tracking-wide opacity-60">Promote this moment</div>

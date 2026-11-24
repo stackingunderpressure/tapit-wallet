@@ -21,7 +21,7 @@ export function ArenaModal({
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-accent/40 bg-white p-5 shadow-xl"
+        className="w-full max-w-sm rounded-2xl border border-accent/40 bg-white p-5 shadow-xl max-h-[90dvh] overflow-y-auto overscroll-contain"
       >
         {children}
       </div>

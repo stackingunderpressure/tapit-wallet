@@ -612,7 +612,7 @@ export function FamilyTreeEditor({ onClose, embedded = false }: Props) {
       <div>{children}</div>
     ) : (
       <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
-        <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
+        <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-paper p-5 sm:rounded-2xl">
           {children}
         </div>
       </div>

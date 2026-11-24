@@ -120,7 +120,7 @@ export function CameraCaptureModal({ onCapture, onClose, title }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 sm:items-center">
-      <div className="w-full max-w-md rounded-2xl bg-paper p-5 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl bg-paper p-5 shadow-xl max-h-[90dvh] overflow-y-auto overscroll-contain">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{title ?? 'Take a photo'}</h2>
           <button

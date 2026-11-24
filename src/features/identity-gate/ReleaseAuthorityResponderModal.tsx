@@ -86,7 +86,7 @@ export function ReleaseAuthorityResponderModal({ request, onSuccess, onClose }: 
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90dvh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">A peer asks you to vouch</h2>
           <button type="button" onClick={onClose} className="text-sm text-muted hover:text-ink">

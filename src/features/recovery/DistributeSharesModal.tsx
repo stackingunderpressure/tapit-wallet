@@ -184,7 +184,7 @@ export function DistributeSharesModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl">
+      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[90dvh] overflow-y-auto overscroll-contain">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">Distribute recovery shares</h2>
           <button

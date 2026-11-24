@@ -90,7 +90,7 @@ export function HeldEnvelopePicker({
 
   return (
     <div className="fixed inset-0 z-50 bg-ink/40 flex items-end sm:items-center justify-center p-4">
-      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[80vh] overflow-y-auto">
+      <div className="w-full max-w-md bg-paper rounded-2xl p-5 shadow-xl max-h-[80dvh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{headingFor(kind, peerName)}</h2>
           <button

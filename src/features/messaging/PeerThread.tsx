@@ -231,7 +231,7 @@ export function PeerThread({ handshake, peerPubkey, peerName, onBack, onPromote 
           )}
         </div>
       )}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3" style={{ maxHeight: '60vh' }}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3" style={{ maxHeight: '60dvh' }}>
         {messages.length === 0 ? (
           <div className={`text-center text-xs ${dividerClass}`}>
             No messages yet. Say hello — your message is end-to-end encrypted to {peerName || 'them'}.
