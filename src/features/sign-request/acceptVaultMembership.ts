@@ -3,6 +3,7 @@ import { envelopeId } from 'tapit-attest';
 import type { VaultMembershipRequestPayload } from './vaultMembershipChannel.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import { checkRangedKeys } from './freshAddressLeaf.ts';
+import { isVaultMembership, readVaultMembership } from './vaultTrail.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 
 // Cut C3's actual issuance step. Mirrors coSignEnvelope.ts's "pure, no
@@ -48,9 +49,18 @@ export async function acceptVaultMembership(
   });
 
   await wallet.hold(signed);
+  // An updated offer replaces the membership it updates (2026-11-24): the
+  // older one for this vault and role, missing the fresh-address keys,
+  // would otherwise be the one signing looks up first.
+  const newId = envelopeId(signed);
+  for (const att of await wallet.holdings()) {
+    if (!isVaultMembership(att) || envelopeId(att) === newId) continue;
+    const v = readVaultMembership(att);
+    if (v.vaultDescriptor === request.vault_descriptor && v.role === request.role) await wallet.unhold(envelopeId(att));
+  }
   await saveWallet();
 
-  const digestHex = envelopeId(signed);
+  const digestHex = newId;
   await anchorQueue.upsert(ownerId, {
     digestHex,
     state: 'queued',

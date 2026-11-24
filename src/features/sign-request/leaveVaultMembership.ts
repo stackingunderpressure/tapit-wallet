@@ -4,7 +4,8 @@ import { readVaultMembership } from './vaultTrail.ts';
 import { vaultMembershipChannelStore } from './vaultMembershipChannelStore.ts';
 import { sendVaultMembershipAckOverNostr } from './vaultMembershipAckChannel.ts';
 import { dismissedRequestsStore } from '../storage/dismissedRequestsStore.ts';
-import { NAMESPACE, dismissKey } from './useVaultMembershipRequests.ts';
+import { NAMESPACE } from './useVaultMembershipRequests.ts';
+import { offerKey } from './membershipOffer.ts';
 
 /**
  * Leave a vault this wallet holds a membership attestation for
@@ -66,5 +67,7 @@ export async function leaveVaultMembership(
     }
   }
   await wallet.unhold(envelopeId(att));
-  await dismissedRequestsStore.add(ownerId, NAMESPACE, dismissKey(view.vaultDescriptor, view.role));
+  // Keyed by the offer's content (membershipOffer.ts): a replay of THIS
+  // offer stays ignored; a changed re-invite (2026-11-24) shows.
+  await dismissedRequestsStore.add(ownerId, NAMESPACE, offerKey(view.vaultDescriptor, view.role, view.rangedKeys));
 }

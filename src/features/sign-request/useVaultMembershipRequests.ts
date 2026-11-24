@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { WalletContext } from '../wallet-core/WalletContext.ts';
-import { findVaultTrail } from './vaultTrail.ts';
+import { findVaultTrail, readVaultMembership } from './vaultTrail.ts';
+import { heldCoversRequest, offerKey } from './membershipOffer.ts';
 import {
   dismissedRequestsStore,
   pushDismissedRequestsBackup,
@@ -147,7 +148,9 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
         // decrypt-stage log. See NostrActivitySection.tsx's new "Vault
         // memberships held" list -- it's exactly the second case, made
         // checkable and revocable instead of only inferable from here.
-        const key = dismissKey(item.request.vault_descriptor, item.request.role);
+        // An exact repeat of an answered offer stays ignored; one carrying
+        // something new (fresh-address keys) shows (membershipOffer.ts).
+        const key = offerKey(item.request.vault_descriptor, item.request.role, item.request.ranged_keys);
         itemsRef.current.set(key, item);
         if (dismissedRef.current.has(key)) {
           void channelDiagnostics.record(
@@ -157,7 +160,8 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
           );
           return;
         }
-        if (findVaultTrail(holdingsRef.current, item.request.vault_descriptor, wallet.keyHistory)) {
+        const held = findVaultTrail(holdingsRef.current, item.request.vault_descriptor, wallet.keyHistory);
+        if (held && heldCoversRequest(readVaultMembership(held).rangedKeys, item.request.ranged_keys)) {
           void channelDiagnostics.record(
             'vault-membership',
             'suppressed',
@@ -196,7 +200,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
     setRequests((prev) => {
       const target = prev.find((r) => r.eventId === eventId);
       if (target && ownerId) {
-        const key = dismissKey(target.request.vault_descriptor, target.request.role);
+        const key = offerKey(target.request.vault_descriptor, target.request.role, target.request.ranged_keys);
         dismissedRef.current.add(key);
         void dismissedRequestsStore.add(ownerId, NAMESPACE, key);
         const item = itemsRef.current.get(key);
