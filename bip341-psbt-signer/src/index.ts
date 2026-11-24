@@ -99,6 +99,7 @@ export function varint(n: number): Uint8Array {
 // ── Tagged hash (BIP340/BIP341) ─────────────────────────────────────────
 
 import { sha256 } from "@noble/hashes/sha256";
+import { schnorr, secp256k1 } from "@noble/curves/secp256k1";
 
 export function taggedHash(tag: string, ...msgs: Uint8Array[]): Uint8Array {
   const tagBytes = new TextEncoder().encode(tag);
@@ -114,6 +115,10 @@ export interface PsbtInput {
   tapInternalKey?: Uint8Array;
   tapLeafScript?: Array<{ controlBlock: Uint8Array; script: Uint8Array; leafVersion: number }>;
   tapScriptSigs?: Array<{ pubkey: Uint8Array; leafHash: Uint8Array; sig: Uint8Array }>;
+  /** PSBT_IN_TAP_BIP32_DERIVATION (BIP 371): which key, from which seed
+   *  (master fingerprint) at which path, may sign which leaves. Read so a
+   *  signer can find the key for a coin on any of a vault's addresses. */
+  tapBip32Derivation?: TapBip32Derivation[];
   partialSigs?: Array<{ pubkey: Uint8Array; sig: Uint8Array }>;
   sequence?: number;
 }
@@ -129,18 +134,64 @@ export interface ParsedPsbt {
   raw: Uint8Array;
   tx: PsbtTx;
   inputs: PsbtInput[];
+  /** Per output, the fields read from its map (see parsePsbt). */
+  outputMaps?: PsbtOutputMap[];
+}
+
+// A real PSBT for this app's vaults (a handful of inputs/outputs plus
+// leaf scripts and control blocks) is at most a few KB. 2,000,000 bytes
+// (4M hex chars) is generous headroom -- far beyond anything this app
+// would ever legitimately produce -- while still bounding the resource
+// use an arbitrarily large attacker-controlled hex string could force.
+const MAX_PSBT_BYTES = 2_000_000;
+
+function assertInBounds(buf: Uint8Array, pos: number, len: number, what: string): void {
+  if (pos < 0 || len < 0 || pos + len > buf.length) {
+    throw new Error(`Malformed PSBT: ${what} at offset ${pos} (length ${len}) exceeds buffer (${buf.length} bytes)`);
+  }
 }
 
 function readVarInt(buf: Uint8Array, offset: number): [number, number] {
+  assertInBounds(buf, offset, 1, "varint");
   const first = buf[offset];
   if (first < 0xfd) return [first, offset + 1];
-  if (first === 0xfd) return [readUint16LE(buf, offset + 1), offset + 3];
-  if (first === 0xfe) return [readUint32LE(buf, offset + 1), offset + 5];
+  if (first === 0xfd) { assertInBounds(buf, offset + 1, 2, "varint"); return [readUint16LE(buf, offset + 1), offset + 3]; }
+  if (first === 0xfe) { assertInBounds(buf, offset + 1, 4, "varint"); return [readUint32LE(buf, offset + 1), offset + 5]; }
   throw new Error("64-bit varint not supported");
 }
 
+export interface TapBip32Derivation { pubkey: Uint8Array; leafHashes: Uint8Array[]; fingerprint: number; path: number[] }
+export interface PsbtOutputMap { tapBip32Derivation?: TapBip32Derivation[] }
+
+/** BIP 371 tap BIP32 derivation: key [type, xonly(32)], value
+ *  <count><leaf hashes, 32 each><fingerprint 4, big-endian><path u32 LE...>. */
+function readTapBip32(key: Uint8Array, value: Uint8Array): TapBip32Derivation {
+  if (key.length !== 33) throw new Error("Malformed PSBT: tap-bip32-derivation key must be 33 bytes");
+  const [count, after] = readVarInt(value, 0);
+  assertInBounds(value, after, count * 32 + 4, "tap-bip32-derivation");
+  const leafHashes: Uint8Array[] = [];
+  for (let h = 0; h < count; h++) leafHashes.push(value.slice(after + h * 32, after + (h + 1) * 32));
+  let at = after + count * 32;
+  const fingerprint = ((value[at] << 24) | (value[at + 1] << 16) | (value[at + 2] << 8) | value[at + 3]) >>> 0;
+  at += 4;
+  if ((value.length - at) % 4 !== 0) throw new Error("Malformed PSBT: tap-bip32-derivation path is not whole numbers");
+  const path: number[] = [];
+  for (; at < value.length; at += 4) path.push(readUint32LE(value, at));
+  return { pubkey: key.slice(1), leafHashes, fingerprint, path };
+}
+
 export function parsePsbt(hex: string): ParsedPsbt {
-  const buf = fromHex(hex);
+  if (hex.length > MAX_PSBT_BYTES * 2) {
+    throw new Error(`PSBT hex too large: ${hex.length} chars exceeds the ${MAX_PSBT_BYTES * 2}-char limit`);
+  }
+  // Strict hex: parseInt would quietly turn "1g" into 0x01 and "zz" into
+  // 0x00, so two parsers could read different bytes from the same text.
+  const cleanHex = hex.replace(/\s/g, "");
+  if (cleanHex.length % 2 !== 0 || !/^[0-9a-fA-F]*$/.test(cleanHex)) {
+    throw new Error("Malformed PSBT: not valid hex");
+  }
+  const buf = fromHex(cleanHex);
+  if (buf.length < 5) throw new Error("Malformed PSBT: shorter than the magic bytes");
   let pos = 0;
 
   // Magic
@@ -154,21 +205,38 @@ export function parsePsbt(hex: string): ParsedPsbt {
     const [keyLen, newPos] = readVarInt(buf, pos);
     pos = newPos;
     if (keyLen === 0) return null;
+    assertInBounds(buf, pos, keyLen, "KV key");
     const key = buf.slice(pos, pos + keyLen);
     pos += keyLen;
     const [valLen, newPos2] = readVarInt(buf, pos);
     pos = newPos2;
+    assertInBounds(buf, pos, valLen, "KV value");
     const value = buf.slice(pos, pos + valLen);
     pos += valLen;
     return { key, value };
   }
 
+  // BIP 174: a key may appear at most once per map. A lenient parser
+  // that lets a later duplicate win can be shown one transaction while a
+  // strict one (a hardware wallet, the Rust finalizer) reads another.
+  function noDuplicate(seen: Set<string>, key: Uint8Array, where: string): void {
+    const k = toHex(key);
+    if (seen.has(k)) throw new Error(`Malformed PSBT: duplicate key in ${where}`);
+    seen.add(k);
+  }
+
   // Global section - get unsigned tx
   let txBytes: Uint8Array | null = null;
+  const globalSeen = new Set<string>();
   while (true) {
     const kv = readKV();
     if (!kv) break;
-    if (kv.key[0] === 0x00) txBytes = kv.value; // PSBT_GLOBAL_UNSIGNED_TX
+    noDuplicate(globalSeen, kv.key, "the global map");
+    if (kv.key[0] === 0x00) {
+      // PSBT_GLOBAL_UNSIGNED_TX: the key is exactly the one type byte.
+      if (kv.key.length !== 1) throw new Error("Malformed PSBT: unsigned-tx key carries extra bytes");
+      txBytes = kv.value;
+    }
   }
   if (!txBytes) throw new Error("No unsigned tx in PSBT");
 
@@ -176,16 +244,22 @@ export function parsePsbt(hex: string): ParsedPsbt {
   const tx = parseRawTx(txBytes);
 
   // Parse input sections
-  const inputs: PsbtInput[] = tx.inputs.map(() => {
+  const inputs: PsbtInput[] = tx.inputs.map((_, inputIdx) => {
     const inp: PsbtInput = {};
+    const seen = new Set<string>();
     while (true) {
       const kv = readKV();
       if (!kv) break;
+      noDuplicate(seen, kv.key, `input ${inputIdx}`);
       const keyType = kv.key[0];
       if (keyType === 0x01) {
         // PSBT_IN_WITNESS_UTXO
+        if (kv.key.length !== 1) throw new Error("Malformed PSBT: witness-utxo key carries extra bytes");
+        assertInBounds(kv.value, 0, 8, "witness-utxo amount");
         const amount = readInt64LE(kv.value, 0);
         const [scriptLen, scriptPos] = readVarInt(kv.value, 8);
+        assertInBounds(kv.value, scriptPos, scriptLen, "witness-utxo script");
+        if (scriptPos + scriptLen !== kv.value.length) throw new Error("Malformed PSBT: witness-utxo has trailing bytes");
         const scriptPubkey = kv.value.slice(scriptPos, scriptPos + scriptLen);
         inp.witnessUtxo = { amount, scriptPubkey };
       } else if (keyType === 0x17) {
@@ -195,13 +269,22 @@ export function parsePsbt(hex: string): ParsedPsbt {
         // PSBT_IN_TAP_LEAF_SCRIPT
         // key: [0x15, control_block...], value: [script..., leaf_version]
         const controlBlock = kv.key.slice(1);
+        if (controlBlock.length < 33 || (controlBlock.length - 33) % 32 !== 0) {
+          throw new Error("Malformed PSBT: tap-leaf-script control block has an invalid length");
+        }
+        if (kv.value.length < 1) throw new Error("Malformed PSBT: empty tap-leaf-script value");
         const leafVersion = kv.value[kv.value.length - 1];
         const script = kv.value.slice(0, kv.value.length - 1);
         if (!inp.tapLeafScript) inp.tapLeafScript = [];
         inp.tapLeafScript.push({ controlBlock, script, leafVersion });
+      } else if (keyType === 0x16) {
+        // PSBT_IN_TAP_BIP32_DERIVATION (BIP 371)
+        if (!inp.tapBip32Derivation) inp.tapBip32Derivation = [];
+        inp.tapBip32Derivation.push(readTapBip32(kv.key, kv.value));
       } else if (keyType === 0x14) {
         // PSBT_IN_TAP_SCRIPT_SIG (BIP 371)
         // key: [0x14, xonly_pubkey(32), leaf_hash(32)]
+        if (kv.key.length !== 65) throw new Error("Malformed PSBT: tap-script-sig key must be 65 bytes");
         const pubkey = kv.key.slice(1, 33);
         const leafHash = kv.key.slice(33, 65);
         if (!inp.tapScriptSigs) inp.tapScriptSigs = [];
@@ -211,38 +294,62 @@ export function parsePsbt(hex: string): ParsedPsbt {
     return inp;
   });
 
-  // Skip output sections
+  // Output sections: only PSBT_OUT_TAP_BIP32_DERIVATION (0x07) is read --
+  // it says which of a vault's addresses a change output is.
+  const outputMaps: PsbtOutputMap[] = [];
   for (let i = 0; i < tx.outputs.length; i++) {
+    const seen = new Set<string>();
+    const out: PsbtOutputMap = {};
     while (true) {
       const kv = readKV();
       if (!kv) break;
+      noDuplicate(seen, kv.key, `output ${i}`);
+      if (kv.key[0] === 0x07) {
+        if (!out.tapBip32Derivation) out.tapBip32Derivation = [];
+        out.tapBip32Derivation.push(readTapBip32(kv.key, kv.value));
+      }
     }
+    outputMaps.push(out);
   }
+  // Nothing may follow the last map: bytes a strict parser would reject
+  // (or read as more maps) must not ride along unseen.
+  if (pos !== buf.length) throw new Error("Malformed PSBT: trailing bytes after the last map");
 
-  return { raw: buf, tx, inputs };
+  return { raw: buf, tx, inputs, outputMaps };
 }
 
 function parseRawTx(buf: Uint8Array): PsbtTx {
   let pos = 0;
+  assertInBounds(buf, pos, 4, "tx version");
   const version = readUint32LE(buf, pos); pos += 4;
   const [inCount, inPos] = readVarInt(buf, pos); pos = inPos;
   const inputs = [];
   for (let i = 0; i < inCount; i++) {
+    assertInBounds(buf, pos, 32, "input txid");
     const txid = buf.slice(pos, pos + 32); pos += 32;
+    assertInBounds(buf, pos, 4, "input vout");
     const vout = readUint32LE(buf, pos); pos += 4;
-    const [scriptLen, scriptPos] = readVarInt(buf, pos); pos = scriptPos + scriptLen;
+    const [scriptLen, scriptPos] = readVarInt(buf, pos);
+    assertInBounds(buf, scriptPos, scriptLen, "input scriptSig");
+    pos = scriptPos + scriptLen;
+    assertInBounds(buf, pos, 4, "input sequence");
     const sequence = readUint32LE(buf, pos); pos += 4;
     inputs.push({ txid, vout, sequence });
   }
   const [outCount, outPos] = readVarInt(buf, pos); pos = outPos;
   const outputs = [];
   for (let i = 0; i < outCount; i++) {
+    assertInBounds(buf, pos, 8, "output amount");
     const amount = readInt64LE(buf, pos); pos += 8;
-    const [scriptLen, scriptPos] = readVarInt(buf, pos); pos = scriptPos + scriptLen;
+    const [scriptLen, scriptPos] = readVarInt(buf, pos);
+    assertInBounds(buf, scriptPos, scriptLen, "output scriptPubkey");
+    pos = scriptPos + scriptLen;
     const scriptPubkey = buf.slice(scriptPos, scriptPos + scriptLen);
     outputs.push({ amount, scriptPubkey });
   }
+  assertInBounds(buf, pos, 4, "tx locktime");
   const locktime = readUint32LE(buf, pos);
+  if (pos + 4 !== buf.length) throw new Error("Malformed PSBT: unsigned tx has trailing bytes");
   return { version, inputs, outputs, locktime };
 }
 
@@ -263,6 +370,18 @@ export function tapscriptSighash(
   // with "TapSighash". Missing sha_prevouts or using taggedHash
   // for the inner pieces produces a sighash that rust-miniscript's
   // finalizer rejects as "bad schnorr signature".
+  // The sigMsg assembly below is hardcoded for SIGHASH_DEFAULT/ALL (no
+  // ANYONECANPAY, no NONE/SINGLE output-set narrowing) -- it always hashes
+  // every prevout/sequence and the full output set regardless of what
+  // sighashType is passed in. Accepting any other value here would
+  // silently produce a wrong-but-plausible digest instead of the digest
+  // the caller actually asked for. Kimi K3 scan #10/#85: reject until
+  // ANYONECANPAY/NONE/SINGLE serialization is implemented.
+  if (sighashType !== 0x00 && sighashType !== 0x01) {
+    throw new Error(
+      `tapscriptSighash: sighashType 0x${sighashType.toString(16)} is not supported -- only SIGHASH_DEFAULT (0x00) and SIGHASH_ALL (0x01) are implemented`,
+    );
+  }
   const tx = psbt.tx;
   const input = psbt.inputs[inputIndex];
   if (!input.witnessUtxo) throw new Error("Input " + inputIndex + " missing witness_utxo");
@@ -332,6 +451,114 @@ export function tapscriptSighash(
   // Our taggedHash helper already computes tag_hash || tag_hash || msg, and we
   // prepend the epoch byte 0x00 via the first varg.
   return taggedHash("TapSighash", new Uint8Array([0x00]), sigMsg);
+}
+
+// ── Leaf + signature verification ───────────────────────────────────────
+//
+// Everything a signer or a verifier needs to refuse a leaf or a signature
+// it was merely HANDED: which keys a leaf script really names, whether
+// that leaf really is part of the output being spent, and whether a
+// tap_script_sig really verifies. Shared by the browser signer, the
+// browser merge and the server's signer-sessions check, so all three
+// apply one rule.
+
+/**
+ * The 32-byte x-only keys a tapscript pushes, found by walking the
+ * script opcode by opcode -- NOT by searching the hex for a substring,
+ * which also "finds" a key inside a longer data push or at an odd
+ * nibble offset. Returns null if the script cannot be walked.
+ */
+export function leafScriptKeys(script: Uint8Array): Uint8Array[] | null {
+  const keys: Uint8Array[] = [];
+  let p = 0;
+  while (p < script.length) {
+    const op = script[p++];
+    let len = 0;
+    if (op >= 0x01 && op <= 0x4b) len = op;
+    else if (op === 0x4c) { if (p + 1 > script.length) return null; len = script[p]; p += 1; }
+    else if (op === 0x4d) { if (p + 2 > script.length) return null; len = script[p] | (script[p + 1] << 8); p += 2; }
+    else if (op === 0x4e) { if (p + 4 > script.length) return null; len = readUint32LE(script, p); p += 4; }
+    else continue;
+    if (p + len > script.length) return null;
+    if (op === 0x20) keys.push(script.slice(p, p + 32));
+    p += len;
+  }
+  return keys;
+}
+
+/** Does this leaf script name this x-only key as one of its pushed keys? */
+export function leafNamesKey(script: Uint8Array, xOnlyPubkey: Uint8Array): boolean {
+  const want = toHex(xOnlyPubkey);
+  return (leafScriptKeys(script) ?? []).some(k => toHex(k) === want);
+}
+
+/**
+ * BIP 341 control-block check: is this leaf really committed to by the
+ * P2TR output being spent? Recomputes merkle root -> tweak -> output
+ * key from the control block and compares with the scriptPubKey. A leaf
+ * that fails this is not part of the coin, whatever the PSBT claims.
+ */
+export function leafCommitsToOutput(
+  leaf: { controlBlock: Uint8Array; script: Uint8Array; leafVersion: number },
+  scriptPubkey: Uint8Array,
+): boolean {
+  try {
+    const cb = leaf.controlBlock;
+    if (cb.length < 33 || (cb.length - 33) % 32 !== 0) return false;
+    if (scriptPubkey.length !== 34 || scriptPubkey[0] !== 0x51 || scriptPubkey[1] !== 0x20) return false;
+    if ((cb[0] & 0xfe) !== (leaf.leafVersion & 0xfe)) return false;
+    const internal = cb.slice(1, 33);
+    let node = tapLeafHash(leaf.script, leaf.leafVersion);
+    for (let i = 33; i < cb.length; i += 32) {
+      const sib = cb.slice(i, i + 32);
+      let nodeFirst = true;
+      for (let j = 0; j < 32; j++) {
+        if (node[j] !== sib[j]) { nodeFirst = node[j] < sib[j]; break; }
+      }
+      node = nodeFirst ? taggedHash("TapBranch", node, sib) : taggedHash("TapBranch", sib, node);
+    }
+    const tweak = taggedHash("TapTweak", internal, node);
+    const P = secp256k1.ProjectivePoint.fromHex("02" + toHex(internal));
+    const Q = P.add(secp256k1.ProjectivePoint.BASE.multiply(BigInt("0x" + toHex(tweak))));
+    const q = Q.toRawBytes(true);
+    if ((q[0] & 1) !== (cb[0] & 1)) return false;
+    return toHex(q.slice(1)) === toHex(scriptPubkey.slice(2));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Is this tap_script_sig a real signature? True only if: it signs a
+ * leaf present in `leaves`, that leaf names the signing key, the
+ * encoding is one consensus accepts (64 bytes, or 65 with a non-zero
+ * supported type), and the BIP 340 signature verifies over the BIP 341
+ * sighash. `leaves` is passed in so a caller can insist on the leaves
+ * of a PSBT it trusts rather than the ones that arrived with the
+ * signature.
+ */
+export function verifyTapScriptSig(
+  psbt: ParsedPsbt,
+  inputIndex: number,
+  sig: { pubkey: Uint8Array; leafHash: Uint8Array; sig: Uint8Array },
+  leaves: Array<{ controlBlock: Uint8Array; script: Uint8Array; leafVersion: number }>,
+): boolean {
+  try {
+    const leaf = leaves.find(l => toHex(tapLeafHash(l.script, l.leafVersion)) === toHex(sig.leafHash));
+    if (!leaf) return false;
+    if (!leafNamesKey(leaf.script, sig.pubkey)) return false;
+    let sighashType = 0x00;
+    if (sig.sig.length === 65) {
+      sighashType = sig.sig[64];
+      if (sighashType === 0x00) return false; // explicit DEFAULT byte is invalid under BIP 341
+    } else if (sig.sig.length !== 64) {
+      return false;
+    }
+    const digest = tapscriptSighash(psbt, inputIndex, sig.leafHash, sighashType);
+    return schnorr.verify(sig.sig.slice(0, 64), digest, sig.pubkey);
+  } catch {
+    return false;
+  }
 }
 
 // ── PSBT serializer ──────────────────────────────────────────────────────

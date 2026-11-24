@@ -11,6 +11,7 @@ import type {
 } from '../transport/transport.ts';
 import { channelDiagnostics } from '../transport/channelDiagnostics.ts';
 import { processedChannelEventsStore } from '../storage/processedChannelEventsStore.ts';
+import { isRangedKeyList, type RangedKey } from './freshAddressLeaf.ts';
 
 const CHANNEL_NAME = 'vault-membership';
 
@@ -72,6 +73,11 @@ export interface VaultMembershipRequestPayload {
    *  display only. Optional: older senders do not set it. */
   role_label?: string;
   leaf_scripts: string[];
+  /** A vault with a new address every time (2026-11-24): each key with an
+   *  xpub on these paths, and the key it is at the first address, so this
+   *  wallet can recognise the vault's scripts at its other addresses
+   *  (freshAddressLeaf.ts). Optional: one-address vaults, older senders. */
+  ranged_keys?: RangedKey[];
   high_value_threshold_sats?: string;
   /** 2026-08-11 (DynastyTrust circle-membership-delivery.ts follow-up):
    *  where to publish an accept/decline acknowledgment, so DynastyTrust's
@@ -110,6 +116,7 @@ export function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershi
     (r.role_label === undefined || (typeof r.role_label === 'string' && r.role_label.length <= MAX_ROLE_LABEL)) &&
     Array.isArray(r.leaf_scripts) &&
     r.leaf_scripts.every((s) => typeof s === 'string') &&
+    (r.ranged_keys === undefined || isRangedKeyList(r.ranged_keys)) &&
     (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string') &&
     (r.response_channel === undefined || isValidResponseChannel(r.response_channel))
   );

@@ -10,8 +10,10 @@ import {
 import {
   findVaultTrail,
   isKnownLeafScript,
+  readVaultMembership,
   requiresCallbackConfirmation,
 } from './vaultTrail.ts';
+import { checkRangedKeys, isFreshAddressLeaf } from './freshAddressLeaf.ts';
 import type { PsbtCosignSignRequest } from './types.ts';
 
 // The core of Cut B's psbt-cosign intent — pure, no hold, no anchoring, no
@@ -79,6 +81,11 @@ export function signPsbtCosign(
   // encrypted at rest for exactly this kind of use, same as it always
   // was for decrypting old NIP-44 messages).
   const myKeys = wallet.keyHistory.map((k) => k.toLowerCase());
+  // A fresh-address vault: its xpub keys, re-checked against the vault's
+  // first-address scripts before they are trusted (freshAddressLeaf.ts).
+  const membership = readVaultMembership(trail);
+  const rangedKeys = membership.rangedKeys;
+  if (rangedKeys.length) checkRangedKeys(rangedKeys, membership.leafScripts);
   let signedAny = false;
 
   for (let i = 0; i < parsed.inputs.length; i++) {
@@ -93,7 +100,13 @@ export function signPsbtCosign(
       // never sufficient.
       const matchedKey = myKeys.find((k) => scriptHexLower.includes(k));
       if (!matchedKey) continue;
-      if (!isKnownLeafScript(trail, scriptHex)) continue;
+      // The exact first-address script, or -- for a fresh-address vault --
+      // that script with its xpub keys derived at the address this input
+      // names, rebuilt from this wallet's own signed membership.
+      if (
+        !isKnownLeafScript(trail, scriptHex) &&
+        !isFreshAddressLeaf(leaf.script, membership.leafScripts, rangedKeys, inp.tapBip32Derivation)
+      ) continue;
 
       const leafHash = tapLeafHash(leaf.script, leaf.leafVersion);
       const sighash = tapscriptSighash(parsed, i, leafHash, 0x00);

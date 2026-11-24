@@ -803,6 +803,12 @@ const BUDGETS = [
   // path-builder vault's path name (role_label) for its role, so those
   // requests stop being dropped silently. Bumped 4_500 -> 4_550.
   { pattern: /^PeerThread-.*\.js$/, gz: 4_550, label: 'PeerThread' },
+  // vaultTrail: the vault-membership check psbt-cosign signs behind.
+  // 2026-11-24 (fresh-address vaults, DynastyTrust docs/tapit-fresh-address-
+  // cosign-build-note.md): it now derives each xpub key at a coin's address
+  // with @scure/bip32 (plus its base58), which made it its own chunk,
+  // measured 7.00KB gz. Budget with a little headroom.
+  { pattern: /^vaultTrail-.*\.js$/, gz: 7_250, label: 'vaultTrail' },
 
   // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org
   // creation UI lazy-loaded from SettingsScreen when the operator

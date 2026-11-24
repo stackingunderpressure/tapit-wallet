@@ -1,5 +1,6 @@
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { verifyEnvelope } from 'tapit-attest';
+import { isRangedKeyList, type RangedKey } from './freshAddressLeaf.ts';
 
 // The "no rogue signing" trail for Cut B's psbt-cosign intent (risk
 // register, docs/build-map-and-cut-lists.md section 6, DynastyTrust repo):
@@ -54,6 +55,9 @@ export interface VaultMembershipView {
    *  membership doesn't declare one, which the caller treats as
    *  "always require the callback" -- the fail-closed default. */
   highValueThresholdSats: bigint | null;
+  /** A fresh-address vault's xpub keys (freshAddressLeaf.ts); empty for a
+   *  one-address vault and for memberships accepted before 2026-11-24. */
+  rangedKeys: RangedKey[];
 }
 
 /** True when an attestation is a vault-membership agreement. */
@@ -84,6 +88,14 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
       highValueThresholdSats = null;
     }
   }
+  let rangedKeys: RangedKey[] = [];
+  try {
+    const raw = leafValue(att, 'ranged_keys');
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (isRangedKeyList(parsed)) rangedKeys = parsed;
+  } catch {
+    rangedKeys = [];
+  }
   return {
     vaultDescriptor: leafValue(att, 'vault_descriptor') || att.subject,
     vaultName: leafValue(att, 'vault_name'),
@@ -91,6 +103,7 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
     roleLabel: leafValue(att, 'role_label') || null,
     leafScripts,
     highValueThresholdSats,
+    rangedKeys,
   };
 }
 
