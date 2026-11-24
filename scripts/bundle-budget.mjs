@@ -799,7 +799,10 @@ const BUDGETS = [
   // (FamilyWizard as of the 2026-09-06 overhaul, was AddToFamilyModal
   // before) is React.lazy in its own chunk; only the button + mount
   // wiring lands here. Bumped 4.0KB -> 4.5KB.
-  { pattern: /^PeerThread-.*\.js$/, gz: 4_500, label: 'PeerThread' },
+  // 2026-11-24: +~10 bytes gz -- the vault-membership banner shows a
+  // path-builder vault's path name (role_label) for its role, so those
+  // requests stop being dropped silently. Bumped 4_500 -> 4_550.
+  { pattern: /^PeerThread-.*\.js$/, gz: 4_550, label: 'PeerThread' },
 
   // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org
   // creation UI lazy-loaded from SettingsScreen when the operator

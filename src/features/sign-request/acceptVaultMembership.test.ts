@@ -37,6 +37,16 @@ function request(overrides: Partial<VaultMembershipRequestPayload> = {}): VaultM
 }
 
 describe('acceptVaultMembership', () => {
+  it('keeps a path-builder vault role and its path name, and reads them back (2026-11-24)', async () => {
+    const wallet = Wallet.generate();
+    const signed = await acceptVaultMembership(wallet, 'owner-1', request({ role: 'path_2', role_label: 'If left untouched' }), async () => {}, null);
+    const view = readVaultMembership(signed);
+    expect(view.role).toBe('path_2');
+    expect(view.roleLabel).toBe('If left untouched');
+    const named = readVaultMembership(await acceptVaultMembership(Wallet.generate(), 'owner-2', request(), async () => {}, null));
+    expect(named.roleLabel).toBeNull();
+  });
+
   it('mints a wallet-self-signed vault-membership attestation that satisfies findVaultTrail', async () => {
     const wallet = Wallet.generate();
     const saved: boolean[] = [];

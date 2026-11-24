@@ -43,13 +43,34 @@ export const VAULT_MEMBERSHIP_REQUEST_KIND = 9578;
 // purely this schema guard narrowing what could arrive at all. Kept as a
 // named union rather than `string` so a genuinely unexpected role still
 // fails loudly instead of being silently accepted.
-export type VaultMembershipRole = 'founder' | 'heir' | 'protector' | 'backup' | 'consent' | 'second_heir';
+//
+// 2026-11-24 fix (operator: "Vault request didn't show up in tap it this
+// time. It has worked before in aug but silent this go"): a vault built in
+// DynastyTrust's path builder names each role by its PATH id ("everyday",
+// "path_2", ...) -- DynastyTrust's VaultMembershipSetup has sent that since
+// 2026-08-19 -- and this guard still allowed only the six named roles, so
+// every path-builder vault's request was dropped here silently. A named
+// list will always lag new vault shapes; a role is now one of the named six
+// OR a path id (letters, digits, _ and -, at most 64), which is what
+// leafScriptsForRole on the DynastyTrust side resolves. `role_label` is the
+// path's own name for display.
+export type NamedVaultMembershipRole = 'founder' | 'heir' | 'protector' | 'backup' | 'consent' | 'second_heir';
+export type VaultMembershipRole = NamedVaultMembershipRole | (string & {});
+const NAMED_ROLES: readonly string[] = ['founder', 'heir', 'protector', 'backup', 'consent', 'second_heir'];
+const PATH_ID = /^[A-Za-z0-9_-]{1,64}$/;
+export function isVaultMembershipRole(r: unknown): r is VaultMembershipRole {
+  return typeof r === 'string' && (NAMED_ROLES.includes(r) || PATH_ID.test(r));
+}
+const MAX_ROLE_LABEL = 80;
 
 export interface VaultMembershipRequestPayload {
   v: 1;
   vault_descriptor: string;
   vault_name: string;
   role: VaultMembershipRole;
+  /** The path's own name ("Everyday") for a path-builder vault's role;
+   *  display only. Optional: older senders do not set it. */
+  role_label?: string;
   leaf_scripts: string[];
   high_value_threshold_sats?: string;
   /** 2026-08-11 (DynastyTrust circle-membership-delivery.ts follow-up):
@@ -77,7 +98,7 @@ function isValidResponseChannel(v: unknown): v is { kind: 'nostr'; requester_pub
   return r.kind === 'nostr' && typeof r.requester_pubkey === 'string' && r.requester_pubkey.length > 0;
 }
 
-function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershipRequestPayload {
+export function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershipRequestPayload {
   if (!v || typeof v !== 'object') return false;
   const r = v as Record<string, unknown>;
   return (
@@ -85,8 +106,8 @@ function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershipReques
     typeof r.vault_descriptor === 'string' &&
     r.vault_descriptor.length > 0 &&
     typeof r.vault_name === 'string' &&
-    (r.role === 'founder' || r.role === 'heir' || r.role === 'protector' ||
-     r.role === 'backup' || r.role === 'consent' || r.role === 'second_heir') &&
+    isVaultMembershipRole(r.role) &&
+    (r.role_label === undefined || (typeof r.role_label === 'string' && r.role_label.length <= MAX_ROLE_LABEL)) &&
     Array.isArray(r.leaf_scripts) &&
     r.leaf_scripts.every((s) => typeof s === 'string') &&
     (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string') &&
@@ -132,11 +153,11 @@ function describeSchemaFailure(v: unknown): string {
     return 'vault_descriptor missing/empty';
   }
   if (typeof r.vault_name !== 'string') return 'vault_name missing/not a string';
-  if (
-    r.role !== 'founder' && r.role !== 'heir' && r.role !== 'protector' &&
-    r.role !== 'backup' && r.role !== 'consent' && r.role !== 'second_heir'
-  ) {
-    return `role=${JSON.stringify(r.role)} (expected founder/heir/protector/backup/consent/second_heir)`;
+  if (!isVaultMembershipRole(r.role)) {
+    return `role=${JSON.stringify(r.role)} (expected a named role or a path id: letters, digits, _ or -, at most 64)`;
+  }
+  if (r.role_label !== undefined && (typeof r.role_label !== 'string' || r.role_label.length > MAX_ROLE_LABEL)) {
+    return 'role_label not a string of at most 80 characters';
   }
   if (!Array.isArray(r.leaf_scripts) || !r.leaf_scripts.every((s) => typeof s === 'string')) {
     return 'leaf_scripts missing/not a string array';

@@ -121,7 +121,7 @@ export function IncomingVaultMembershipBannerView({ state }: { state: VaultMembe
           <div className="font-medium">Vault membership request</div>
           <p className="mt-1 text-sm text-muted">
             {item.request.vault_name || 'A vault'} wants this wallet recorded as a{' '}
-            {ROLE_LABEL[item.request.role] ?? item.request.role}. Once held, this wallet can
+            {ROLE_LABEL[item.request.role] ?? item.request.role_label ?? item.request.role}. Once held, this wallet can
             recognize and help verify real spend requests for it -- nothing is signed or spent by
             accepting.
           </p>

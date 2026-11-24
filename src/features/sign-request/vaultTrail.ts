@@ -43,6 +43,9 @@ export interface VaultMembershipView {
   vaultDescriptor: string;
   vaultName: string;
   role: string;
+  /** The path's own name for a path-builder vault's role ("Everyday"),
+   *  or null (named roles, and memberships accepted before 2026-11-24). */
+  roleLabel: string | null;
   /** Hex-encoded tapscript bytes this signer's key is known to appear in. */
   leafScripts: string[];
   /** Above this amount, the psbt-cosign approve flow requires the
@@ -85,6 +88,7 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
     vaultDescriptor: leafValue(att, 'vault_descriptor') || att.subject,
     vaultName: leafValue(att, 'vault_name'),
     role: leafValue(att, 'role'),
+    roleLabel: leafValue(att, 'role_label') || null,
     leafScripts,
     highValueThresholdSats,
   };

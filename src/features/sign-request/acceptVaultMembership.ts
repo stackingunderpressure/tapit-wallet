@@ -27,6 +27,7 @@ export async function acceptVaultMembership(
     vault_descriptor: request.vault_descriptor,
     vault_name: request.vault_name,
     role: request.role,
+    ...(request.role_label ? { role_label: request.role_label } : {}),
     leaf_scripts: JSON.stringify(request.leaf_scripts),
     ...(request.high_value_threshold_sats !== undefined
       ? { high_value_threshold_sats: request.high_value_threshold_sats }

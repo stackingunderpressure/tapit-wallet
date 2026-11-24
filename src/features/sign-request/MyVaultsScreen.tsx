@@ -120,7 +120,7 @@ export function MyVaultsScreen() {
                       {view.vaultName || 'Unnamed vault'}
                     </div>
                     <div className="mt-0.5 text-sm text-muted">
-                      Member -- {ROLE_LABEL[view.role] ?? view.role}
+                      Member -- {ROLE_LABEL[view.role] ?? view.roleLabel ?? view.role}
                     </div>
                     <div className="mt-0.5 text-xs text-muted">
                       Accepted {new Date(att.issuedAt).toLocaleDateString()}
@@ -143,7 +143,7 @@ export function MyVaultsScreen() {
                 {historyOpen && (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex items-center justify-between text-xs text-muted rounded-md bg-ink/[0.03] px-3 py-2">
-                      <span>Accepted membership as {ROLE_LABEL[view.role] ?? view.role}</span>
+                      <span>Accepted membership as {ROLE_LABEL[view.role] ?? view.roleLabel ?? view.role}</span>
                       <span>{new Date(att.issuedAt).toLocaleDateString()}</span>
                     </div>
                     {signedEntries.length === 0 ? (
