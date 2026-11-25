@@ -88,6 +88,9 @@ export interface VaultMembershipRequestPayload {
    *  modes-build-note.md): 'wellness' (the person only; the default) or
    *  'full' (also the money). Signed into the membership on accept. */
   review_mode?: ReviewMode;
+  /** This member is on a wellness-check path (DynastyTrust docs/wellness-
+   *  group-build-note.md): the safety phrase is asked on EVERY spend. */
+  wellness_path?: boolean;
   /** The vault's own change addresses as output scripts (hex): signing
    *  refuses a spend whose "change" goes anywhere else. */
   change_scripts?: string[];
@@ -133,6 +136,7 @@ export function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershi
     r.leaf_scripts.every((s) => typeof s === 'string') &&
     (r.ranged_keys === undefined || isRangedKeyList(r.ranged_keys)) &&
     (r.review_mode === undefined || r.review_mode === 'wellness' || r.review_mode === 'full') &&
+    (r.wellness_path === undefined || typeof r.wellness_path === 'boolean') &&
     (r.change_scripts === undefined || isChangeScriptList(r.change_scripts)) &&
     (r.network === undefined || r.network === 'bitcoin' || r.network === 'testnet' || r.network === 'signet') &&
     (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string') &&
@@ -192,6 +196,9 @@ function describeSchemaFailure(v: unknown): string {
   }
   if (r.review_mode !== undefined && r.review_mode !== 'wellness' && r.review_mode !== 'full') {
     return 'review_mode not wellness or full';
+  }
+  if (r.wellness_path !== undefined && typeof r.wellness_path !== 'boolean') {
+    return 'wellness_path present but not true/false';
   }
   if (r.change_scripts !== undefined && !isChangeScriptList(r.change_scripts)) {
     return 'change_scripts present but malformed (lowercase hex scripts, at most 250)';

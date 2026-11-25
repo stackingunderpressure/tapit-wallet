@@ -65,6 +65,8 @@ export interface VaultMembershipView {
    *  which skip the change check until resent. */
   changeScripts: string[];
   network: 'bitcoin' | 'testnet' | 'signet' | null;
+  /** On a wellness-check path: the phrase is asked on every spend. */
+  wellnessPath: boolean;
 }
 
 /** True when an attestation is a vault-membership agreement. */
@@ -123,6 +125,7 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
     reviewMode: leafValue(att, 'review_mode') === 'full' ? 'full' : 'wellness',
     changeScripts,
     network: net === 'bitcoin' || net === 'testnet' || net === 'signet' ? net : null,
+    wellnessPath: leafValue(att, 'wellness_path') === 'true',
   };
 }
 
@@ -241,6 +244,9 @@ export function requiresCallbackConfirmation(
   totalOutSats: bigint,
 ): boolean {
   const view = readVaultMembership(trail);
+  // A wellness checker confirms the person on EVERY move (operator's
+  // decision, DynastyTrust docs/wellness-group-build-note.md).
+  if (view.wellnessPath) return true;
   if (view.highValueThresholdSats === null) return true;
   return totalOutSats >= view.highValueThresholdSats;
 }

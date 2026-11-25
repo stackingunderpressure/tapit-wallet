@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Wallet } from 'tapit-attest';
 import { parsePsbt } from '@dynastytrust/bip341-psbt-signer';
 import { signPsbtCosign, PsbtCosignError } from './signPsbtCosign.ts';
-import { readVaultMembership } from './vaultTrail.ts';
+import { readVaultMembership, requiresCallbackConfirmation } from './vaultTrail.ts';
 import { changeProblem, spendOutputs } from './spendOutputs.ts';
 import { offerKey, heldCoversRequest } from './membershipOffer.ts';
 import { isVaultMembershipRequestPayload } from './vaultMembershipChannel.ts';
@@ -91,5 +91,27 @@ describe('review mode', () => {
     expect(heldCoversRequest({ reviewMode: 'full' }, { reviewMode: 'wellness' })).toBe(false);
     expect(heldCoversRequest({ changeScripts: fixture.change_scripts.slice(0, 5) }, { changeScripts: fixture.change_scripts })).toBe(false);
     expect(heldCoversRequest({ reviewMode: 'full', changeScripts: fixture.change_scripts }, { reviewMode: 'full', changeScripts: fixture.change_scripts })).toBe(true);
+  });
+});
+
+// A wellness-check path designed into the vault (DynastyTrust
+// docs/wellness-group-build-note.md; operator, 2026-11-25).
+describe('wellness-check path', () => {
+  it('asks the safety phrase on every spend, even below the live-check amount', () => {
+    const w = wallet();
+    const normal = membership(w, { high_value_threshold_sats: '1000000' });
+    const checker = membership(w, { high_value_threshold_sats: '1000000', wellness_path: 'true' });
+    expect(requiresCallbackConfirmation(normal, 9_810n)).toBe(false);
+    expect(requiresCallbackConfirmation(checker, 9_810n)).toBe(true);
+    expect(readVaultMembership(checker).wellnessPath).toBe(true);
+  });
+
+  it('the request carries it, and joining a wellness path is a new offer', () => {
+    const base = { v: 1, vault_descriptor: 'd', vault_name: 'n', role: 'wellness', leaf_scripts: fixture.leaf_scripts };
+    expect(isVaultMembershipRequestPayload({ ...base, wellness_path: true })).toBe(true);
+    expect(isVaultMembershipRequestPayload({ ...base, wellness_path: 'yes' })).toBe(false);
+    expect(offerKey('d', 'r', { wellnessPath: true })).not.toBe(offerKey('d', 'r', {}));
+    expect(heldCoversRequest({}, { wellnessPath: true })).toBe(false);
+    expect(heldCoversRequest({ wellnessPath: true }, { wellnessPath: true })).toBe(true);
   });
 });

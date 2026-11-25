@@ -20,6 +20,7 @@ export interface OfferContent {
   rangedKeys?: readonly RangedKey[] | null;
   reviewMode?: 'wellness' | 'full' | null;
   changeScripts?: readonly string[] | null;
+  wellnessPath?: boolean | null;
 }
 
 function changeTag(scripts: readonly string[]): string {
@@ -31,6 +32,7 @@ export function offerKey(vaultDescriptor: string, role: string, content: OfferCo
   const parts = [`${vaultDescriptor}::${role}`];
   if (content.rangedKeys?.length) parts.push(`fresh:${[...new Set(content.rangedKeys.map((k) => k.xpub))].sort().join(',')}`);
   if (content.reviewMode === 'full') parts.push('mode:full');
+  if (content.wellnessPath) parts.push('wellness');
   if (content.changeScripts?.length) parts.push(`change:${changeTag(content.changeScripts)}`);
   return parts.join('::');
 }
@@ -42,6 +44,7 @@ export function heldCoversRequest(held: OfferContent, request: OfferContent): bo
   const heldKeys = new Set((held.rangedKeys ?? []).map((k) => `${k.xpub}|${k.key00.toLowerCase()}`));
   if (!(request.rangedKeys ?? []).every((k) => heldKeys.has(`${k.xpub}|${k.key00.toLowerCase()}`))) return false;
   if ((request.reviewMode ?? 'wellness') !== (held.reviewMode ?? 'wellness') && request.reviewMode !== undefined && request.reviewMode !== null) return false;
+  if (request.wellnessPath && !held.wellnessPath) return false;
   const heldChange = new Set((held.changeScripts ?? []).map((s) => s.toLowerCase()));
   return (request.changeScripts ?? []).every((s) => heldChange.has(s.toLowerCase()));
 }
