@@ -812,6 +812,11 @@ const BUDGETS = [
   // (address display via @scure/base bech32, the change-list hash) joined
   // it -- measured 8.31KB gz (8,510 bytes).
   { pattern: /^vaultTrail-.*\.js$/, gz: 8_750, label: 'vaultTrail' },
+  // vaultMembershipChannelStore: Rollup's shared chunk for the membership
+  // channel store plus the vault-duress module the banner and approval
+  // screen share (DynastyTrust docs/wellness-group-build-note.md slice 2,
+  // 2026-11-25) -- measured 2.96KB gz, just over the 3KB catch-all.
+  { pattern: /^vaultMembershipChannelStore-.*\.js$/, gz: 3_400, label: 'vaultMembershipChannelStore' },
 
   // OrgRulesEditor (Phase 8 Phase C cut 2) is the multi-rule org
   // creation UI lazy-loaded from SettingsScreen when the operator

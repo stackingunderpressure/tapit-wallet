@@ -10,6 +10,7 @@ import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
 import { findVaultTrail, readVaultMembership, requiresCallbackConfirmation, diagnoseVaultTrail, type VaultTrailDiagnosis } from './vaultTrail.ts';
 import { SpendReview } from './SpendReview.tsx';
+import { duressBlocks, makeNotice, markHeld, postNotice, tellCircle } from './vaultDuress.ts';
 import type { SignRequest } from './types.ts';
 import { diagnoseCirclePhrase, checkCirclePhrase, type PhraseCheckResult, type CirclePhraseDiagnosis } from '../circle-phrase/circlePhrase.ts';
 
@@ -141,6 +142,7 @@ export function SignApprovalScreen() {
       setPhraseResult(result);
       const confirmed = result === 'normal';
       setCalloutConfirmed(confirmed);
+      if (result === 'duress') void raiseDuress();
       if (confirmed) {
         // The whole point of this cut: a correct code signs immediately,
         // no separate Approve tap. doApprove takes the confirmation as a
@@ -155,6 +157,38 @@ export function SignApprovalScreen() {
       setPhraseBusy(false);
     }
   }
+
+  // The duress phrase stops the whole circle (DynastyTrust docs/wellness-
+  // group-build-note.md, slice 2): hold the vault at DynastyTrust, tell the
+  // other people on the path, remember it here. Best effort on each leg --
+  // this phone refuses regardless.
+  const [duressSent, setDuressSent] = useState<string | null>(null);
+  async function raiseDuress() {
+    if (state.kind !== 'ready' || state.request.intent !== 'psbt-cosign') return;
+    const trail = findVaultTrail(holdings, state.request.vault_context.vault_descriptor, wallet.keyHistory);
+    if (!trail) return;
+    const view = readVaultMembership(trail);
+    const notice = makeNotice(wallet, trail, 'raise');
+    await markHeld(ownerId, view.vaultDescriptor, { vaultName: view.vaultName, at: notice.signed_at, by: notice.pubkey });
+    const [server] = await Promise.allSettled([
+      postNotice(notice),
+      transport ? tellCircle(transport, wallet, view.vaultName, notice, view.circleKeys) : Promise.resolve(),
+    ]);
+    setDuressSent(server.status === 'fulfilled'
+      ? `The vault is now on hold for everyone${view.circleKeys.length ? `, and the other ${view.circleKeys.length} in the circle are being told` : ''}.`
+      : `This wallet will not sign, but DynastyTrust could not be reached to hold the vault (${server.reason instanceof Error ? server.reason.message : 'network'}). Call the others yourself.`);
+  }
+
+  // Before signing for a vault: is it on hold (a duress phrase anywhere in
+  // its circle, or the owner's halt)? Checked with DynastyTrust; a hold this
+  // wallet remembers refuses even if DynastyTrust cannot be reached.
+  const [holdReason, setHoldReason] = useState<string | null>(null);
+  useEffect(() => {
+    if (!vaultDescriptor) return;
+    let live = true;
+    void duressBlocks(ownerId, vaultDescriptor).then((r) => { if (live) setHoldReason(r); });
+    return () => { live = false; };
+  }, [vaultDescriptor, ownerId, duressSent]);
 
   // psbt-cosign gating (risk register: "no rogue signing" + the amount-
   // tiered callback ritual). Computed on every render from `holdings` so
@@ -222,6 +256,7 @@ export function SignApprovalScreen() {
   async function doApprove(confirmed: boolean) {
     if (state.kind !== 'ready') return;
     if (psbtCosignGate?.kind === 'no-trail') return;
+    if (state.request.intent === 'psbt-cosign' && holdReason) return;
     if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !confirmed) return;
     if (state.request.intent === 'sign-in' && !screenCodeReady) return;
     setError(null);
@@ -396,11 +431,19 @@ export function SignApprovalScreen() {
         </div>
       )}
 
+      {state.kind === 'ready' && state.request.intent === 'psbt-cosign' && holdReason && phraseResult !== 'duress' && (
+        <div className="mt-4 rounded-md border-2 border-red-400 bg-red-50 p-4">
+          <p className="text-sm font-bold text-red-900">This vault is on hold. This wallet will not sign.</p>
+          <p className="mt-2 text-xs text-red-900">{holdReason}</p>
+        </div>
+      )}
+
       {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseResult === 'duress' && (
         <div className="mt-4 rounded-md border-2 border-red-400 bg-red-50 p-4">
           <p className="text-sm font-bold text-red-900">
             That was the duress phrase. Do not approve this request.
           </p>
+          {duressSent && <p className="mt-2 text-xs font-semibold text-red-900">{duressSent}</p>}
           <p className="mt-2 text-xs text-red-900">
             This wallet will not sign. Hang up if you're still on the call. Contact the other
             circle members for this vault, or the authorities, right now, using a different

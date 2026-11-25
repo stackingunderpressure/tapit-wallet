@@ -9,6 +9,7 @@ import { JournalCard } from '../journal/JournalCard.tsx';
 import { CosignAsWitnessModal } from '../cosigning/CosignAsWitnessModal.tsx';
 import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBanner.tsx';
 import { IncomingVaultMembershipBanner } from '../sign-request/IncomingVaultMembershipBanner.tsx';
+import { VaultDuressBanner } from '../sign-request/VaultDuressBanner.tsx';
 import { IncomingSignInBanner } from '../sign-request/IncomingSignInBanner.tsx';
 import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
@@ -356,6 +357,7 @@ export function HomeScreen() {
     <div className="min-h-screen p-5 max-w-md mx-auto pb-32">
       <HomeHeader resolvedTheme={resolvedTheme} relayStatus={relayStatus} showVaults={hasVaultMembership} />
 
+      <VaultDuressBanner />
       <IncomingVaultMembershipBanner />
       <IncomingPsbtCosignBanner />
       <IncomingSignInBanner />

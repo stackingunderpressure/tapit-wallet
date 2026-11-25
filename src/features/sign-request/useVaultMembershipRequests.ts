@@ -150,7 +150,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
         // checkable and revocable instead of only inferable from here.
         // An exact repeat of an answered offer stays ignored; one carrying
         // something new (fresh-address keys) shows (membershipOffer.ts).
-        const offer = { rangedKeys: item.request.ranged_keys, reviewMode: item.request.review_mode, changeScripts: item.request.change_scripts, wellnessPath: item.request.wellness_path };
+        const offer = { rangedKeys: item.request.ranged_keys, reviewMode: item.request.review_mode, changeScripts: item.request.change_scripts, wellnessPath: item.request.wellness_path, circleKeys: item.request.circle_keys };
         const key = offerKey(item.request.vault_descriptor, item.request.role, offer);
         itemsRef.current.set(key, item);
         if (dismissedRef.current.has(key)) {
@@ -201,7 +201,7 @@ export function useVaultMembershipRequests(): VaultMembershipRequestsState {
     setRequests((prev) => {
       const target = prev.find((r) => r.eventId === eventId);
       if (target && ownerId) {
-        const key = offerKey(target.request.vault_descriptor, target.request.role, { rangedKeys: target.request.ranged_keys, reviewMode: target.request.review_mode, changeScripts: target.request.change_scripts, wellnessPath: target.request.wellness_path });
+        const key = offerKey(target.request.vault_descriptor, target.request.role, { rangedKeys: target.request.ranged_keys, reviewMode: target.request.review_mode, changeScripts: target.request.change_scripts, wellnessPath: target.request.wellness_path, circleKeys: target.request.circle_keys });
         dismissedRef.current.add(key);
         void dismissedRequestsStore.add(ownerId, NAMESPACE, key);
         const item = itemsRef.current.get(key);

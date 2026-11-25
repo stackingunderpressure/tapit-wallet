@@ -67,6 +67,8 @@ export interface VaultMembershipView {
   network: 'bitcoin' | 'testnet' | 'signet' | null;
   /** On a wellness-check path: the phrase is asked on every spend. */
   wellnessPath: boolean;
+  /** The other people on that path (x-only): told of, and believed about, duress. */
+  circleKeys: string[];
 }
 
 /** True when an attestation is a vault-membership agreement. */
@@ -126,6 +128,14 @@ export function readVaultMembership(att: Attestation): VaultMembershipView {
     changeScripts,
     network: net === 'bitcoin' || net === 'testnet' || net === 'signet' ? net : null,
     wellnessPath: leafValue(att, 'wellness_path') === 'true',
+    circleKeys: (() => {
+      try {
+        const parsed: unknown = JSON.parse(leafValue(att, 'circle_keys') || '[]');
+        return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === 'string' && /^[0-9a-f]{64}$/.test(k)) : [];
+      } catch {
+        return [];
+      }
+    })(),
   };
 }
 

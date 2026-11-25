@@ -91,6 +91,10 @@ export interface VaultMembershipRequestPayload {
   /** This member is on a wellness-check path (DynastyTrust docs/wellness-
    *  group-build-note.md): the safety phrase is asked on EVERY spend. */
   wellness_path?: boolean;
+  /** On a wellness path: the x-only keys of the other people on it -- who
+   *  is told at once if this wallet hears the duress phrase, and whose
+   *  duress notices this wallet believes (vaultDuress.ts). */
+  circle_keys?: string[];
   /** The vault's own change addresses as output scripts (hex): signing
    *  refuses a spend whose "change" goes anywhere else. */
   change_scripts?: string[];
@@ -137,6 +141,7 @@ export function isVaultMembershipRequestPayload(v: unknown): v is VaultMembershi
     (r.ranged_keys === undefined || isRangedKeyList(r.ranged_keys)) &&
     (r.review_mode === undefined || r.review_mode === 'wellness' || r.review_mode === 'full') &&
     (r.wellness_path === undefined || typeof r.wellness_path === 'boolean') &&
+    (r.circle_keys === undefined || (Array.isArray(r.circle_keys) && r.circle_keys.length <= 50 && r.circle_keys.every((k) => typeof k === 'string' && /^[0-9a-f]{64}$/.test(k)))) &&
     (r.change_scripts === undefined || isChangeScriptList(r.change_scripts)) &&
     (r.network === undefined || r.network === 'bitcoin' || r.network === 'testnet' || r.network === 'signet') &&
     (r.high_value_threshold_sats === undefined || typeof r.high_value_threshold_sats === 'string') &&
@@ -196,6 +201,9 @@ function describeSchemaFailure(v: unknown): string {
   }
   if (r.review_mode !== undefined && r.review_mode !== 'wellness' && r.review_mode !== 'full') {
     return 'review_mode not wellness or full';
+  }
+  if (r.circle_keys !== undefined && !(Array.isArray(r.circle_keys) && r.circle_keys.length <= 50 && r.circle_keys.every((k) => typeof k === 'string' && /^[0-9a-f]{64}$/.test(k)))) {
+    return 'circle_keys present but malformed (lowercase 64-hex keys, at most 50)';
   }
   if (r.wellness_path !== undefined && typeof r.wellness_path !== 'boolean') {
     return 'wellness_path present but not true/false';
