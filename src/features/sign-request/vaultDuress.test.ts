@@ -12,7 +12,7 @@ vi.mock('../../shared/lib/idb.ts', () => ({
 import { Wallet } from 'tapit-attest';
 import { toHex } from '@dynastytrust/bip341-psbt-signer';
 import {
-  noticeDigest, makeNotice, noticeVerifies, acceptCircleNotice, duressBlocks, markHeld, heldVaults, tellCircle, VAULT_DURESS_KIND,
+  noticeDigest, makeNotice, noticeVerifies, acceptCircleNotice, duressBlocks, duressCheck, markHeld, heldVaults, tellCircle, VAULT_DURESS_KIND,
 } from './vaultDuress.ts';
 import type { Transport } from '../transport/transport.ts';
 
@@ -65,6 +65,22 @@ describe('vault duress', () => {
     expect(await duressBlocks('o', DESCRIPTOR, lifted as typeof fetch)).toBe(null);
     expect(await heldVaults('o')).toEqual({});
     expect(await duressBlocks('o', DESCRIPTOR, down as typeof fetch)).toBe(null);
+  });
+
+  // Blind review 2026-11-25, finding 5 (DynastyTrust docs/audits/): with
+  // DynastyTrust unreachable and no hold remembered, the old check simply
+  // allowed signing. Operator's chip: ask first -- never silently.
+  it('when the hold cannot be checked, says so instead of silently allowing', async () => {
+    const down = () => Promise.reject(new Error('offline'));
+    const r = await duressCheck('o', DESCRIPTOR, down as typeof fetch);
+    expect(r.block).toBe(null);
+    expect(r.unchecked).toMatch(/could not check/i);
+    const notFound = () => json(404, { error: 'Vault not found' });
+    expect((await duressCheck('o', DESCRIPTOR, notFound as typeof fetch)).unchecked).toMatch(/could not check/i);
+    const clear = () => json(200, { held: false, circle_hold: false, clears: 0, needed: 3, owner_cleared: false });
+    expect(await duressCheck('o', DESCRIPTOR, clear as typeof fetch)).toEqual({ block: null, unchecked: null });
+    const held = () => json(200, { held: true, circle_hold: false, clears: 0, needed: 3, owner_cleared: false });
+    expect((await duressCheck('o', DESCRIPTOR, held as typeof fetch)).block).toMatch(/on hold/);
   });
 
   it('tells every other person on the path, one encrypted event each, never itself', async () => {

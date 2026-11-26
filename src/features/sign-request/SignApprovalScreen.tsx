@@ -10,7 +10,7 @@ import { approveSignRequest } from './approveRequest.ts';
 import { declineSignRequest } from './declineRequest.ts';
 import { findVaultTrail, readVaultMembership, requiresCallbackConfirmation, diagnoseVaultTrail, type VaultTrailDiagnosis } from './vaultTrail.ts';
 import { SpendReview } from './SpendReview.tsx';
-import { duressBlocks, makeNotice, markHeld, postNotice, tellCircle } from './vaultDuress.ts';
+import { duressCheck, makeNotice, markHeld, postNotice, tellCircle } from './vaultDuress.ts';
 import type { SignRequest } from './types.ts';
 import { diagnoseCirclePhrase, checkCirclePhrase, type PhraseCheckResult, type CirclePhraseDiagnosis } from '../circle-phrase/circlePhrase.ts';
 
@@ -183,10 +183,14 @@ export function SignApprovalScreen() {
   // its circle, or the owner's halt)? Checked with DynastyTrust; a hold this
   // wallet remembers refuses even if DynastyTrust cannot be reached.
   const [holdReason, setHoldReason] = useState<string | null>(null);
+  // Could not ask DynastyTrust (and nothing remembered): ask the checker to
+  // confirm by phone first, never sign silently (blind review finding 5).
+  const [holdUnchecked, setHoldUnchecked] = useState<string | null>(null);
+  const [uncheckedAck, setUncheckedAck] = useState(false);
   useEffect(() => {
     if (!vaultDescriptor) return;
     let live = true;
-    void duressBlocks(ownerId, vaultDescriptor).then((r) => { if (live) setHoldReason(r); });
+    void duressCheck(ownerId, vaultDescriptor).then((r) => { if (live) { setHoldReason(r.block); setHoldUnchecked(r.unchecked); } });
     return () => { live = false; };
   }, [vaultDescriptor, ownerId, duressSent]);
 
@@ -257,6 +261,10 @@ export function SignApprovalScreen() {
     if (state.kind !== 'ready') return;
     if (psbtCosignGate?.kind === 'no-trail') return;
     if (state.request.intent === 'psbt-cosign' && holdReason) return;
+    if (state.request.intent === 'psbt-cosign' && holdUnchecked && !uncheckedAck) {
+      setError('First confirm you called the owner and they are safe (the box above).');
+      return;
+    }
     if (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !confirmed) return;
     if (state.request.intent === 'sign-in' && !screenCodeReady) return;
     setError(null);
@@ -438,6 +446,17 @@ export function SignApprovalScreen() {
         </div>
       )}
 
+      {state.kind === 'ready' && state.request.intent === 'psbt-cosign' && !holdReason && holdUnchecked && (
+        <div className="mt-4 rounded-md border-2 border-amber-400 bg-amber-50 p-4">
+          <p className="text-sm font-bold text-amber-900">Could not check for a duress hold</p>
+          <p className="mt-2 text-xs text-amber-900">{holdUnchecked}</p>
+          <label className="mt-3 flex min-h-11 items-center gap-2 text-sm text-amber-900">
+            <input type="checkbox" checked={uncheckedAck} onChange={(e) => setUncheckedAck(e.target.checked)} />
+            I called the owner and they are safe
+          </label>
+        </div>
+      )}
+
       {psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && phraseResult === 'duress' && (
         <div className="mt-4 rounded-md border-2 border-red-400 bg-red-50 p-4">
           <p className="text-sm font-bold text-red-900">
@@ -562,6 +581,7 @@ export function SignApprovalScreen() {
             onClick={approve}
             disabled={
               psbtCosignGate?.kind === 'no-trail' ||
+              (state.request.intent === 'psbt-cosign' && !!holdUnchecked && !uncheckedAck) ||
               (psbtCosignGate?.kind === 'ok' && psbtCosignGate.requiresCallback && !calloutConfirmed) ||
               (state.request.intent === 'sign-in' && !screenCodeReady)
             }

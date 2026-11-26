@@ -101,12 +101,17 @@ export async function clearHeld(ownerId: string, descriptor: string): Promise<vo
 }
 
 /**
- * May this wallet sign for this vault right now? Refuses while this wallet
- * remembers a hold, unless DynastyTrust says it has lifted (then forgets
- * it); refuses whenever DynastyTrust says the vault is held. If
- * DynastyTrust cannot be reached, a remembered hold still refuses.
+ * May this wallet sign for this vault right now?
+ * - `block`: refuse. While this wallet remembers a hold (unless DynastyTrust
+ *   says it has lifted, then it forgets it), and whenever DynastyTrust says
+ *   the vault is held. A remembered hold refuses even offline.
+ * - `unchecked`: DynastyTrust could not be asked (offline, down, or the
+ *   vault not found there) and nothing is remembered. Blind review
+ *   2026-11-25, finding 5: this used to allow signing silently. Operator's
+ *   chip: ask first -- the screen shows this and the checker must confirm
+ *   by another channel before signing. Tapit still works without us.
  */
-export async function duressBlocks(ownerId: string, descriptor: string, fetchFn: typeof fetch = fetch): Promise<string | null> {
+export async function duressCheck(ownerId: string, descriptor: string, fetchFn: typeof fetch = fetch): Promise<{ block: string | null; unchecked: string | null }> {
   const local = (await heldVaults(ownerId))[descriptor];
   let server: HoldStatus | null = null;
   try {
@@ -116,12 +121,26 @@ export async function duressBlocks(ownerId: string, descriptor: string, fetchFn:
   }
   if (server && !server.held && local) await clearHeld(ownerId, descriptor);
   if (server?.held) {
-    return server.circle_hold
-      ? `Someone in this vault's circle reported duress. Nothing will be signed until the owner and ${server.needed} of the circle clear it (${server.clears} so far).`
-      : 'This vault is on hold. Nothing will be signed until the owner lifts it.';
+    return {
+      block: server.circle_hold
+        ? `Someone in this vault's circle reported duress. Nothing will be signed until the owner and ${server.needed} of the circle clear it (${server.clears} so far).`
+        : 'This vault is on hold. Nothing will be signed until the owner lifts it.',
+      unchecked: null,
+    };
   }
-  if (local && !server) return 'A duress phrase was used for this vault. Nothing will be signed until it is cleared.';
-  return null;
+  if (local && !server) return { block: 'A duress phrase was used for this vault. Nothing will be signed until it is cleared.', unchecked: null };
+  if (!server) {
+    return {
+      block: null,
+      unchecked: "This wallet could not check whether anyone in this vault's circle has reported duress (DynastyTrust did not answer). Before you sign, call the owner on a number you already know and make sure they are safe.",
+    };
+  }
+  return { block: null, unchecked: null };
+}
+
+/** Just the refusal, for callers that only need yes or no. */
+export async function duressBlocks(ownerId: string, descriptor: string, fetchFn: typeof fetch = fetch): Promise<string | null> {
+  return (await duressCheck(ownerId, descriptor, fetchFn)).block;
 }
 
 // -- Telling the other people on the path ---------------------------------
