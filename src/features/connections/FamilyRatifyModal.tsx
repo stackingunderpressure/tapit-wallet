@@ -14,6 +14,8 @@ import {
   peerNamesByPubkey,
 } from './createHandshake.ts';
 import { IdentityChip } from './IdentityChip.tsx';
+import { familyFanOutTargets } from './familyFanOut.ts';
+import { amendmentProgress, familyVersionInfo } from './familyAmendment.ts';
 import {
   summarizePublish,
   type PublishStatusSummary,
@@ -55,9 +57,14 @@ interface Props {
   onClose: () => void;
 }
 
+// One tap (2026-11-27): confirming signs, holds, anchors AND sends to
+// the founder and every named member. 'held' is only reached when the
+// local hold worked but no send got through, so the member is never
+// left "ratified only on this phone" without being told.
 type Step =
   | { kind: 'review' }
-  | { kind: 'signed'; signed: Attestation };
+  | { kind: 'held'; signed: Attestation }
+  | { kind: 'done' };
 
 function shortKey(hex: string): string {
   if (hex.length <= 12) return hex;
@@ -105,73 +112,51 @@ export function FamilyRatifyModal({
   const [step, setStep] = useState<Step>({ kind: 'review' });
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [sendStatus, setSendStatus] = useState<PublishStatusSummary | null>(null);
 
-  async function sign() {
+  async function confirm() {
     setError(null);
+    setSending(true);
+    let signed: Attestation;
     try {
       await confirmFaceId(ownerId); // Face ID before every signature, when it is on
-      // wallet.sign wraps tapit-attest's signEnvelope using the active
-      // key. Signatures are deduped by signer pubkey so this is
-      // idempotent if the operator ratifies twice for any reason. Hold
-      // and anchor the signed copy locally so the member's wallet has
-      // the family record persisted — PeopleTree v2 can branch a
-      // family node from any member's angle once that lands, and the
-      // member's wallet can absorb later cosignatures from other
-      // members via the existing AbsorbCosignModal pathway.
-      const signed = wallet.sign(incoming);
+      // wallet.sign dedupes by signer, so ratifying twice is harmless.
+      // Holding the signed copy gives this wallet the family record and
+      // lets it absorb later cosignatures from other members.
+      signed = wallet.sign(incoming);
       await holdAndAnchor(wallet, ownerId, anchorWorker, signed);
       await save();
       await refresh();
-      setStep({ kind: 'signed', signed });
     } catch (err) {
+      setSending(false);
       setError(err instanceof Error ? err.message : 'sign failed');
+      return;
     }
+    await sendOut(signed);
   }
 
-  async function sendBack() {
-    if (step.kind !== 'signed') return;
+  async function sendOut(signed: Attestation) {
     setError(null);
     setSendStatus(null);
     setSending(true);
     try {
-      // Fan-out destinations. The founder's CURRENT subscribe-and-
-      // decrypt address is their active signing key — not necessarily
-      // founder_id. If the founder rotated AT ANY POINT after we
-      // received the envelope, sending only to founder_id (genesis)
-      // is invisible to them: NIP-44 ECDH between (our privkey,
-      // founder genesis pubkey) produces a shared secret only a
-      // wallet holding the founder's genesis PRIVKEY can recover,
-      // and a rotated wallet has discarded that privkey. Operator
-      // field-test 2026-05-31: founder rotated, daughter's send-back
-      // never surfaced on the founder side, family card stayed at
-      // 0-of-N. Address the envelope to founder_id AND to every
-      // distinct signer pubkey on the envelope — the founder's
-      // signature signer is whatever key they used at signing time,
-      // which is a strictly better target than the genesis identity
-      // for any wallet that rotated before signing. Send to all
-      // distinct candidates (minus our own key history so we don't
-      // self-CC); the founder's silent-absorb path dedupes the
-      // multi-relay multi-target deliveries via envelopeId.
-      const myKeys = new Set(
-        wallet.keyHistory.map((k) => k.toLowerCase()),
-      );
-      const targets = new Set<string>();
-      const founderIdKey = view.founderId.trim().toLowerCase();
-      if (!myKeys.has(founderIdKey)) targets.add(founderIdKey);
-      for (const s of step.signed.signatures) {
-        const signerKey = s.signer.trim().toLowerCase();
-        if (!myKeys.has(signerKey)) targets.add(signerKey);
-      }
-      if (targets.size === 0) {
+      const targets = familyFanOutTargets(signed, wallet.keyHistory);
+      if (targets.length === 0) {
         throw new Error('no valid recipient for the signed family unit');
       }
       let best: PublishStatusSummary | null = null;
       let anyOk = false;
       for (const t of targets) {
-        const result = await sendEnvelope(t, step.signed);
-        const status = summarizePublish(result);
+        let status: PublishStatusSummary;
+        try {
+          status = summarizePublish(await sendEnvelope(t, signed));
+        } catch (err) {
+          status = {
+            tone: 'fail',
+            label: 'Not sent',
+            detail: err instanceof Error ? err.message : 'send failed',
+          };
+        }
         if (status.tone !== 'fail') anyOk = true;
         // Prefer 'ok' over 'pending' over 'fail' for the displayed
         // status so the most informative summary survives.
@@ -185,15 +170,28 @@ export function FamilyRatifyModal({
       }
       setSendStatus(best);
       if (anyOk) {
-        setSent(true);
+        setStep({ kind: 'done' });
         if (onSuccess) onSuccess();
+      } else {
+        setStep({ kind: 'held', signed });
+        setError(
+          'Your signature is saved on this phone, but it did not reach anyone in the family yet. Check your connection and tap Retry send.',
+        );
       }
     } catch (err) {
+      setStep({ kind: 'held', signed });
       setError(err instanceof Error ? err.message : 'send failed');
     } finally {
       setSending(false);
     }
   }
+
+  const version = familyVersionInfo(incoming);
+  const amendment = version.version > 1 ? amendmentProgress(incoming) : null;
+  const admittedNames = view.members
+    .filter((m) => version.admits.includes(m.pubkey.toLowerCase()))
+    .map((m) => `${m.name || shortKey(m.pubkey)} (${m.role})`);
+  const iAmAdmitted = version.admits.includes(myIdentity);
 
   const founderKey = view.founderId.trim().toLowerCase();
   const founderLabel =
@@ -237,12 +235,34 @@ export function FamilyRatifyModal({
                 ) : null}
                 .
               </p>
+              {amendment && (
+                <p className="mt-2 rounded-md bg-white/70 px-3 py-2 text-sm">
+                  {iAmAdmitted ? (
+                    <>
+                      This new version of the family adds{' '}
+                      <span className="font-semibold">you</span>. Signing is
+                      you agreeing to join. It takes effect once more than half
+                      of the family ({amendment.priorNeeded} of{' '}
+                      {amendment.priorTotal}) have signed too —{' '}
+                      {amendment.priorSigned} so far.
+                    </>
+                  ) : (
+                    <>
+                      This new version of the family adds{' '}
+                      <span className="font-semibold">{admittedNames.join(', ')}</span>.
+                      It takes effect once {amendment.priorNeeded} of the{' '}
+                      {amendment.priorTotal} current members have signed (
+                      {amendment.priorSigned} so far) and the people being added
+                      have signed. Until then the family stays as it is.
+                    </>
+                  )}
+                </p>
+              )}
               <p className="mt-2 text-xs text-muted">
-                Ratifying attaches your signature to the family-unit
-                envelope. Your wallet holds a copy too, and the founder
-                receives your signature back so the family card shows
-                you as ratified. Only sign if you accept being named —
-                this is a public statement.
+                One tap signs, keeps a copy in your wallet, and sends your
+                signature to the founder and everyone else named, so every
+                family card shows you as ratified. Only sign if you accept
+                being named — this is a public statement.
               </p>
             </div>
 
@@ -300,11 +320,11 @@ export function FamilyRatifyModal({
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={sign}
-                disabled={!myMember}
+                onClick={() => void confirm()}
+                disabled={!myMember || sending}
                 className="flex-1 rounded-md bg-ink py-2 text-paper text-sm font-medium disabled:opacity-40"
               >
-                I confirm — sign and ratify
+                {sending ? 'Signing and sending…' : 'I confirm — sign and ratify'}
               </button>
               <button
                 type="button"
@@ -323,48 +343,49 @@ export function FamilyRatifyModal({
           </>
         )}
 
-        {step.kind === 'signed' && (
+        {step.kind === 'held' && (
           <>
             <p className="mt-2 text-sm text-muted">
-              Ratified and held in your wallet. Send your signature back to{' '}
-              <span className="font-medium">{founderLabel}</span> so their copy
-              shows you as ratified.
+              Ratified and held in your wallet, but not delivered yet. The
+              family still sees you as waiting until it gets through.
             </p>
             <button
               type="button"
-              onClick={sendBack}
-              disabled={sending || sent}
+              onClick={() => void sendOut(step.signed)}
+              disabled={sending}
               className="mt-3 w-full rounded-md bg-accent py-2 text-paper text-sm font-medium disabled:opacity-60"
             >
-              {sent
-                ? sendStatus?.label ?? 'Sent'
-                : sending
-                  ? 'Sending…'
-                  : 'Send ratification back'}
+              {sending ? 'Sending…' : 'Retry send'}
             </button>
-            {sendStatus && (
-              <p
-                className={`mt-2 text-xs ${
-                  sendStatus.tone === 'ok'
-                    ? 'text-emerald-800'
-                    : sendStatus.tone === 'fail'
-                      ? 'text-red-700'
-                      : 'text-muted'
-                }`}
-                role="status"
-              >
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-2 w-full rounded-md border border-ink/15 px-4 py-2 text-sm"
+            >
+              Close — I'll retry from my inbox
+            </button>
+          </>
+        )}
+
+        {step.kind === 'done' && (
+          <>
+            <p className="mt-2 text-sm">
+              Ratified and sent to the family.{' '}
+              <span className="font-medium">{founderLabel}</span> and the others
+              will see you as ratified when their phones pick it up.
+            </p>
+            {sendStatus && sendStatus.tone !== 'ok' && (
+              <p className="mt-2 text-xs text-muted" role="status">
                 {sendStatus.detail}
               </p>
             )}
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 rounded-md border border-ink/15 px-4 py-2 text-sm"
-              >
-                Done
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-3 w-full rounded-md bg-ink py-2 text-paper text-sm font-medium"
+            >
+              Done
+            </button>
           </>
         )}
 

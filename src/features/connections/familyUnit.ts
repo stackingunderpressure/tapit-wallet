@@ -42,6 +42,10 @@ export const FAMILY_ROLES = [
   'spouse',
   'child',
   'sibling',
+  // Added 2026-11-27 with family amendments (familyAmendment.ts): a
+  // family stays open, and a grandchild who grows up is let in later
+  // by a new version of the family that the family signs.
+  'grandchild',
 ] as const;
 
 export type FamilyRole = (typeof FAMILY_ROLES)[number];
@@ -111,6 +115,10 @@ export function buildFamilyUnitDraft(
   founder: Attestation,
   familyName: string,
   members: FamilyMember[],
+  /** Extra leaves for a family amendment (family_line, supersedes,
+   *  family_version, admits, and the ORIGINAL founded_at). Only
+   *  familyAmendment.ts passes this; it overrides the defaults below. */
+  amendmentFields?: Readonly<Record<string, string>>,
 ): Attestation {
   if (members.length === 0) {
     throw new Error('family unit must name at least one member');
@@ -147,6 +155,7 @@ export function buildFamilyUnitDraft(
     founded_at: new Date().toISOString(),
     founder_id: founder.subject,
     founder_name: displayNameOf(founder),
+    ...(amendmentFields ?? {}),
   };
   return credentialAttestation({
     subject: founder.subject,

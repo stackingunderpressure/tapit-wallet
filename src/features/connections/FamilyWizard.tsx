@@ -14,6 +14,7 @@ import {
   type FamilyRole,
 } from './familyUnit.ts';
 import { displayNameOf, isHandshake, readHandshake } from './createHandshake.ts';
+import { buildFamilyAmendment, resolveFamilyLines } from './familyAmendment.ts';
 import {
   MemberDetailsStep,
   NameStep,
@@ -102,16 +103,24 @@ export function FamilyWizard({
   }, [myIdentityLower, wallet.keyHistory]);
 
   // -- add-member: which existing family this session targets ---------
+  // Families stay open (2026-11-27): a family someone else has already
+  // ratified is no longer locked -- adding to it proposes a new version
+  // (familyAmendment.ts) the family signs. One family per line, the
+  // version in effect, and not while a proposal is still collecting
+  // signatures (two competing next versions would split the family).
   const eligibleFamilies = useMemo(() => {
     if (mode !== 'add-member' || !addMemberTarget) return [];
     const peerLower = addMemberTarget.pubkey.toLowerCase();
-    return findFamilyUnitsForMember(holdings, wallet.identity).filter((a) => {
-      if (!isFamilyFounder(a, wallet.identity)) return false;
-      if (familyOtherRatifierCount(a, keyAliases) !== 0) return false;
-      const view = readFamilyUnit(a);
-      return !view.members.some((m) => m.pubkey.toLowerCase() === peerLower);
-    });
+    return resolveFamilyLines(findFamilyUnitsForMember(holdings, wallet.identity), keyAliases)
+      .filter((r) => r.current && !r.proposal)
+      .map((r) => r.current as Attestation)
+      .filter((a) => {
+        if (!isFamilyFounder(a, wallet.identity)) return false;
+        const view = readFamilyUnit(a);
+        return !view.members.some((m) => m.pubkey.toLowerCase() === peerLower);
+      });
   }, [mode, addMemberTarget, holdings, wallet.identity, keyAliases]);
+
 
   const [targetFamilyId, setTargetFamilyId] = useState<string>(() => {
     if (mode !== 'add-member') return '';
@@ -130,6 +139,10 @@ export function FamilyWizard({
       ? eligibleFamilies.find((a) => envelopeId(a) === targetFamilyId)
       : undefined;
   const targetFamilyView = targetFamily ? readFamilyUnit(targetFamily) : null;
+  // Nobody but the founder has signed yet: rebuild in place, as before.
+  // Otherwise propose an amendment and keep the version in effect.
+  const proposesAmendment =
+    !!targetFamily && familyOtherRatifierCount(targetFamily, keyAliases) > 0;
 
   const activeEditing = mode === 'edit' ? editing : targetFamily;
   const editingView = useMemo(
@@ -266,7 +279,9 @@ export function FamilyWizard({
           role: m.role,
           ...(m.asOf ? { as_of: m.asOf } : {}),
         }));
-        draft = buildFamilyWithAddedMembers(identity, targetFamily, newOnes);
+        draft = proposesAmendment
+          ? buildFamilyAmendment(identity, targetFamily, newOnes)
+          : buildFamilyWithAddedMembers(identity, targetFamily, newOnes);
         const view = readFamilyUnit(draft);
         resultFamilyName = view.familyName || 'your family';
         targets = view.members
@@ -296,7 +311,9 @@ export function FamilyWizard({
 
       const signed = wallet.sign(draft);
       await wallet.hold(signed);
-      if (mode !== 'create' && activeEditing) {
+      // An amendment never replaces the version in effect on this phone:
+      // that one stays the family until the new one has its signatures.
+      if (mode !== 'create' && activeEditing && !proposesAmendment) {
         const oldId = envelopeId(activeEditing);
         const newId = envelopeId(signed);
         if (oldId !== newId) await wallet.unhold(oldId);
@@ -324,9 +341,12 @@ export function FamilyWizard({
           sendFailed += 1;
         }
       }
-      if (sendFailed > 0 && mode === 'create') {
+      // Every mode, not only create: a failed send in add-member or edit
+      // used to fall through to the success screen.
+      if (sendFailed > 0) {
+        const verb = mode === 'create' ? 'created' : 'updated';
         setError(
-          `Family created and held, but could not reach ${sendFailed} of ${targets.length} member${targets.length === 1 ? '' : 's'} -- open the family card and tap "Send to awaiting members" once connected.`,
+          `Family ${verb} and held, but could not reach ${sendFailed} of ${targets.length} member${targets.length === 1 ? '' : 's'} -- open the family card and tap "Ask members to confirm" once connected.`,
         );
         setBusy(false);
         return;
@@ -350,10 +370,10 @@ export function FamilyWizard({
       <Sheet title="Add to a family" onClose={onClose}>
         <p className="mt-3 text-sm text-muted">
           No family is available to add {addMemberTarget?.name || 'this person'}{' '}
-          to. You can only add people to a family you founded and are the only
-          signer of yet -- once someone has ratified, the roster is locked.
-          Start a family from your Identity tab, or they may already be in
-          your families.
+          to. You can add people to a family you founded, unless a proposal to
+          add someone is still waiting for the family's signatures -- that one
+          has to be agreed first. They may also already be in your families,
+          or you can start a family from your Identity tab.
         </p>
         <button
           type="button"
@@ -370,10 +390,23 @@ export function FamilyWizard({
     return (
       <Sheet title="Add to a family" onClose={onClose}>
         <p className="mt-3 text-sm">
-          Added <span className="font-medium">{addMemberTarget?.name || 'them'}</span>{' '}
-          to <span className="font-medium">{doneFamilyName}</span>. They'll get a
-          ratification request, and the family card on your Identity tab shows
-          them as awaiting their signature.
+          {proposesAmendment ? (
+            <>
+              Asked the family to let{' '}
+              <span className="font-medium">{addMemberTarget?.name || 'them'}</span>{' '}
+              into <span className="font-medium">{doneFamilyName}</span>. It takes
+              effect once more than half of the family and{' '}
+              {addMemberTarget?.name || 'they'} have signed. Until then the family
+              stays as it is, and the family card shows how many have signed.
+            </>
+          ) : (
+            <>
+              Added <span className="font-medium">{addMemberTarget?.name || 'them'}</span>{' '}
+              to <span className="font-medium">{doneFamilyName}</span>. They'll get a
+              ratification request, and the family card on your Identity tab shows
+              them as awaiting their signature.
+            </>
+          )}
         </p>
         <button
           type="button"

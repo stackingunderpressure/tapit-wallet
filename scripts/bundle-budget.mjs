@@ -1046,6 +1046,13 @@ const BUDGETS = [
   // Catch-all for new unrecognized JS chunks. Tight (3KB gz) so
   // anything larger than a trivial helper surfaces immediately
   // and prompts adding an explicit named budget above.
+  // FamilyRatifyModal (lazy, opens only from a family ratify request).
+  // 2026-11-27 family amendments: one-tap sign+send with Retry, the
+  // "this version adds X" banner and the agreement-rule progress pulled
+  // the chunk to 3.19KB gz, past the 3KB catch-all. Audited as
+  // intentional -- it is the copy that tells a member what they are
+  // agreeing to. Named budget 3.75KB, same shape as ShareProofModal.
+  { pattern: /^FamilyRatifyModal-.*\.js$/, gz: 3_840, label: 'FamilyRatifyModal' },
   { pattern: /\.js$/, gz: 3_000, label: '(unrecognized js chunk — add a named budget)' },
 ];
 

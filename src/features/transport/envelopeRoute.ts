@@ -140,8 +140,13 @@ export function routeFor(
     //      matches by envelopeId and runs mergeSignatures.
     //   2. Named member who has NOT yet signed → family-ratify. The
     //      member-side FamilyRatifyModal opens with the envelope,
-    //      shows the family graph for review, and signs + holds +
-    //      sends-back-to-founder in one tap.
+    //      shows the family graph for review, and in one tap signs,
+    //      holds, anchors, and sends to the founder AND every named
+    //      member (familyFanOut.ts). Siblings who already signed
+    //      absorb that copy via case 3; siblings who have not are
+    //      prompted here. A family amendment (familyAmendment.ts)
+    //      routes the same way -- the person being admitted is a
+    //      named member who has not signed, so they land here too.
     //   3. Named member who HAS already signed (e.g. a re-broadcast of
     //      the envelope with more signatures from other members
     //      accumulated since) → absorb-cosign so the member's held

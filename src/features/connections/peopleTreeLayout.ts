@@ -6,6 +6,7 @@ import {
   readHandshake,
 } from './createHandshake.ts';
 import { isMembership, readMembership } from './createMembership.ts';
+import { resolveFamilyLines } from './familyAmendment.ts';
 import {
   familySignatureProgress,
   findFamilyUnitsForMember,
@@ -203,7 +204,12 @@ export function extractFamilies(
   myIdentity: string,
   keyAliases?: ReadonlyMap<string, readonly string[]>,
 ): TreeFamily[] {
-  const units = findFamilyUnitsForMember(holdings, myIdentity);
+  // One node per family: the version in effect (or, on a phone that only
+  // holds a pending version, that proposal) -- familyAmendment.ts.
+  const units = resolveFamilyLines(
+    findFamilyUnitsForMember(holdings, myIdentity),
+    keyAliases,
+  ).map((r) => (r.current ?? r.proposal) as Attestation);
   const out: TreeFamily[] = [];
   const seen = new Set<string>();
   for (const att of units) {

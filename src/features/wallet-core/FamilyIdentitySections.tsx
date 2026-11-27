@@ -8,6 +8,8 @@ import {
   readFamilyUnit,
 } from '../connections/familyUnit.ts';
 import { IdentityChip } from '../connections/IdentityChip.tsx';
+import { resolveFamilyLines } from '../connections/familyAmendment.ts';
+import { FamilyProposalNote } from './FamilyProposalNote.tsx';
 import { useWallet } from './useWallet.ts';
 import { summarizePublish } from '../transport/publishStatus.ts';
 
@@ -20,14 +22,11 @@ import { summarizePublish } from '../transport/publishStatus.ts';
 //            Member badge framing whether the operator founded this or
 //            was named into it, per-member rows with role + as_of +
 //            signed/awaiting state, and the N-of-M ratification chip.
-//   Update — founder-only "Edit" button, enabled only while the
-//            founder is the sole signer (familyOtherRatifierCount===0)
-//            because re-signing mints a new envelopeId and orphans any
-//            ratifications already collected. Opens FamilyWizard in
-//            edit mode via onEditFamily. Once another member has
-//            ratified, Edit is hidden and the operator uses Delete +
-//            recreate instead (a proper amendment-envelope flow that
-//            preserves ratifications is a follow-up cut).
+//   Update — founder-only "Edit" button while the founder is the sole
+//            signer (re-signing mints a new envelopeId). After that,
+//            adding someone proposes a new version the family signs
+//            (familyAmendment.ts); the card shows the version in effect
+//            plus the pending proposal via FamilyProposalNote.
 //   Delete — every card carries a destructive action on the operator's
 //            OWN held copy. For the founder it reads "Delete family";
 //            for a named member it reads "Leave family". Both call
@@ -95,6 +94,12 @@ export function FamilyIdentitySections({
     m.set(myIdentity, wallet.keyHistory.map((k) => k.toLowerCase()));
     return m;
   }, [myIdentity, wallet.keyHistory]);
+  // One card per family, not per held version: the version in effect,
+  // with any pending amendment shown on it (familyAmendment.ts).
+  const families = useMemo(
+    () => resolveFamilyLines(familyUnits, keyAliases),
+    [familyUnits, keyAliases],
+  );
   const [sending, setSending] = useState<Record<number, boolean>>({});
   const [errorByIndex, setErrorByIndex] = useState<Record<number, SendError>>({});
   // Inline two-step delete confirm, keyed by card index — mirrors the
@@ -165,7 +170,7 @@ export function FamilyIdentitySections({
     <div className="pt-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-muted">
-          Family ({familyUnits.length})
+          Family ({families.length})
         </h2>
         <button
           type="button"
@@ -175,7 +180,7 @@ export function FamilyIdentitySections({
           + Start family
         </button>
       </div>
-      {familyUnits.length === 0 ? (
+      {families.length === 0 ? (
         <p className="mt-2 text-sm text-muted">
           No families yet. Tap Start family to declare your family
           unit — name it, pick the people in it from your connections,
@@ -185,7 +190,17 @@ export function FamilyIdentitySections({
         </p>
       ) : (
         <ul className="mt-2 space-y-3">
-          {familyUnits.map((a, i) => {
+          {families.map((fam, i) => {
+            const a = (fam.current ?? fam.proposal) as Attestation;
+            const pendingOnly = !fam.current;
+            const proposal = fam.proposal;
+            const proposalUnsigned = proposal
+              ? readFamilyUnit(proposal).members.filter((m) => {
+                  if (m.pubkey.toLowerCase() === myIdentity) return false;
+                  const ps = new Set(proposal.signatures.map((s) => s.signer.toLowerCase()));
+                  return !memberHasSigned(m.pubkey, ps, keyAliases);
+                })
+              : [];
             const view = readFamilyUnit(a);
             const progress = familySignatureProgress(a, keyAliases);
             const signers = new Set(
@@ -194,7 +209,7 @@ export function FamilyIdentitySections({
             const isFounder = isFamilyFounder(a, myIdentity);
             const founded = formatFounded(view.foundedAt);
             const otherRatifiers = familyOtherRatifierCount(a, keyAliases);
-            const canEdit = isFounder && otherRatifiers === 0;
+            const canEdit = isFounder && otherRatifiers === 0 && !pendingOnly;
             const unsignedNonFounder = view.members.filter((m) => {
               const lower = m.pubkey.toLowerCase();
               if (lower === myIdentity) return false;
@@ -236,6 +251,19 @@ export function FamilyIdentitySections({
                     {progress.signed} of {progress.total} signed
                   </span>
                 </div>
+                {proposal && (
+                  <FamilyProposalNote
+                    proposal={proposal}
+                    keyAliases={keyAliases}
+                    standalone={pendingOnly}
+                    asking={!!sending[i]}
+                    onAsk={
+                      isFounder && proposalUnsigned.length > 0
+                        ? () => void sendToUnsignedMembers(i, proposal, proposalUnsigned)
+                        : undefined
+                    }
+                  />
+                )}
                 <ul className="mt-3 space-y-2">
                   {view.members.map((m) => {
                     const signed = memberHasSigned(m.pubkey, signers, keyAliases);
@@ -277,7 +305,7 @@ export function FamilyIdentitySections({
                     );
                   })}
                 </ul>
-                {isFounder && unsignedNonFounder.length > 0 && (
+                {isFounder && !pendingOnly && unsignedNonFounder.length > 0 && (
                   <div className="mt-3">
                     <button
                       type="button"
@@ -321,9 +349,11 @@ export function FamilyIdentitySections({
                     </button>
                   ) : isFounder ? (
                     <span className="text-[10px] text-muted">
-                      Editing is locked — {otherRatifiers} member
-                      {otherRatifiers === 1 ? ' has' : 's have'} confirmed.
-                      Delete and recreate to change who's in it.
+                      {otherRatifiers} member
+                      {otherRatifiers === 1 ? ' has' : 's have'} confirmed, so
+                      names and roles are set. To let someone new in, open
+                      their connection and tap Add to family — the family
+                      signs to accept them.
                     </span>
                   ) : (
                     <span />

@@ -53,6 +53,7 @@ export const manifest: FeatureManifest = {
     'src/features/wallet-core/adoptExistingKey.test.ts',
     'src/features/wallet-core/OrgIdentitySections.tsx',
     'src/features/wallet-core/FamilyIdentitySections.tsx',
+    'src/features/wallet-core/FamilyProposalNote.tsx',
     'src/features/wallet-core/useOpenMemberRosterControls.ts',
     'src/features/wallet-core/useInboxAccepts.ts',
     'src/features/wallet-core/useInboxRouting.tsx',

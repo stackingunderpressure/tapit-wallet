@@ -29,6 +29,7 @@ export const ROLE_LABELS: Record<FamilyRole, string> = {
   spouse: 'Spouse',
   child: 'Child',
   sibling: 'Sibling',
+  grandchild: 'Grandchild',
 };
 
 export function Sheet({
@@ -235,7 +236,9 @@ export function RosterStep({
       {mode !== 'add-member' && (
         <p className="mt-2 text-sm text-muted">
           <span className="font-medium">{familyName || 'Your family'}</span> so
-          far. Add people one at a time, then sign once you're done.
+          far. Add people one at a time, then sign once you're done. You can
+          add someone later too -- a grandchild who grows up, a new spouse --
+          and the family signs to let them in.
         </p>
       )}
       {mode === 'add-member' && (
