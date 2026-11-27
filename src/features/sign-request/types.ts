@@ -44,6 +44,17 @@ export interface AttestSignRequest extends SignRequestBase {
   subject: string;
   /** Plain claim fields the wallet will lay out as a Merkle field tree. */
   fields: Record<string, FieldValue>;
+  /**
+   * Present only when this request arrived over Nostr (recordRequestChannel.ts)
+   * rather than a same-tab deeplink: approveRequest publishes the signed
+   * record back to `requester_pubkey` (recordResponseChannel.ts) instead of
+   * redirecting, so the requesting app never reloads this wallet -- which
+   * is what made every redirect sign start from the unlock screen again.
+   */
+  response_channel?: {
+    kind: 'nostr';
+    requester_pubkey: string;
+  };
 }
 
 /**
@@ -58,6 +69,17 @@ export interface CosignSignRequest extends SignRequestBase {
   intent: 'cosign-existing';
   /** The already-signed envelope the wallet is asked to countersign. */
   envelope: Attestation;
+  /**
+   * Present only when this request arrived over Nostr (recordRequestChannel.ts)
+   * rather than a same-tab deeplink: approveRequest publishes the signed
+   * record back to `requester_pubkey` (recordResponseChannel.ts) instead of
+   * redirecting, so the requesting app never reloads this wallet -- which
+   * is what made every redirect sign start from the unlock screen again.
+   */
+  response_channel?: {
+    kind: 'nostr';
+    requester_pubkey: string;
+  };
 }
 
 /**

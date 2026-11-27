@@ -36,7 +36,10 @@ function b64UrlDecode(input: string): string {
   // Accept both standard base64 and base64url. Pad if missing.
   let s = input.replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4 !== 0) s += '=';
-  return atob(s);
+  // UTF-8, not raw bytes: a curly apostrophe in a requester's field text
+  // used to arrive garbled. Plain-ASCII requests decode exactly as before.
+  const bin = atob(s);
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
 
 function isFieldValue(v: unknown): v is FieldValue {
@@ -139,6 +142,12 @@ export function parseSignRequest(raw: string | null): SignRequest {
       'req is not valid base64 JSON',
     );
   }
+  return parseSignRequestJson(json);
+}
+
+/** The same checks for a request that arrived as JSON over Nostr
+ *  (recordRequestChannel.ts) -- one bar for every transport. */
+export function parseSignRequestJson(json: unknown): SignRequest {
   if (!json || typeof json !== 'object') {
     throw new SignRequestError('invalid_request', 'req is not an object');
   }
@@ -180,7 +189,8 @@ export function parseSignRequest(raw: string | null): SignRequest {
         'envelope has no valid signature to co-sign',
       );
     }
-    return { v: 1, intent: 'cosign-existing', envelope, ...base };
+    const responseChannel = parseResponseChannel(r);
+    return { v: 1, intent: 'cosign-existing', envelope, ...(responseChannel ? { response_channel: responseChannel } : {}), ...base };
   }
 
   // intent 'psbt-cosign' — Cut B, the DynastyTrust signing bridge. Validate
@@ -262,6 +272,7 @@ export function parseSignRequest(raw: string | null): SignRequest {
     tier: r.tier as TierName,
     subject: r.subject,
     fields,
+    ...(parseResponseChannel(r) ? { response_channel: parseResponseChannel(r) } : {}),
     ...base,
   };
 }

@@ -296,7 +296,9 @@ export function SignApprovalScreen() {
             ? `Signed in to ${state.request.origin}. You can go back to that app now.`
             : state.request.intent === 'psbt-cosign'
               ? 'Transaction signed and sent back.'
-              : 'Sent.';
+              : state.request.intent === 'attest' || state.request.intent === 'cosign-existing'
+                ? `Signed and sent back to ${state.request.origin}. You can go back to it now.`
+                : 'Sent.';
         setState({ kind: 'done', message });
         return;
       }
@@ -383,10 +385,10 @@ export function SignApprovalScreen() {
           return t ? <SpendReview psbtHex={state.request.psbt_hex} membership={readVaultMembership(t)} /> : null;
         })()}
         <div className="mt-3 rounded-md bg-ink/5 px-3 py-2 text-xs text-muted">
-          {(state.request.intent === 'psbt-cosign' || state.request.intent === 'sign-in') &&
-          state.request.response_channel?.kind === 'nostr' ? (
+          {'response_channel' in state.request && state.request.response_channel?.kind === 'nostr' ? (
             <>
-              On approve the signed {state.request.intent === 'sign-in' ? 'proof' : 'transaction'} goes
+              On approve the signed{' '}
+              {state.request.intent === 'sign-in' ? 'proof' : state.request.intent === 'psbt-cosign' ? 'transaction' : 'record'} goes
               straight back over the network to whoever asked — nothing to redirect to, your keys
               never leave this device.
             </>

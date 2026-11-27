@@ -6,6 +6,7 @@ import { coSignEnvelope } from './coSignEnvelope.ts';
 import { signPsbtCosign } from './signPsbtCosign.ts';
 import { sendPsbtCosignResponseOverNostr } from './psbtCosignResponseChannel.ts';
 import { sendSignInResponseOverNostr } from './signInResponseChannel.ts';
+import { sendRecordResponseOverNostr } from './recordResponseChannel.ts';
 import { anchorQueue } from '../anchoring/anchorQueue.ts';
 import type { WorkerHandle } from '../anchoring/anchorWorker.ts';
 import type { Transport } from '../transport/transport.ts';
@@ -323,6 +324,26 @@ export async function approveSignRequest(
     last_error: null,
   });
   if (worker) void worker.kick();
+
+  // Arrived over Nostr (recordRequestChannel.ts): answer the same way, never
+  // redirect. Throws without a transport rather than claiming delivery --
+  // the 2026-08-20 lesson from the psbt-cosign branch above.
+  if (request.response_channel?.kind === 'nostr') {
+    if (!transport) {
+      throw new Error('Signed and kept in your wallet, but this wallet is not connected to the network, so it could not be sent back. Turn on "Stay reachable" and try again.');
+    }
+    const sent = await sendRecordResponseOverNostr(
+      transport,
+      wallet,
+      signed,
+      request.nonce,
+      request.response_channel.requester_pubkey,
+    );
+    if (sent.accepted.length === 0 && sent.pending.length === 0) {
+      throw new Error('Signed and kept in your wallet, but no relay took the reply. Check your signal and approve again.');
+    }
+    return { delivered: 'nostr' };
+  }
 
   const grant: SignGrant = {
     v: 1,

@@ -25,7 +25,7 @@ export function declineSignRequest(
   reason: SignDeclineReason,
   detail?: string,
 ): { delivered: 'redirect' | 'none' } {
-  if (request.intent === 'psbt-cosign' && request.response_channel?.kind === 'nostr') {
+  if (request.response_channel?.kind === 'nostr' && request.intent !== 'sign-in') {
     return { delivered: 'none' };
   }
   const decline: SignDecline = {

@@ -11,6 +11,7 @@ import { IncomingPsbtCosignBanner } from '../sign-request/IncomingPsbtCosignBann
 import { IncomingVaultMembershipBanner } from '../sign-request/IncomingVaultMembershipBanner.tsx';
 import { VaultDuressBanner } from '../sign-request/VaultDuressBanner.tsx';
 import { IncomingSignInBanner } from '../sign-request/IncomingSignInBanner.tsx';
+import { IncomingRecordRequestBanner } from '../sign-request/IncomingRecordRequestBanner.tsx';
 import { CirclePhraseReceiver } from '../circle-phrase/CirclePhraseReceiver.tsx';
 import { HandshakeModal } from '../connections/HandshakeModal.tsx';
 import { findFamilyUnitsForMember } from '../connections/familyUnit.ts';
@@ -361,6 +362,7 @@ export function HomeScreen() {
       <IncomingVaultMembershipBanner />
       <IncomingPsbtCosignBanner />
       <IncomingSignInBanner />
+      <IncomingRecordRequestBanner />
       <CirclePhraseReceiver />
 
       {/* Backup health sits above the tabs — a warning must never be
