@@ -19,6 +19,11 @@ import { HowVerificationWorks } from './HowVerificationWorks.tsx';
 const ChainVerifyResult = lazy(() =>
   import('./ChainVerifyResult.tsx').then((m) => ({ default: m.ChainVerifyResult })),
 );
+// Letters a person chose to show (proof-collection). Lazy for the same reason.
+const CollectionVerifyResult = lazy(() =>
+  import('../proof-collection/CollectionVerifyResult.tsx').then((m) => ({ default: m.CollectionVerifyResult })),
+);
+import { parseCollection, type ProofCollection } from '../proof-collection/proofBundle.ts';
 import {
   verifyGatedReleaseBundle,
   type GatedReleaseBundle,
@@ -74,7 +79,8 @@ type Outcome =
       /** How many times the owner has rotated keys, per the included
        *  succession chain — 0 when never rotated or none was included. */
       rotations: number;
-    };
+    }
+  | { kind: 'collection'; collection: ProofCollection };
 
 // Detect + verify a whole move-chain bundle (arena's "verify the whole
 // ball" link). Returns a 'chain' outcome when the text is one, or null
@@ -201,6 +207,11 @@ export function VerifyProofScreen() {
       // A whole move-chain bundle and a gated-release bundle are both
       // different shapes than a disclosure proof — detect each first and
       // run its own verifier before falling through to disclosure parsing.
+      const collection = parseCollection(text);
+      if (collection) {
+        setOutcome({ kind: 'collection', collection });
+        return;
+      }
       const chain = tryVerifyChainBundle(text);
       if (chain) {
         setOutcome(chain);
@@ -298,6 +309,8 @@ export function VerifyProofScreen() {
         <span className="w-12" aria-hidden />
       </header>
 
+      {/* Someone's letters opened from a link: the raw code means nothing to the reader, so the paste box steps aside. */}
+      {outcome.kind !== 'collection' && (
       <section className="mt-4 rounded-2xl bg-white border border-ink/10 p-5 shadow-sm">
         <p className="text-sm text-muted">
           Paste a proof someone shared with you. The math will check whether
@@ -330,6 +343,7 @@ export function VerifyProofScreen() {
           </button>
         </div>
       </section>
+      )}
 
       {scanning && (
         <QrScanModal
@@ -346,6 +360,12 @@ export function VerifyProofScreen() {
           <p className="text-sm font-medium">This is not a valid proof.</p>
           <p className="mt-2 text-xs text-muted">{outcome.detail}</p>
         </section>
+      )}
+
+      {outcome.kind === 'collection' && (
+        <Suspense fallback={null}>
+          <CollectionVerifyResult collection={outcome.collection} />
+        </Suspense>
       )}
 
       {outcome.kind === 'chain' && (

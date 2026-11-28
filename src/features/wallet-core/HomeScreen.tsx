@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import type { Attestation, FieldBranch } from 'tapit-attest';
 import { useWallet } from './useWallet.ts';
@@ -452,6 +453,18 @@ export function HomeScreen() {
             location={identity ? leafValue(identity, 'location') || undefined : undefined}
           />
           {identity && <AttestationCard attestation={identity} />}
+          {/* Letters you carry (proof-collection): in-app link, never a page
+              load, so the wallet stays unlocked. */}
+          <Link
+            to="/proof"
+            className="flex items-center justify-between rounded-2xl border border-ink/10 bg-white p-4 min-h-14"
+          >
+            <span>
+              <span className="block text-sm font-semibold">Show my proof</span>
+              <span className="block text-xs text-muted">Pick letters people signed for you and show them to someone.</span>
+            </span>
+            <span aria-hidden className="text-muted">›</span>
+          </Link>
 
           {orgDeclaration && (
             <OrgIdentitySections

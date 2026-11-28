@@ -55,6 +55,11 @@ const InboxScreen = lazy(() =>
     default: m.InboxScreen,
   })),
 );
+const ShowProofScreen = lazy(() =>
+  import('./features/proof-collection/ShowProofScreen.tsx').then((m) => ({
+    default: m.ShowProofScreen,
+  })),
+);
 const MyVaultsScreen = lazy(() =>
   import('./features/sign-request/MyVaultsScreen.tsx').then((m) => ({
     default: m.MyVaultsScreen,
@@ -103,6 +108,7 @@ export function App() {
                     <Route path="/settings" element={<SettingsScreen />} />
                     <Route path="/inbox" element={<InboxScreen />} />
                     <Route path="/vaults" element={<MyVaultsScreen />} />
+                    <Route path="/proof" element={<ShowProofScreen />} />
                     <Route path="/entry/:digest" element={<JournalDetail />} />
                     <Route path="/sign" element={<SignApprovalScreen />} />
                     <Route path="/capture" element={<CaptureScreen />} />
